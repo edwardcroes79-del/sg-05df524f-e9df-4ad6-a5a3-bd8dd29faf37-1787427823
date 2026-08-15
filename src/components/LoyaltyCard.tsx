@@ -219,6 +219,105 @@ const MinimalTemplate = (props: LoyaltyCardProps) => {
   );
 };
 
+// 4. Elegant Template (Serif, borders, sophisticated)
+const ElegantTemplate = (props: LoyaltyCardProps) => {
+  const { primaryColor, bgColor, textColor, Icon, stamps } = useTemplateData(props);
+
+  return (
+    <Card 
+      className={cn("overflow-hidden border shadow-md rounded-none relative", props.className)}
+      style={{ backgroundColor: bgColor, color: textColor }}
+    >
+      <div className="absolute inset-2 border border-current opacity-20 pointer-events-none" style={{ borderColor: primaryColor }} />
+      <CardContent className="p-8">
+        <div className="text-center mb-10">
+          <p className="text-xs uppercase tracking-[0.2em] mb-2 opacity-70">
+            {props.businessName}
+          </p>
+          <CardTitle className="text-2xl" style={{ fontFamily: "serif" }}>{props.programName}</CardTitle>
+        </div>
+        <div className="flex flex-wrap gap-5 justify-center mb-10">
+          {stamps.map((index) => {
+            const isStamped = index < props.currentStamps;
+            return (
+              <div key={index} className="flex justify-center">
+                <div
+                  className={cn(
+                    "w-12 h-12 rounded-full border flex items-center justify-center transition-all",
+                    isStamped ? "opacity-100" : "opacity-30 border-dashed"
+                  )}
+                  style={{ 
+                    borderColor: isStamped ? primaryColor : "currentColor",
+                    backgroundColor: isStamped ? `${primaryColor}10` : "transparent"
+                  }}
+                >
+                  <Icon className="w-5 h-5" style={{ color: isStamped ? primaryColor : "currentColor" }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="text-center border-t pt-6" style={{ borderColor: `${primaryColor}30` }}>
+          <span className="text-xs uppercase tracking-widest opacity-60 block mb-1">Reward</span>
+          <span className="text-base" style={{ fontFamily: "serif", color: primaryColor }}>{props.rewardTitle}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// 5. Bold Template (High impact, solid colors, sharp edges)
+const BoldTemplate = (props: LoyaltyCardProps) => {
+  const { primaryColor, bgColor, textColor, Icon, stamps } = useTemplateData(props);
+
+  return (
+    <Card 
+      className={cn("overflow-hidden border-4 shadow-none rounded-sm", props.className)}
+      style={{ backgroundColor: bgColor, color: textColor, borderColor: textColor }}
+    >
+      <div className="p-5 border-b-4 flex justify-between items-end" style={{ borderColor: textColor, backgroundColor: primaryColor, color: bgColor }}>
+        <div>
+          <CardTitle className="text-2xl font-black uppercase tracking-tight leading-none mb-1">{props.programName}</CardTitle>
+          <p className="text-xs font-bold uppercase tracking-wider opacity-90">
+            {props.businessName}
+          </p>
+        </div>
+        <div className="text-3xl font-black tabular-nums leading-none">
+          {props.currentStamps}/{props.stampTarget}
+        </div>
+      </div>
+      <CardContent className="p-5">
+        <div className="grid grid-cols-5 gap-2 mb-6">
+          {stamps.map((index) => {
+            const isStamped = index < props.currentStamps;
+            return (
+              <div key={index} className="flex justify-center aspect-square">
+                <div
+                  className={cn(
+                    "w-full h-full border-4 flex items-center justify-center transition-all rounded-sm",
+                    isStamped ? "opacity-100" : "opacity-20"
+                  )}
+                  style={{ 
+                    borderColor: textColor,
+                    backgroundColor: isStamped ? textColor : "transparent",
+                    color: isStamped ? bgColor : textColor
+                  }}
+                >
+                  <Icon className="w-6 h-6" strokeWidth={3} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="p-3 flex justify-between items-center rounded-sm" style={{ backgroundColor: textColor, color: bgColor }}>
+          <span className="font-black uppercase tracking-wide text-xs">REWARD</span>
+          <span className="font-bold text-sm">{props.rewardTitle}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // Main Template Renderer
 export function LoyaltyCard(props: LoyaltyCardProps) {
   const templateId = props.customization?.template_id || "classic";
@@ -228,7 +327,11 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
       return <ModernTemplate {...props} />;
     case "minimal":
       return <MinimalTemplate {...props} />;
-    // Other templates (elegant, bold, etc.) can be easily added as cases here
+    case "elegant":
+      return <ElegantTemplate {...props} />;
+    case "bold":
+      return <BoldTemplate {...props} />;
+    // Other templates (coffee shop, beauty, restaurant, etc.) can be easily added as cases here
     case "classic":
     default:
       return <ClassicTemplate {...props} />;
