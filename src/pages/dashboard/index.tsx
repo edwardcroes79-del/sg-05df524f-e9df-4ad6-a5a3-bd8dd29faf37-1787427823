@@ -3,11 +3,38 @@ import Head from "next/head";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CreditCard, Stamp, Gift, Activity } from "lucide-react";
+import { Users, CreditCard, Stamp, Gift, Activity, Plus, Search, Loader2, Check, Sparkles, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+
+interface CustomerProfile {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  avatar: string | null;
+}
+
+interface CustomerLoyaltyCard {
+  id: string;
+  current_stamps: number;
+  total_stamps: number;
+  customer: CustomerProfile;
+  loyalty_programs: {
+    id: string;
+    name: string;
+    stamp_target: number;
+    reward_title: string;
+  } | null;
+}
 
 export default function DashboardOverview() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [businessId, setBusinessId] = useState<string | null>(null);
   const [stats, setStats] = useState({
     customers: 0,
     activeCards: 0,
@@ -16,6 +43,20 @@ export default function DashboardOverview() {
     rewardsRedeemed: 0,
   });
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+
+  // Stamp Modal States
+  const [isStampModalOpen, setIsStampModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loadingCards, setLoadingCards] = useState(false);
+  const [loyaltyCards, setLoyaltyCards] = useState<CustomerLoyaltyCard[]>([]);
+  const [stampingCardId, setStampingCardId] = useState<string | null>(null);
+  const [successState, setSuccessState] = useState<{
+    customerName: string;
+    programName: string;
+    newStamps: number;
+    target: number;
+    rewardEarned: boolean;
+  } | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -34,6 +75,7 @@ export default function DashboardOverview() {
         .single();
 
       if (!business) return;
+      setBusinessId(business.id);
 
       // Real Data Fetching
       const [
@@ -48,14 +90,23 @@ export default function DashboardOverview() {
         supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", business.id),
         supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", business.id).eq("status", "redeemed"),
         supabase.from("stamp_transactions")
-          .select("id, created_at, stamp_number")
+          .select(`
+            id, 
+            created_at, 
+            stamp_number,
+            customer_loyalty_cards (
+              customer:customers (
+                name
+              )
+            )
+          `)
           .eq("business_id", business.id)
           .order("created_at", { ascending: false })
           .limit(5)
       ]);
 
       setStats({
-        customers: activeCards || 0, // In V1, active cards approximate unique customers
+        customers: activeCards || 0,
         activeCards: activeCards || 0,
         stampsIssued: stampsIssued || 0,
         rewardsEarned: rewardsEarned || 0,
@@ -69,6 +120,119 @@ export default function DashboardOverview() {
       setLoading(false);
     }
   };
+
+  // Fetch Loyalty Cards for fast Customer Stamp selection
+  const handleOpenStampModal = async () => {
+    setIsStampModalOpen(true);
+    setSearchQuery("");
+    setSuccessState(null);
+    if (!businessId) return;
+
+    try {
+      setLoadingCards(true);
+      const { data, error } = await supabase
+        .from("customer_loyalty_cards")
+        .select(`
+          id,
+          current_stamps,
+          total_stamps,
+          customer:customers (
+            id,
+            name,
+            email,
+            phone,
+            avatar
+          ),
+          loyalty_programs (
+            id,
+            name,
+            stamp_target,
+            reward_title
+          )
+        `)
+        .eq("business_id", businessId)
+        .eq("status", "active");
+
+      if (error) throw error;
+      setLoyaltyCards((data || []).filter(c => c.customer) as unknown as CustomerLoyaltyCard[]);
+    } catch (err: any) {
+      toast({
+        title: "Load Error",
+        description: err.message || "Failed to load customer list.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingCards(false);
+    }
+  };
+
+  // Add Stamp Action via secure transactional RPC
+  const handleAddStamp = async (card: CustomerLoyaltyCard) => {
+    if (!businessId) return;
+    try {
+      setStampingCardId(card.id);
+      
+      const { data, error } = await (supabase.rpc as any)("issue_stamp_tx", {
+        p_customer_id: card.customer.id,
+        p_business_id: businessId,
+        p_loyalty_program_id: card.loyalty_programs?.id
+      });
+
+      if (error) throw error;
+
+      // Extract results from JSONB response
+      const res = typeof data === "string" ? JSON.parse(data) : data;
+      const isRewardEarned = res?.reward_earned || false;
+      const newStampsCount = res?.new_stamps !== undefined ? res.new_stamps : (card.current_stamps + 1);
+
+      setSuccessState({
+        customerName: card.customer.name,
+        programName: card.loyalty_programs?.name || "Program",
+        newStamps: newStampsCount,
+        target: card.loyalty_programs?.stamp_target || 10,
+        rewardEarned: isRewardEarned,
+      });
+
+      toast({
+        title: "Stamp Issued!",
+        description: `Successfully added stamp for ${card.customer.name}.`,
+      });
+
+      // Reload dashboard metrics and activity
+      fetchDashboardData();
+      
+      // Update local loyalty card state
+      setLoyaltyCards(prev => prev.map(c => {
+        if (c.id === card.id) {
+          return {
+            ...c,
+            current_stamps: newStampsCount,
+            total_stamps: c.total_stamps + 1
+          };
+        }
+        return c;
+      }));
+
+    } catch (err: any) {
+      toast({
+        title: "Stamping Failed",
+        description: err.message || "Could not complete transaction.",
+        variant: "destructive",
+      });
+    } finally {
+      setStampingCardId(null);
+    }
+  };
+
+  // Filtering on pre-loaded customer cards for real-time responsiveness
+  const filteredCards = loyaltyCards.filter((card) => {
+    const cust = card.customer;
+    const nameMatch = cust.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const emailMatch = cust.email?.toLowerCase().includes(searchQuery.toLowerCase()) || false;
+    const phoneMatch = cust.phone?.includes(searchQuery) || false;
+    const progMatch = card.loyalty_programs?.name.toLowerCase().includes(searchQuery.toLowerCase()) || false;
+    return nameMatch || emailMatch || phoneMatch || progMatch;
+  });
 
   const statCards = [
     { title: "Total Customers", value: stats.customers, icon: Users, color: "text-blue-500" },
@@ -85,9 +249,21 @@ export default function DashboardOverview() {
       </Head>
 
       <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Dashboard Overview</h1>
-          <p className="text-muted-foreground mt-2">Real-time metrics for your loyalty programs.</p>
+        {/* Top Header Section */}
+        <div className="flex flex-col sm:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
+          <div>
+            <h1 className="text-3xl font-heading font-bold text-foreground">Dashboard Overview</h1>
+            <p className="text-muted-foreground mt-1">Real-time metrics for your loyalty programs.</p>
+          </div>
+          <div>
+            <Button 
+              onClick={handleOpenStampModal} 
+              size="lg" 
+              className="w-full sm:w-auto font-bold gap-2 text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 transition-all duration-150 transform active:scale-[0.98]"
+            >
+              <Plus className="h-5 w-5" /> Issue Stamp
+            </Button>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -138,7 +314,7 @@ export default function DashboardOverview() {
             ) : recentActivity.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No activity yet.</p>
-                <p className="text-sm mt-1">Start scanning QR codes to issue stamps!</p>
+                <p className="text-sm mt-1">Start issuing stamps or scanning QR codes to begin!</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -149,11 +325,16 @@ export default function DashboardOverview() {
                         <Stamp className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">Stamp #{activity.stamp_number} Issued</p>
+                        <p className="font-medium text-foreground">
+                          Stamp Issued to {activity.customer_loyalty_cards?.customer?.name || "Customer"}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(activity.created_at).toLocaleString()}
                         </p>
                       </div>
+                    </div>
+                    <div className="text-xs font-mono font-bold text-primary">
+                      +{activity.stamp_number || 1}
                     </div>
                   </div>
                 ))}
@@ -162,6 +343,147 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
       </div>
+
+      {/* EASY STAMP ISSUING FLOW DIALOG */}
+      <Dialog open={isStampModalOpen} onOpenChange={setIsStampModalOpen}>
+        <DialogContent className="sm:max-w-md bg-card border-border max-h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-4 border-b border-border">
+            <DialogTitle className="text-2xl font-heading font-bold flex items-center gap-2 text-foreground">
+              <Stamp className="h-6 w-6 text-primary" /> Issue Loyalty Stamp
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground text-sm">
+              Search customers by name, email, or phone to issue a stamp instantly.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Success Overlay Panel */}
+          {successState ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-5 animate-in fade-in zoom-in duration-200">
+              <div className="p-4 bg-emerald-50 text-emerald-500 rounded-full border-2 border-emerald-100 relative">
+                <Check className="h-12 w-12 stroke-[3]" />
+                {successState.rewardEarned && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white p-1 rounded-full text-xs">
+                    <Sparkles className="h-4 w-4 animate-spin" />
+                  </span>
+                )}
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-heading font-bold text-xl text-foreground">Stamp Successfully Added!</h3>
+                <p className="text-sm text-muted-foreground">
+                  Added stamp for <strong className="text-foreground">{successState.customerName}</strong> in program <strong className="text-foreground">{successState.programName}</strong>.
+                </p>
+              </div>
+
+              {successState.rewardEarned ? (
+                <div className="w-full bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl space-y-1.5">
+                  <div className="flex items-center justify-center gap-1.5 text-amber-600 font-bold text-sm">
+                    <Sparkles className="h-4 w-4" /> REWARD UNLOCKED! <Sparkles className="h-4 w-4" />
+                  </div>
+                  <p className="text-xs text-amber-700 font-medium">
+                    A reward coupon has been generated and added to the customer's wallet.
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center font-bold text-2xl text-primary font-mono bg-primary/5 px-6 py-2.5 rounded-full border border-primary/10">
+                  {successState.newStamps} / {successState.target} stamps
+                </div>
+              )}
+
+              <div className="flex gap-3 w-full pt-4">
+                <Button 
+                  variant="outline" 
+                  className="flex-1" 
+                  onClick={() => setSuccessState(null)}
+                >
+                  Issue Another
+                </Button>
+                <Button 
+                  className="flex-1 text-white bg-primary hover:bg-primary/90" 
+                  onClick={() => setIsStampModalOpen(false)}
+                >
+                  Done
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Search Bar */}
+              <div className="p-4 border-b border-border bg-muted/20">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, email, or phone..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 bg-background"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery("")} 
+                      className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable Customer List */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[250px] max-h-[350px]">
+                {loadingCards ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-2">
+                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                    <p className="text-xs text-muted-foreground">Loading customers roster...</p>
+                  </div>
+                ) : filteredCards.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground space-y-2">
+                    <Users className="h-8 w-8 mx-auto opacity-50" />
+                    <p className="text-sm font-semibold">No customers matched.</p>
+                    <p className="text-xs">Verify your search keywords or register the customer.</p>
+                  </div>
+                ) : (
+                  filteredCards.map((card) => (
+                    <div 
+                      key={card.id} 
+                      className="flex items-center justify-between p-3.5 border border-border rounded-xl bg-card hover:bg-muted/10 transition-colors"
+                    >
+                      <div className="flex flex-col min-w-0 pr-2">
+                        <span className="font-heading font-semibold text-foreground text-sm truncate">
+                          {card.customer.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {card.loyalty_programs?.name || "Loyalty Program"}
+                        </span>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <span className="text-xs font-bold text-primary font-mono">
+                            {card.current_stamps} / {card.loyalty_programs?.stamp_target || 10} stamps
+                          </span>
+                        </div>
+                      </div>
+
+                      <Button
+                        size="sm"
+                        disabled={stampingCardId !== null}
+                        onClick={() => handleAddStamp(card)}
+                        className="font-bold text-white bg-primary hover:bg-primary/95 px-4 h-9 gap-1 shrink-0"
+                      >
+                        {stampingCardId === card.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Plus className="h-3.5 w-3.5" /> Stamp
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
