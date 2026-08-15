@@ -1,6 +1,6 @@
 ---
 title: Phase 3 - Business Dashboard & Loyalty Programs
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [dashboard, loyalty-programs, crud, analytics]
@@ -14,12 +14,12 @@ created_by: agent
 - Ensure strict tenant isolation (actions tied to business_id).
 
 ## Checklist
-- [ ] Create Dashboard Layout (Sidebar, TopNav).
-- [ ] Implement Dashboard Overview (`/dashboard`) with real Supabase metrics.
-- [ ] Implement Loyalty Programs List (`/dashboard/programs`).
-- [ ] Implement Loyalty Program Creation (`/dashboard/programs/new`).
-- [ ] Implement Loyalty Program Editing (`/dashboard/programs/[id]`).
-- [ ] Test CRUD operations (verify RLS compliance).
+- [x] Create Dashboard Layout (Sidebar, TopNav).
+- [x] Implement Dashboard Overview (`/dashboard`) with real Supabase metrics.
+- [x] Implement Loyalty Programs List (`/dashboard/programs`).
+- [x] Implement Loyalty Program Creation (`/dashboard/programs/new`).
+- [x] Implement Loyalty Program Editing (`/dashboard/programs/[id]`).
+- [x] Test CRUD operations (verify RLS compliance).
 
 ## Acceptance
 - Dashboard metrics accurately reflect the current business's data.
