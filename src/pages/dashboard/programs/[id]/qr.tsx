@@ -25,6 +25,7 @@ export default function ProgramQR() {
 
   const fetchData = async () => {
     try {
+      const programId = id as string;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
@@ -47,7 +48,7 @@ export default function ProgramQR() {
       const { data: pData } = await supabase
         .from("loyalty_programs")
         .select("*")
-        .eq("id", id)
+        .eq("id", programId)
         .eq("business_id", staffData.business_id)
         .single();
       setProgram(pData);
@@ -142,7 +143,7 @@ export default function ProgramQR() {
         </div>
       </div>
 
-      <style dangerouslySetContent="true">{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           body * { visibility: hidden; }
           .print\\:hidden { display: none !important; }
@@ -163,7 +164,7 @@ export default function ProgramQR() {
             padding: 2rem;
           }
         }
-      `}</style>
+      `}} />
     </DashboardLayout>
   );
 }

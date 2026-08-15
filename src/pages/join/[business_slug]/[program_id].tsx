@@ -24,6 +24,9 @@ export default function JoinProgram() {
 
     const checkSessionAndFetch = async () => {
       try {
+        const bSlug = business_slug as string;
+        const pId = program_id as string;
+        
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user || null);
 
@@ -32,7 +35,7 @@ export default function JoinProgram() {
         const { data: bData, error: bError } = await supabase
           .from("businesses")
           .select("id, business_name, slug")
-          .eq("slug", business_slug)
+          .eq("slug", bSlug)
           .single();
 
         if (bError || !bData) throw new Error("Business not found");
@@ -41,7 +44,7 @@ export default function JoinProgram() {
         const { data: pData, error: pError } = await supabase
           .from("loyalty_programs")
           .select("*")
-          .eq("id", program_id)
+          .eq("id", pId)
           .eq("business_id", bData.id)
           .single();
 
@@ -91,7 +94,7 @@ export default function JoinProgram() {
 
       // Check if card exists
       const { data: cardData } = await supabase
-        .from("loyalty_cards")
+        .from("customer_loyalty_cards")
         .select("id")
         .eq("customer_id", customerId)
         .eq("loyalty_program_id", program.id)
@@ -100,7 +103,7 @@ export default function JoinProgram() {
       if (!cardData) {
         // Create new card
         const { error: cardError } = await supabase
-          .from("loyalty_cards")
+          .from("customer_loyalty_cards")
           .insert({
             customer_id: customerId,
             business_id: business.id,
