@@ -159,7 +159,8 @@ export const homeConfig: HomeConfig = {
         period: "/mo",
         description: "Perfect for single-location cafes and shops.",
         features: ["Up to 75 customers", "1 Loyalty Program", "2 Staff Accounts", "Basic Analytics", "Email Support"],
-        ctaText: "Contact Us"
+        ctaText: "Contact Us",
+        ctaHref: "https://wa.me/2975678222"
       },
       {
         name: "Professional",
@@ -167,7 +168,8 @@ export const homeConfig: HomeConfig = {
         period: "/mo",
         description: "For growing businesses with high foot traffic.",
         features: ["Up to 500 customers", "Up to 3 Loyalty Programs", "Unlimited Staff Accounts", "Advanced Analytics", "Priority Support"],
-          ctaText: "Contact Us",
+        ctaText: "Contact Us",
+        ctaHref: "https://wa.me/2975678222",
         isPopular: true
       },
       {
@@ -176,7 +178,8 @@ export const homeConfig: HomeConfig = {
         period: "",
         description: "For multi-location chains and franchises.",
         features: ["Everything in Pro", "Unlimited Loyalty Programs", "Multi-location routing", "Custom integrations", "Dedicated Account Manager"],
-        ctaText: "Contact Sales"
+        ctaText: "Contact Sales",
+        ctaHref: "https://wa.me/2975678222"
       }
     ]
   },
@@ -226,7 +229,7 @@ export const homeConfig: HomeConfig = {
         title: "Company",
         links: [
           { label: "About Us", href: "#" },
-          { label: "Contact", href: "#" },
+          { label: "Contact", href: "https://wa.me/2975678222" },
           { label: "Privacy Policy", href: "#" },
           { label: "Terms of Service", href: "#" }
         ]
