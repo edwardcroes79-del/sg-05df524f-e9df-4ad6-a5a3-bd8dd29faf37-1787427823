@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
 export default function Login() {
@@ -92,7 +92,16 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4 relative">
+      <div className="absolute top-4 left-4 md:top-8 md:left-8">
+        <Link href="/">
+          <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Home
+          </Button>
+        </Link>
+      </div>
+
       <SEO title="Login - Aruba Royalty Stamp" description="Log in to manage your digital loyalty programs." />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">

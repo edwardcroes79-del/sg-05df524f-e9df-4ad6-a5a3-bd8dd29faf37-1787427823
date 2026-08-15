@@ -35,7 +35,7 @@ export default function AdminDashboard() {
         title: "Logged Out",
         description: "Successfully signed out of the Super Admin Portal.",
       });
-      router.push("/auth/login");
+      router.push("/");
     } catch (err: any) {
       toast({
         title: "Logout Error",
