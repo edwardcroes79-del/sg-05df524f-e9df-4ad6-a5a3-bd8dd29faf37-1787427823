@@ -63,8 +63,8 @@ export default function JoinProgram() {
 
   const handleJoin = async () => {
     if (!user) {
-      // Redirect to login/register with a returnUrl
-      router.push(`/auth/register?returnUrl=${encodeURIComponent(router.asPath)}`);
+      // Redirect to custom Customer auth page instead of generic merchant registration
+      router.push(`/auth/customer?returnUrl=${encodeURIComponent(router.asPath)}`);
       return;
     }
 
