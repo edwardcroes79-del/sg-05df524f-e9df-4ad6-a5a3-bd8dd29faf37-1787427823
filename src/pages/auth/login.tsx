@@ -42,6 +42,24 @@ export default function Login() {
         // Check if business profile exists to route appropriately
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
+          // 1. Check strict backend profile roles
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("is_super_admin, role")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (profile?.is_super_admin || profile?.role === 'super_admin') {
+            router.push("/admin");
+            return;
+          }
+
+          if (profile?.role === 'customer') {
+            router.push("/customer");
+            return;
+          }
+
+          // 2. Check business associations for normal dashboard routing
           const { data: businessUser } = await supabase
             .from("business_users")
             .select("business_id")
