@@ -23,7 +23,7 @@ export default function ScanQR() {
   // Scanner state
   const [scanMode, setScanMode] = useState<"camera" | "manual">("camera");
   const [manualCode, setManualCode] = useState("");
-  const [scanResult, setScanResult] = useState<{ success: boolean; message: string; reward_earned?: boolean } | null>(null);
+  const [scanResult, setScanResult] = useState<{ success: boolean; message: string; reward_earned?: boolean; reward_title?: string } | null>(null);
 
   useEffect(() => {
     fetchBusinessAndPrograms();
@@ -82,8 +82,8 @@ export default function ScanQR() {
   }, [scanMode, loading, programs.length, scanResult]);
 
   const onScanSuccess = (decodedText: string) => {
-    // Expected format: "CUSTOMER:uuid"
-    handleProcessStamp(decodedText);
+    // Expected format: "CUSTOMER:uuid" or "REWARD:code"
+    handleProcessQR(decodedText);
   };
 
   const onScanFailure = (error: any) => {
@@ -93,32 +93,59 @@ export default function ScanQR() {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualCode) return;
-    handleProcessStamp(manualCode);
+    handleProcessQR(manualCode);
   };
 
-  const handleProcessStamp = async (qrData: string) => {
+  const handleProcessQR = async (qrData: string) => {
     if (processing) return;
     setProcessing(true);
     setScanResult(null);
 
     try {
-      // Parse customer ID
+      if (!business?.id) throw new Error("Missing business configuration");
+
+      // Handle Reward Redemption
+      if (qrData.startsWith("REWARD:") || (!qrData.startsWith("CUSTOMER:") && qrData.length <= 12)) {
+        const rewardCode = qrData.startsWith("REWARD:") ? qrData.split(":")[1] : qrData;
+        
+        const { data, error } = await supabase.rpc("redeem_reward", {
+          p_reward_code: rewardCode,
+          p_business_id: business.id
+        });
+
+        if (error) throw error;
+        
+        const result = data as { success: boolean; message: string; reward_title?: string };
+        setScanResult(result);
+        
+        toast({
+          title: result.success ? "✅ Reward Redeemed" : "Redemption Failed",
+          description: result.message,
+          variant: result.success ? "default" : "destructive",
+        });
+        
+        setProcessing(false);
+        setManualCode("");
+        return;
+      }
+
+      // Handle Customer Stamp
       let customerId = qrData;
       if (qrData.startsWith("CUSTOMER:")) {
         customerId = qrData.split(":")[1];
       }
 
-      // Basic UUID validation
+      // Basic UUID validation for customer IDs
       const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
       if (!uuidRegex.test(customerId)) {
-        throw new Error("Invalid Customer QR Code format");
+        throw new Error("Invalid QR Code format. Please scan a Customer or Reward code.");
       }
 
-      if (!selectedProgramId || !business?.id) {
-        throw new Error("Missing program or business configuration");
+      if (!selectedProgramId) {
+        throw new Error("Missing loyalty program selection.");
       }
 
-      // Call secure RPC
+      // Call secure RPC for stamps
       const { data, error } = await supabase.rpc("issue_stamp", {
         p_customer_id: customerId,
         p_business_id: business.id,
@@ -268,7 +295,7 @@ export default function ScanQR() {
                   ) : (
                     <form onSubmit={handleManualSubmit} className="space-y-4 py-8">
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">Customer QR Data (ID)</label>
+                        <label className="text-sm font-medium">Customer ID or Reward Code</label>
                         <Input 
                           placeholder="Scan with USB scanner or paste here..." 
                           value={manualCode}
@@ -277,11 +304,11 @@ export default function ScanQR() {
                           disabled={processing}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Point your physical USB barcode scanner here and scan the customer's phone.
+                          Point your physical USB barcode scanner here and scan the customer's phone, or type a Reward Code directly.
                         </p>
                       </div>
                       <Button type="submit" className="w-full" disabled={!manualCode || processing}>
-                        {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Submit Stamp"}
+                        {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Submit"}
                       </Button>
                     </form>
                   )}

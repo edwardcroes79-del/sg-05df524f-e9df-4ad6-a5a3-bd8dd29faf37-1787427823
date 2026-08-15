@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Trash2, QrCode } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +38,8 @@ export default function EditProgram() {
     stamp_target: "10",
     reward_title: "",
     reward_description: "",
+    card_color: "#F87171",
+    stamp_icon: "Star"
   });
 
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function EditProgram() {
         stamp_target: data.stamp_target.toString(),
         reward_title: data.reward_title,
         reward_description: data.reward_description || "",
+        card_color: data.card_color || "#F87171",
+        stamp_icon: data.stamp_icon || "Star"
       });
     } catch (error: any) {
       toast({
@@ -85,6 +89,8 @@ export default function EditProgram() {
           stamp_target: parseInt(formData.stamp_target, 10),
           reward_title: formData.reward_title,
           reward_description: formData.reward_description,
+          card_color: formData.card_color,
+          stamp_icon: formData.stamp_icon,
           updated_at: new Date().toISOString()
         })
         .eq("id", id as string);
@@ -161,28 +167,35 @@ export default function EditProgram() {
             </div>
           </div>
           
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" className="gap-2">
-                <Trash2 className="h-4 w-4" /> Delete
+          <div className="flex gap-2">
+            <Link href={`/dashboard/programs/${id}/qr`}>
+              <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/10">
+                <QrCode className="h-4 w-4" /> Get QR Poster
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your loyalty program.
-                  If customers already have stamps, you should PAUSE the program instead of deleting it.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  {deleting ? "Deleting..." : "Delete Program"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            </Link>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="gap-2">
+                  <Trash2 className="h-4 w-4" /> Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete your loyalty program.
+                    If customers already have stamps, you should PAUSE the program instead of deleting it.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    {deleting ? "Deleting..." : "Delete Program"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -222,6 +235,51 @@ export default function EditProgram() {
                   value={formData.stamp_target}
                   onChange={(e) => setFormData({...formData, stamp_target: e.target.value})}
                 />
+              </div>
+
+              <div className="pt-4 border-t border-border space-y-6">
+                <div>
+                  <h3 className="text-lg font-heading font-semibold">Card Customization</h3>
+                </div>
+                
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="card_color">Brand Color</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        id="card_color" 
+                        type="color" 
+                        className="w-16 h-10 p-1"
+                        value={formData.card_color}
+                        onChange={(e) => setFormData({...formData, card_color: e.target.value})}
+                      />
+                      <Input 
+                        type="text" 
+                        value={formData.card_color}
+                        onChange={(e) => setFormData({...formData, card_color: e.target.value})}
+                        className="font-mono uppercase"
+                        pattern="^#[0-9A-Fa-f]{6}$"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="stamp_icon">Stamp Icon</Label>
+                    <select 
+                      id="stamp_icon"
+                      className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      value={formData.stamp_icon}
+                      onChange={(e) => setFormData({...formData, stamp_icon: e.target.value})}
+                    >
+                      <option value="Star">Star</option>
+                      <option value="Coffee">Coffee Cup</option>
+                      <option value="Scissors">Scissors</option>
+                      <option value="Utensils">Food / Utensils</option>
+                      <option value="Car">Car</option>
+                      <option value="Dumbbell">Gym / Dumbbell</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div className="pt-4 border-t border-border space-y-6">

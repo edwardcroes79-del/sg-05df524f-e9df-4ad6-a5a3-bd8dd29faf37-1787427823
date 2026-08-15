@@ -13,10 +13,10 @@ Build customizable digital loyalty cards, real QR code joining system, printable
 ## Checklist
 - [x] Add card customization columns to `loyalty_programs` (template, icons).
 - [x] Create `redeem_reward` RPC function to securely prevent double redemption.
-- [ ] Build `/join/[business_slug]/[program_id]` public route for customers.
-- [ ] Create beautiful digital card templates component.
-- [ ] Build Business QR Code & Poster generator (`/dashboard/programs/[id]/qr`).
-- [ ] Build Staff Reward verification and redemption UI.
+- [x] Build `/join/[business_slug]/[program_id]` public route for customers.
+- [x] Create beautiful digital card templates component.
+- [x] Build Business QR Code & Poster generator (`/dashboard/programs/[id]/qr`).
+- [x] Build Staff Reward verification and redemption UI.
 
 ## Acceptance
 - Customers can join programs via real QR routes.

@@ -224,15 +224,23 @@ export default function CustomerDashboard() {
                     </CardHeader>
                     <CardContent>
                       {reward.status === 'available' && (
-                        <div className="mt-2 p-3 bg-white rounded border text-center">
-                          <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Reward Code</p>
-                          <p className="font-mono text-xl font-bold tracking-widest">{reward.reward_code}</p>
+                        <div className="mt-4 p-4 bg-white rounded-xl border text-center shadow-sm flex flex-col items-center">
+                          <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-semibold">Scan to Redeem</p>
+                          <QRCode 
+                            value={`REWARD:${reward.reward_code}`} 
+                            size={140}
+                            level="H"
+                            fgColor="hsl(var(--primary))"
+                          />
+                          <p className="font-mono text-2xl font-bold tracking-widest mt-4 bg-muted/30 px-4 py-1 rounded-md">{reward.reward_code}</p>
                         </div>
                       )}
                       {reward.status === 'redeemed' && (
-                        <p className="text-sm text-muted-foreground">
-                          Redeemed on {new Date(reward.redeemed_at).toLocaleDateString()}
-                        </p>
+                        <div className="mt-2 p-3 bg-muted/50 rounded border text-center">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Redeemed on {new Date(reward.redeemed_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       )}
                     </CardContent>
                   </Card>
