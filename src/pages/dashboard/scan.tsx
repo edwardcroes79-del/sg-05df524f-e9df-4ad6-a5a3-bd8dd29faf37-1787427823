@@ -108,7 +108,7 @@ export default function ScanQR() {
       if (qrData.startsWith("REWARD:") || (!qrData.startsWith("CUSTOMER:") && qrData.length <= 12)) {
         const rewardCode = qrData.startsWith("REWARD:") ? qrData.split(":")[1] : qrData;
         
-        const { data, error } = await supabase.rpc("redeem_reward", {
+        const { data, error } = await supabase.rpc("redeem_reward_tx", {
           p_reward_code: rewardCode,
           p_business_id: business.id
         });
@@ -146,7 +146,7 @@ export default function ScanQR() {
       }
 
       // Call secure RPC for stamps
-      const { data, error } = await supabase.rpc("issue_stamp", {
+      const { data, error } = await supabase.rpc("issue_stamp_tx", {
         p_customer_id: customerId,
         p_business_id: business.id,
         p_loyalty_program_id: selectedProgramId
