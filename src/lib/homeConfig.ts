@@ -158,7 +158,7 @@ export const homeConfig: HomeConfig = {
         price: "AWG 45",
         period: "/mo",
         description: "Perfect for single-location cafes and shops.",
-        features: ["Up to 500 customers", "1 Loyalty Program", "2 Staff Accounts", "Basic Analytics", "Email Support"],
+        features: ["Up to 75 customers", "1 Loyalty Program", "2 Staff Accounts", "Basic Analytics", "Email Support"],
         ctaText: "Start Free Trial"
       },
       {
@@ -166,7 +166,7 @@ export const homeConfig: HomeConfig = {
         price: "AWG 149",
         period: "/mo",
         description: "For growing businesses with high foot traffic.",
-        features: ["Unlimited customers", "Up to 3 Loyalty Programs", "Unlimited Staff Accounts", "Advanced Analytics", "Priority Support"],
+        features: ["Up to 500 customers", "Up to 3 Loyalty Programs", "Unlimited Staff Accounts", "Advanced Analytics", "Priority Support"],
         ctaText: "Start Free Trial",
         isPopular: true
       },
