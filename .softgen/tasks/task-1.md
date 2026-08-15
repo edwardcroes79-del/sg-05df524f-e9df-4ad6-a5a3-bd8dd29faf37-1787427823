@@ -16,8 +16,8 @@ Use Supabase, establish relational data modeling, set up base app structure, and
 - [x] Create future payment tables for prepared architecture
 - [x] Enable Row Level Security (RLS) on all tables
 - [x] Generate Supabase TypeScript types
-- [ ] Set up base application structure (index.tsx, fonts, layout)
-- [ ] Apply Caribbean Utility design system (globals.css, tailwind.config.ts)
+- [x] Set up base application structure (index.tsx, fonts, layout)
+- [x] Apply Caribbean Utility design system (globals.css, tailwind.config.ts)
 
 ## Acceptance
 - All tables exist in Supabase with RLS enabled
