@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut } from "lucide-react";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -27,6 +27,23 @@ export default function AdminDashboard() {
     totalCustomers: 0,
     totalStamps: 0,
   });
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Logged Out",
+        description: "Successfully signed out of the Super Admin Portal.",
+      });
+      router.push("/auth/login");
+    } catch (err: any) {
+      toast({
+        title: "Logout Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    }
+  };
 
   // Edit states
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
@@ -351,9 +368,14 @@ export default function AdminDashboard() {
             <h1 className="text-4xl font-heading font-bold text-foreground">Platform Management</h1>
             <p className="text-muted-foreground mt-1">Configure subscription plans, monitor businesses, and manage limits.</p>
           </div>
-          <Link href="/dashboard">
-            <Button variant="outline">Back to Merchant Dashboard</Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard">
+              <Button variant="outline">Back to Merchant Dashboard</Button>
+            </Link>
+            <Button variant="destructive" onClick={handleLogout} className="gap-2">
+              <LogOut className="h-4 w-4" /> Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Global Statistics */}
