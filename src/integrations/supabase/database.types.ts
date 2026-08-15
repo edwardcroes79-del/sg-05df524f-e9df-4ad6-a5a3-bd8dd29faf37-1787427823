@@ -240,53 +240,74 @@ export type Database = {
       loyalty_programs: {
         Row: {
           active: boolean | null
+          bg_color: string | null
           business_id: string | null
+          card_bg_image_url: string | null
           card_color: string | null
+          card_logo_url: string | null
           card_template: string | null
           created_at: string | null
           description: string | null
           id: string
           name: string
+          primary_color: string | null
           reward_description: string | null
           reward_icon: string | null
           reward_image: string | null
           reward_title: string
+          secondary_color: string | null
           stamp_icon: string | null
           stamp_target: number
+          template_id: string | null
+          text_color: string | null
           updated_at: string | null
         }
         Insert: {
           active?: boolean | null
+          bg_color?: string | null
           business_id?: string | null
+          card_bg_image_url?: string | null
           card_color?: string | null
+          card_logo_url?: string | null
           card_template?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
+          primary_color?: string | null
           reward_description?: string | null
           reward_icon?: string | null
           reward_image?: string | null
           reward_title: string
+          secondary_color?: string | null
           stamp_icon?: string | null
           stamp_target?: number
+          template_id?: string | null
+          text_color?: string | null
           updated_at?: string | null
         }
         Update: {
           active?: boolean | null
+          bg_color?: string | null
           business_id?: string | null
+          card_bg_image_url?: string | null
           card_color?: string | null
+          card_logo_url?: string | null
           card_template?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
+          primary_color?: string | null
           reward_description?: string | null
           reward_icon?: string | null
           reward_image?: string | null
           reward_title?: string
+          secondary_color?: string | null
           stamp_icon?: string | null
           stamp_target?: number
+          template_id?: string | null
+          text_color?: string | null
           updated_at?: string | null
         }
         Relationships: [
