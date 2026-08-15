@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Trash2, QrCode, Upload, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Trash2, QrCode, Upload, RefreshCw, Sparkles, Layout, Palette, Gift, Check } from "lucide-react";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -24,6 +24,80 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+// Design Template Definitions with distinct styled default variables
+const TEMPLATE_PRESETS = [
+  {
+    id: "classic",
+    name: "Classic",
+    desc: "Clean professional border design with a balanced and subtle ivory/white background.",
+    style: "Business / Retail",
+    defaults: {
+      bg_color: "#ffffff",
+      text_color: "#1f2937",
+      primary_color: "#F87171",
+      secondary_color: "#e5e7eb",
+      stamp_icon: "Star",
+      reward_icon: "Gift"
+    }
+  },
+  {
+    id: "modern",
+    name: "Modern Cafe",
+    desc: "A stylized modern format emphasizing high-contrast top banners and floating indicators.",
+    style: "Cafe / Hospitality",
+    defaults: {
+      bg_color: "#f3f4f6",
+      text_color: "#111827",
+      primary_color: "#10B981",
+      secondary_color: "#d1fae5",
+      stamp_icon: "Coffee",
+      reward_icon: "Coffee"
+    }
+  },
+  {
+    id: "minimal",
+    name: "Minimalist Grid",
+    desc: "Ultra-clean aesthetic prioritizing high negative space and crisp typography boundaries.",
+    style: "Apparel / Lifestyle",
+    defaults: {
+      bg_color: "#f9fafb",
+      text_color: "#0f172a",
+      primary_color: "#2563eb",
+      secondary_color: "#f1f5f9",
+      stamp_icon: "ShoppingBag",
+      reward_icon: "Crown"
+    }
+  },
+  {
+    id: "elegant",
+    name: "Elegant Premium",
+    desc: "Classic boutique luxury utilizing sophisticated spacing, warm gold tints, and serif typography lines.",
+    style: "Spa / Luxury Boutique",
+    defaults: {
+      bg_color: "#fdfbf7",
+      text_color: "#1c1917",
+      primary_color: "#78350f",
+      secondary_color: "#fef3c7",
+      stamp_icon: "Heart",
+      reward_icon: "Crown"
+    }
+  },
+  {
+    id: "bold",
+    name: "Bold Ink",
+    desc: "High-impact heavy strokes, high contrast borders, and vibrant outlines with powerful blocks.",
+    style: "Streetwear / Fitness",
+    defaults: {
+      bg_color: "#111827",
+      text_color: "#ffffff",
+      primary_color: "#fbbf24",
+      secondary_color: "#374151",
+      stamp_icon: "Crown",
+      reward_icon: "Gift"
+    }
+  }
+];
 
 export default function EditProgram() {
   const router = useRouter();
@@ -99,7 +173,7 @@ export default function EditProgram() {
         primary_color: data.primary_color || data.card_color || "#F87171",
         secondary_color: data.secondary_color || "",
         text_color: data.text_color || "#1f2937",
-        stamp_icon: data.stamp_icon || data.stamp_icon || "Star",
+        stamp_icon: data.stamp_icon || "Star",
         reward_icon: data.reward_icon || "Gift",
         card_logo_url: data.card_logo_url || "",
         card_bg_image_url: data.card_bg_image_url || ""
@@ -120,7 +194,6 @@ export default function EditProgram() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     
-    // Simple verification
     if (!file.type.startsWith("image/")) {
       toast({
         title: "Invalid file type",
@@ -177,41 +250,34 @@ export default function EditProgram() {
     });
   };
 
-  const handleResetToDefaults = () => {
-    const tid = customization.template_id.toLowerCase();
-    let bg = "#ffffff";
-    let text = "#1f2937";
-    let prim = formData.card_color || "#F87171";
-    const sec = "";
-
-    if (tid === "bold") {
-      bg = "#111827";
-      text = "#ffffff";
-      prim = "#fbbf24";
-    } else if (tid === "elegant") {
-      bg = "#fdfbf7";
-      text = "#1c1917";
-      prim = "#78350f";
-    } else if (tid === "minimal") {
-      bg = "#f9fafb";
-      text = "#0f172a";
-      prim = "#2563eb";
-    }
-
+  // Dynamically apply a template preset defaults to customization states
+  const handleSelectTemplate = (preset: typeof TEMPLATE_PRESETS[0]) => {
     setCustomization(prev => ({
       ...prev,
-      bg_color: bg,
-      text_color: text,
-      primary_color: prim,
-      secondary_color: sec,
-      stamp_icon: "Star",
-      reward_icon: "Gift"
+      template_id: preset.id,
+      bg_color: preset.defaults.bg_color,
+      text_color: preset.defaults.text_color,
+      primary_color: preset.defaults.primary_color,
+      secondary_color: preset.defaults.secondary_color,
+      stamp_icon: preset.defaults.stamp_icon,
+      reward_icon: preset.defaults.reward_icon
+    }));
+
+    setFormData(prev => ({
+      ...prev,
+      card_color: preset.defaults.primary_color,
+      stamp_icon: preset.defaults.stamp_icon
     }));
 
     toast({
-      title: "Reset complete",
-      description: "Customizations set back to template guidelines.",
+      title: `${preset.name} Layout Active`,
+      description: "Default style guidelines loaded into design editor.",
     });
+  };
+
+  const handleResetToDefaults = () => {
+    const activePreset = TEMPLATE_PRESETS.find(p => p.id === customization.template_id.toLowerCase()) || TEMPLATE_PRESETS[0];
+    handleSelectTemplate(activePreset);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -229,7 +295,6 @@ export default function EditProgram() {
           card_color: customization.primary_color,
           stamp_icon: customization.stamp_icon,
           
-          // Customization settings saved directly to real schema fields
           template_id: customization.template_id,
           bg_color: customization.bg_color,
           primary_color: customization.primary_color,
@@ -245,12 +310,12 @@ export default function EditProgram() {
       if (error) throw error;
 
       toast({
-        title: "Loyalty Card Updated",
-        description: "Branding and rules successfully synchronized with customer cards.",
+        title: "Loyalty Card Theme Applied",
+        description: "Your design customizations are now live and visible to all customers instantly.",
       });
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: "Error applying design",
         description: error.message,
         variant: "destructive",
       });
@@ -289,7 +354,6 @@ export default function EditProgram() {
     }
   };
 
-  // Synchronize base form values back to branding color
   const syncBaseColor = (color: string) => {
     setFormData(prev => ({ ...prev, card_color: color }));
     setCustomization(prev => ({ ...prev, primary_color: color }));
@@ -303,8 +367,8 @@ export default function EditProgram() {
         <title>Branding & Design Editor | Dashboard</title>
       </Head>
 
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
+      <div className="max-w-6xl mx-auto space-y-8 pb-12">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/dashboard/programs">
               <Button variant="outline" size="icon">
@@ -351,7 +415,7 @@ export default function EditProgram() {
         <div className="grid lg:grid-cols-12 gap-8 items-start">
           
           {/* Card Preview Sidebar */}
-          <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-8">
+          <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-8 order-first lg:order-last">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Live Customer Preview</h2>
               <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
@@ -359,19 +423,19 @@ export default function EditProgram() {
               </span>
             </div>
             
-            {/* Embedded custom renderer with dynamic customization state */}
+            {/* Realtime loyalty card visual rendering */}
             <div className="border border-border rounded-xl p-4 bg-muted/30">
               <LoyaltyCard 
                 programName={formData.name || "Program Name"}
                 businessName={businessName}
                 stampTarget={parseInt(formData.stamp_target, 10) || 10}
-                currentStamps={3} // mock count for designer representation
+                currentStamps={3} // Representative simulation total
                 stampIcon={customization.stamp_icon}
                 rewardTitle={formData.reward_title || "Sample Reward"}
                 customization={customization}
               />
               <p className="text-center text-xs text-muted-foreground mt-3 italic">
-                * Real customer cards update automatically on scan. This is a design representation.
+                * Simulated representation. Real customer cards will display actual stamp counts on scan.
               </p>
             </div>
           </div>
@@ -383,64 +447,83 @@ export default function EditProgram() {
                 <CardHeader className="pb-2">
                   <Tabs defaultValue="design" className="w-full">
                     <TabsList className="grid grid-cols-2 w-full">
-                      <TabsTrigger value="design">Card Design & Template</TabsTrigger>
-                      <TabsTrigger value="rules">Program Rules & Rewards</TabsTrigger>
+                      <TabsTrigger value="design" className="gap-2">
+                        <Layout className="w-4 h-4" /> Card Design & Template
+                      </TabsTrigger>
+                      <TabsTrigger value="rules" className="gap-2">
+                        <Palette className="w-4 h-4" /> Program Rules & Rewards
+                      </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="design" className="space-y-6 pt-6">
+                    <TabsContent value="design" className="space-y-8 pt-6">
                       
-                      {/* Template Selector */}
-                      <div className="space-y-3">
-                        <Label className="text-base font-semibold">Select Design Template</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                          {[
-                            { id: "classic", name: "Classic", desc: "Border, light bg" },
-                            { id: "modern", name: "Modern", desc: "Vibrant top block" },
-                            { id: "minimal", name: "Minimal", desc: "Understated typography" },
-                            { id: "elegant", name: "Elegant", desc: "Serif, sophiscated" },
-                            { id: "bold", name: "Bold", desc: "Stroke outlines" }
-                          ].map((tmpl) => (
-                            <button
-                              key={tmpl.id}
-                              type="button"
-                              onClick={() => setCustomization(prev => ({ ...prev, template_id: tmpl.id }))}
-                              className={`p-3 text-left rounded-lg border transition-all ${
-                                customization.template_id === tmpl.id
-                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                                  : "border-border bg-background hover:bg-muted/50"
-                              }`}
-                            >
-                              <p className="font-bold text-sm text-foreground">{tmpl.name}</p>
-                              <p className="text-xs text-muted-foreground">{tmpl.desc}</p>
-                            </button>
-                          ))}
+                      {/* Premium Template Selector Gallery */}
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-base font-semibold">1. Choose a Design Preset Template</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">Selecting a preset automatically loads design values optimized for layout readability.</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {TEMPLATE_PRESETS.map((preset) => {
+                            const isSelected = customization.template_id === preset.id;
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() => handleSelectTemplate(preset)}
+                                className={`flex flex-col text-left rounded-xl border p-4 transition-all duration-200 ${
+                                  isSelected
+                                    ? "border-primary bg-primary/5 ring-2 ring-primary/40 shadow-sm"
+                                    : "border-border bg-background hover:bg-muted/30 hover:border-muted-foreground/30"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between w-full mb-1">
+                                  <span className="font-bold text-base text-foreground flex items-center gap-2">
+                                    {preset.name}
+                                    {isSelected && <Check className="w-4 h-4 text-primary" strokeWidth={3} />}
+                                  </span>
+                                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-muted/60 text-muted-foreground">
+                                    {preset.style}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground flex-grow mt-1 leading-relaxed">
+                                  {preset.desc}
+                                </p>
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
 
-                      {/* Logo Upload */}
-                      <div className="space-y-2 border-t pt-4">
-                        <Label className="text-base font-semibold">Branded Logo Asset</Label>
-                        <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
+                      {/* Logo Asset Configuration */}
+                      <div className="space-y-4 border-t pt-6">
+                        <div>
+                          <Label className="text-base font-semibold">2. Branded Logo Asset</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">Your logo will represent your company cleanly in the upper sections of the card layouts.</p>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 bg-muted/20 p-4 rounded-xl border">
                           {customization.card_logo_url ? (
-                            <div className="relative w-16 h-16 rounded-lg border bg-background overflow-hidden flex items-center justify-center">
+                            <div className="relative w-16 h-16 rounded-lg border bg-background overflow-hidden flex items-center justify-center p-1 shrink-0">
                               <img src={customization.card_logo_url} alt="Logo Preview" className="object-contain max-w-full max-h-full" />
                             </div>
                           ) : (
-                            <div className="w-16 h-16 rounded-lg border bg-muted/30 border-dashed flex items-center justify-center text-muted-foreground text-xs font-semibold">
+                            <div className="w-16 h-16 rounded-lg border bg-muted/50 border-dashed flex items-center justify-center text-muted-foreground text-xs font-semibold shrink-0">
                               No Logo
                             </div>
                           )}
                           
-                          <div className="flex-1 space-y-1 w-full">
-                            <div className="flex gap-2">
+                          <div className="flex-grow space-y-2 w-full text-center sm:text-left">
+                            <div className="flex flex-wrap justify-center sm:justify-start gap-2">
                               <Button
                                 type="button"
                                 variant="outline"
-                                className="relative cursor-pointer gap-2 h-9 w-full sm:w-auto"
+                                size="sm"
+                                className="relative cursor-pointer gap-2 h-9"
                                 disabled={uploading}
                               >
                                 <Upload className="w-4 h-4" />
-                                {uploading ? "Uploading..." : "Upload Business Logo"}
+                                {uploading ? "Uploading..." : "Upload Brand Logo"}
                                 <input
                                   type="file"
                                   accept="image/*"
@@ -454,40 +537,43 @@ export default function EditProgram() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={removeLogo}
-                                  className="text-destructive hover:bg-destructive/10"
+                                  className="text-destructive hover:bg-destructive/10 h-9"
                                 >
                                   Remove Logo
                                 </Button>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground">PNG/JPG up to 2MB. Square dimensions highly recommended.</p>
+                            <p className="text-[11px] text-muted-foreground">Compatible with PNG, JPG up to 2MB. Symmetrical icons recommended.</p>
                           </div>
                         </div>
                       </div>
 
                       {/* Color Specifications */}
-                      <div className="space-y-4 border-t pt-4">
-                        <div className="flex justify-between items-center">
-                          <Label className="text-base font-semibold">Branding Colors</Label>
+                      <div className="space-y-4 border-t pt-6">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                          <div>
+                            <Label className="text-base font-semibold">3. Branding Palette Color Editor</Label>
+                            <p className="text-xs text-muted-foreground mt-0.5">Adjust custom accents on top of your selected template preset.</p>
+                          </div>
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
                             onClick={handleResetToDefaults}
-                            className="text-xs text-muted-foreground gap-1 h-7"
+                            className="text-xs text-muted-foreground gap-1 h-7 border border-dashed border-border hover:bg-muted self-start"
                           >
-                            <RefreshCw className="w-3.5 h-3.5" /> Reset to Template Defaults
+                            <RefreshCw className="w-3.5 h-3.5" /> Revert Custom Colors to Template Default
                           </Button>
                         </div>
 
-                        <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="grid sm:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl border">
                           <div className="space-y-2">
-                            <Label htmlFor="primary_color">Primary Action / Theme</Label>
+                            <Label htmlFor="primary_color" className="text-sm font-medium">Primary Theme Action Color</Label>
                             <div className="flex gap-2">
                               <Input 
                                 id="primary_color" 
                                 type="color" 
-                                className="w-14 h-9 p-1"
+                                className="w-14 h-9 p-1 shrink-0"
                                 value={customization.primary_color}
                                 onChange={(e) => syncBaseColor(e.target.value)}
                               />
@@ -502,12 +588,12 @@ export default function EditProgram() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="bg_color">Card Background</Label>
+                            <Label htmlFor="bg_color" className="text-sm font-medium">Card Background Color</Label>
                             <div className="flex gap-2">
                               <Input 
                                 id="bg_color" 
                                 type="color" 
-                                className="w-14 h-9 p-1"
+                                className="w-14 h-9 p-1 shrink-0"
                                 value={customization.bg_color}
                                 onChange={(e) => setCustomization(prev => ({ ...prev, bg_color: e.target.value }))}
                               />
@@ -522,12 +608,12 @@ export default function EditProgram() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="text_color">Text & Data Color</Label>
+                            <Label htmlFor="text_color" className="text-sm font-medium">Card Text & Numeric Data Color</Label>
                             <div className="flex gap-2">
                               <Input 
                                 id="text_color" 
                                 type="color" 
-                                className="w-14 h-9 p-1"
+                                className="w-14 h-9 p-1 shrink-0"
                                 value={customization.text_color}
                                 onChange={(e) => setCustomization(prev => ({ ...prev, text_color: e.target.value }))}
                               />
@@ -541,9 +627,9 @@ export default function EditProgram() {
                             </div>
                           </div>
 
-                          <div className="space-y-2">
-                            <Label className="text-sm">Quick Presets</Label>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
+                          <div className="space-y-2 flex flex-col justify-end pb-1">
+                            <Label className="text-xs text-muted-foreground mb-1">Standard Brand Color Swatches</Label>
+                            <div className="flex flex-wrap gap-1.5">
                               {["#F87171", "#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#1F2937"].map(p => (
                                 <button
                                   key={p}
@@ -559,14 +645,18 @@ export default function EditProgram() {
                       </div>
 
                       {/* Icon Options */}
-                      <div className="space-y-4 border-t pt-4">
-                        <Label className="text-base font-semibold">Stamp & Reward Icons</Label>
-                        <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="space-y-4 border-t pt-6">
+                        <div>
+                          <Label className="text-base font-semibold">4. Stamp Icon Representation</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">Choose vector stamps that correspond beautifully to your business niche.</p>
+                        </div>
+                        
+                        <div className="grid sm:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl border">
                           <div className="space-y-2">
-                            <Label htmlFor="stamp_icon_select">Stamp Icon representation</Label>
+                            <Label htmlFor="stamp_icon_select" className="text-sm font-medium">Stamp Icon Representation</Label>
                             <select 
                               id="stamp_icon_select"
-                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                               value={customization.stamp_icon}
                               onChange={(e) => setCustomization(prev => ({ ...prev, stamp_icon: e.target.value }))}
                             >
@@ -583,10 +673,10 @@ export default function EditProgram() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="reward_icon_select">Reward Target Icon</Label>
+                            <Label htmlFor="reward_icon_select" className="text-sm font-medium">Reward Target Icon</Label>
                             <select 
                               id="reward_icon_select"
-                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
+                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                               value={customization.reward_icon}
                               onChange={(e) => setCustomization(prev => ({ ...prev, reward_icon: e.target.value }))}
                             >
@@ -634,7 +724,8 @@ export default function EditProgram() {
                       </div>
 
                       <div className="pt-4 border-t border-border space-y-6">
-                        <div>
+                        <div className="flex items-center gap-2 text-primary">
+                          <Gift className="w-5 h-5" />
                           <h3 className="text-lg font-heading font-semibold text-foreground">Reward Completion Terms</h3>
                         </div>
 
@@ -663,7 +754,7 @@ export default function EditProgram() {
                 
                 <CardContent className="pt-4 border-t">
                   <Button type="submit" disabled={saving} className="w-full sm:w-auto gap-2 bg-primary text-white hover:bg-primary/95">
-                    {saving ? "Saving Customizations..." : <><Save className="h-4 w-4" /> Save Brand Customizations</>}
+                    {saving ? "Applying Design Theme..." : <><Save className="h-4 w-4" /> Use This Template & Customizations</>}
                   </Button>
                 </CardContent>
               </Card>
