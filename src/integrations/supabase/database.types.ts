@@ -336,6 +336,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          is_super_admin: boolean
           updated_at: string | null
         }
         Insert: {
@@ -344,6 +345,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          is_super_admin?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -352,6 +354,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          is_super_admin?: boolean
           updated_at?: string | null
         }
         Relationships: []
@@ -579,6 +582,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string | null
+          features: string[]
+          id: string
+          max_customers: number
+          max_loyalty_programs: number
+          name: string
+          price_awg: number
+        }
+        Insert: {
+          created_at?: string | null
+          features?: string[]
+          id: string
+          max_customers?: number
+          max_loyalty_programs?: number
+          name: string
+          price_awg?: number
+        }
+        Update: {
+          created_at?: string | null
+          features?: string[]
+          id?: string
+          max_customers?: number
+          max_loyalty_programs?: number
+          name?: string
+          price_awg?: number
+        }
+        Relationships: []
       }
     }
     Views: {
