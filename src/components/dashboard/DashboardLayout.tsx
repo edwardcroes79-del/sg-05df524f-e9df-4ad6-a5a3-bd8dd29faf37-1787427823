@@ -13,7 +13,8 @@ import {
   LogOut,
   Menu,
   X,
-  ScanLine
+  ScanLine,
+  ShieldAlert
 } from "lucide-react";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
     checkUserAndBusiness();
@@ -31,6 +33,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (!session) {
       router.push("/auth/login");
       return;
+    }
+
+    // Check if is super admin
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_super_admin")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (profile?.is_super_admin) {
+      setIsSuperAdmin(true);
     }
 
     const { data: businessData, error } = await supabase
@@ -73,6 +86,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (business?.status === "suspended") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="p-4 bg-destructive/10 rounded-full text-destructive">
+          <ShieldAlert className="h-16 w-16" />
+        </div>
+        <div className="max-w-md space-y-2">
+          <h1 className="text-3xl font-heading font-bold text-foreground">Account Suspended</h1>
+          <p className="text-muted-foreground">
+            This business account has been suspended by the platform administrator. Access to stamp issuing, reward redemption, and merchant controls is temporarily disabled.
+          </p>
+        </div>
+        <Button onClick={handleLogout} variant="outline">Sign Out</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Mobile Sidebar Overlay */}
@@ -104,6 +134,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {isSuperAdmin && (
+            <Link href="/admin">
+              <span className={`
+                flex items-center gap-3 px-3 py-2.5 mb-4 rounded-md text-sm font-semibold transition-colors bg-amber-500/10 text-amber-600 hover:bg-amber-500/20
+              `}>
+                <ShieldAlert className="h-5 w-5" />
+                Super Admin Panel
+              </span>
+            </Link>
+          )}
+
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = router.pathname === item.href || router.pathname.startsWith(`${item.href}/`);

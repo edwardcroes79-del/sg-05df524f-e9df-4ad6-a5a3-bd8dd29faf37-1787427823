@@ -17,6 +17,8 @@ export default function NewProgram() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [limitReached, setLimitLimitReached] = useState(false);
+  const [maxPrograms, setMaxPrograms] = useState<number>(1);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -27,19 +29,55 @@ export default function NewProgram() {
   });
 
   useEffect(() => {
-    const getBusiness = async () => {
+    const checkLimitsAndBusiness = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data } = await supabase.from("businesses").select("id").eq("owner_id", session.user.id).single();
-        if (data) setBusinessId(data.id);
+      if (!session) return;
+      
+      const { data: business } = await supabase
+        .from("businesses")
+        .select("id, subscription_plan")
+        .eq("owner_id", session.user.id)
+        .single();
+        
+      if (business) {
+        setBusinessId(business.id);
+        
+        // Count existing loyalty programs
+        const { count } = await supabase
+          .from("loyalty_programs")
+          .select("*", { count: "exact", head: true })
+          .eq("business_id", business.id);
+
+        // Fetch plan limits
+        const planId = business.subscription_plan || "starter";
+        const { data: plan } = await supabase
+          .from("subscription_plans")
+          .select("max_loyalty_programs")
+          .eq("id", planId)
+          .single();
+
+        const limit = plan?.max_loyalty_programs || 1;
+        setMaxPrograms(limit);
+
+        if (count !== null && count >= limit) {
+          setLimitLimitReached(true);
+        }
       }
     };
-    getBusiness();
+    checkLimitsAndBusiness();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!businessId) return;
+    if (limitReached) {
+      toast({
+        title: "Limit Reached",
+        description: `Your active plan allows a maximum of ${maxPrograms} loyalty programs. Please upgrade to create more.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -90,8 +128,14 @@ export default function NewProgram() {
           </div>
         </div>
 
+        {limitReached && (
+          <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg">
+            ⚠️ <strong>Limit Reached:</strong> Your current subscription tier permits only <strong>{maxPrograms}</strong> loyalty program(s). To create more, please contact support or upgrade via your subscription.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
-          <Card>
+          <Card className={limitReached ? "opacity-60 pointer-events-none" : ""}>
             <CardHeader>
               <CardTitle>Program Details</CardTitle>
               <CardDescription>Basic information about your loyalty card.</CardDescription>

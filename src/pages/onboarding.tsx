@@ -70,7 +70,8 @@ export default function Onboarding() {
           phone,
           email,
           primary_color: primaryColor,
-          status: 'active'
+          status: 'active',
+          subscription_plan: 'starter'
         })
         .select()
         .single();
