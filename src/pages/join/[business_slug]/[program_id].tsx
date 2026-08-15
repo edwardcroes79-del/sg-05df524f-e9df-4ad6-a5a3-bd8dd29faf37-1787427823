@@ -22,6 +22,11 @@ export default function JoinProgram() {
   useEffect(() => {
     if (!business_slug || !program_id) return;
 
+    // Save context to restore later on logout
+    if (typeof window !== "undefined") {
+      localStorage.setItem("last_qr_path", router.asPath);
+    }
+
     const checkSessionAndFetch = async () => {
       try {
         const bSlug = business_slug as string;

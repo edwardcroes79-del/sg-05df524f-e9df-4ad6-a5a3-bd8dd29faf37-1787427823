@@ -30,7 +30,12 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      router.push("/auth/login");
+      const lastQrPath = typeof window !== "undefined" ? localStorage.getItem("last_qr_path") : null;
+      if (lastQrPath) {
+        router.push(`/auth/customer?returnUrl=${encodeURIComponent(lastQrPath)}`);
+      } else {
+        router.push("/auth/login");
+      }
       return;
     }
 
@@ -62,8 +67,13 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
   };
 
   const handleLogout = async () => {
+    const lastQrPath = typeof window !== "undefined" ? localStorage.getItem("last_qr_path") : null;
     await supabase.auth.signOut();
-    router.push("/auth/login");
+    if (lastQrPath) {
+      router.push(`/auth/customer?returnUrl=${encodeURIComponent(lastQrPath)}`);
+    } else {
+      router.push("/auth/login");
+    }
   };
 
   const navItems = [
