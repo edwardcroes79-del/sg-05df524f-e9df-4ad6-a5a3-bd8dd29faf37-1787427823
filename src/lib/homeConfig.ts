@@ -31,6 +31,7 @@ export interface PricingPlanConfig {
   description: string;
   features: string[];
   ctaText: string;
+  ctaHref?: string;
   isPopular?: boolean;
 }
 
