@@ -98,11 +98,11 @@ export default function Home() {
               <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-border -z-10"></div>
               
               {[
-                { step: "01", icon: <Stamp className="w-8 h-8 text-primary" />, title: "Create Your Program", desc: "Define your brand colors, set how many stamps equal a reward, and what the reward is." },
-                { step: "02", icon: <QrCode className="w-8 h-8 text-primary" />, title: "Generate QR Codes", desc: "Place your unique QR code at the register. Customers scan it with their standard phone camera." },
-                { step: "03", icon: <Smartphone className="w-8 h-8 text-primary" />, title: "Issue Digital Stamps", desc: "Staff verify the visit and issue a stamp directly to the customer's digital card. No apps needed." }
-              ].map((s, i) => (
-                <div key={i} className="flex flex-col items-center text-center space-y-4 bg-background p-6 rounded-xl border border-border shadow-sm">
+              { step: "01", icon: <Stamp className="w-8 h-8 text-primary" />, title: "Create Your Program", desc: "Define your brand colors, set how many stamps equal a reward, and what the reward is." },
+              { step: "02", icon: <QrCode className="w-8 h-8 text-primary" />, title: "Generate QR Codes", desc: "Place your unique QR code at the register. Customers scan it with their standard phone camera." },
+              { step: "03", icon: <Smartphone className="w-8 h-8 text-primary" />, title: "Issue Digital Stamps", desc: "Staff verify the visit and issue a stamp directly to the customer's digital card. No apps needed." }].
+              map((s, i) =>
+              <div key={i} className="flex flex-col items-center text-center space-y-4 bg-background p-6 rounded-xl border border-border shadow-sm">
                   <div className="w-24 h-24 bg-primary/5 rounded-full flex items-center justify-center border-8 border-background relative">
                     <span className="absolute -top-2 -right-2 bg-foreground text-background text-xs font-bold px-2 py-1 rounded-full">{s.step}</span>
                     {s.icon}
@@ -110,7 +110,7 @@ export default function Home() {
                   <h3 className="text-xl font-bold font-heading">{s.title}</h3>
                   <p className="text-muted-foreground">{s.desc}</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </section>
@@ -132,11 +132,11 @@ export default function Home() {
                 
                 <ul className="space-y-6">
                   {[
-                    { title: "Immutable History", desc: "Every stamp creates an unalterable transaction record. No more arbitrary frontend increments or employee fraud." },
-                    { title: "Strict Multi-Tenant Security", desc: "Your data is completely isolated using advanced Row Level Security. Your competitors can never access your customer list." },
-                    { title: "Role-Based Access", desc: "Separate accounts for Owners and Staff. Ensure cashiers can issue stamps but only you can alter the program rules." },
-                  ].map((feat, i) => (
-                    <li key={i} className="flex gap-4">
+                  { title: "Immutable History", desc: "Every stamp creates an unalterable transaction record. No more arbitrary frontend increments or employee fraud." },
+                  { title: "Strict Multi-Tenant Security", desc: "Your data is completely isolated using advanced Row Level Security. Your competitors can never access your customer list." },
+                  { title: "Role-Based Access", desc: "Separate accounts for Owners and Staff. Ensure cashiers can issue stamps but only you can alter the program rules." }].
+                  map((feat, i) =>
+                  <li key={i} className="flex gap-4">
                       <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mt-1">
                         <ShieldCheck className="w-5 h-5 text-primary" />
                       </div>
@@ -145,7 +145,7 @@ export default function Home() {
                         <p className="text-muted-foreground mt-1">{feat.desc}</p>
                       </div>
                     </li>
-                  ))}
+                  )}
                 </ul>
               </div>
             </div>
@@ -170,11 +170,11 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="flex-1">
                   <ul className="space-y-3">
-                    {["Up to 500 customers", "1 Loyalty Program", "2 Staff Accounts", "Basic Analytics", "Email Support"].map((item, i) => (
-                      <li key={i} className="flex items-center text-sm text-foreground">
+                    {["Up to 500 customers", "1 Loyalty Program", "2 Staff Accounts", "Basic Analytics", "Email Support"].map((item, i) =>
+                    <li key={i} className="flex items-center text-sm text-foreground">
                         <CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> {item}
                       </li>
-                    ))}
+                    )}
                   </ul>
                 </CardContent>
                 <CardFooter>
@@ -191,16 +191,16 @@ export default function Home() {
                   <CardTitle className="text-2xl">Professional</CardTitle>
                   <CardDescription>For growing businesses with high foot traffic.</CardDescription>
                   <div className="mt-4 font-heading">
-                    <span className="text-4xl font-bold">AWG 95</span><span className="text-muted-foreground">/mo</span>
+                    <span className="text-4xl font-bold">AWG 149</span><span className="text-muted-foreground">/mo</span>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1">
                   <ul className="space-y-3">
-                    {["Unlimited customers", "Up to 3 Loyalty Programs", "Unlimited Staff Accounts", "Advanced Analytics", "Priority Support"].map((item, i) => (
-                      <li key={i} className="flex items-center text-sm text-foreground">
+                    {["Unlimited customers", "Up to 3 Loyalty Programs", "Unlimited Staff Accounts", "Advanced Analytics", "Priority Support"].map((item, i) =>
+                    <li key={i} className="flex items-center text-sm text-foreground">
                         <CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> {item}
                       </li>
-                    ))}
+                    )}
                   </ul>
                 </CardContent>
                 <CardFooter>
@@ -219,11 +219,11 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="flex-1">
                   <ul className="space-y-3">
-                    {["Everything in Pro", "Unlimited Loyalty Programs", "Multi-location routing", "Custom integrations", "Dedicated Account Manager"].map((item, i) => (
-                      <li key={i} className="flex items-center text-sm text-foreground">
+                    {["Everything in Pro", "Unlimited Loyalty Programs", "Multi-location routing", "Custom integrations", "Dedicated Account Manager"].map((item, i) =>
+                    <li key={i} className="flex items-center text-sm text-foreground">
                         <CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> {item}
                       </li>
-                    ))}
+                    )}
                   </ul>
                 </CardContent>
                 <CardFooter>
@@ -323,6 +323,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </>
-  );
+    </>);
+
 }
