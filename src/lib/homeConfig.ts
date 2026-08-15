@@ -155,7 +155,7 @@ export const homeConfig: HomeConfig = {
     plans: [
       {
         name: "Starter",
-        price: "AWG 45",
+        price: "AWG 50",
         period: "/mo",
         description: "Perfect for single-location cafes and shops.",
         features: ["Up to 75 customers", "1 Loyalty Program", "2 Staff Accounts", "Basic Analytics", "Email Support"],
