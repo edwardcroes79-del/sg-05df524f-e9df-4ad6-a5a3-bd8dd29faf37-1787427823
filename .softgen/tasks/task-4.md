@@ -14,7 +14,7 @@ created_by: agent
 - Stamping must be atomic, server-side validated, and anti-abuse.
 
 ## Checklist
-- [ ] Create `issue_stamp` RPC function in Supabase (Security Definer).
+- [x] Create `issue_stamp` RPC function in Supabase (Security Definer).
 - [ ] Build Customer Dashboard (`/customer`).
 - [ ] Build Customer Card View + QR Code generation.
 - [ ] Build Staff Scan/Issue Stamp UI (`/dashboard/scan`).
