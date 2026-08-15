@@ -163,7 +163,7 @@ export const homeConfig: HomeConfig = {
       },
       {
         name: "Professional",
-        price: "AWG 149",
+        price: "AWG 150",
         period: "/mo",
         description: "For growing businesses with high foot traffic.",
         features: ["Up to 500 customers", "Up to 3 Loyalty Programs", "Unlimited Staff Accounts", "Advanced Analytics", "Priority Support"],
