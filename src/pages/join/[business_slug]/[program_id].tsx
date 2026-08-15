@@ -163,6 +163,17 @@ export default function JoinProgram() {
             stampIcon={program.stamp_icon}
             rewardTitle={program.reward_title}
             color={program.card_color}
+            customization={{
+              template_id: program.template_id,
+              bg_color: program.bg_color,
+              primary_color: program.primary_color,
+              secondary_color: program.secondary_color,
+              text_color: program.text_color,
+              stamp_icon: program.stamp_icon,
+              reward_icon: program.reward_icon,
+              card_logo_url: program.card_logo_url,
+              card_bg_image_url: program.card_bg_image_url
+            }}
             className="shadow-xl"
           />
 
