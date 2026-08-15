@@ -167,7 +167,7 @@ export const homeConfig: HomeConfig = {
         period: "/mo",
         description: "For growing businesses with high foot traffic.",
         features: ["Up to 500 customers", "Up to 3 Loyalty Programs", "Unlimited Staff Accounts", "Advanced Analytics", "Priority Support"],
-        ctaText: "Start Free Trial",
+          ctaText: "Contact Us",
         isPopular: true
       },
       {
