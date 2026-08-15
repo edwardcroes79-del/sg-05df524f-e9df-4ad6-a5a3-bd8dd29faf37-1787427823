@@ -1,6 +1,6 @@
 ---
 title: Phase 6 - SaaS Subscriptions & Super Admin
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [subscriptions, plans, super-admin, limits]
@@ -14,11 +14,11 @@ position: 6
 - Enforce RLS rules to ensure Super Admin has read/write privileges on all businesses/users, while normal tenants remain fully isolated.
 
 ## Checklist
-- [ ] Create/Update subscription_plans table to hold plan definitions (limits, pricing, etc.)
-- [ ] Implement system-wide limits check helper or check limits inside creation flows
-- [ ] Build Super Admin Dashboard (`/admin`) and sub-views (businesses, users, plans)
-- [ ] Add suspension mechanism for businesses and test that suspended business users/customers cannot perform operations
-- [ ] Add Super Admin role enforcement in database and frontend auth flows
+- [x] Create/Update subscription_plans table to hold plan definitions (limits, pricing, etc.)
+- [x] Implement system-wide limits check helper or check limits inside creation flows
+- [x] Build Super Admin Dashboard (`/admin`) and sub-views (businesses, users, plans)
+- [x] Add suspension mechanism for businesses and test that suspended business users/customers cannot perform operations
+- [x] Add Super Admin role enforcement in database and frontend auth flows
 
 ## Acceptance
 - Super Admin can view, edit, suspend/activate any business and plan limits
