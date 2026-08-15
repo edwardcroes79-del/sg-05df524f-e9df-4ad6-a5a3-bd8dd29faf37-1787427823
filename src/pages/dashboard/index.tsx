@@ -62,6 +62,32 @@ export default function DashboardOverview() {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    if (!businessId) return;
+
+    const channel = supabase.channel(`business_dashboard_${businessId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'stamp_transactions', filter: `business_id=eq.${businessId}` },
+        () => {
+          // Refresh the dashboard stats and recent activity when a stamp is issued
+          fetchDashboardData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'rewards', filter: `business_id=eq.${businessId}` },
+        () => {
+          fetchDashboardData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [businessId]);
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
