@@ -211,39 +211,51 @@ export type Database = {
         Row: {
           active: boolean | null
           business_id: string | null
+          card_color: string | null
+          card_template: string | null
           created_at: string | null
           description: string | null
           id: string
           name: string
           reward_description: string | null
+          reward_icon: string | null
           reward_image: string | null
           reward_title: string
+          stamp_icon: string | null
           stamp_target: number
           updated_at: string | null
         }
         Insert: {
           active?: boolean | null
           business_id?: string | null
+          card_color?: string | null
+          card_template?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name: string
           reward_description?: string | null
+          reward_icon?: string | null
           reward_image?: string | null
           reward_title: string
+          stamp_icon?: string | null
           stamp_target?: number
           updated_at?: string | null
         }
         Update: {
           active?: boolean | null
           business_id?: string | null
+          card_color?: string | null
+          card_template?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
           reward_description?: string | null
+          reward_icon?: string | null
           reward_image?: string | null
           reward_title?: string
+          stamp_icon?: string | null
           stamp_target?: number
           updated_at?: string | null
         }
@@ -579,6 +591,10 @@ export type Database = {
           p_customer_id: string
           p_loyalty_program_id: string
         }
+        Returns: Json
+      }
+      redeem_reward: {
+        Args: { p_business_id: string; p_reward_code: string }
         Returns: Json
       }
     }

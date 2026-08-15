@@ -11,8 +11,8 @@ created_by: agent
 Build customizable digital loyalty cards, real QR code joining system, printable QR posters, and secure reward redemption preventing double use.
 
 ## Checklist
-- [ ] Add card customization columns to `loyalty_programs` (template, icons).
-- [ ] Create `redeem_reward` RPC function to securely prevent double redemption.
+- [x] Add card customization columns to `loyalty_programs` (template, icons).
+- [x] Create `redeem_reward` RPC function to securely prevent double redemption.
 - [ ] Build `/join/[business_slug]/[program_id]` public route for customers.
 - [ ] Create beautiful digital card templates component.
 - [ ] Build Business QR Code & Poster generator (`/dashboard/programs/[id]/qr`).
