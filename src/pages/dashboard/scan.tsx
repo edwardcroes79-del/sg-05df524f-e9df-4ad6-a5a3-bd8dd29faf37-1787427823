@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ScanLine, CheckCircle2, XCircle, Loader2, Camera, Keyboard } from "lucide-react";
-import { Html5QrcodeScanner } from "html5-qrcode";
 
 export default function ScanQR() {
   const router = useRouter();
@@ -61,18 +60,24 @@ export default function ScanQR() {
   };
 
   useEffect(() => {
-    let scanner: Html5QrcodeScanner | null = null;
+    let scanner: any = null;
     
-    if (scanMode === "camera" && !loading && programs.length > 0 && !scanResult) {
-      // Initialize scanner
-      scanner = new Html5QrcodeScanner(
-        "qr-reader",
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        false
-      );
-      
-      scanner.render(onScanSuccess, onScanFailure);
-    }
+    const initScanner = async () => {
+      if (scanMode === "camera" && !loading && programs.length > 0 && !scanResult) {
+        // Dynamically import to prevent Next.js SSR crash (window is not defined)
+        const { Html5QrcodeScanner } = await import("html5-qrcode");
+        
+        scanner = new Html5QrcodeScanner(
+          "qr-reader",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false
+        );
+        
+        scanner.render(onScanSuccess, onScanFailure);
+      }
+    };
+    
+    initScanner();
 
     return () => {
       if (scanner) {
