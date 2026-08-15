@@ -1,0 +1,158 @@
+import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
+import Link from "next/link";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  LayoutDashboard, 
+  Gift, 
+  Users, 
+  QrCode, 
+  Settings, 
+  LogOut,
+  Menu,
+  X
+} from "lucide-react";
+
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [business, setBusiness] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  useEffect(() => {
+    checkUserAndBusiness();
+  }, []);
+
+  const checkUserAndBusiness = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push("/auth/login");
+      return;
+    }
+
+    const { data: businessData, error } = await supabase
+      .from("businesses")
+      .select("*")
+      .eq("owner_id", session.user.id)
+      .single();
+
+    if (error || !businessData) {
+      router.push("/onboarding");
+      return;
+    }
+
+    setBusiness(businessData);
+    setLoading(false);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/auth/login");
+  };
+
+  const navItems = [
+    { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Loyalty Programs", href: "/dashboard/programs", icon: Gift },
+    { name: "Customers", href: "/dashboard/customers", icon: Users },
+    { name: "QR Codes", href: "/dashboard/qr", icon: QrCode },
+    { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <p className="text-muted-foreground font-medium">Loading workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background flex">
+      {/* Mobile Sidebar Overlay */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out flex flex-col
+        lg:relative lg:translate-x-0
+        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+      `}>
+        <div className="p-6 flex items-center justify-between border-b border-border">
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl">
+              {business?.business_name?.charAt(0) || "A"}
+            </div>
+            <span className="font-heading font-semibold text-foreground truncate">
+              {business?.business_name}
+            </span>
+          </Link>
+          <button className="lg:hidden" onClick={() => setIsMobileOpen(false)}>
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = router.pathname === item.href || router.pathname.startsWith(`${item.href}/`);
+            return (
+              <Link key={item.name} href={item.href}>
+                <span className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
+                  ${isActive 
+                    ? "bg-primary/10 text-primary" 
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"}
+                `}>
+                  <Icon className="h-5 w-5" />
+                  {item.name}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-border">
+          <button 
+            onClick={handleLogout}
+            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+          >
+            <LogOut className="h-5 w-5" />
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Top Header Mobile */}
+        <header className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-card">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl">
+              {business?.business_name?.charAt(0) || "A"}
+            </div>
+            <span className="font-heading font-semibold text-foreground truncate">
+              {business?.business_name}
+            </span>
+          </div>
+          <button onClick={() => setIsMobileOpen(true)}>
+            <Menu className="h-6 w-6 text-foreground" />
+          </button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
