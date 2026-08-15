@@ -5,14 +5,48 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreditCard, Coffee, MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MyCardsPage() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<any[]>([]);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchCards();
   }, []);
+
+  useEffect(() => {
+    if (!customerId) return;
+
+    const channel = supabase.channel(`customer_cards_${customerId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customerId}` },
+        () => {
+          fetchCards();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'rewards', filter: `customer_id=eq.${customerId}` },
+        () => {
+          toast({
+            title: "🎉 Reward Unlocked!",
+            description: "You have completed a stamp card and earned a reward!",
+            duration: 5000,
+            className: "bg-green-500 text-white border-none",
+          });
+          fetchCards();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [customerId]);
 
   const fetchCards = async () => {
     try {
@@ -26,6 +60,7 @@ export default function MyCardsPage() {
         .single();
 
       if (customerData) {
+        setCustomerId(customerData.id);
         const { data: cardsData } = await supabase
           .from("customer_loyalty_cards")
           .select(`
@@ -101,6 +136,8 @@ export default function MyCardsPage() {
                 <CardContent className="p-6 sm:p-8 pl-6 sm:pl-8">
                   <div className="flex flex-wrap gap-3 justify-center mb-6">
                     {Array.from({ length: card.loyalty_programs?.stamp_target || 10 }).map((_, i) => {
+                      // If the card just reset but has a reward earned recently, we might visually show it full
+                      // but normally we just display current_stamps cleanly.
                       const isStamped = i < card.current_stamps;
                       return (
                         <div 

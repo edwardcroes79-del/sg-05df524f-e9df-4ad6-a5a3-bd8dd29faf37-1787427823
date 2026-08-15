@@ -7,10 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Coffee, Gift, History, HelpCircle, ArrowRight } from "lucide-react";
 import QRCode from "react-qr-code";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CustomerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<any>(null);
+  const { toast } = useToast();
   const [stats, setGlobalStats] = useState({
     totalCards: 0,
     availableRewards: 0,
@@ -20,6 +22,36 @@ export default function CustomerDashboardPage() {
   useEffect(() => {
     fetchDashboardSummary();
   }, []);
+
+  useEffect(() => {
+    if (!customer?.id) return;
+
+    const channel = supabase.channel(`customer_dashboard_${customer.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customer.id}` },
+        () => {
+          fetchDashboardSummary();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'rewards', filter: `customer_id=eq.${customer.id}` },
+        (payload) => {
+          toast({
+            title: "🎉 Reward Unlocked!",
+            description: "You've earned a new reward. Check your rewards page!",
+            duration: 5000,
+          });
+          fetchDashboardSummary();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [customer?.id]);
 
   const fetchDashboardSummary = async () => {
     try {

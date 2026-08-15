@@ -7,14 +7,43 @@ import { Gift, CheckCircle, Clock, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import QRCode from "react-qr-code";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CustomerRewardsPage() {
   const [loading, setLoading] = useState(true);
   const [rewards, setRewards] = useState<any[]>([]);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchRewards();
   }, []);
+
+  useEffect(() => {
+    if (!customerId) return;
+
+    const channel = supabase.channel(`customer_rewards_${customerId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rewards', filter: `customer_id=eq.${customerId}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            toast({
+              title: "🎉 Reward Unlocked!",
+              description: "You've earned a new reward!",
+              duration: 5000,
+              className: "bg-green-500 text-white border-none",
+            });
+          }
+          fetchRewards();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [customerId]);
 
   const fetchRewards = async () => {
     try {
@@ -28,6 +57,7 @@ export default function CustomerRewardsPage() {
         .single();
 
       if (customerData) {
+        setCustomerId(customerData.id);
         const { data: rewardsData } = await supabase
           .from("rewards")
           .select(`
