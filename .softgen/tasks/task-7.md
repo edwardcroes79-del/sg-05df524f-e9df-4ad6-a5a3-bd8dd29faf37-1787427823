@@ -1,6 +1,6 @@
 ---
 title: Phase 7 - Aruba Payments (Bank Transfer)
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [payments, bank-transfer, subscriptions, admin]
@@ -19,11 +19,11 @@ position: 7
 ## Checklist
 - [x] Review and enhance payment_transactions table structure
 - [x] Create bank account configuration table for platform
-- [ ] Build business payment initiation UI (`/dashboard/billing`)
-- [ ] Build payment proof upload functionality
-- [ ] Build admin payment review UI (`/admin` payments tab)
-- [ ] Implement approve/reject payment logic with subscription activation
-- [ ] Test complete payment workflow end-to-end
+- [x] Build business payment initiation UI (`/dashboard/billing`)
+- [x] Build payment proof upload functionality
+- [x] Build admin payment review UI (`/admin` payments tab)
+- [x] Implement approve/reject payment logic with subscription activation
+- [x] Test complete payment workflow end-to-end
 
 ## Acceptance
 - Business can view plans, initiate upgrade, upload payment proof
