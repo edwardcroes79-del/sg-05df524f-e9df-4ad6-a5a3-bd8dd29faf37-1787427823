@@ -1,6 +1,6 @@
 ---
 title: Phase 4 - Customer Experience & Stamping
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [customer, stamping, qr-code, security]
@@ -15,10 +15,10 @@ created_by: agent
 
 ## Checklist
 - [x] Create `issue_stamp` RPC function in Supabase (Security Definer).
-- [ ] Build Customer Dashboard (`/customer`).
-- [ ] Build Customer Card View + QR Code generation.
-- [ ] Build Staff Scan/Issue Stamp UI (`/dashboard/scan`).
-- [ ] Test atomic transactions and reward threshold triggers.
+- [x] Build Customer Dashboard (`/customer`).
+- [x] Build Customer Card View + QR Code generation.
+- [x] Build Staff Scan/Issue Stamp UI (`/dashboard/scan`).
+- [x] Test atomic transactions and reward threshold triggers.
 
 ## Acceptance
 - Customer can log in and see their loyalty cards.
