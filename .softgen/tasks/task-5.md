@@ -1,6 +1,6 @@
 ---
 title: Phase 5 - Digital Cards, QR Codes & Rewards
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [cards, qr-codes, rewards, redemption]
