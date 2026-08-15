@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   ScanLine,
-  ShieldAlert
+  ShieldAlert,
+  CreditCard
 } from "lucide-react";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -72,6 +73,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { name: "Loyalty Programs", href: "/dashboard/programs", icon: Gift },
     { name: "Customers", href: "/dashboard/customers", icon: Users },
     { name: "QR Codes", href: "/dashboard/qr", icon: QrCode },
+    { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 

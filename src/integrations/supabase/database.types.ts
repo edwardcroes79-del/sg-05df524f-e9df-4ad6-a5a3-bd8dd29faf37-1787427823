@@ -329,6 +329,39 @@ export type Database = {
           },
         ]
       }
+      platform_bank_accounts: {
+        Row: {
+          account_holder: string
+          account_number: string
+          bank_name: string
+          created_at: string | null
+          currency: string
+          id: string
+          instructions: string | null
+          is_active: boolean | null
+        }
+        Insert: {
+          account_holder: string
+          account_number: string
+          bank_name: string
+          created_at?: string | null
+          currency?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+        }
+        Update: {
+          account_holder?: string
+          account_number?: string
+          bank_name?: string
+          created_at?: string | null
+          currency?: string
+          id?: string
+          instructions?: string | null
+          is_active?: boolean | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -538,6 +571,7 @@ export type Database = {
       }
       subscription_payments: {
         Row: {
+          admin_notes: string | null
           amount: number
           business_id: string | null
           created_at: string | null
@@ -546,10 +580,17 @@ export type Database = {
           id: string
           metadata: Json | null
           paid_at: string | null
+          payment_proof_url: string | null
+          payment_reference: string | null
+          plan_id: string | null
           provider: string
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string | null
+          updated_at: string | null
         }
         Insert: {
+          admin_notes?: string | null
           amount: number
           business_id?: string | null
           created_at?: string | null
@@ -558,10 +599,17 @@ export type Database = {
           id?: string
           metadata?: Json | null
           paid_at?: string | null
+          payment_proof_url?: string | null
+          payment_reference?: string | null
+          plan_id?: string | null
           provider: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
+          updated_at?: string | null
         }
         Update: {
+          admin_notes?: string | null
           amount?: number
           business_id?: string | null
           created_at?: string | null
@@ -570,8 +618,14 @@ export type Database = {
           id?: string
           metadata?: Json | null
           paid_at?: string | null
+          payment_proof_url?: string | null
+          payment_reference?: string | null
+          plan_id?: string | null
           provider?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -579,6 +633,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]

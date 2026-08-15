@@ -17,8 +17,8 @@ position: 7
 - Future: Sentoo integration (when API docs/credentials available)
 
 ## Checklist
-- [ ] Review and enhance payment_transactions table structure
-- [ ] Create bank account configuration table for platform
+- [x] Review and enhance payment_transactions table structure
+- [x] Create bank account configuration table for platform
 - [ ] Build business payment initiation UI (`/dashboard/billing`)
 - [ ] Build payment proof upload functionality
 - [ ] Build admin payment review UI (`/admin` payments tab)
