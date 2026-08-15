@@ -723,7 +723,19 @@ export type Database = {
         }
         Returns: Json
       }
+      issue_stamp_tx: {
+        Args: {
+          p_business_id: string
+          p_customer_id: string
+          p_loyalty_program_id: string
+        }
+        Returns: Json
+      }
       redeem_reward: {
+        Args: { p_business_id: string; p_reward_code: string }
+        Returns: Json
+      }
+      redeem_reward_tx: {
         Args: { p_business_id: string; p_reward_code: string }
         Returns: Json
       }
