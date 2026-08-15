@@ -56,11 +56,11 @@ export default function AdminDashboard() {
 
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("is_super_admin")
+        .select("is_super_admin, role")
         .eq("id", user.id)
         .single();
 
-      if (error || !profile?.is_super_admin) {
+      if (error || (!profile?.is_super_admin && profile?.role !== 'super_admin')) {
         setIsAdmin(false);
         router.push("/dashboard");
         return;
