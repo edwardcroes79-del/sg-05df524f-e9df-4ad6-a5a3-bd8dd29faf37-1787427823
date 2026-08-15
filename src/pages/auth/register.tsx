@@ -15,6 +15,7 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { returnUrl } = router.query;
   const { toast } = useToast();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -36,12 +37,19 @@ export default function Register() {
       } else {
         toast({
           title: "Registration Successful",
-          description: "Welcome! Let's get your business set up.",
+          description: returnUrl ? "Welcome! You can now join the loyalty program." : "Welcome! Let's get your business set up.",
         });
         
-        // Push directly to onboarding if auto-login succeeds, otherwise they need to verify email
         if (data.session) {
-          router.push("/onboarding");
+          // If returnUrl is present, it's a customer registering from a QR code
+          if (returnUrl) {
+            // Update profile role to customer
+            await supabase.from('profiles').update({ role: 'customer' }).eq('id', data.session.user.id);
+            router.push(returnUrl as string);
+          } else {
+            // Otherwise, normal business registration
+            router.push("/onboarding");
+          }
         } else {
           toast({
             title: "Check your email",
@@ -72,8 +80,12 @@ export default function Register() {
         
         <Card className="border-border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-2xl font-heading text-foreground">Create Account</CardTitle>
-            <CardDescription>Start turning your visitors into loyal customers today.</CardDescription>
+            <CardTitle className="text-2xl font-heading text-foreground">
+              {returnUrl ? "Create Customer Account" : "Create Account"}
+            </CardTitle>
+            <CardDescription>
+              {returnUrl ? "Sign up to start earning rewards." : "Start turning your visitors into loyal customers today."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
@@ -108,7 +120,7 @@ export default function Register() {
           <CardFooter className="justify-center border-t p-4 mt-4">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/auth/login" className="text-primary hover:underline font-medium">
+              <Link href={`/auth/login${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl as string)}` : ''}`} className="text-primary hover:underline font-medium">
                 Sign in
               </Link>
             </p>

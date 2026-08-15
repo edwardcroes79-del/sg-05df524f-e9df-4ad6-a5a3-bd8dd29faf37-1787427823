@@ -15,6 +15,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { returnUrl } = router.query;
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -39,6 +40,12 @@ export default function Login() {
           description: "Successfully logged in.",
         });
         
+        // If there's a returnUrl (like a QR scan destination), always honor it first
+        if (returnUrl) {
+          router.push(returnUrl as string);
+          return;
+        }
+
         // Check if business profile exists to route appropriately
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -135,8 +142,8 @@ export default function Login() {
           <CardFooter className="justify-center border-t p-4 mt-4">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
-              <Link href="/auth/register" className="text-primary hover:underline font-medium">
-                Register your business
+              <Link href={`/auth/register${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl as string)}` : ''}`} className="text-primary hover:underline font-medium">
+                {returnUrl ? "Create Customer Account" : "Register your business"}
               </Link>
             </p>
           </CardFooter>
