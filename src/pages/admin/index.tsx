@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2 } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
@@ -64,6 +64,13 @@ export default function AdminDashboard() {
   // Customer deletion states
   const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Website settings states
+  const [footerSettings, setFooterSettings] = useState({
+    aboutText: "",
+    copyrightText: "",
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     checkAdmin();
@@ -157,6 +164,21 @@ export default function AdminDashboard() {
         totalCustomers: totalCust || 0,
         totalStamps: totalStamps || 0,
       });
+
+      // 6. Fetch Website/Footer Settings
+      const { data: footerData } = await supabase
+        .from("website_settings")
+        .select("value")
+        .eq("key", "footer")
+        .maybeSingle();
+
+      if (footerData && footerData.value) {
+        const val = footerData.value as any;
+        setFooterSettings({
+          aboutText: val.aboutText || "",
+          copyrightText: val.copyrightText || "",
+        });
+      }
     } catch (err) {
       console.error("Error fetching admin data:", err);
     }
@@ -436,6 +458,41 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSaveFooterSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSavingSettings(true);
+
+      const { error } = await supabase
+        .from("website_settings")
+        .upsert({
+          key: "footer",
+          value: {
+            aboutText: footerSettings.aboutText,
+            copyrightText: footerSettings.copyrightText,
+          },
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Settings Saved",
+        description: "Public Website footer content has been updated successfully.",
+      });
+
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Error saving settings",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   if (loading || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -515,6 +572,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="payments">Payment Review</TabsTrigger>
             <TabsTrigger value="plans">Subscription Plans & Limits</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsTrigger value="website">Website Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="merchants">
@@ -900,6 +958,64 @@ export default function AdminDashboard() {
                   </TableBody>
                 </Table>
               </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="website">
+            <Card>
+              <form onSubmit={handleSaveFooterSettings}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="h-5 w-5 text-primary" /> Public Website Customization
+                  </CardTitle>
+                  <CardDescription>Edit content displayed on the public Home Page of Aruba Royalty Stamp.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="font-heading font-semibold text-lg border-b pb-2 text-foreground">Footer Settings</h3>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="aboutText">Company / Business Description</Label>
+                      <textarea
+                        id="aboutText"
+                        className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
+                        placeholder="Describe the company/platform..."
+                        value={footerSettings.aboutText}
+                        onChange={(e) => setFooterSettings({ ...footerSettings, aboutText: e.target.value })}
+                        required
+                        disabled={savingSettings}
+                      />
+                      <p className="text-xs text-muted-foreground">Appears in the left section of the footer on the main Home Page.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="copyrightText">Copyright text</Label>
+                      <Input
+                        id="copyrightText"
+                        value={footerSettings.copyrightText}
+                        onChange={(e) => setFooterSettings({ ...footerSettings, copyrightText: e.target.value })}
+                        required
+                        disabled={savingSettings}
+                        placeholder="Aruba Royalty Stamp. All rights reserved."
+                      />
+                      <p className="text-xs text-muted-foreground">Appears at the very bottom of the footer following the &copy; symbol.</p>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                  <Button type="submit" disabled={savingSettings} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                    {savingSettings ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" /> Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" /> Save Footer Settings
+                      </>
+                    )}
+                  </Button>
+                </CardFooter>
+              </form>
             </Card>
           </TabsContent>
         </Tabs>

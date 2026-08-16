@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -31,7 +33,32 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export default function Home() {
-  const { hero, howItWorks, features, pricing, faq, cta, navigation, footer } = homeConfig;
+  const { hero, howItWorks, features, pricing, faq, cta, navigation, footer: defaultFooter } = homeConfig;
+  const [footer, setFooter] = useState(defaultFooter);
+
+  useEffect(() => {
+    async function loadFooter() {
+      try {
+        const { data, error } = await supabase
+          .from("website_settings")
+          .select("value")
+          .eq("key", "footer")
+          .maybeSingle();
+        
+        if (data && data.value) {
+          const val = data.value as any;
+          setFooter({
+            ...defaultFooter,
+            aboutText: val.aboutText || defaultFooter.aboutText,
+            copyrightText: val.copyrightText || defaultFooter.copyrightText,
+          });
+        }
+      } catch (err) {
+        console.error("Error loading dynamic footer:", err);
+      }
+    }
+    loadFooter();
+  }, [defaultFooter]);
 
   return (
     <>
@@ -321,7 +348,7 @@ export default function Home() {
             ))}
           </div>
           <div className="pt-8 border-t border-border text-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.</p>
+            <p>&copy; {new Date().getFullYear()} {footer.copyrightText || "Aruba Royalty Stamp. All rights reserved."}</p>
           </div>
         </div>
       </footer>
