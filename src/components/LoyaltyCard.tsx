@@ -39,18 +39,19 @@ function useTemplateData(props: LoyaltyCardProps) {
   const bgColor = customization?.bg_color || "var(--background)";
   const textColor = customization?.text_color || "var(--foreground)";
   const secondaryColor = customization?.secondary_color || `${primaryColor}15`;
+  const logoUrl = customization?.card_logo_url;
   
   const Icon = STAMP_ICONS[customization?.stamp_icon || stampIcon || "Star"] || Star;
   const RewardIcon = STAMP_ICONS[customization?.reward_icon || "Gift"] || Gift;
 
   const stamps = Array.from({ length: stampTarget }, (_, i) => i);
   
-  return { primaryColor, bgColor, textColor, secondaryColor, Icon, RewardIcon, stamps };
+  return { primaryColor, bgColor, textColor, secondaryColor, logoUrl, Icon, RewardIcon, stamps };
 }
 
 // 1. Classic Template (The original robust design)
 const ClassicTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, secondaryColor, Icon, RewardIcon, stamps } = useTemplateData(props);
+  const { primaryColor, bgColor, textColor, secondaryColor, logoUrl, Icon, RewardIcon, stamps } = useTemplateData(props);
 
   return (
     <Card 
@@ -64,9 +65,13 @@ const ClassicTemplate = (props: LoyaltyCardProps) => {
       <CardHeader className="pb-4">
         <div className="flex justify-between items-start">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider mb-1 opacity-70">
-              {props.businessName}
-            </p>
+            {logoUrl ? (
+              <img src={logoUrl} alt={props.businessName} className="h-8 w-auto object-contain mb-2" />
+            ) : (
+              <p className="text-xs font-medium uppercase tracking-wider mb-1 opacity-70">
+                {props.businessName}
+              </p>
+            )}
             <CardTitle className="text-xl font-heading">{props.programName}</CardTitle>
           </div>
           <div 
@@ -126,7 +131,7 @@ const ClassicTemplate = (props: LoyaltyCardProps) => {
 
 // 2. Modern Template (Sleek, block-background header)
 const ModernTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, Icon, RewardIcon, stamps } = useTemplateData(props);
+  const { primaryColor, bgColor, textColor, logoUrl, Icon, RewardIcon, stamps } = useTemplateData(props);
 
   return (
     <Card 
@@ -135,9 +140,13 @@ const ModernTemplate = (props: LoyaltyCardProps) => {
     >
       <div className="px-6 py-8 flex justify-between items-center text-white" style={{ backgroundColor: primaryColor }}>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-1 opacity-90">
-            {props.businessName}
-          </p>
+          {logoUrl ? (
+            <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mb-2 drop-shadow-sm" />
+          ) : (
+            <p className="text-xs font-semibold uppercase tracking-wider mb-1 opacity-90">
+              {props.businessName}
+            </p>
+          )}
           <CardTitle className="text-2xl font-heading">{props.programName}</CardTitle>
         </div>
         <RewardIcon className="w-8 h-8 opacity-90" />
@@ -178,7 +187,7 @@ const ModernTemplate = (props: LoyaltyCardProps) => {
 
 // 3. Minimal Template (Clean, typography focused)
 const MinimalTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, Icon, stamps } = useTemplateData(props);
+  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
 
   return (
     <Card 
@@ -187,10 +196,14 @@ const MinimalTemplate = (props: LoyaltyCardProps) => {
     >
       <CardContent className="p-6">
         <div className="text-center mb-8">
+          {logoUrl ? (
+            <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mx-auto mb-3" />
+          ) : (
+            <p className="text-xs tracking-widest uppercase opacity-60 mb-2">
+              {props.businessName}
+            </p>
+          )}
           <CardTitle className="text-xl font-light mb-1">{props.programName}</CardTitle>
-          <p className="text-xs tracking-widest uppercase opacity-60">
-            {props.businessName}
-          </p>
         </div>
         <div className="grid grid-cols-4 sm:grid-cols-5 gap-4 mb-8">
           {stamps.map((index) => {
@@ -221,7 +234,7 @@ const MinimalTemplate = (props: LoyaltyCardProps) => {
 
 // 4. Elegant Template (Serif, borders, sophisticated)
 const ElegantTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, Icon, stamps } = useTemplateData(props);
+  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
 
   return (
     <Card 
@@ -231,9 +244,13 @@ const ElegantTemplate = (props: LoyaltyCardProps) => {
       <div className="absolute inset-2 border border-current opacity-20 pointer-events-none" style={{ borderColor: primaryColor }} />
       <CardContent className="p-8">
         <div className="text-center mb-10">
-          <p className="text-xs uppercase tracking-[0.2em] mb-2 opacity-70">
-            {props.businessName}
-          </p>
+          {logoUrl ? (
+            <img src={logoUrl} alt={props.businessName} className="h-12 w-auto object-contain mx-auto mb-4" />
+          ) : (
+            <p className="text-xs uppercase tracking-[0.2em] mb-2 opacity-70">
+              {props.businessName}
+            </p>
+          )}
           <CardTitle className="text-2xl" style={{ fontFamily: "serif" }}>{props.programName}</CardTitle>
         </div>
         <div className="flex flex-wrap gap-5 justify-center mb-10">
@@ -268,7 +285,7 @@ const ElegantTemplate = (props: LoyaltyCardProps) => {
 
 // 5. Bold Template (High impact, solid colors, sharp edges)
 const BoldTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, Icon, stamps } = useTemplateData(props);
+  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
 
   return (
     <Card 
@@ -277,10 +294,14 @@ const BoldTemplate = (props: LoyaltyCardProps) => {
     >
       <div className="p-5 border-b-4 flex justify-between items-end" style={{ borderColor: textColor, backgroundColor: primaryColor, color: bgColor }}>
         <div>
-          <CardTitle className="text-2xl font-black uppercase tracking-tight leading-none mb-1">{props.programName}</CardTitle>
-          <p className="text-xs font-bold uppercase tracking-wider opacity-90">
-            {props.businessName}
-          </p>
+          {logoUrl ? (
+            <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mb-2" />
+          ) : (
+            <p className="text-xs font-bold uppercase tracking-wider opacity-90 mb-1">
+              {props.businessName}
+            </p>
+          )}
+          <CardTitle className="text-2xl font-black uppercase tracking-tight leading-none">{props.programName}</CardTitle>
         </div>
         <div className="text-3xl font-black tabular-nums leading-none">
           {props.currentStamps}/{props.stampTarget}
