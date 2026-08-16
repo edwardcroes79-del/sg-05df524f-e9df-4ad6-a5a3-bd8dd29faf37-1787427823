@@ -4,11 +4,10 @@ import Link from "next/link";
 import { CustomerLayout } from "@/components/customer/CustomerLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { CreditCard, Sparkles, Gift, Check, ArrowRight } from "lucide-react";
+import { CreditCard, Sparkles, Gift, Check, ArrowRight, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 export default function MyCardsPage() {
@@ -32,7 +31,6 @@ export default function MyCardsPage() {
         { event: 'UPDATE', schema: 'public', table: 'customer_loyalty_cards' },
         (payload) => {
           console.log("🔥 REALTIME EVENT: customer_loyalty_cards UPDATE", payload);
-          // Instantly update the UI using the payload instead of fetching from the database
           if (payload.new && payload.new.id) {
              setCards(prev => prev.map(card => card.id === payload.new.id ? { ...card, ...payload.new } : card));
           }
@@ -43,7 +41,7 @@ export default function MyCardsPage() {
         { event: 'INSERT', schema: 'public', table: 'customer_loyalty_cards' },
         (payload) => {
           console.log("🔥 REALTIME EVENT: customer_loyalty_cards INSERT", payload);
-          fetchCards(); // Fetch to get the joined relations (business, program)
+          fetchCards();
         }
       )
       .on(
@@ -54,7 +52,6 @@ export default function MyCardsPage() {
           if (payload.new) {
             setUnlockedReward(payload.new);
           }
-          // Update the cards to reflect the reset or status change
           fetchCards();
         }
       )
@@ -155,11 +152,21 @@ export default function MyCardsPage() {
         )}
       </div>
 
-      {/* Completion & Reward Unlocked Celebration Modal */}
+      {/* Viewport-relative Centered Completion & Reward Unlocked Celebration Overlay */}
       {unlockedReward && (
-        <Dialog open={!!unlockedReward} onOpenChange={() => setUnlockedReward(null)}>
-          <DialogContent className="sm:max-w-md border-primary/20 bg-background text-foreground p-8 overflow-hidden relative">
-            {/* Celebration backdrop animations using CSS classes */}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-background text-foreground border border-border p-6 sm:p-8 rounded-2xl shadow-2xl w-full max-w-md relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setUnlockedReward(null)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted text-muted-foreground transition-colors z-20"
+              aria-label="Close celebration"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Celebration backdrop animations */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
               <div className="absolute top-10 left-10 w-2 h-2 bg-primary rounded-full animate-ping" />
               <div className="absolute top-20 right-20 w-3 h-3 bg-yellow-400 rounded-full animate-bounce" />
@@ -178,12 +185,12 @@ export default function MyCardsPage() {
               </div>
 
               <div className="space-y-2">
-                <DialogTitle className="text-3xl font-heading font-extrabold tracking-tight text-foreground">
+                <h2 className="text-3xl font-heading font-extrabold tracking-tight text-foreground">
                   Pabien! 🎉
-                </DialogTitle>
-                <DialogDescription className="text-muted-foreground font-medium text-base">
+                </h2>
+                <p className="text-muted-foreground font-medium text-base">
                   You completed your loyalty stamp card!
-                </DialogDescription>
+                </p>
               </div>
 
               {/* Reward Presentation Card */}
@@ -204,12 +211,12 @@ export default function MyCardsPage() {
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
                 Your reward voucher code has been successfully recorded in your profile. Present it to the merchant during your next checkout.
               </p>
 
               {/* View Reward Navigation Action */}
-              <DialogFooter className="w-full sm:justify-center">
+              <div className="w-full">
                 <Link href="/customer/rewards" className="w-full">
                   <Button 
                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-xl shadow-md gap-2"
@@ -219,10 +226,11 @@ export default function MyCardsPage() {
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
-              </DialogFooter>
+              </div>
             </div>
-          </DialogContent>
-        </Dialog>
+
+          </div>
+        </div>
       )}
     </CustomerLayout>
   );
