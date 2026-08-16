@@ -28,6 +28,8 @@ export default function AdminDashboard() {
     activeSubscribers: 0,
     totalCustomers: 0,
     totalStamps: 0,
+    activeTrials: 0,
+    expiredTrials: 0,
   });
 
   const handleLogout = async () => {
@@ -147,7 +149,9 @@ export default function AdminDashboard() {
           status,
           subscription_plan,
           created_at,
-          owner_id
+          owner_id,
+          trial_start,
+          trial_end
         `)
         .order("created_at", { ascending: false });
       setBusinesses(bizData || []);
@@ -180,11 +184,28 @@ export default function AdminDashboard() {
         supabase.from("stamp_transactions").select("*", { count: "exact", head: true })
       ]);
 
+      const trialPlanIds = (plansData || []).filter(p => p.is_trial).map(p => p.id);
+      const now = new Date();
+      let activeTrials = 0;
+      let expiredTrials = 0;
+
+      (bizData || []).forEach(biz => {
+        if (biz.subscription_plan && trialPlanIds.includes(biz.subscription_plan)) {
+          if (biz.trial_end && new Date(biz.trial_end) < now) {
+            expiredTrials++;
+          } else {
+            activeTrials++;
+          }
+        }
+      });
+
       setGlobalStats({
         totalBusinesses: totalBiz || 0,
         activeSubscribers: bizData?.filter(b => b.subscription_plan && b.status === "active").length || 0,
         totalCustomers: totalCust || 0,
         totalStamps: totalStamps || 0,
+        activeTrials,
+        expiredTrials,
       });
 
       // 6. Fetch Website/Footer Settings
@@ -696,7 +717,17 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Aruban Merchants</CardTitle>
-                <CardDescription>Manage active business accounts, plan limits, and suspend/activate services.</CardDescription>
+                <CardDescription>
+                  Manage active business accounts, plan limits, and suspend/activate services.
+                  <div className="flex gap-4 mt-3 font-medium text-sm">
+                    <span className="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 flex items-center gap-2">
+                      <Clock className="h-4 w-4" /> Active Trials: {globalStats.activeTrials}
+                    </span>
+                    <span className="text-destructive bg-destructive/10 px-2.5 py-1 rounded-md border border-destructive/20 flex items-center gap-2">
+                      <Ban className="h-4 w-4" /> Expired Trials: {globalStats.expiredTrials}
+                    </span>
+                  </div>
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -719,7 +750,19 @@ export default function AdminDashboard() {
                             {biz.status?.toUpperCase()}
                           </Badge>
                         </TableCell>
-                        <TableCell className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</TableCell>
+                        <TableCell>
+                          <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
+                          {biz.trial_end && plans.find(p => p.id === biz.subscription_plan)?.is_trial && (
+                            <div className="text-[10px] mt-1.5 flex flex-col gap-0.5">
+                              <span className="text-muted-foreground">Start: {new Date(biz.trial_start).toLocaleDateString()}</span>
+                              {new Date() > new Date(biz.trial_end) ? (
+                                <span className="text-destructive font-semibold">Expired: {new Date(biz.trial_end).toLocaleDateString()}</span>
+                              ) : (
+                                <span className="text-indigo-600 font-semibold">Ends: {new Date(biz.trial_end).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right flex items-center justify-end gap-2">
                           <select
                             className="bg-background border border-input rounded px-2 py-1 text-xs"
