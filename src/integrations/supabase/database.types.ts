@@ -737,6 +737,27 @@ export type Database = {
         }
         Relationships: []
       }
+      website_pages: {
+        Row: {
+          content: string | null
+          slug: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          slug: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          slug?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       website_settings: {
         Row: {
           key: string

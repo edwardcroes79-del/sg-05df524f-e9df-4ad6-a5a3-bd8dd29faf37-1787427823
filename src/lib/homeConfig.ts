@@ -231,8 +231,8 @@ export const homeConfig: HomeConfig = {
         links: [
           { label: "About Us", href: "#" },
           { label: "Contact", href: "https://wa.me/2975678222" },
-          { label: "Privacy Policy", href: "#" },
-          { label: "Terms of Service", href: "#" }
+          { label: "Privacy Policy", href: "/privacy-policy" },
+          { label: "Terms of Service", href: "/terms-of-service" }
         ]
       }
     ]

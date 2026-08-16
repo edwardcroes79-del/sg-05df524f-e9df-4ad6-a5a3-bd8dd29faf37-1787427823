@@ -72,6 +72,11 @@ export default function AdminDashboard() {
   });
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Website Pages state
+  const [pages, setPages] = useState<any[]>([]);
+  const [editingPage, setEditingPage] = useState<any | null>(null);
+  const [savingPage, setSavingPage] = useState(false);
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -179,6 +184,14 @@ export default function AdminDashboard() {
           copyrightText: val.copyrightText || "",
         });
       }
+
+      // 7. Fetch Website Pages
+      const { data: pagesData } = await supabase
+        .from("website_pages")
+        .select("*")
+        .order("title");
+      if (pagesData) setPages(pagesData);
+
     } catch (err) {
       console.error("Error fetching admin data:", err);
     }
@@ -1000,6 +1013,24 @@ export default function AdminDashboard() {
                       />
                       <p className="text-xs text-muted-foreground">The full copyright text line displayed at the very bottom of the Home Page.</p>
                     </div>
+
+                    <h3 className="font-heading font-semibold text-lg border-b pb-2 text-foreground mt-8">Legal Pages</h3>
+                    <div className="space-y-4">
+                      {pages.map(page => (
+                        <div key={page.slug} className="flex items-center justify-between p-4 border rounded-lg bg-card">
+                          <div>
+                            <p className="font-semibold">{page.title}</p>
+                            <p className="text-xs text-muted-foreground">/{page.slug}</p>
+                          </div>
+                          <Button type="button" variant="outline" size="sm" onClick={() => setEditingPage(page)}>
+                            Edit Page
+                          </Button>
+                        </div>
+                      ))}
+                      {pages.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No pages found. The database rows might still be initializing.</p>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
@@ -1064,6 +1095,58 @@ export default function AdminDashboard() {
                     <Trash2 className="h-4 w-4" /> Confirm Delete
                   </>
                 )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Edit Page Dialog */}
+      {editingPage && (
+        <Dialog open={!!editingPage} onOpenChange={(open) => !open && setEditingPage(null)}>
+          <DialogContent className="sm:max-w-3xl max-h-[90vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Edit {editingPage.title}</DialogTitle>
+              <DialogDescription>Modify the content of the /{editingPage.slug} page. Basic HTML tags are supported (h2, p, strong, ul, li).</DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto py-4 space-y-4">
+              <div className="space-y-2">
+                <Label>Page Title</Label>
+                <Input 
+                  value={editingPage.title} 
+                  onChange={(e) => setEditingPage({...editingPage, title: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Page Content (HTML)</Label>
+                <textarea 
+                  className="w-full min-h-[400px] p-3 border rounded-md font-mono text-sm bg-background text-foreground"
+                  value={editingPage.content || ""}
+                  onChange={(e) => setEditingPage({...editingPage, content: e.target.value})}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingPage(null)} disabled={savingPage}>Cancel</Button>
+              <Button type="button" onClick={async () => {
+                try {
+                  setSavingPage(true);
+                  const { error } = await supabase.from("website_pages").update({
+                    title: editingPage.title,
+                    content: editingPage.content,
+                    updated_at: new Date().toISOString()
+                  }).eq("slug", editingPage.slug);
+                  if (error) throw error;
+                  toast({ title: "Page saved", description: "The page content has been updated successfully." });
+                  setEditingPage(null);
+                  fetchAdminData();
+                } catch(e: any) {
+                  toast({ title: "Error saving page", description: e.message, variant: "destructive" });
+                } finally {
+                  setSavingPage(false);
+                }
+              }} disabled={savingPage}>
+                {savingPage ? "Saving..." : "Save Page"}
               </Button>
             </DialogFooter>
           </DialogContent>
