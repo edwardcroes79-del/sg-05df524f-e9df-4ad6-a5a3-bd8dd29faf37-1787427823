@@ -20,27 +20,30 @@ export default function MyCardsPage() {
 
   useEffect(() => {
     if (!customerId) return;
+    console.log("Starting Realtime subscription for customer:", customerId);
 
     const channel = supabase.channel(`customer_cards_${customerId}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customerId}` },
-        () => {
+        (payload) => {
+          console.log("🔥 REALTIME EVENT: customer_loyalty_cards", payload);
           fetchCards();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'loyalty_programs' },
-        () => {
-          // Whenever a program changes its branding, refresh the view
+        (payload) => {
+          console.log("🔥 REALTIME EVENT: loyalty_programs", payload);
           fetchCards();
         }
       )
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'rewards', filter: `customer_id=eq.${customerId}` },
-        () => {
+        (payload) => {
+          console.log("🔥 REALTIME EVENT: rewards", payload);
           toast({
             title: "🎉 Reward Unlocked!",
             description: "You have completed a stamp card and earned a reward!",
@@ -50,9 +53,13 @@ export default function MyCardsPage() {
           fetchCards();
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log("Realtime Subscription Status:", status);
+        if (err) console.error("Realtime Subscription Error:", err);
+      });
 
     return () => {
+      console.log("Cleaning up Realtime subscription...");
       supabase.removeChannel(channel);
     };
   }, [customerId]);

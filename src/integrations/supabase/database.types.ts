@@ -158,6 +158,7 @@ export type Database = {
           status: string | null
           total_stamps: number | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           business_id?: string | null
@@ -170,6 +171,7 @@ export type Database = {
           status?: string | null
           total_stamps?: number | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           business_id?: string | null
@@ -182,6 +184,7 @@ export type Database = {
           status?: string | null
           total_stamps?: number | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
