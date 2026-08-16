@@ -58,6 +58,9 @@ export default function DashboardOverview() {
     rewardEarned: boolean;
   } | null>(null);
 
+  // Upgrade Success State
+  const [upgradeSuccessPlan, setUpgradeSuccessPlan] = useState<string | null>(null);
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -96,12 +99,30 @@ export default function DashboardOverview() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id")
+        .select("id, subscription_plan")
         .eq("owner_id", session.user.id)
         .single();
 
       if (!business) return;
       setBusinessId(business.id);
+
+      // Detect Plan Upgrade Transition
+      const cachedPlan = localStorage.getItem(`last_known_plan_id_${business.id}`);
+      if (cachedPlan && cachedPlan !== business.subscription_plan) {
+        // Fetch current plan name for confirmation
+        const { data: planData } = await supabase
+          .from("subscription_plans")
+          .select("name")
+          .eq("id", business.subscription_plan || "starter")
+          .single();
+        
+        if (planData) {
+          setUpgradeSuccessPlan(planData.name);
+        }
+      }
+      
+      // Update cache
+      localStorage.setItem(`last_known_plan_id_${business.id}`, business.subscription_plan || "starter");
 
       // Real Data Fetching
       const [
@@ -508,6 +529,45 @@ export default function DashboardOverview() {
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PLAN UPGRADE SUCCESS DIALOG */}
+      <Dialog open={!!upgradeSuccessPlan} onOpenChange={(open) => !open && setUpgradeSuccessPlan(null)}>
+        <DialogContent className="sm:max-w-md bg-card border-border text-center p-8 space-y-6">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="p-4 bg-emerald-50 text-emerald-500 rounded-full border-2 border-emerald-100 animate-bounce">
+              <Check className="h-12 w-12 stroke-[3]" />
+            </div>
+            
+            <div className="space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                🎉 Upgrade Success
+              </span>
+              <h2 className="text-2xl font-heading font-bold text-foreground mt-2">
+                Plan Successfully Upgraded!
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Your business has been upgraded. You now have immediate access to all premium features and elevated plan limits.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-primary/5 border border-primary/10 rounded-2xl p-5 text-center space-y-1">
+            <span className="text-xs text-muted-foreground uppercase font-semibold">Active Plan</span>
+            <div className="text-xl font-heading font-bold text-primary flex items-center justify-center gap-1.5">
+              <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
+              {upgradeSuccessPlan}
+              <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
+            </div>
+          </div>
+
+          <Button 
+            className="w-full font-bold text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 py-6 text-base rounded-xl"
+            onClick={() => setUpgradeSuccessPlan(null)}
+          >
+            Continue to Dashboard
+          </Button>
         </DialogContent>
       </Dialog>
     </DashboardLayout>
