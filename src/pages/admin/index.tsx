@@ -54,6 +54,7 @@ export default function AdminDashboard() {
     price_awg: 0,
     max_loyalty_programs: 0,
     max_customers: 0,
+    max_staff: 1,
   });
 
   // Payment review states
@@ -253,12 +254,19 @@ export default function AdminDashboard() {
       price_awg: Number(plan.price_awg),
       max_loyalty_programs: plan.max_loyalty_programs,
       max_customers: plan.max_customers,
+      max_staff: plan.max_staff || 1,
     });
   };
 
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingPlan) return;
+
+    // Validate that it's not negative
+    if (planFormData.max_staff < 0) {
+      toast({ title: "Invalid Limit", description: "Staff limit cannot be negative.", variant: "destructive" });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -268,6 +276,7 @@ export default function AdminDashboard() {
           price_awg: planFormData.price_awg,
           max_loyalty_programs: planFormData.max_loyalty_programs,
           max_customers: planFormData.max_customers,
+          max_staff: planFormData.max_staff,
         })
         .eq("id", editingPlan.id);
 
@@ -850,7 +859,8 @@ export default function AdminDashboard() {
                         <p className="text-sm text-muted-foreground mt-1">Price: AWG {plan.price_awg}/mo</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           Max Programs: {plan.max_loyalty_programs === 9999 ? "Unlimited" : plan.max_loyalty_programs} | 
-                          Max Customers: {plan.max_customers === 999999 ? "Unlimited" : plan.max_customers}
+                          Max Customers: {plan.max_customers === 999999 ? "Unlimited" : plan.max_customers} | 
+                          Max Staff: {plan.max_staff || 1}
                         </p>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => handleEditPlanClick(plan)}>
@@ -888,12 +898,13 @@ export default function AdminDashboard() {
                           required
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="planMaxPrograms">Max Loyalty Programs</Label>
                           <Input
                             id="planMaxPrograms"
                             type="number"
+                            min="1"
                             value={planFormData.max_loyalty_programs}
                             onChange={(e) => setPlanFormData({ ...planFormData, max_loyalty_programs: Number(e.target.value) })}
                             required
@@ -904,8 +915,20 @@ export default function AdminDashboard() {
                           <Input
                             id="planMaxCustomers"
                             type="number"
+                            min="1"
                             value={planFormData.max_customers}
                             onChange={(e) => setPlanFormData({ ...planFormData, max_customers: Number(e.target.value) })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="planMaxStaff">Max Staff Accounts</Label>
+                          <Input
+                            id="planMaxStaff"
+                            type="number"
+                            min="0"
+                            value={planFormData.max_staff}
+                            onChange={(e) => setPlanFormData({ ...planFormData, max_staff: Number(e.target.value) })}
                             required
                           />
                         </div>
