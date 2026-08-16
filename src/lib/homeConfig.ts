@@ -168,7 +168,7 @@ export const homeConfig: HomeConfig = {
         price: "AWG 65",
         period: "/mo",
         description: "For growing businesses with high foot traffic.",
-          features: ["Up to 750 Loyalty customers", "Up to 3 Loyalty Programs", "3 Staff Accounts", "Advanced Analytics", "Priority Support"],
+          features: ["Up to 750 Loyalty customers", "Up to 3 Loyalty Programs", "3 Staff Accounts", "Advanced Analytics", "Priority Support", "And future updates"],
         ctaText: "Contact Us",
         ctaHref: "https://wa.me/2975678222",
         isPopular: true
@@ -178,7 +178,7 @@ export const homeConfig: HomeConfig = {
           price: "AWG 125",
           period: "/mo",
         description: "For multi-location chains and franchises.",
-          features: ["Everything in Pro", "Up to 4000 Loyalty customers", "Unlimited Loyalty Programs", "10 Staff Accounts", "Advanced Analytics", "Dedicated Account Manager"],
+          features: ["Everything in Pro", "Up to 4000 Loyalty customers", "Unlimited Loyalty Programs", "10 Staff Accounts", "Advanced Analytics", "Dedicated Account Manager", "And future updates"],
           ctaText: "Contact Us",
         ctaHref: "https://wa.me/2975678222"
       }
