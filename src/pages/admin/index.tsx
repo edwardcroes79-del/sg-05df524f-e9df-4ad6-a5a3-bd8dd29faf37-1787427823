@@ -78,6 +78,19 @@ export default function AdminDashboard() {
   const [editingPage, setEditingPage] = useState<any | null>(null);
   const [savingPage, setSavingPage] = useState(false);
 
+  // Bank Details state
+  const [bankDetails, setBankDetails] = useState({
+    bankName: "",
+    accountHolder: "",
+    accountNumber: "",
+    iban: "",
+    swiftBic: "",
+    bankAddress: "",
+    paymentReference: "",
+    additionalInstructions: "",
+  });
+  const [savingBankDetails, setSavingBankDetails] = useState(false);
+
   useEffect(() => {
     checkAdmin();
   }, []);
@@ -192,6 +205,27 @@ export default function AdminDashboard() {
         .select("*")
         .order("title");
       if (pagesData) setPages(pagesData);
+
+      // 8. Fetch Bank Details
+      const { data: bankData } = await supabase
+        .from("website_settings")
+        .select("value")
+        .eq("key", "bank_details")
+        .maybeSingle();
+
+      if (bankData && bankData.value) {
+        const val = bankData.value as any;
+        setBankDetails({
+          bankName: val.bankName || "",
+          accountHolder: val.accountHolder || "",
+          accountNumber: val.accountNumber || "",
+          iban: val.iban || "",
+          swiftBic: val.swiftBic || "",
+          bankAddress: val.bankAddress || "",
+          paymentReference: val.paymentReference || "",
+          additionalInstructions: val.additionalInstructions || "",
+        });
+      }
 
     } catch (err) {
       console.error("Error fetching admin data:", err);
@@ -515,6 +549,46 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSaveBankDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!bankDetails.bankName || !bankDetails.accountHolder || !bankDetails.accountNumber) {
+      toast({
+        title: "Missing Fields",
+        description: "Bank Name, Account Holder, and Account Number are required.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSavingBankDetails(true);
+
+      const { error } = await supabase
+        .from("website_settings")
+        .upsert({
+          key: "bank_details",
+          value: bankDetails,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Bank details saved successfully.",
+        description: "The payment instructions have been updated and are ready for client upgrades.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error saving bank details",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingBankDetails(false);
+    }
+  };
+
   if (loading || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -589,11 +663,12 @@ export default function AdminDashboard() {
         </div>
 
         <Tabs defaultValue="merchants" className="space-y-6">
-          <TabsList className="bg-muted p-1 rounded-lg">
+          <TabsList className="bg-muted p-1 rounded-lg flex-wrap h-auto">
             <TabsTrigger value="merchants">Merchants & Subscriptions</TabsTrigger>
             <TabsTrigger value="payments">Payment Review</TabsTrigger>
             <TabsTrigger value="plans">Subscription Plans & Limits</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsTrigger value="payment_settings">Payment Settings</TabsTrigger>
             <TabsTrigger value="website">Website Settings</TabsTrigger>
           </TabsList>
 
@@ -994,6 +1069,74 @@ export default function AdminDashboard() {
                   </TableBody>
                 </Table>
               </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payment_settings">
+            <Card>
+              <form onSubmit={handleSaveBankDetails}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-primary" /> Bank Transfer Details
+                  </CardTitle>
+                  <CardDescription>
+                    Configure the platform's bank account information. This will be displayed to businesses when they select Bank Transfer to pay for subscription upgrades.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="bankName">Bank Name <span className="text-destructive">*</span></Label>
+                      <Input id="bankName" value={bankDetails.bankName} onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})} required disabled={savingBankDetails} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accountHolder">Account Holder / Beneficiary <span className="text-destructive">*</span></Label>
+                      <Input id="accountHolder" value={bankDetails.accountHolder} onChange={(e) => setBankDetails({...bankDetails, accountHolder: e.target.value})} required disabled={savingBankDetails} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="accountNumber">Account Number <span className="text-destructive">*</span></Label>
+                      <Input id="accountNumber" value={bankDetails.accountNumber} onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})} required disabled={savingBankDetails} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="iban">IBAN</Label>
+                      <Input id="iban" value={bankDetails.iban} onChange={(e) => setBankDetails({...bankDetails, iban: e.target.value})} disabled={savingBankDetails} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="swiftBic">SWIFT/BIC</Label>
+                      <Input id="swiftBic" value={bankDetails.swiftBic} onChange={(e) => setBankDetails({...bankDetails, swiftBic: e.target.value})} disabled={savingBankDetails} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bankAddress">Bank Address</Label>
+                      <Input id="bankAddress" value={bankDetails.bankAddress} onChange={(e) => setBankDetails({...bankDetails, bankAddress: e.target.value})} disabled={savingBankDetails} />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentReference">Payment Reference Instructions</Label>
+                    <Input id="paymentReference" placeholder="e.g. Business Name + Invoice Number" value={bankDetails.paymentReference} onChange={(e) => setBankDetails({...bankDetails, paymentReference: e.target.value})} disabled={savingBankDetails} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="additionalInstructions">Additional Payment Instructions</Label>
+                    <textarea 
+                      id="additionalInstructions" 
+                      className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
+                      placeholder="Any other details the client should know..." 
+                      value={bankDetails.additionalInstructions} 
+                      onChange={(e) => setBankDetails({...bankDetails, additionalInstructions: e.target.value})} 
+                      disabled={savingBankDetails} 
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                  <Button type="submit" disabled={savingBankDetails} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+                    {savingBankDetails ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+                    ) : (
+                      <><Save className="h-4 w-4" /> Save Changes</>
+                    )}
+                  </Button>
+                </CardFooter>
+              </form>
             </Card>
           </TabsContent>
 
