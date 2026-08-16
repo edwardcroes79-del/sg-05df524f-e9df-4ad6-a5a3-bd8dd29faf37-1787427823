@@ -996,9 +996,9 @@ export default function AdminDashboard() {
                         onChange={(e) => setFooterSettings({ ...footerSettings, copyrightText: e.target.value })}
                         required
                         disabled={savingSettings}
-                        placeholder="Aruba Royalty Stamp. All rights reserved."
+                        placeholder="© 2026 Aruba Royalty Stamp. All rights reserved."
                       />
-                      <p className="text-xs text-muted-foreground">Appears at the very bottom of the footer following the &copy; symbol.</p>
+                      <p className="text-xs text-muted-foreground">The full copyright text line displayed at the very bottom of the Home Page.</p>
                     </div>
                   </div>
                 </CardContent>

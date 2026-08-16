@@ -65,7 +65,7 @@ export default function Home() {
           setFooter({
             ...defaultFooter,
             aboutText: val.aboutText || defaultFooter.aboutText,
-            copyrightText: val.copyrightText || "Aruba Royalty Stamp. All rights reserved.",
+            copyrightText: val.copyrightText || `© ${new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.`,
           });
         }
       } catch (err) {
@@ -363,7 +363,7 @@ export default function Home() {
             ))}
           </div>
           <div className="pt-8 border-t border-border text-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} {footer.copyrightText || "Aruba Royalty Stamp. All rights reserved."}</p>
+            <p>{footer.copyrightText || `© ${new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.`}</p>
           </div>
         </div>
       </footer>
