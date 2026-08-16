@@ -175,11 +175,11 @@ export const homeConfig: HomeConfig = {
       },
       {
         name: "Enterprise",
-        price: "Custom",
-        period: "",
+          price: "AWG 125",
+          period: "/mo",
         description: "For multi-location chains and franchises.",
-        features: ["Everything in Pro", "Unlimited Loyalty Programs", "Multi-location routing", "Custom integrations", "Dedicated Account Manager"],
-        ctaText: "Contact Sales",
+          features: ["Everything in Pro", "Unlimited Loyalty Programs", "10 Staff Accounts", "Advanced Analytics", "Dedicated Account Manager"],
+          ctaText: "Contact Us",
         ctaHref: "https://wa.me/2975678222"
       }
     ]
