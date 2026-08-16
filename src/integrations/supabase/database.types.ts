@@ -510,6 +510,7 @@ export type Database = {
           reward_code: string
           reward_title: string
           status: string | null
+          user_id: string | null
         }
         Insert: {
           business_id?: string | null
@@ -523,6 +524,7 @@ export type Database = {
           reward_code: string
           reward_title: string
           status?: string | null
+          user_id?: string | null
         }
         Update: {
           business_id?: string | null
@@ -536,6 +538,7 @@ export type Database = {
           reward_code?: string
           reward_title?: string
           status?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
