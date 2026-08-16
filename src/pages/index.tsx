@@ -212,12 +212,28 @@ export default function Home() {
                     </ul>
                   </CardContent>
                   <CardFooter>
-                    <Button 
-                      className={cn("w-full font-semibold", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "outline")}
-                      variant={plan.isPopular ? "default" : "outline"}
-                    >
-                      {plan.ctaText}
-                    </Button>
+                    {plan.ctaHref ? (
+                      <a 
+                        href={plan.ctaHref} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="w-full"
+                      >
+                        <Button 
+                          className={cn("w-full font-semibold", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "outline")}
+                          variant={plan.isPopular ? "default" : "outline"}
+                        >
+                          {plan.ctaText}
+                        </Button>
+                      </a>
+                    ) : (
+                      <Button 
+                        className={cn("w-full font-semibold", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "outline")}
+                        variant={plan.isPopular ? "default" : "outline"}
+                      >
+                        {plan.ctaText}
+                      </Button>
+                    )}
                   </CardFooter>
                 </Card>
               ))}
@@ -279,13 +295,27 @@ export default function Home() {
               <div key={idx}>
                 <h4 className="font-bold text-foreground mb-4">{section.title}</h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  {section.links.map((link, lIdx) => (
-                    <li key={lIdx}>
-                      <Link href={link.href} className="hover:text-primary transition-colors">
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
+                  {section.links.map((link, lIdx) => {
+                    const isExternal = link.href.startsWith("http");
+                    return (
+                      <li key={lIdx}>
+                        {isExternal ? (
+                          <a 
+                            href={link.href} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:text-primary transition-colors"
+                          >
+                            {link.label}
+                          </a>
+                        ) : (
+                          <Link href={link.href} className="hover:text-primary transition-colors">
+                            {link.label}
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
