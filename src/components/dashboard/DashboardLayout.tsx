@@ -74,6 +74,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { name: "Customers", href: "/dashboard/customers", icon: Users },
     { name: "QR Codes", href: "/dashboard/qr", icon: QrCode },
     { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
+    { name: "Staff", href: "/dashboard/staff", icon: Users },
     { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
