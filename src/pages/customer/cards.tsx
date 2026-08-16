@@ -1,17 +1,21 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import { CustomerLayout } from "@/components/customer/CustomerLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { CreditCard } from "lucide-react";
+import { CreditCard, Sparkles, Gift, Check, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export default function MyCardsPage() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [unlockedReward, setUnlockedReward] = useState<any | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,12 +51,9 @@ export default function MyCardsPage() {
         { event: 'INSERT', schema: 'public', table: 'rewards' },
         (payload) => {
           console.log("🔥 REALTIME EVENT: rewards", payload);
-          toast({
-            title: "🎉 Reward Unlocked!",
-            description: "You have completed a stamp card and earned a reward!",
-            duration: 7000,
-            className: "bg-green-500 text-white border-none shadow-lg",
-          });
+          if (payload.new) {
+            setUnlockedReward(payload.new);
+          }
           // Update the cards to reflect the reset or status change
           fetchCards();
         }
@@ -66,7 +67,7 @@ export default function MyCardsPage() {
       console.log("Cleaning up Realtime subscription...");
       supabase.removeChannel(channel);
     };
-  }, [customerId, toast]);
+  }, [customerId]);
 
   const fetchCards = async () => {
     try {
@@ -153,6 +154,76 @@ export default function MyCardsPage() {
           </div>
         )}
       </div>
+
+      {/* Completion & Reward Unlocked Celebration Modal */}
+      {unlockedReward && (
+        <Dialog open={!!unlockedReward} onOpenChange={() => setUnlockedReward(null)}>
+          <DialogContent className="sm:max-w-md border-primary/20 bg-background text-foreground p-8 overflow-hidden relative">
+            {/* Celebration backdrop animations using CSS classes */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+              <div className="absolute top-10 left-10 w-2 h-2 bg-primary rounded-full animate-ping" />
+              <div className="absolute top-20 right-20 w-3 h-3 bg-yellow-400 rounded-full animate-bounce" />
+              <div className="absolute bottom-10 left-1/3 w-2.5 h-2.5 bg-green-400 rounded-full animate-pulse" />
+              <div className="absolute top-1/2 right-12 w-2 h-2 bg-blue-400 rounded-full animate-ping" />
+            </div>
+
+            <div className="flex flex-col items-center text-center space-y-6 relative z-10">
+              {/* Pulsing visual seal */}
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse scale-125" />
+                <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-lg relative">
+                  <Sparkles className="w-10 h-10 animate-spin" style={{ animationDuration: "12s" }} />
+                  <Gift className="w-5 h-5 absolute" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <DialogTitle className="text-3xl font-heading font-extrabold tracking-tight text-foreground">
+                  Pabien! 🎉
+                </DialogTitle>
+                <DialogDescription className="text-muted-foreground font-medium text-base">
+                  You completed your loyalty stamp card!
+                </DialogDescription>
+              </div>
+
+              {/* Reward Presentation Card */}
+              <div className="w-full bg-primary/10 border border-primary/20 p-5 rounded-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 text-primary/10">
+                  <Gift className="w-24 h-24" />
+                </div>
+                <div className="flex items-center gap-4 relative z-10 text-left">
+                  <div className="w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0">
+                    <Check className="w-6 h-6" strokeWidth={3} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary opacity-90">REWARD UNLOCKED</span>
+                    <h3 className="font-heading font-bold text-lg text-foreground leading-tight">
+                      {unlockedReward.reward_title || "Free Reward"}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Your reward voucher code has been successfully recorded in your profile. Present it to the merchant during your next checkout.
+              </p>
+
+              {/* View Reward Navigation Action */}
+              <DialogFooter className="w-full sm:justify-center">
+                <Link href="/customer/rewards" className="w-full">
+                  <Button 
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-xl shadow-md gap-2"
+                    onClick={() => setUnlockedReward(null)}
+                  >
+                    View My Rewards
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </CustomerLayout>
   );
 }
