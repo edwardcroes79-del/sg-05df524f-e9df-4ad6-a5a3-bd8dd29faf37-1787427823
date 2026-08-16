@@ -714,6 +714,7 @@ export type Database = {
           id: string
           max_customers: number
           max_loyalty_programs: number
+          max_staff: number
           name: string
           price_awg: number
         }
@@ -723,6 +724,7 @@ export type Database = {
           id: string
           max_customers?: number
           max_loyalty_programs?: number
+          max_staff?: number
           name: string
           price_awg?: number
         }
@@ -732,6 +734,7 @@ export type Database = {
           id?: string
           max_customers?: number
           max_loyalty_programs?: number
+          max_staff?: number
           name?: string
           price_awg?: number
         }
