@@ -99,6 +99,8 @@ export type Database = {
           status: string | null
           subscription_plan: string | null
           subscription_status: string | null
+          trial_end: string | null
+          trial_start: string | null
           updated_at: string | null
           website: string | null
         }
@@ -120,6 +122,8 @@ export type Database = {
           status?: string | null
           subscription_plan?: string | null
           subscription_status?: string | null
+          trial_end?: string | null
+          trial_start?: string | null
           updated_at?: string | null
           website?: string | null
         }
@@ -141,6 +145,8 @@ export type Database = {
           status?: string | null
           subscription_plan?: string | null
           subscription_status?: string | null
+          trial_end?: string | null
+          trial_start?: string | null
           updated_at?: string | null
           website?: string | null
         }
@@ -712,31 +718,40 @@ export type Database = {
           created_at: string | null
           features: string[]
           id: string
+          is_active: boolean | null
+          is_trial: boolean | null
           max_customers: number
           max_loyalty_programs: number
           max_staff: number
           name: string
           price_awg: number
+          trial_days: number | null
         }
         Insert: {
           created_at?: string | null
           features?: string[]
           id: string
+          is_active?: boolean | null
+          is_trial?: boolean | null
           max_customers?: number
           max_loyalty_programs?: number
           max_staff?: number
           name: string
           price_awg?: number
+          trial_days?: number | null
         }
         Update: {
           created_at?: string | null
           features?: string[]
           id?: string
+          is_active?: boolean | null
+          is_trial?: boolean | null
           max_customers?: number
           max_loyalty_programs?: number
           max_staff?: number
           name?: string
           price_awg?: number
+          trial_days?: number | null
         }
         Relationships: []
       }

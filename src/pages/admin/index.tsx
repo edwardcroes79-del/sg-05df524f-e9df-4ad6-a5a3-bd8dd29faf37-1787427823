@@ -55,6 +55,9 @@ export default function AdminDashboard() {
     max_loyalty_programs: 0,
     max_customers: 0,
     max_staff: 1,
+    is_active: true,
+    is_trial: false,
+    trial_days: 14,
   });
 
   // Payment review states
@@ -259,9 +262,20 @@ export default function AdminDashboard() {
 
   const handleChangePlan = async (bizId: string, planId: string) => {
     try {
+      const selectedPlan = plans.find(p => p.id === planId);
+      const updateData: any = { subscription_plan: planId };
+      
+      if (selectedPlan?.is_trial) {
+        const now = new Date();
+        const end = new Date();
+        end.setDate(now.getDate() + (selectedPlan.trial_days || 14));
+        updateData.trial_start = now.toISOString();
+        updateData.trial_end = end.toISOString();
+      }
+
       const { error } = await supabase
         .from("businesses")
-        .update({ subscription_plan: planId })
+        .update(updateData)
         .eq("id", bizId);
 
       if (error) throw error;
@@ -289,6 +303,9 @@ export default function AdminDashboard() {
       max_loyalty_programs: plan.max_loyalty_programs,
       max_customers: plan.max_customers,
       max_staff: plan.max_staff || 1,
+      is_active: plan.is_active ?? true,
+      is_trial: plan.is_trial || false,
+      trial_days: plan.trial_days || 14,
     });
   };
 
@@ -311,6 +328,9 @@ export default function AdminDashboard() {
           max_loyalty_programs: planFormData.max_loyalty_programs,
           max_customers: planFormData.max_customers,
           max_staff: planFormData.max_staff,
+          is_active: planFormData.is_active,
+          is_trial: planFormData.is_trial,
+          trial_days: planFormData.trial_days,
         })
         .eq("id", editingPlan.id);
 
@@ -937,6 +957,16 @@ export default function AdminDashboard() {
                           Max Customers: {plan.max_customers === 999999 ? "Unlimited" : plan.max_customers} | 
                           Max Staff: {plan.max_staff || 1}
                         </p>
+                        {plan.is_trial && (
+                          <Badge variant="secondary" className="mt-2 text-xs bg-indigo-100 text-indigo-700">
+                            Free Trial ({plan.trial_days} days)
+                          </Badge>
+                        )}
+                        {!plan.is_active && (
+                          <Badge variant="destructive" className="mt-2 text-xs ml-2">
+                            Disabled
+                          </Badge>
+                        )}
                       </div>
                       <Button variant="outline" size="sm" onClick={() => handleEditPlanClick(plan)}>
                         <Edit2 className="h-4 w-4 mr-1" /> Edit Limits
@@ -973,6 +1003,40 @@ export default function AdminDashboard() {
                           required
                         />
                       </div>
+
+                      <div className="flex items-center gap-6 py-2">
+                        <label className="flex items-center gap-2 text-sm">
+                          <input 
+                            type="checkbox" 
+                            checked={planFormData.is_active}
+                            onChange={(e) => setPlanFormData({...planFormData, is_active: e.target.checked})}
+                          />
+                          Active / Enabled
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-indigo-600 font-semibold">
+                          <input 
+                            type="checkbox" 
+                            checked={planFormData.is_trial}
+                            onChange={(e) => setPlanFormData({...planFormData, is_trial: e.target.checked})}
+                          />
+                          Is Free Trial
+                        </label>
+                      </div>
+
+                      {planFormData.is_trial && (
+                        <div className="space-y-2 bg-indigo-50 p-4 rounded-md border border-indigo-100">
+                          <Label htmlFor="trialDays" className="text-indigo-700">Trial Duration (Days)</Label>
+                          <Input
+                            id="trialDays"
+                            type="number"
+                            min="1"
+                            value={planFormData.trial_days}
+                            onChange={(e) => setPlanFormData({ ...planFormData, trial_days: Number(e.target.value) })}
+                            required={planFormData.is_trial}
+                          />
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="planMaxPrograms">Max Loyalty Programs</Label>

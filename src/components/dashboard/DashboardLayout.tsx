@@ -24,6 +24,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  
+  // Trial states
+  const [isExpiredTrial, setIsExpiredTrial] = useState(false);
+  const [isTrial, setIsTrial] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState(0);
 
   useEffect(() => {
     checkUserAndBusiness();
@@ -59,6 +64,27 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
 
     setBusiness(businessData);
+
+    // Fetch Plan data to check for trial status
+    const { data: planData } = await supabase
+      .from("subscription_plans")
+      .select("is_trial, trial_days")
+      .eq("id", businessData.subscription_plan)
+      .maybeSingle();
+
+    if (planData?.is_trial && businessData.trial_end) {
+      setIsTrial(true);
+      const now = new Date();
+      const trialEnd = new Date(businessData.trial_end);
+      
+      if (now > trialEnd) {
+        setIsExpiredTrial(true);
+      } else {
+        const diffTime = Math.abs(trialEnd.getTime() - now.getTime());
+        setTrialDaysLeft(Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+      }
+    }
+
     setLoading(false);
   };
 
@@ -84,6 +110,29 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center gap-4">
           <Skeleton className="h-12 w-12 rounded-full" />
           <p className="text-muted-foreground font-medium">Loading workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle Expired Trial Blocking
+  if (isExpiredTrial && !router.pathname.includes("/dashboard/billing")) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="p-4 bg-amber-500/10 rounded-full text-amber-500">
+          <ShieldAlert className="h-16 w-16" />
+        </div>
+        <div className="max-w-md space-y-3">
+          <h1 className="text-3xl font-heading font-bold text-foreground">Your Free Trial Has Ended</h1>
+          <p className="text-muted-foreground">
+            Your 14-day free trial has expired. To continue issuing stamps, managing rewards, and accessing your dashboard features, please choose a subscription plan.
+          </p>
+        </div>
+        <div className="flex items-center gap-4 pt-4">
+          <Button onClick={handleLogout} variant="outline">Sign Out</Button>
+          <Link href="/dashboard/billing">
+            <Button className="bg-primary text-white hover:bg-primary/90 font-bold px-8 shadow-md">View Plans & Upgrade</Button>
+          </Link>
         </div>
       </div>
     );
@@ -194,6 +243,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <Menu className="h-6 w-6 text-foreground" />
           </button>
         </header>
+
+        {isTrial && !isExpiredTrial && (
+          <div className="bg-indigo-600 px-4 py-2.5 flex items-center justify-between text-indigo-50 shadow-sm z-10">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Gift className="h-4 w-4" /> 
+              Your Free Trial Ends Soon: <span className="font-bold">{trialDaysLeft} Days Remaining</span>
+            </div>
+            <Link href="/dashboard/billing">
+              <span className="text-xs font-bold uppercase tracking-wide bg-white/20 hover:bg-white/30 transition-colors px-3 py-1 rounded-full cursor-pointer">
+                Upgrade Plan
+              </span>
+            </Link>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}

@@ -60,6 +60,9 @@ export default function DashboardOverview() {
 
   // Upgrade Success State
   const [upgradeSuccessPlan, setUpgradeSuccessPlan] = useState<string | null>(null);
+  
+  // Trial overview states
+  const [trialDetails, setTrialDetails] = useState<{ isTrial: boolean; daysLeft: number; endDate: string | null }>({ isTrial: false, daysLeft: 0, endDate: null });
 
   useEffect(() => {
     fetchDashboardData();
@@ -99,7 +102,7 @@ export default function DashboardOverview() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id, subscription_plan")
+        .select("id, subscription_plan, trial_end")
         .eq("owner_id", session.user.id)
         .single();
 
@@ -112,12 +115,44 @@ export default function DashboardOverview() {
         // Fetch current plan name for confirmation
         const { data: planData } = await supabase
           .from("subscription_plans")
-          .select("name")
+          .select("name, is_trial")
           .eq("id", business.subscription_plan || "starter")
           .single();
         
         if (planData) {
           setUpgradeSuccessPlan(planData.name);
+          
+          // Check trial details for the dashboard UI
+          if (business.subscription_plan === "trial" || planData.is_trial) {
+            if (business.trial_end) {
+              const endDate = new Date(business.trial_end);
+              const diffTime = endDate.getTime() - new Date().getTime();
+              const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+              setTrialDetails({
+                isTrial: true,
+                daysLeft: days,
+                endDate: endDate.toLocaleDateString()
+              });
+            }
+          }
+        }
+      } else {
+        // Just fetch plan to see if it's a trial
+        const { data: planCheck } = await supabase
+          .from("subscription_plans")
+          .select("is_trial")
+          .eq("id", business.subscription_plan || "starter")
+          .maybeSingle();
+
+        if (planCheck?.is_trial && business.trial_end) {
+          const endDate = new Date(business.trial_end);
+          const diffTime = endDate.getTime() - new Date().getTime();
+          const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+          setTrialDetails({
+            isTrial: true,
+            daysLeft: days,
+            endDate: endDate.toLocaleDateString()
+          });
         }
       }
       
@@ -312,6 +347,25 @@ export default function DashboardOverview() {
             </Button>
           </div>
         </div>
+
+        {trialDetails.isTrial && (
+          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
+                <Gift className="h-5 w-5 text-indigo-600" /> Free 14-Day Trial
+              </h3>
+              <p className="text-indigo-700/80 text-sm">
+                You have <strong>{trialDetails.daysLeft} days remaining</strong>. Your trial will automatically expire on {trialDetails.endDate}.
+              </p>
+            </div>
+            <Button 
+              onClick={() => window.location.href = "/dashboard/billing"}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-semibold"
+            >
+              Upgrade Plan
+            </Button>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
