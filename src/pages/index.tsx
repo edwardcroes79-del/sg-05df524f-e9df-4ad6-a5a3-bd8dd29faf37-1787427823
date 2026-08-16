@@ -34,7 +34,22 @@ const iconMap: Record<string, LucideIcon> = {
 
 export default function Home() {
   const { hero, howItWorks, features, pricing, faq, cta, navigation, footer: defaultFooter } = homeConfig;
-  const [footer, setFooter] = useState(defaultFooter);
+  
+  // Explicitly type the footer state to allow the optional database-driven copyrightText
+  const [footer, setFooter] = useState<{
+    aboutText: string;
+    copyrightText?: string;
+    sections: {
+      title: string;
+      links: {
+        label: string;
+        href: string;
+      }[];
+    }[];
+  }>({
+    ...defaultFooter,
+    copyrightText: "Aruba Royalty Stamp. All rights reserved."
+  });
 
   useEffect(() => {
     async function loadFooter() {
@@ -50,7 +65,7 @@ export default function Home() {
           setFooter({
             ...defaultFooter,
             aboutText: val.aboutText || defaultFooter.aboutText,
-            copyrightText: val.copyrightText || defaultFooter.copyrightText,
+            copyrightText: val.copyrightText || "Aruba Royalty Stamp. All rights reserved.",
           });
         }
       } catch (err) {
