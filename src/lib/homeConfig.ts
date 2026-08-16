@@ -178,7 +178,7 @@ export const homeConfig: HomeConfig = {
           price: "AWG 125",
           period: "/mo",
         description: "For multi-location chains and franchises.",
-          features: ["Everything in Pro", "Unlimited Loyalty Programs", "10 Staff Accounts", "Advanced Analytics", "Dedicated Account Manager"],
+          features: ["Everything in Pro", "Up to 750 customers", "Unlimited Loyalty Programs", "10 Staff Accounts", "Advanced Analytics", "Dedicated Account Manager"],
           ctaText: "Contact Us",
         ctaHref: "https://wa.me/2975678222"
       }
