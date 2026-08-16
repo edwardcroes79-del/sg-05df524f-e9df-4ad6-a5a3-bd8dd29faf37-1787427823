@@ -223,7 +223,8 @@ export const homeConfig: HomeConfig = {
         links: [
           { label: "Features", href: "#features" },
           { label: "Pricing", href: "#pricing" },
-          { label: "Business Login", href: "/auth/login" }
+          { label: "Business Login", href: "/auth/login" },
+          { label: "Members Login", href: "/auth/customer" }
         ]
       },
       {
