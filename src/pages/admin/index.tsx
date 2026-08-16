@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [globalStats, setGlobalStats] = useState({
     totalBusinesses: 0,
     activeSubscribers: 0,
@@ -58,6 +60,10 @@ export default function AdminDashboard() {
   const [reviewingPayment, setReviewingPayment] = useState<any | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [processing, setProcessing] = useState(false);
+
+  // Customer deletion states
+  const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     checkAdmin();
@@ -127,14 +133,21 @@ export default function AdminDashboard() {
         .order("created_at", { ascending: false });
       setPayments(paymentsData || []);
 
-      // 4. Fetch Platform Stats
+      // 4. Fetch Customers
+      const { data: customersData } = await supabase
+        .from("customers")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setCustomers(customersData || []);
+
+      // 5. Fetch Platform Stats
       const [
         { count: totalBiz },
         { count: totalCust },
         { count: totalStamps }
       ] = await Promise.all([
         supabase.from("businesses").select("*", { count: "exact", head: true }),
-        supabase.from("customer_loyalty_cards").select("*", { count: "exact", head: true }),
+        supabase.from("customers").select("*", { count: "exact", head: true }),
         supabase.from("stamp_transactions").select("*", { count: "exact", head: true })
       ]);
 
@@ -345,6 +358,84 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
+
+    try {
+      setDeleting(true);
+
+      // Verify the current user is Super Admin
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_super_admin, role")
+        .eq("id", user.id)
+        .single();
+
+      if (!profile?.is_super_admin && profile?.role !== 'super_admin') {
+        throw new Error("Permission denied. Only Super Admins can delete customers.");
+      }
+
+      // 1. Delete associated stamp transactions
+      await supabase
+        .from("stamp_transactions")
+        .delete()
+        .eq("customer_id", customerToDelete.id);
+
+      // 2. Delete associated rewards (cascade fkey is present but let's be safe)
+      await supabase
+        .from("rewards")
+        .delete()
+        .eq("customer_id", customerToDelete.id);
+
+      // 3. Delete loyalty cards (cascade fkey is present but let's be safe)
+      await supabase
+        .from("customer_loyalty_cards")
+        .delete()
+        .eq("customer_id", customerToDelete.id);
+
+      // 4. Delete payment transactions
+      await supabase
+        .from("payment_transactions")
+        .delete()
+        .eq("customer_id", customerToDelete.id);
+
+      // 5. Delete customer record
+      const { error: customerError } = await supabase
+        .from("customers")
+        .delete()
+        .eq("id", customerToDelete.id);
+
+      if (customerError) throw customerError;
+
+      // 6. Delete user profile (which clears user presence)
+      if (customerToDelete.user_id) {
+        await supabase
+          .from("profiles")
+          .delete()
+          .eq("id", customerToDelete.user_id);
+      }
+
+      toast({
+        title: "Customer Deleted",
+        description: `Successfully removed ${customerToDelete.name} and all related loyalty data from the platform.`,
+      });
+
+      setCustomerToDelete(null);
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Deletion Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -423,6 +514,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="merchants">Merchants & Subscriptions</TabsTrigger>
             <TabsTrigger value="payments">Payment Review</TabsTrigger>
             <TabsTrigger value="plans">Subscription Plans & Limits</TabsTrigger>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
           </TabsList>
 
           <TabsContent value="merchants">
@@ -761,8 +853,106 @@ export default function AdminDashboard() {
               )}
             </div>
           </TabsContent>
+
+          <TabsContent value="customers">
+            <Card>
+              <CardHeader>
+                <CardTitle>Platform Customers & Users</CardTitle>
+                <CardDescription>Manage, deactivate, and permanently delete registered test customer accounts and profiles.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Registered At</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {customers.map((cust) => (
+                      <TableRow key={cust.id}>
+                        <TableCell className="font-semibold">{cust.name}</TableCell>
+                        <TableCell className="font-mono text-xs">{cust.email || "No Email"}</TableCell>
+                        <TableCell className="text-xs">{cust.phone || "No Phone"}</TableCell>
+                        <TableCell className="text-xs">{new Date(cust.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => setCustomerToDelete(cust)}
+                            className="gap-1 text-xs"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete User
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {customers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                          No customer profiles found on the platform.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {customerToDelete && (
+        <Dialog open={!!customerToDelete} onOpenChange={(open) => !open && setCustomerToDelete(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-destructive flex items-center gap-2">
+                <Trash2 className="h-5 w-5" /> Delete this customer?
+              </DialogTitle>
+              <DialogDescription className="space-y-3 pt-2">
+                <p>
+                  You are about to permanently delete the test customer <strong className="text-foreground">{customerToDelete.name}</strong> 
+                  {customerToDelete.email ? ` (${customerToDelete.email})` : ""}.
+                </p>
+                <p className="text-xs font-semibold text-destructive uppercase tracking-wider bg-destructive/10 p-2.5 rounded border border-destructive/20">
+                  ⚠️ This action is irreversible. All stamp logs, active loyalty cards, and rewards earned by this customer will be permanently deleted from the database.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCustomerToDelete(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteCustomer}
+                disabled={deleting}
+                className="gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" /> Confirm Delete
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
