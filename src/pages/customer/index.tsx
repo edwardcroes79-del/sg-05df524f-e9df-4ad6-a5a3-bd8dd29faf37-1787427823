@@ -29,29 +29,44 @@ export default function CustomerDashboardPage() {
     const channel = supabase.channel(`customer_dashboard_${customer.id}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customer.id}` },
-        () => {
-          fetchDashboardSummary();
+        { event: 'UPDATE', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customer.id}` },
+        (payload) => {
+          console.log("🔥 DASHBOARD REALTIME EVENT: customer_loyalty_cards UPDATE", payload);
+          // Calculate difference if old record is available to securely update stats, otherwise just refetch
+          if (payload.old && payload.new && payload.new.current_stamps !== undefined) {
+             const diff = (payload.new.current_stamps || 0) - (payload.old.current_stamps || 0);
+             if (diff > 0) {
+               setGlobalStats(prev => ({ ...prev, totalStamps: prev.totalStamps + diff }));
+             } else {
+               fetchDashboardSummary(); // Fallback to full fetch if it resets
+             }
+          } else {
+             fetchDashboardSummary();
+          }
         }
       )
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'rewards', filter: `customer_id=eq.${customer.id}` },
         (payload) => {
+          console.log("🔥 DASHBOARD REALTIME EVENT: rewards INSERT", payload);
           toast({
             title: "🎉 Reward Unlocked!",
             description: "You've earned a new reward. Check your rewards page!",
-            duration: 5000,
+            duration: 7000,
+            className: "bg-green-500 text-white border-none shadow-lg",
           });
-          fetchDashboardSummary();
+          setGlobalStats(prev => ({ ...prev, availableRewards: prev.availableRewards + 1 }));
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        console.log("Dashboard Realtime Subscription Status:", status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [customer?.id]);
+  }, [customer?.id, toast]);
 
   const fetchDashboardSummary = async () => {
     try {

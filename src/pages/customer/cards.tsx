@@ -25,18 +25,21 @@ export default function MyCardsPage() {
     const channel = supabase.channel(`customer_cards_${customerId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customerId}` },
+        { event: 'UPDATE', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customerId}` },
         (payload) => {
-          console.log("🔥 REALTIME EVENT: customer_loyalty_cards", payload);
-          fetchCards();
+          console.log("🔥 REALTIME EVENT: customer_loyalty_cards UPDATE", payload);
+          // Instantly update the UI using the payload instead of fetching from the database
+          if (payload.new && payload.new.id) {
+             setCards(prev => prev.map(card => card.id === payload.new.id ? { ...card, ...payload.new } : card));
+          }
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'loyalty_programs' },
+        { event: 'INSERT', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customerId}` },
         (payload) => {
-          console.log("🔥 REALTIME EVENT: loyalty_programs", payload);
-          fetchCards();
+          console.log("🔥 REALTIME EVENT: customer_loyalty_cards INSERT", payload);
+          fetchCards(); // Fetch to get the joined relations (business, program)
         }
       )
       .on(
@@ -47,9 +50,10 @@ export default function MyCardsPage() {
           toast({
             title: "🎉 Reward Unlocked!",
             description: "You have completed a stamp card and earned a reward!",
-            duration: 5000,
-            className: "bg-green-500 text-white border-none",
+            duration: 7000,
+            className: "bg-green-500 text-white border-none shadow-lg",
           });
+          // Update the cards to reflect the reset or status change
           fetchCards();
         }
       )
@@ -62,7 +66,7 @@ export default function MyCardsPage() {
       console.log("Cleaning up Realtime subscription...");
       supabase.removeChannel(channel);
     };
-  }, [customerId]);
+  }, [customerId, toast]);
 
   const fetchCards = async () => {
     try {
