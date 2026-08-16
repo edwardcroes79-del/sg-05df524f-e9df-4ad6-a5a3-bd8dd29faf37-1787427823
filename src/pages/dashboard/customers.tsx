@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,9 +20,12 @@ import {
   X, 
   Loader2, 
   Sparkles,
-  ChevronRight
+  CheckCircle,
+  Gift,
+  Clock,
+  AlertCircle
 } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface CustomerProfile {
   id: string;
@@ -62,6 +65,10 @@ export default function CustomersDashboard() {
   const [customerTransactions, setCustomerTransactions] = useState<any[]>([]);
   const [customerRewards, setCustomerRewards] = useState<any[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // Redemption Action State
+  const [rewardToRedeem, setRewardToRedeem] = useState<any | null>(null);
+  const [redeemingId, setRedeemingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBusinessAndCustomers();
@@ -135,8 +142,7 @@ export default function CustomersDashboard() {
     }
   };
 
-  const handleViewCustomerDetails = async (card: CustomerLoyaltyCard) => {
-    setSelectedCard(card);
+  const loadHistoryAndRewards = async (card: CustomerLoyaltyCard) => {
     setLoadingDetails(true);
     try {
       // 1. Fetch latest transactions for this specific card
@@ -167,6 +173,63 @@ export default function CustomersDashboard() {
       });
     } finally {
       setLoadingDetails(false);
+    }
+  };
+
+  const handleViewCustomerDetails = async (card: CustomerLoyaltyCard) => {
+    setSelectedCard(card);
+    await loadHistoryAndRewards(card);
+  };
+
+  // Secure One-Click Redemption handler
+  const handleRedeemReward = async (reward: any) => {
+    if (!selectedCard || redeemingId) return;
+
+    try {
+      setRedeemingId(reward.id);
+
+      // Double redemption protection check
+      const { data: checkReward, error: checkError } = await supabase
+        .from("rewards")
+        .select("status")
+        .eq("id", reward.id)
+        .single();
+
+      if (checkError) throw checkError;
+
+      if (checkReward?.status === "redeemed") {
+        throw new Error("This reward has already been redeemed.");
+      }
+
+      // Update the real database record
+      const { error: updateError } = await supabase
+        .from("rewards")
+        .update({
+          status: "redeemed",
+          redeemed_at: new Date().toISOString(),
+        })
+        .eq("id", reward.id);
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "🎉 Award Redeemed!",
+        description: `Successfully redeemed "${reward.reward_title}" for ${selectedCard.customer.name}.`,
+        variant: "default",
+      });
+
+      // Refresh both modal details and the parent list metrics in the background (realtime-aligned)
+      await loadHistoryAndRewards(selectedCard);
+      await fetchBusinessAndCustomers();
+      setRewardToRedeem(null);
+    } catch (err: any) {
+      toast({
+        title: "Redemption Failed",
+        description: err.message || "Failed to complete redemption.",
+        variant: "destructive",
+      });
+    } finally {
+      setRedeemingId(null);
     }
   };
 
@@ -314,22 +377,22 @@ export default function CustomersDashboard() {
           </Card>
         )}
 
-        {/* Customer Detail Dialog */}
+        {/* Customer Detail Dialog with Dynamic Rewards Redemption List */}
         {selectedCard && (
           <Dialog open={!!selectedCard} onOpenChange={(open) => !open && setSelectedCard(null)}>
-            <DialogContent className="max-w-2xl bg-card border-border">
+            <DialogContent className="max-w-3xl bg-card border-border overflow-y-auto max-h-[90vh]">
               <DialogHeader>
                 <DialogTitle className="font-heading text-2xl font-bold flex items-center gap-2">
                   <Fingerprint className="text-primary w-6 h-6" /> Customer Overview
                 </DialogTitle>
                 <DialogDescription>
-                  Detailed history and active rewards for this relationship.
+                  Detailed overview, activity log, and one-click rewards redemption.
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="grid md:grid-cols-2 gap-5 py-4">
+              <div className="grid md:grid-cols-2 gap-6 py-4">
                 {/* Profile Card Info */}
-                <div className="space-y-4 border-r border-border pr-4">
+                <div className="space-y-4 md:border-r md:border-border md:pr-6">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-full bg-primary/20 text-primary flex items-center justify-center font-heading font-bold text-xl">
                       {selectedCard.customer.name.charAt(0).toUpperCase()}
@@ -355,7 +418,7 @@ export default function CustomersDashboard() {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-muted/40 rounded-lg border border-border space-y-1">
+                  <div className="p-4 bg-muted/40 rounded-lg border border-border space-y-2">
                     <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Active Program State</p>
                     <p className="font-bold text-sm text-foreground">{selectedCard.loyalty_programs?.name}</p>
                     <div className="flex justify-between items-center text-xs mt-2 pt-1 border-t">
@@ -371,12 +434,47 @@ export default function CustomersDashboard() {
                       <span className="font-medium text-emerald-600">{selectedCard.rewards_earned} Earned</span>
                     </div>
                   </div>
+
+                  {/* Stamp Transactions Section */}
+                  <div className="space-y-3">
+                    <h4 className="font-heading font-semibold text-sm text-foreground flex items-center gap-1.5 border-b pb-1">
+                      <Clock className="w-4 h-4 text-primary" /> Stamp Activity Log
+                    </h4>
+
+                    {loadingDetails ? (
+                      <div className="flex items-center justify-center py-6">
+                        <Loader2 className="animate-spin w-5 h-5 text-primary" />
+                      </div>
+                    ) : (
+                      <div className="overflow-y-auto space-y-2 max-h-[140px] pr-1">
+                        {customerTransactions.length === 0 ? (
+                          <p className="text-center text-xs text-muted-foreground py-6">No stamp transactions found yet.</p>
+                        ) : (
+                          customerTransactions.map((tx) => (
+                            <div key={tx.id} className="p-2 bg-muted/20 hover:bg-muted/40 transition-colors rounded border flex justify-between items-center text-xs">
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-semibold text-foreground">
+                                  {tx.stamp_number > 0 ? `+${tx.stamp_number} Stamps` : `${tx.stamp_number} Stamps`}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  Method: {tx.verification_method || "Digital Code"}
+                                </span>
+                              </div>
+                              <div className="text-right text-[10px] text-muted-foreground">
+                                {new Date(tx.created_at).toLocaleDateString()}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* History Tabs */}
-                <div className="flex flex-col min-h-[300px] overflow-hidden">
-                  <h4 className="font-heading font-semibold text-sm text-foreground flex items-center gap-1.5 mb-3">
-                    <Sparkles className="w-4 h-4 text-primary animate-pulse" /> Activity &amp; Stamp Log
+                {/* Dynamic Customer Rewards List (One-Click Redemption panel) */}
+                <div className="flex flex-col min-h-[300px] space-y-4">
+                  <h4 className="font-heading font-semibold text-sm text-foreground flex items-center gap-1.5 border-b pb-1">
+                    <Gift className="w-4 h-4 text-primary" /> Customer Earned Rewards
                   </h4>
 
                   {loadingDetails ? (
@@ -384,43 +482,152 @@ export default function CustomersDashboard() {
                       <Loader2 className="animate-spin w-6 h-6 text-primary" />
                     </div>
                   ) : (
-                    <div className="flex-1 overflow-y-auto space-y-2 max-h-[250px] pr-1">
-                      {customerTransactions.length === 0 ? (
-                        <p className="text-center text-xs text-muted-foreground py-12">No stamp transactions found yet.</p>
+                    <div className="flex-1 overflow-y-auto space-y-3 max-h-[320px] pr-1">
+                      {customerRewards.length === 0 ? (
+                        <div className="text-center text-sm text-muted-foreground py-16 flex flex-col items-center justify-center space-y-2">
+                          <Gift className="w-8 h-8 text-muted/50" />
+                          <p>This customer has not earned any rewards yet.</p>
+                        </div>
                       ) : (
-                        customerTransactions.map((tx) => (
-                          <div key={tx.id} className="p-2.5 bg-muted/20 hover:bg-muted/40 transition-colors rounded border flex justify-between items-center text-xs">
-                            <div className="flex flex-col min-w-0">
-                              <span className="font-semibold text-foreground">
-                                {tx.stamp_number > 0 ? `+${tx.stamp_number} Stamps` : `${tx.stamp_number} Stamps`}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground">
-                                Method: {tx.verification_method || "Digital Code"}
-                              </span>
+                        customerRewards.map((reward) => (
+                          <div 
+                            key={reward.id} 
+                            className={`p-4 rounded-xl border transition-all ${
+                              reward.status === "available" 
+                                ? "bg-primary/5 border-primary/20 shadow-sm" 
+                                : "bg-muted/30 border-border"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-3 mb-3">
+                              <div className="flex gap-2.5">
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center mt-0.5 ${
+                                  reward.status === "available" 
+                                    ? "bg-primary/10 text-primary" 
+                                    : "bg-muted text-muted-foreground"
+                                }`}>
+                                  <Gift className="w-4 h-4" />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-sm text-foreground">
+                                    {reward.reward_title}
+                                  </span>
+                                  <span className="font-mono text-xs text-muted-foreground mt-0.5">
+                                    Code: <strong className="text-foreground tracking-wider">{reward.reward_code}</strong>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <Badge 
+                                variant={reward.status === "available" ? "default" : "secondary"}
+                                className="font-medium text-[10px] tracking-wide"
+                              >
+                                {reward.status === "available" ? "AVAILABLE" : "REDEEMED"}
+                              </Badge>
                             </div>
-                            <div className="text-right text-[10px] text-muted-foreground">
-                              {new Date(tx.created_at).toLocaleDateString()}
-                            </div>
+
+                            {reward.status === "available" ? (
+                              <Button
+                                className="w-full mt-1 bg-primary text-primary-foreground hover:bg-primary/90 font-bold py-2.5 rounded-lg flex items-center justify-center gap-1.5 shadow-sm text-xs"
+                                onClick={() => setRewardToRedeem(reward)}
+                                disabled={redeemingId !== null}
+                              >
+                                {redeemingId === reward.id ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" /> Redeeming...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-4 h-4" /> REDEEM AWARD
+                                  </>
+                                )}
+                              </Button>
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2 pt-2 border-t border-muted">
+                                <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span>
+                                  Redeemed on {new Date(reward.redeemed_at).toLocaleDateString()} at {new Date(reward.redeemed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         ))
                       )}
                     </div>
                   )}
 
-                  {/* Rewards summary */}
-                  <div className="mt-4 pt-3 border-t border-border flex justify-between items-center">
-                    <span className="text-xs text-muted-foreground">Rewards History:</span>
-                    <div className="flex gap-1.5">
-                      <Badge variant="outline" className="text-[10px] py-0 px-2 bg-emerald-50 text-emerald-700 border-emerald-200">
+                  {/* Summary Footer */}
+                  <div className="pt-3 border-t border-border flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground">Quick Status:</span>
+                    <div className="flex gap-1.5 font-semibold">
+                      <span className="text-primary">
                         {customerRewards.filter(r => r.status === "available").length} Available
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px] py-0 px-2 bg-muted text-muted-foreground">
+                      </span>
+                      <span className="text-muted-foreground">|</span>
+                      <span>
                         {customerRewards.filter(r => r.status === "redeemed").length} Redeemed
-                      </Badge>
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Lightweight Confirmation Dialog for Redemption */}
+        {rewardToRedeem && selectedCard && (
+          <Dialog open={!!rewardToRedeem} onOpenChange={(open) => !open && setRewardToRedeem(null)}>
+            <DialogContent className="sm:max-w-md bg-card border-border">
+              <DialogHeader>
+                <DialogTitle className="text-foreground flex items-center gap-2 font-heading font-bold text-xl">
+                  <AlertCircle className="text-primary h-5 w-5" /> Redeem this award?
+                </DialogTitle>
+                <DialogDescription className="space-y-3 pt-2">
+                  <div className="p-3.5 bg-muted/40 rounded-lg border border-border space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-xs">Customer:</span>
+                      <strong className="text-foreground">{selectedCard.customer.name}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-xs">Reward:</span>
+                      <strong className="text-foreground">{rewardToRedeem.reward_title}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground text-xs">Voucher Code:</span>
+                      <span className="font-mono text-xs text-primary font-bold tracking-wider">{rewardToRedeem.reward_code}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">
+                    This will mark the customer's voucher code as redeemed in the platform. It cannot be used again.
+                  </p>
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex gap-2 justify-end pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRewardToRedeem(null)}
+                  disabled={redeemingId !== null}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => handleRedeemReward(rewardToRedeem)}
+                  disabled={redeemingId !== null}
+                  className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 font-bold"
+                >
+                  {redeemingId === rewardToRedeem.id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Redeeming...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4" /> Confirm Redeem
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
