@@ -14,10 +14,10 @@ export interface AuthError {
 }
 
 // Dynamic URL Helper
-const getURL = () => {
+export const getURL = () => {
   let url = process?.env?.NEXT_PUBLIC_VERCEL_URL ?? 
            process?.env?.NEXT_PUBLIC_SITE_URL ?? 
-           'http://localhost:3000'
+           (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000')
   
   // Handle undefined or null url
   if (!url) {
