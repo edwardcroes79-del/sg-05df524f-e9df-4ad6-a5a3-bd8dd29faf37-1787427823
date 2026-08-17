@@ -6,14 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { getURL } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isConfirmationSent, setIsConfirmationSent] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
   const router = useRouter();
   const { returnUrl } = router.query;
   const { toast } = useToast();
@@ -26,6 +29,9 @@ export default function Register() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${getURL()}auth/login?confirmed=true`,
+        }
       });
 
       if (error) {
@@ -35,12 +41,11 @@ export default function Register() {
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "Registration Successful",
-          description: returnUrl ? "Welcome! You can now join the loyalty program." : "Welcome! Let's get your business set up.",
-        });
-        
         if (data.session) {
+          toast({
+            title: "Registration Successful",
+            description: returnUrl ? "Welcome! You can now join the loyalty program." : "Welcome! Let's get your business set up.",
+          });
           // If returnUrl is present, it's a customer registering from a QR code
           if (returnUrl) {
             // Update profile role to customer
@@ -51,10 +56,9 @@ export default function Register() {
             router.push("/onboarding");
           }
         } else {
-          toast({
-            title: "Check your email",
-            description: "We've sent you a confirmation link to verify your account.",
-          });
+          // Email confirmation is required
+          setRegisteredEmail(email);
+          setIsConfirmationSent(true);
         }
       }
     } catch (err: any) {
@@ -67,6 +71,58 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  if (isConfirmationSent) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
+        <SEO title="Check Your Email - Aruba Royalty Stamp" description="Confirm your email to activate your account." />
+        <Card className="w-full max-w-md border-border shadow-sm text-center pt-6">
+          <CardHeader className="space-y-4 pb-2">
+            <div className="mx-auto w-16 h-16 bg-primary/10 text-primary flex items-center justify-center rounded-full mb-2">
+              <Mail className="w-8 h-8" />
+            </div>
+            <CardTitle className="text-2xl font-heading">Check Your Email</CardTitle>
+            <CardDescription className="text-base">
+              We've sent a confirmation email to:
+              <br />
+              <strong className="text-foreground mt-1 block">{registeredEmail}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 pb-6 space-y-6">
+            <p className="text-sm text-muted-foreground">
+              Please check your inbox (and spam folder) and click the confirmation link to activate your account.
+            </p>
+            
+            <div className="space-y-3 pt-4">
+              <Button 
+                variant="outline" 
+                className="w-full font-semibold"
+                onClick={async () => {
+                  const { error } = await supabase.auth.resend({
+                    type: 'signup',
+                    email: registeredEmail,
+                    options: {
+                      emailRedirectTo: `${getURL()}auth/login?confirmed=true`
+                    }
+                  });
+                  if (error) {
+                    toast({ title: "Failed to resend", description: error.message, variant: "destructive" });
+                  } else {
+                    toast({ title: "Email resent", description: "Please check your inbox." });
+                  }
+                }}
+              >
+                Resend Confirmation Email
+              </Button>
+              <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground" asChild>
+                <Link href="/auth/login">Return to Login</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
