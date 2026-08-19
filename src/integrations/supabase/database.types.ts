@@ -718,6 +718,7 @@ export type Database = {
           created_at: string | null
           features: string[]
           id: string
+          includes_premium_templates: boolean | null
           is_active: boolean | null
           is_trial: boolean | null
           max_customers: number
@@ -731,6 +732,7 @@ export type Database = {
           created_at?: string | null
           features?: string[]
           id: string
+          includes_premium_templates?: boolean | null
           is_active?: boolean | null
           is_trial?: boolean | null
           max_customers?: number
@@ -744,6 +746,7 @@ export type Database = {
           created_at?: string | null
           features?: string[]
           id?: string
+          includes_premium_templates?: boolean | null
           is_active?: boolean | null
           is_trial?: boolean | null
           max_customers?: number

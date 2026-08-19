@@ -60,6 +60,7 @@ export default function AdminDashboard() {
     is_active: true,
     is_trial: false,
     trial_days: 14,
+    includes_premium_templates: false,
   });
 
   // Payment review states
@@ -331,6 +332,7 @@ export default function AdminDashboard() {
       is_active: plan.is_active ?? true,
       is_trial: plan.is_trial || false,
       trial_days: plan.trial_days || 14,
+      includes_premium_templates: plan.includes_premium_templates || false,
     });
   };
 
@@ -356,6 +358,7 @@ export default function AdminDashboard() {
           is_active: planFormData.is_active,
           is_trial: planFormData.is_trial,
           trial_days: planFormData.trial_days,
+          includes_premium_templates: planFormData.includes_premium_templates,
         })
         .eq("id", editingPlan.id);
 
@@ -1054,16 +1057,23 @@ export default function AdminDashboard() {
                           Max Customers: {plan.max_customers === 999999 ? "Unlimited" : plan.max_customers} | 
                           Max Staff: {plan.max_staff || 1}
                         </p>
-                        {plan.is_trial && (
-                          <Badge variant="secondary" className="mt-2 text-xs bg-indigo-100 text-indigo-700">
-                            Free Trial ({plan.trial_days} days)
-                          </Badge>
-                        )}
-                        {!plan.is_active && (
-                          <Badge variant="destructive" className="mt-2 text-xs ml-2">
-                            Disabled
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2 mt-2">
+                          {plan.is_trial && (
+                            <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">
+                              Free Trial ({plan.trial_days} days)
+                            </Badge>
+                          )}
+                          {!plan.is_active && (
+                            <Badge variant="destructive" className="text-xs">
+                              Disabled
+                            </Badge>
+                          )}
+                          {plan.includes_premium_templates && (
+                            <Badge variant="default" className="text-xs bg-amber-500 hover:bg-amber-600">
+                              Premium Templates
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => handleEditPlanClick(plan)}>
                         <Edit2 className="h-4 w-4 mr-1" /> Edit Limits
@@ -1117,6 +1127,14 @@ export default function AdminDashboard() {
                             onChange={(e) => setPlanFormData({...planFormData, is_trial: e.target.checked})}
                           />
                           Is Free Trial
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
+                          <input 
+                            type="checkbox" 
+                            checked={planFormData.includes_premium_templates}
+                            onChange={(e) => setPlanFormData({...planFormData, includes_premium_templates: e.target.checked})}
+                          />
+                          Premium Templates
                         </label>
                       </div>
 
