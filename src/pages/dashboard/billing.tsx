@@ -30,11 +30,6 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
   const [bankAccount, setBankAccount] = useState<any>(null);
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
-  const [uploading, setUploading] = useState(false);
-  const [paymentProof, setPaymentProof] = useState<File | null>(null);
-  const [paymentReference, setPaymentReference] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -93,76 +88,32 @@ export default function BillingPage() {
     }
   };
 
-  const handleUpgradeClick = (plan: any) => {
+  const handlePlanChange = async (plan: any) => {
     if (!plan || plan.id === business?.subscription_plan) return;
-    setSelectedPlan(plan);
-    const reference = `PAY-${business.id.substring(0, 8).toUpperCase()}-${Date.now()}`;
-    setPaymentReference(reference);
-    setShowPaymentDialog(true);
-  };
-
-  const handlePaymentSubmit = async () => {
-    if (!paymentProof || !selectedPlan || !business) {
-      toast({
-        title: "Missing Information",
-        description: "Please upload your payment proof before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    
     try {
-      setUploading(true);
+      setLoading(true);
+      
+      const { error } = await supabase
+        .from("businesses")
+        .update({ subscription_plan: plan.id })
+        .eq("id", business.id);
 
-      // Upload proof to Supabase Storage
-      const fileExt = paymentProof.name.split(".").pop();
-      const fileName = `${business.id}/${Date.now()}.${fileExt}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("payment-proofs")
-        .upload(fileName, paymentProof);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("payment-proofs")
-        .getPublicUrl(fileName);
-
-      // Create payment record
-      const { error: paymentError } = await supabase
-        .from("subscription_payments")
-        .insert({
-          business_id: business.id,
-          plan_id: selectedPlan.id,
-          provider: "bank_transfer",
-          amount: selectedPlan.price_awg,
-          currency: "AWG",
-          status: "pending",
-          payment_reference: paymentReference,
-          payment_proof_url: publicUrl,
-          metadata: {
-            plan_name: selectedPlan.name,
-            submitted_at: new Date().toISOString()
-          }
-        });
-
-      if (paymentError) throw paymentError;
+      if (error) throw error;
 
       toast({
-        title: "Payment Submitted",
-        description: "Your payment proof has been submitted for review. We'll notify you once approved.",
+        title: "Subscription Updated",
+        description: `Your plan has been changed to ${plan.name}.`,
       });
 
-      setShowPaymentDialog(false);
-      setPaymentProof(null);
-      fetchData();
+      await fetchData();
     } catch (error: any) {
       toast({
-        title: "Upload Failed",
+        title: "Update Failed",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setUploading(false);
+      setLoading(false);
     }
   };
 
@@ -372,9 +323,14 @@ export default function BillingPage() {
                       }`}
                       variant={isCurrent ? "outline" : "default"}
                       disabled={isCurrent}
-                      onClick={() => handleUpgradeClick(plan)}
+                      onClick={() => handlePlanChange(plan)}
                     >
-                      {isCurrent ? "Active Plan" : isTrial ? "Start Free Trial" : "Upgrade Plan"}
+                      {isCurrent 
+                        ? "Active Plan" 
+                        : (plan.price_awg < (currentPlan?.price_awg || 0)) 
+                        ? "Downgrade Plan" 
+                        : "Upgrade Plan"
+                      }
                     </Button>
                   </CardFooter>
                 </Card>
@@ -434,92 +390,6 @@ export default function BillingPage() {
           </div>
         )}
       </div>
-
-      {/* Payment Dialog */}
-      <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Complete Your Payment</DialogTitle>
-            <DialogDescription>
-              Transfer the amount below to our bank account, then upload your payment proof for verification.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6">
-            {/* Bank Details */}
-            {bankAccount && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Bank Transfer Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Bank Name</p>
-                    <p className="font-semibold">{bankAccount.bank_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Account Holder</p>
-                    <p className="font-semibold">{bankAccount.account_holder}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Account Number</p>
-                    <p className="font-mono font-bold text-lg">{bankAccount.account_number}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Amount</p>
-                    <p className="font-bold text-xl text-primary">
-                      AWG {selectedPlan?.price_awg.toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Payment Reference</p>
-                    <p className="font-mono font-bold">{paymentReference}</p>
-                  </div>
-                  {bankAccount.instructions && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-muted-foreground">{bankAccount.instructions}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Upload Proof */}
-            <div className="space-y-2">
-              <Label htmlFor="payment-proof">Upload Payment Receipt</Label>
-              <Input
-                id="payment-proof"
-                type="file"
-                accept="image/*,.pdf"
-                onChange={(e) => setPaymentProof(e.target.files?.[0] || null)}
-                disabled={uploading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Accepted formats: JPG, PNG, PDF (Max 5MB)
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPaymentDialog(false)} disabled={uploading}>
-              Cancel
-            </Button>
-            <Button onClick={handlePaymentSubmit} disabled={!paymentProof || uploading} className="gap-2">
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4" />
-                  Submit Payment
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 }
