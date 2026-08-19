@@ -14,6 +14,14 @@ import { ArrowLeft, Save, Trash2, QrCode, Upload, RefreshCw, Sparkles, Layout, P
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -84,6 +92,11 @@ export default function EditProgram() {
   const [uploading, setUploading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<"All" | "Industry" | "Style" | "Aruba">("All");
   
+  const [subscriptionPlan, setSubscriptionPlan] = useState<string>("starter");
+  const [hasPremiumTemplates, setHasPremiumTemplates] = useState<boolean>(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState<boolean>(false);
+  const [lockedTemplateName, setLockedTemplateName] = useState<string>("");
+  
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -119,7 +132,8 @@ export default function EditProgram() {
         .select(`
           *,
           businesses (
-            business_name
+            business_name,
+            subscription_plan
           )
         `)
         .eq("id", id as string)
@@ -139,6 +153,17 @@ export default function EditProgram() {
 
       if (data.businesses) {
         setBusinessName(data.businesses.business_name || "Your Business");
+        const currentPlan = data.businesses.subscription_plan || "starter";
+        setSubscriptionPlan(currentPlan);
+        
+        // Fetch plan entitlements directly
+        const { data: planData } = await supabase
+          .from("subscription_plans")
+          .select("includes_premium_templates")
+          .eq("id", currentPlan)
+          .maybeSingle();
+          
+        setHasPremiumTemplates(planData?.includes_premium_templates || ["business", "enterprise"].includes(currentPlan));
       }
 
       setCustomization({
@@ -219,6 +244,13 @@ export default function EditProgram() {
   };
 
   const handleSelectTemplate = (preset: typeof TEMPLATE_PRESETS[0]) => {
+    const isPremium = !["classic", "modern", "minimal"].includes(preset.id);
+    if (isPremium && !hasPremiumTemplates) {
+      setLockedTemplateName(preset.name);
+      setShowUpgradeDialog(true);
+      return;
+    }
+
     setCustomization(prev => ({
       ...prev,
       template_id: preset.id,
@@ -449,14 +481,19 @@ export default function EditProgram() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
                           {filteredPresets.map((preset) => {
                             const isSelected = customization.template_id === preset.id;
+                            const isPremium = !["classic", "modern", "minimal"].includes(preset.id);
+                            const isLocked = isPremium && !hasPremiumTemplates;
+
                             return (
                               <button
                                 key={preset.id}
                                 type="button"
                                 onClick={() => handleSelectTemplate(preset)}
-                                className={`flex flex-col text-left rounded-xl border p-3 transition-all duration-200 ${
+                                className={`flex flex-col text-left rounded-xl border p-3 transition-all duration-200 relative ${
                                   isSelected
                                     ? "border-primary bg-primary/5 ring-2 ring-primary/40 shadow-sm"
+                                    : isLocked
+                                    ? "border-border bg-background/50 opacity-80 hover:bg-muted/10 hover:border-border"
                                     : "border-border bg-background hover:bg-muted/30 hover:border-muted-foreground/30"
                                 }`}
                               >
@@ -464,6 +501,7 @@ export default function EditProgram() {
                                   <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
                                     {preset.name}
                                     {isSelected && <Check className="w-3.5 h-3.5 text-primary" strokeWidth={3} />}
+                                    {isLocked && <span className="text-xs">🔒</span>}
                                   </span>
                                   <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">
                                     {preset.style}
@@ -472,6 +510,13 @@ export default function EditProgram() {
                                 <p className="text-[11px] text-muted-foreground flex-grow mt-0.5 leading-tight">
                                   {preset.desc}
                                 </p>
+                                {isPremium && (
+                                  <span className={`text-[8px] font-bold px-1 py-0.2 rounded w-max mt-2 ${
+                                    isLocked ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" : "bg-primary/10 text-primary"
+                                  }`}>
+                                    {isLocked ? "Upgrade to Unlock" : "Premium Unlocked"}
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
@@ -752,6 +797,29 @@ export default function EditProgram() {
 
         </div>
       </div>
+
+      <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl font-heading font-bold text-amber-600">
+              <Sparkles className="w-5 h-5" /> Premium Template
+            </DialogTitle>
+            <DialogDescription className="text-sm pt-2">
+              The <strong className="text-foreground">{lockedTemplateName}</strong> template is available with <strong>Business</strong> and <strong>Enterprise</strong> plans. Upgrade now to unlock all 39 design templates and custom branding rules.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+            <Button variant="outline" onClick={() => setShowUpgradeDialog(false)} className="w-full sm:w-auto">
+              Maybe Later
+            </Button>
+            <Link href="/dashboard/billing" className="w-full sm:w-auto">
+              <Button className="w-full bg-primary text-white hover:bg-primary/95 font-bold">
+                Upgrade Plan
+              </Button>
+            </Link>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

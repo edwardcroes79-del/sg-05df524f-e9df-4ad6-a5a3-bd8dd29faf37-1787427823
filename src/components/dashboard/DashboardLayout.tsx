@@ -173,12 +173,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       `}>
         <div className="p-6 flex items-center justify-between border-b border-border">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl">
+            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl shrink-0">
               {business?.business_name?.charAt(0) || "A"}
             </div>
-            <span className="font-heading font-semibold text-foreground truncate">
-              {business?.business_name}
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="font-heading font-semibold text-foreground truncate block">
+                {business?.business_name}
+              </span>
+              {business?.subscription_plan === 'business' && (
+                <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded w-max mt-0.5 tracking-wider uppercase">
+                  Pro Business
+                </span>
+              )}
+              {business?.subscription_plan === 'enterprise' && (
+                <span className="text-[9px] font-bold text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded w-max mt-0.5 tracking-wider uppercase border border-amber-500/20 font-serif">
+                  ★ Enterprise
+                </span>
+              )}
+            </div>
           </Link>
           <button className="lg:hidden" onClick={() => setIsMobileOpen(false)}>
             <X className="h-5 w-5 text-muted-foreground" />
