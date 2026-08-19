@@ -221,27 +221,64 @@ export default function BillingPage() {
 
         {/* Current Plan */}
         {currentPlan && (
-          <Card className="border-primary/20 bg-primary/5">
+          <Card className="border-primary/20 bg-primary/[0.02] shadow-sm relative overflow-hidden">
+            {currentPlan.id === 'business' && (
+              <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl">
+                Pro Member
+              </div>
+            )}
+            {currentPlan.id === 'enterprise' && (
+              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl font-serif">
+                ★ VIP Enterprise
+              </div>
+            )}
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Current Plan</CardTitle>
-                <Badge variant="default" className="gap-1">
-                  <Check className="h-3 w-3" /> Active
+                <CardTitle className="flex items-center gap-2 text-xl font-heading font-bold">
+                  Active Subscription Plan
+                  {currentPlan.id === 'business' && (
+                    <Badge className="bg-primary hover:bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Pro Business</Badge>
+                  )}
+                  {currentPlan.id === 'enterprise' && (
+                    <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider font-serif">★ Enterprise</Badge>
+                  )}
+                </CardTitle>
+                <Badge variant="default" className="gap-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold">
+                  <Check className="h-3.5 w-3.5" /> Activated
                 </Badge>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <h3 className="text-2xl font-heading font-bold">{currentPlan.name}</h3>
-                <p className="text-3xl font-heading font-bold text-primary">
+                <h3 className="text-3xl font-heading font-extrabold text-foreground">{currentPlan.name}</h3>
+                <p className="text-3xl font-heading font-extrabold text-primary">
                   AWG {currentPlan.price_awg.toFixed(2)}
-                  <span className="text-base text-muted-foreground font-normal">/month</span>
+                  <span className="text-sm text-muted-foreground font-normal"> / month plus Caribbean tax rules</span>
                 </p>
-                <div className="pt-4 space-y-1.5">
-                  <p className="text-sm text-muted-foreground">• Up to {currentPlan.max_loyalty_programs} loyalty programs</p>
-                  <p className="text-sm text-muted-foreground">• Up to {currentPlan.max_customers} customers</p>
+                <div className="pt-4 grid sm:grid-cols-2 gap-2 border-t border-dashed mt-4">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <span>Up to <strong>{currentPlan.max_loyalty_programs === 9999 ? "Unlimited" : currentPlan.max_loyalty_programs}</strong> active loyalty programs</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <span>Up to <strong>{currentPlan.max_customers === 999999 ? "Unlimited" : currentPlan.max_customers.toLocaleString()}</strong> active customer profiles</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <span>Up to <strong>{currentPlan.max_staff || 1}</strong> authorized merchant staff accounts</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Check className={`h-4 w-4 shrink-0 ${currentPlan.includes_premium_templates ? "text-emerald-500" : "text-muted-foreground/30"}`} />
+                    <span className={currentPlan.includes_premium_templates ? "font-semibold text-foreground" : "line-through opacity-50"}>
+                      39 HD Design Presets & Templates {currentPlan.includes_premium_templates ? "✨" : "🔒"}
+                    </span>
+                  </p>
                   {currentPlan.features?.map((feature: string, idx: number) => (
-                    <p key={idx} className="text-sm text-muted-foreground">• {feature}</p>
+                    <p key={idx} className="text-sm text-muted-foreground flex items-center gap-2 sm:col-span-2">
+                      <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span>{feature}</span>
+                    </p>
                   ))}
                 </div>
               </div>
@@ -251,36 +288,93 @@ export default function BillingPage() {
 
         {/* Available Plans */}
         <div>
-          <h2 className="text-xl font-heading font-semibold mb-4">Upgrade Your Plan</h2>
+          <h2 className="text-xl font-heading font-semibold mb-4">Choose Your Growth Plan</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {plans.map((plan) => {
               const isCurrent = plan.id === business?.subscription_plan;
+              const isBusiness = plan.id === "business";
+              const isEnterprise = plan.id === "enterprise";
+              const isTrial = plan.is_trial;
+
               return (
-                <Card key={plan.id} className={isCurrent ? "border-primary" : ""}>
-                  <CardHeader>
-                    <CardTitle>{plan.name}</CardTitle>
-                    <CardDescription>
-                      <span className="text-2xl font-heading font-bold text-foreground">
+                <Card 
+                  key={plan.id} 
+                  className={`flex flex-col relative transition-all duration-300 overflow-hidden ${
+                    isCurrent 
+                      ? "border-primary ring-2 ring-primary/20 shadow-md scale-[1.02] z-10 bg-primary/[0.01]" 
+                      : isEnterprise
+                      ? "border-amber-500/30 hover:border-amber-500 bg-amber-500/[0.01] shadow-sm hover:shadow-md"
+                      : isBusiness
+                      ? "border-primary/20 hover:border-primary bg-primary/[0.005] shadow-sm hover:shadow-md"
+                      : "border-border bg-background shadow-sm hover:border-muted-foreground/30"
+                  }`}
+                >
+                  {isBusiness && (
+                    <span className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase">
+                      Recommended
+                    </span>
+                  )}
+                  {isEnterprise && (
+                    <span className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase font-serif">
+                      ★ Exclusive
+                    </span>
+                  )}
+                  <CardHeader className="pb-4 pt-6">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xl font-heading font-extrabold">{plan.name}</CardTitle>
+                      {isBusiness && <Badge variant="outline" className="border-primary text-primary bg-primary/5 font-bold">PRO</Badge>}
+                      {isEnterprise && <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-500/5 font-serif font-bold">★ VIP</Badge>}
+                    </div>
+                    <CardDescription className="pt-2">
+                      <span className="text-3xl font-heading font-extrabold text-foreground">
                         AWG {plan.price_awg.toFixed(2)}
                       </span>
-                      <span className="text-muted-foreground">/month</span>
+                      <span className="text-muted-foreground text-sm"> / month</span>
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-sm">• {plan.max_loyalty_programs} loyalty programs</p>
-                    <p className="text-sm">• {plan.max_customers} customers</p>
+                  <CardContent className="space-y-3.5 flex-grow pb-6">
+                    <p className="text-sm flex items-center gap-2.5">
+                      <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span><strong>{plan.max_loyalty_programs === 9999 ? "Unlimited" : plan.max_loyalty_programs}</strong> Loyalty Programs</span>
+                    </p>
+                    <p className="text-sm flex items-center gap-2.5">
+                      <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span><strong>{plan.max_customers === 999999 ? "Unlimited" : plan.max_customers.toLocaleString()}</strong> Active Customers</span>
+                    </p>
+                    <p className="text-sm flex items-center gap-2.5">
+                      <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span><strong>{plan.max_staff || 1}</strong> Staff Accounts</span>
+                    </p>
+                    
+                    {/* Explicit visual Premium Templates checklist check */}
+                    <p className="text-sm flex items-center gap-2.5 pt-2 border-t border-dashed">
+                      <Check className={`h-4 w-4 shrink-0 ${plan.includes_premium_templates ? "text-emerald-500" : "text-muted-foreground/20"}`} />
+                      <span className={plan.includes_premium_templates ? "font-semibold text-foreground" : "text-muted-foreground/60 line-through"}>
+                        39 HD Design Presets {!plan.includes_premium_templates && "🔒"}
+                      </span>
+                    </p>
+                    
                     {plan.features?.map((feature: string, idx: number) => (
-                      <p key={idx} className="text-sm">• {feature}</p>
+                      <p key={idx} className="text-sm flex items-center gap-2.5">
+                        <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <span>{feature}</span>
+                      </p>
                     ))}
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="pt-4 border-t bg-muted/10">
                     <Button
-                      className="w-full"
+                      className={`w-full font-bold h-10 ${
+                        isCurrent 
+                          ? "bg-muted text-muted-foreground border-border hover:bg-muted cursor-default" 
+                          : isEnterprise
+                          ? "bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
+                          : "bg-primary text-white hover:bg-primary/95 shadow-sm"
+                      }`}
                       variant={isCurrent ? "outline" : "default"}
                       disabled={isCurrent}
                       onClick={() => handleUpgradeClick(plan)}
                     >
-                      {isCurrent ? "Current Plan" : "Upgrade"}
+                      {isCurrent ? "Active Plan" : isTrial ? "Start Free Trial" : "Upgrade Plan"}
                     </Button>
                   </CardFooter>
                 </Card>
