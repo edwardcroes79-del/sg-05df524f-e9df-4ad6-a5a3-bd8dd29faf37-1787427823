@@ -31,7 +31,7 @@ const TEMPLATE_PRESETS = [
     id: "classic",
     name: "Classic",
     desc: "Clean professional border design with a balanced and subtle ivory/white background.",
-    style: "Business / Retail",
+    style: "Standard",
     defaults: {
       bg_color: "#ffffff",
       text_color: "#1f2937",
@@ -43,9 +43,9 @@ const TEMPLATE_PRESETS = [
   },
   {
     id: "modern",
-    name: "Modern Cafe",
-    desc: "A stylized modern format emphasizing high-contrast top banners and floating indicators.",
-    style: "Cafe / Hospitality",
+    name: "Modern",
+    desc: "Clean contemporary design.",
+    style: "Contemporary",
     defaults: {
       bg_color: "#f3f4f6",
       text_color: "#111827",
@@ -56,24 +56,10 @@ const TEMPLATE_PRESETS = [
     }
   },
   {
-    id: "minimal",
-    name: "Minimalist Grid",
-    desc: "Ultra-clean aesthetic prioritizing high negative space and crisp typography boundaries.",
-    style: "Apparel / Lifestyle",
-    defaults: {
-      bg_color: "#f9fafb",
-      text_color: "#0f172a",
-      primary_color: "#2563eb",
-      secondary_color: "#f1f5f9",
-      stamp_icon: "ShoppingBag",
-      reward_icon: "Crown"
-    }
-  },
-  {
-    id: "elegant",
-    name: "Elegant Premium",
-    desc: "Classic boutique luxury utilizing sophisticated spacing, warm gold tints, and serif typography lines.",
-    style: "Spa / Luxury Boutique",
+    id: "luxury",
+    name: "Luxury",
+    desc: "Premium/elegant design.",
+    style: "Premium",
     defaults: {
       bg_color: "#fdfbf7",
       text_color: "#1c1917",
@@ -84,17 +70,17 @@ const TEMPLATE_PRESETS = [
     }
   },
   {
-    id: "bold",
-    name: "Bold Ink",
-    desc: "High-impact heavy strokes, high contrast borders, and vibrant outlines with powerful blocks.",
-    style: "Streetwear / Fitness",
+    id: "minimal",
+    name: "Minimal",
+    desc: "Simple, clean design with strong whitespace.",
+    style: "Minimalist",
     defaults: {
-      bg_color: "#111827",
-      text_color: "#ffffff",
-      primary_color: "#fbbf24",
-      secondary_color: "#374151",
-      stamp_icon: "Crown",
-      reward_icon: "Gift"
+      bg_color: "#ffffff",
+      text_color: "#0f172a",
+      primary_color: "#2563eb",
+      secondary_color: "#f1f5f9",
+      stamp_icon: "ShoppingBag",
+      reward_icon: "Crown"
     }
   }
 ];

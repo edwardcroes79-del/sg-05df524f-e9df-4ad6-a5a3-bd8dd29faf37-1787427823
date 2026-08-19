@@ -232,8 +232,8 @@ const MinimalTemplate = (props: LoyaltyCardProps) => {
   );
 };
 
-// 4. Elegant Template (Serif, borders, sophisticated)
-const ElegantTemplate = (props: LoyaltyCardProps) => {
+// 4. Luxury Template (Premium/elegant design)
+const LuxuryTemplate = (props: LoyaltyCardProps) => {
   const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
 
   return (
@@ -348,8 +348,8 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
       return <ModernTemplate {...props} />;
     case "minimal":
       return <MinimalTemplate {...props} />;
-    case "elegant":
-      return <ElegantTemplate {...props} />;
+    case "luxury":
+      return <LuxuryTemplate {...props} />;
     case "bold":
       return <BoldTemplate {...props} />;
     // Other templates (coffee shop, beauty, restaurant, etc.) can be easily added as cases here
