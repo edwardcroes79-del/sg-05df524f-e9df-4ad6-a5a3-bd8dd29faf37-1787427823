@@ -138,6 +138,62 @@ const TEMPLATE_PRESETS = [
       stamp_icon: "Dumbbell",
       reward_icon: "Crown"
     }
+  },
+  {
+    id: "cafe",
+    name: "Café",
+    desc: "Designed for coffee shops, bakeries, and lunch businesses. Highlights coffee stamp progress and reward information elegantly.",
+    style: "Coffee & Bakery",
+    defaults: {
+      bg_color: "#fdf8f5",
+      text_color: "#2d1500",
+      primary_color: "#854d0e",
+      secondary_color: "#fef08a",
+      stamp_icon: "Coffee",
+      reward_icon: "Coffee"
+    }
+  },
+  {
+    id: "retail",
+    name: "Retail",
+    desc: "Designed for retail stores, boutiques, and outlets. Premium luxury box outline styling.",
+    style: "Fashion & Retail",
+    defaults: {
+      bg_color: "#fafaf9",
+      text_color: "#1c1917",
+      primary_color: "#14b8a6",
+      secondary_color: "#ccfbf1",
+      stamp_icon: "ShoppingBag",
+      reward_icon: "Gift"
+    }
+  },
+  {
+    id: "dark",
+    name: "Dark Theme",
+    desc: "Creates a highly professional dark-themed experience with deep contrast and maximum visual stamp visibility.",
+    style: "Modern Tech",
+    defaults: {
+      bg_color: "#090d16",
+      text_color: "#f8fafc",
+      primary_color: "#f43f5e",
+      secondary_color: "#1e293b",
+      stamp_icon: "Star",
+      reward_icon: "Crown"
+    }
+  },
+  {
+    id: "colorful",
+    name: "Colorful",
+    desc: "A bright, energetic visual showcase where the business's custom branding colors fluidly define the layout.",
+    style: "Vibrant",
+    defaults: {
+      bg_color: "#f5f3ff",
+      text_color: "#4c1d95",
+      primary_color: "#8b5cf6",
+      secondary_color: "#ede9fe",
+      stamp_icon: "Heart",
+      reward_icon: "Gift"
+    }
   }
 ];
 
