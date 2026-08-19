@@ -55,6 +55,14 @@ export default function MyCardsPage() {
           fetchCards();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'loyalty_programs' },
+        (payload) => {
+          console.log("🔥 REALTIME EVENT: loyalty_programs UPDATE", payload);
+          fetchCards();
+        }
+      )
       .subscribe((status, err) => {
         console.log("Realtime Subscription Status:", status);
         if (err) console.error("Realtime Subscription Error:", err);
