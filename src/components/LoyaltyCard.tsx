@@ -49,7 +49,7 @@ const THEME_REGISTRY: Record<string, {
   minimal: { layout: "standard", bg: "bg-white", text: "text-slate-900", badgeText: "Minimal" },
   luxury: { layout: "luxury", bg: "bg-[#fdfbf7]", text: "text-[#1c1917]", fontClass: "font-serif", badgeText: "Premium" },
   bold: { layout: "modern", bg: "bg-slate-950", text: "text-white", badgeText: "Bold" },
-  restaurant: { layout: "artistic" as any || "pastel", bg: "bg-[#fffbf5]", text: "text-[#431407]", badgeText: "Dining" },
+  restaurant: { layout: "pastel", bg: "bg-[#fffbf5]", text: "text-[#431407]", badgeText: "Dining" },
   beauty: { layout: "luxury", bg: "bg-[#fff1f2]", text: "text-[#4c0519]", badgeText: "Salon" },
   automotive: { layout: "neon", bg: "bg-[#0f172a]", text: "text-[#f8fafc]", badgeText: "Garage" },
   fitness: { layout: "modern", bg: "bg-[#111827]", text: "text-white", badgeText: "Athletic" },
