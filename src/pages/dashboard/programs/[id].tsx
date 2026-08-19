@@ -25,176 +25,52 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// Design Template Definitions with distinct styled default variables
+// 39 High-Definition Premium Design Presets
 const TEMPLATE_PRESETS = [
-  {
-    id: "classic",
-    name: "Classic",
-    desc: "Clean professional border design with a balanced and subtle ivory/white background.",
-    style: "Standard",
-    defaults: {
-      bg_color: "#ffffff",
-      text_color: "#1f2937",
-      primary_color: "#F87171",
-      secondary_color: "#e5e7eb",
-      stamp_icon: "Star",
-      reward_icon: "Gift"
-    }
-  },
-  {
-    id: "modern",
-    name: "Modern",
-    desc: "Clean contemporary design.",
-    style: "Contemporary",
-    defaults: {
-      bg_color: "#f3f4f6",
-      text_color: "#111827",
-      primary_color: "#10B981",
-      secondary_color: "#d1fae5",
-      stamp_icon: "Coffee",
-      reward_icon: "Coffee"
-    }
-  },
-  {
-    id: "luxury",
-    name: "Luxury",
-    desc: "Premium/elegant design.",
-    style: "Premium",
-    defaults: {
-      bg_color: "#fdfbf7",
-      text_color: "#1c1917",
-      primary_color: "#78350f",
-      secondary_color: "#fef3c7",
-      stamp_icon: "Heart",
-      reward_icon: "Crown"
-    }
-  },
-  {
-    id: "minimal",
-    name: "Minimal",
-    desc: "Simple, clean design with strong whitespace.",
-    style: "Minimalist",
-    defaults: {
-      bg_color: "#ffffff",
-      text_color: "#0f172a",
-      primary_color: "#2563eb",
-      secondary_color: "#f1f5f9",
-      stamp_icon: "ShoppingBag",
-      reward_icon: "Crown"
-    }
-  },
-  {
-    id: "restaurant",
-    name: "Restaurant",
-    desc: "Designed for restaurants and food businesses. Warm, delicious, plate-inspired dining visual style.",
-    style: "Food & Dining",
-    defaults: {
-      bg_color: "#fffbf5",
-      text_color: "#431407",
-      primary_color: "#ea580c",
-      secondary_color: "#ffedd5",
-      stamp_icon: "Utensils",
-      reward_icon: "Utensils"
-    }
-  },
-  {
-    id: "beauty",
-    name: "Beauty",
-    desc: "Designed for salons, lash studios, nail bars, and spas. Elegant, delicate rose gold luxury style.",
-    style: "Spa & Salon",
-    defaults: {
-      bg_color: "#fff1f2",
-      text_color: "#4c0519",
-      primary_color: "#db2777",
-      secondary_color: "#fce7f3",
-      stamp_icon: "Sparkles",
-      reward_icon: "Crown"
-    }
-  },
-  {
-    id: "automotive",
-    name: "Automotive",
-    desc: "Designed for car washes, auto garages, and detailing shops. Sleek carbon dark industrial styling.",
-    style: "Services",
-    defaults: {
-      bg_color: "#0f172a",
-      text_color: "#f8fafc",
-      primary_color: "#38bdf8",
-      secondary_color: "#1e293b",
-      stamp_icon: "Car",
-      reward_icon: "Gift"
-    }
-  },
-  {
-    id: "fitness",
-    name: "Fitness",
-    desc: "Designed for gyms, fitness centers, and personal trainers. Highly energetic dark theme with neon highlights.",
-    style: "Athletic & Wellness",
-    defaults: {
-      bg_color: "#111827",
-      text_color: "#f9fafb",
-      primary_color: "#a3e635",
-      secondary_color: "#1f2937",
-      stamp_icon: "Dumbbell",
-      reward_icon: "Crown"
-    }
-  },
-  {
-    id: "cafe",
-    name: "Café",
-    desc: "Designed for coffee shops, bakeries, and lunch businesses. Highlights coffee stamp progress and reward information elegantly.",
-    style: "Coffee & Bakery",
-    defaults: {
-      bg_color: "#fdf8f5",
-      text_color: "#2d1500",
-      primary_color: "#854d0e",
-      secondary_color: "#fef08a",
-      stamp_icon: "Coffee",
-      reward_icon: "Coffee"
-    }
-  },
-  {
-    id: "retail",
-    name: "Retail",
-    desc: "Designed for retail stores, boutiques, and outlets. Premium luxury box outline styling.",
-    style: "Fashion & Retail",
-    defaults: {
-      bg_color: "#fafaf9",
-      text_color: "#1c1917",
-      primary_color: "#14b8a6",
-      secondary_color: "#ccfbf1",
-      stamp_icon: "ShoppingBag",
-      reward_icon: "Gift"
-    }
-  },
-  {
-    id: "dark",
-    name: "Dark Theme",
-    desc: "Creates a highly professional dark-themed experience with deep contrast and maximum visual stamp visibility.",
-    style: "Modern Tech",
-    defaults: {
-      bg_color: "#090d16",
-      text_color: "#f8fafc",
-      primary_color: "#f43f5e",
-      secondary_color: "#1e293b",
-      stamp_icon: "Star",
-      reward_icon: "Crown"
-    }
-  },
-  {
-    id: "colorful",
-    name: "Colorful",
-    desc: "A bright, energetic visual showcase where the business's custom branding colors fluidly define the layout.",
-    style: "Vibrant",
-    defaults: {
-      bg_color: "#f5f3ff",
-      text_color: "#4c1d95",
-      primary_color: "#8b5cf6",
-      secondary_color: "#ede9fe",
-      stamp_icon: "Heart",
-      reward_icon: "Gift"
-    }
-  }
+  // Industry Presets
+  { id: "classic", name: "Classic", desc: "Balanced standard layout.", style: "Industry", defaults: { bg_color: "#ffffff", text_color: "#1e293b", primary_color: "#F87171", secondary_color: "#e2e8f0", stamp_icon: "Star", reward_icon: "Gift" } },
+  { id: "modern", name: "Modern", desc: "Contemporary aesthetic.", style: "Industry", defaults: { bg_color: "#f8fafc", text_color: "#0f172a", primary_color: "#0284c7", secondary_color: "#e2e8f0", stamp_icon: "Star", reward_icon: "Gift" } },
+  { id: "minimal", name: "Minimal", desc: "Whitespace-focused design.", style: "Industry", defaults: { bg_color: "#ffffff", text_color: "#09090b", primary_color: "#18181b", secondary_color: "#f4f4f5", stamp_icon: "Star", reward_icon: "Gift" } },
+  { id: "luxury", name: "Luxury Gold", desc: "Royal golden trim.", style: "Industry", defaults: { bg_color: "#fdfbf7", text_color: "#1c1917", primary_color: "#854d0e", secondary_color: "#fef3c7", stamp_icon: "Crown", reward_icon: "Crown" } },
+  { id: "bold", name: "Bold Impact", desc: "High-contrast block colors.", style: "Industry", defaults: { bg_color: "#111827", text_color: "#ffffff", primary_color: "#f43f5e", secondary_color: "#1f2937", stamp_icon: "Flame", reward_icon: "Crown" } },
+  { id: "restaurant", name: "Restaurant", desc: "Warm plate-inspired style.", style: "Industry", defaults: { bg_color: "#fffbf5", text_color: "#431407", primary_color: "#ea580c", secondary_color: "#ffedd5", stamp_icon: "Utensils", reward_icon: "Utensils" } },
+  { id: "beauty", name: "Beauty Salon", desc: "Elegant soft blush rose.", style: "Industry", defaults: { bg_color: "#fff1f2", text_color: "#4c0519", primary_color: "#db2777", secondary_color: "#fce7f3", stamp_icon: "Sparkles", reward_icon: "Crown" } },
+  { id: "automotive", name: "Automotive", desc: "Industrial metallic accents.", style: "Industry", defaults: { bg_color: "#0f172a", text_color: "#f8fafc", primary_color: "#06b6d4", secondary_color: "#1e293b", stamp_icon: "Car", reward_icon: "Gift" } },
+  { id: "fitness", name: "Fitness Gym", desc: "Bold high-energy athletic.", style: "Industry", defaults: { bg_color: "#09090b", text_color: "#ffffff", primary_color: "#84cc16", secondary_color: "#18181b", stamp_icon: "Dumbbell", reward_icon: "Crown" } },
+  { id: "cafe", name: "Café Roast", desc: "Rich latte espresso theme.", style: "Industry", defaults: { bg_color: "#fdf8f5", text_color: "#2d1500", primary_color: "#9a3412", secondary_color: "#fef08a", stamp_icon: "Coffee", reward_icon: "Coffee" } },
+  { id: "retail", name: "Retail Mall", desc: "Clean modern box borders.", style: "Industry", defaults: { bg_color: "#fafaf9", text_color: "#1c1917", primary_color: "#0d9488", secondary_color: "#ccfbf1", stamp_icon: "ShoppingBag", reward_icon: "Gift" } },
+  { id: "barber", name: "Barber Club", desc: "Vintage royal blue & leather.", style: "Industry", defaults: { bg_color: "#1e1b4b", text_color: "#ffffff", primary_color: "#f43f5e", secondary_color: "#312e81", stamp_icon: "Scissors", reward_icon: "Crown" } },
+  { id: "hairsalon", name: "Hair Salon", desc: "Chic luxury hair care.", style: "Industry", defaults: { bg_color: "#faf5ff", text_color: "#4a044e", primary_color: "#c084fc", secondary_color: "#f3e8ff", stamp_icon: "Scissors", reward_icon: "Gift" } },
+  { id: "nailstudio", name: "Nail Lounge", desc: "Delicate luxury nails theme.", style: "Industry", defaults: { bg_color: "#fff5f5", text_color: "#65052f", primary_color: "#f43f5e", secondary_color: "#ffe4e6", stamp_icon: "Brush", reward_icon: "Gift" } },
+  { id: "lashbrow", name: "Lash & Brow", desc: "Premium bold pink glam.", style: "Industry", defaults: { bg_color: "#fdf2f8", text_color: "#6d073d", primary_color: "#ec4899", secondary_color: "#fce7f3", stamp_icon: "Sparkles", reward_icon: "Crown" } },
+  { id: "spa", name: "Spa & Wellness", desc: "Calming forest wellness.", style: "Industry", defaults: { bg_color: "#f0fdf4", text_color: "#064e3b", primary_color: "#10b981", secondary_color: "#d1fae5", stamp_icon: "Heart", reward_icon: "Crown" } },
+  { id: "carwash", name: "Car Wash", desc: "Bright glossy water splashes.", style: "Industry", defaults: { bg_color: "#0b1329", text_color: "#ffffff", primary_color: "#38bdf8", secondary_color: "#1e293b", stamp_icon: "Car", reward_icon: "Gift" } },
+  { id: "garage", name: "Auto Garage", desc: "High-octane grease style.", style: "Industry", defaults: { bg_color: "#18181b", text_color: "#f4f4f5", primary_color: "#f97316", secondary_color: "#27272a", stamp_icon: "Car", reward_icon: "Shield" } },
+  { id: "bakery", name: "Bakery", desc: "Soft cozy flour dough theme.", style: "Industry", defaults: { bg_color: "#fcf8f2", text_color: "#451a03", primary_color: "#d97706", secondary_color: "#fef3c7", stamp_icon: "Coffee", reward_icon: "Gift" } },
+  { id: "foodpizza", name: "Food & Pizza", desc: "Yummy hot dynamic styling.", style: "Industry", defaults: { bg_color: "#fff8f6", text_color: "#7f1d1d", primary_color: "#ea580c", secondary_color: "#ffedd5", stamp_icon: "Pizza", reward_icon: "Utensils" } },
+  { id: "boutique", name: "Boutique", desc: "Elegant high-fashion marble.", style: "Industry", defaults: { bg_color: "#fafaf9", text_color: "#1c1917", primary_color: "#78716c", secondary_color: "#f5f5f4", stamp_icon: "ShoppingBag", reward_icon: "Gift" } },
+
+  // Style Presets
+  { id: "dark", name: "Dark Night", desc: "Cyberpunk deep graphite.", style: "Style", defaults: { bg_color: "#090d16", text_color: "#f8fafc", primary_color: "#e11d48", secondary_color: "#1e293b", stamp_icon: "Star", reward_icon: "Crown" } },
+  { id: "colorful", name: "Colorful Grad", desc: "Fluid energetic spectrum.", style: "Style", defaults: { bg_color: "#f5f3ff", text_color: "#4c1d95", primary_color: "#8b5cf6", secondary_color: "#ede9fe", stamp_icon: "Heart", reward_icon: "Gift" } },
+  { id: "premiumblack", name: "Premium Black", desc: "Stealth charcoal carbon.", style: "Style", defaults: { bg_color: "#09090b", text_color: "#f4f4f5", primary_color: "#e4e4e7", secondary_color: "#27272a", stamp_icon: "Crown", reward_icon: "Crown" } },
+  { id: "glass", name: "Glassmorphism", desc: "Glossy transparent sheet.", style: "Style", defaults: { bg_color: "#0f172a", text_color: "#ffffff", primary_color: "#38bdf8", secondary_color: "#1e293b", stamp_icon: "Sparkle", reward_icon: "Gift" } },
+  { id: "neon", name: "Neon Active", desc: "Sleek synthwave glow.", style: "Style", defaults: { bg_color: "#000000", text_color: "#ffffff", primary_color: "#39ff14", secondary_color: "#18181b", stamp_icon: "Flame", reward_icon: "Crown" } },
+  { id: "retro", name: "Vintage Retro", desc: "Warm cozy 1970s print.", style: "Style", defaults: { bg_color: "#fefae0", text_color: "#283618", primary_color: "#bc6c25", secondary_color: "#dda15e", stamp_icon: "Star", reward_icon: "Gift" } },
+  { id: "elegantscript", name: "Elegant Script", desc: "Premium serif signature.", style: "Style", defaults: { bg_color: "#fcf8f2", text_color: "#1c1917", primary_color: "#7c2d12", secondary_color: "#ffedd5", stamp_icon: "Star", reward_icon: "Gift" } },
+  { id: "playful", name: "Playful Fun", desc: "Bright energetic neon-blue.", style: "Style", defaults: { bg_color: "#ecfeff", text_color: "#083344", primary_color: "#06b6d4", secondary_color: "#cffafe", stamp_icon: "Smile", reward_icon: "Gift" } },
+  { id: "professional", name: "Professional", desc: "Corporate business lines.", style: "Style", defaults: { bg_color: "#f8fafc", text_color: "#0f172a", primary_color: "#1e3a8a", secondary_color: "#e2e8f0", stamp_icon: "Shield", reward_icon: "Gift" } },
+  { id: "monochrome", name: "Monochrome", desc: "High-contrast absolute black.", style: "Style", defaults: { bg_color: "#ffffff", text_color: "#000000", primary_color: "#000000", secondary_color: "#f3f4f6", stamp_icon: "Star", reward_icon: "Gift" } },
+  { id: "pastel", name: "Pastel Sweet", desc: "Cozy lilac and lavender.", style: "Style", defaults: { bg_color: "#fdf4ff", text_color: "#4a044e", primary_color: "#d946ef", secondary_color: "#f5d0fe", stamp_icon: "Heart", reward_icon: "Gift" } },
+  { id: "boldgradient", name: "Bold Gradient", desc: "Beautiful warm sunrise grad.", style: "Style", defaults: { bg_color: "#1e1b4b", text_color: "#ffffff", primary_color: "#f43f5e", secondary_color: "#312e81", stamp_icon: "Flame", reward_icon: "Crown" } },
+
+  // Aruba-inspired Presets
+  { id: "oceanbreeze", name: "Ocean Breeze", desc: "Relaxing tropical teal coast.", style: "Aruba", defaults: { bg_color: "#f0fdfa", text_color: "#0f3c3a", primary_color: "#0d9488", secondary_color: "#ccfbf1", stamp_icon: "Compass", reward_icon: "Gift" } },
+  { id: "caribbeansunset", name: "Caribbean Sunset", desc: "Warm gold sun setting ocean.", style: "Aruba", defaults: { bg_color: "#1e1b4b", text_color: "#ffffff", primary_color: "#f59e0b", secondary_color: "#312e81", stamp_icon: "Sun", reward_icon: "Crown" } },
+  { id: "islandminimal", name: "Island Minimal", desc: "Soft white sand beach layout.", style: "Aruba", defaults: { bg_color: "#fafaf6", text_color: "#111827", primary_color: "#059669", secondary_color: "#f0fdf4", stamp_icon: "Star", reward_icon: "Gift" } },
+  { id: "tropical", name: "Tropical Escape", desc: "Rich lush forest green leaf.", style: "Aruba", defaults: { bg_color: "#f0fdf4", text_color: "#064e3b", primary_color: "#10b981", secondary_color: "#d1fae5", stamp_icon: "Heart", reward_icon: "Gift" } },
+  { id: "arubaocean", name: "Aruba Ocean Blue", desc: "Deep transparent ocean reef.", style: "Aruba", defaults: { bg_color: "#ecfeff", text_color: "#083344", primary_color: "#06b6d4", secondary_color: "#cffafe", stamp_icon: "Sun", reward_icon: "Crown" } },
+  { id: "arubasunset", name: "Aruba Sunset Coral", desc: "Sizzling rich pink/yellow sun.", style: "Aruba", defaults: { bg_color: "#fff7ed", text_color: "#451a03", primary_color: "#ec4899", secondary_color: "#ffedd5", stamp_icon: "Sun", reward_icon: "Crown" } }
 ];
 
 export default function EditProgram() {
@@ -206,6 +82,7 @@ export default function EditProgram() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<"All" | "Industry" | "Style" | "Aruba">("All");
   
   const [formData, setFormData] = useState({
     name: "",
@@ -217,7 +94,6 @@ export default function EditProgram() {
     stamp_icon: "Star"
   });
 
-  // Client Customization Settings
   const [customization, setCustomization] = useState({
     template_id: "classic",
     bg_color: "#ffffff",
@@ -324,7 +200,7 @@ export default function EditProgram() {
 
       toast({
         title: "Logo uploaded",
-        description: "Your brand logo was successfully uploaded and cached.",
+        description: "Your brand logo was successfully uploaded.",
       });
     } catch (error: any) {
       toast({
@@ -338,17 +214,10 @@ export default function EditProgram() {
   };
 
   const removeLogo = () => {
-    setCustomization(prev => ({
-      ...prev,
-      card_logo_url: ""
-    }));
-    toast({
-      title: "Logo removed",
-      description: "Logo has been removed from the active preview state.",
-    });
+    setCustomization(prev => ({ ...prev, card_logo_url: "" }));
+    toast({ title: "Logo removed", description: "Logo has been removed from active preview." });
   };
 
-  // Dynamically apply a template preset defaults to customization states
   const handleSelectTemplate = (preset: typeof TEMPLATE_PRESETS[0]) => {
     setCustomization(prev => ({
       ...prev,
@@ -368,8 +237,8 @@ export default function EditProgram() {
     }));
 
     toast({
-      title: `${preset.name} Layout Active`,
-      description: "Default style guidelines loaded into design editor.",
+      title: `${preset.name} Theme Loaded`,
+      description: "Default style guidelines loaded successfully.",
     });
   };
 
@@ -432,22 +301,15 @@ export default function EditProgram() {
 
       if (error) {
         if (error.code === '23503') {
-           throw new Error("Cannot delete program because it has active cards/stamps. Pause it instead.");
+           throw new Error("Cannot delete program with active users. Pause it instead.");
         }
         throw error;
       }
 
-      toast({
-        title: "Deleted",
-        description: "Loyalty program has been deleted.",
-      });
+      toast({ title: "Deleted", description: "Loyalty program deleted successfully." });
       router.push("/dashboard/programs");
     } catch (error: any) {
-      toast({
-        title: "Error deleting",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error deleting", description: error.message, variant: "destructive" });
       setDeleting(false);
     }
   };
@@ -456,6 +318,10 @@ export default function EditProgram() {
     setFormData(prev => ({ ...prev, card_color: color }));
     setCustomization(prev => ({ ...prev, primary_color: color }));
   };
+
+  const filteredPresets = TEMPLATE_PRESETS.filter(preset => 
+    activeCategory === "All" || preset.style === activeCategory
+  );
 
   if (loading) return <DashboardLayout><div className="flex p-8 justify-center">Loading...</div></DashboardLayout>;
 
@@ -496,7 +362,6 @@ export default function EditProgram() {
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action cannot be undone. This will permanently delete your loyalty program.
-                    If customers already have stamps, you should PAUSE the program instead of deleting it.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -521,13 +386,12 @@ export default function EditProgram() {
               </span>
             </div>
             
-            {/* Realtime loyalty card visual rendering */}
             <div className="border border-border rounded-xl p-4 bg-muted/30">
               <LoyaltyCard 
                 programName={formData.name || "Program Name"}
                 businessName={businessName}
                 stampTarget={parseInt(formData.stamp_target, 10) || 10}
-                currentStamps={3} // Representative simulation total
+                currentStamps={3} 
                 stampIcon={customization.stamp_icon}
                 rewardTitle={formData.reward_title || "Sample Reward"}
                 customization={customization}
@@ -557,35 +421,55 @@ export default function EditProgram() {
                       
                       {/* Premium Template Selector Gallery */}
                       <div className="space-y-4">
-                        <div>
-                          <Label className="text-base font-semibold">1. Choose a Design Preset Template</Label>
-                          <p className="text-xs text-muted-foreground mt-0.5">Selecting a preset automatically loads design values optimized for layout readability.</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <Label className="text-base font-semibold">1. Choose a Design Preset Template</Label>
+                            <p className="text-xs text-muted-foreground mt-0.5">Selecting a preset automatically loads design values optimized for layout readability.</p>
+                          </div>
+                        </div>
+
+                        {/* Category Filter Chips */}
+                        <div className="flex flex-wrap gap-1.5 border-b pb-2">
+                          {(["All", "Industry", "Style", "Aruba"] as const).map(category => (
+                            <button
+                              key={category}
+                              type="button"
+                              onClick={() => setActiveCategory(category)}
+                              className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                                activeCategory === category 
+                                  ? "bg-primary text-white" 
+                                  : "bg-muted text-muted-foreground hover:bg-muted/85"
+                              }`}
+                            >
+                              {category === "Aruba" ? "🇦🇼 Aruba-inspired" : category}
+                            </button>
+                          ))}
                         </div>
                         
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {TEMPLATE_PRESETS.map((preset) => {
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+                          {filteredPresets.map((preset) => {
                             const isSelected = customization.template_id === preset.id;
                             return (
                               <button
                                 key={preset.id}
                                 type="button"
                                 onClick={() => handleSelectTemplate(preset)}
-                                className={`flex flex-col text-left rounded-xl border p-4 transition-all duration-200 ${
+                                className={`flex flex-col text-left rounded-xl border p-3 transition-all duration-200 ${
                                   isSelected
                                     ? "border-primary bg-primary/5 ring-2 ring-primary/40 shadow-sm"
                                     : "border-border bg-background hover:bg-muted/30 hover:border-muted-foreground/30"
                                 }`}
                               >
                                 <div className="flex items-center justify-between w-full mb-1">
-                                  <span className="font-bold text-base text-foreground flex items-center gap-2">
+                                  <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
                                     {preset.name}
-                                    {isSelected && <Check className="w-4 h-4 text-primary" strokeWidth={3} />}
+                                    {isSelected && <Check className="w-3.5 h-3.5 text-primary" strokeWidth={3} />}
                                   </span>
-                                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-muted/60 text-muted-foreground">
+                                  <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">
                                     {preset.style}
                                   </span>
                                 </div>
-                                <p className="text-xs text-muted-foreground flex-grow mt-1 leading-relaxed">
+                                <p className="text-[11px] text-muted-foreground flex-grow mt-0.5 leading-tight">
                                   {preset.desc}
                                 </p>
                               </button>
@@ -767,6 +651,12 @@ export default function EditProgram() {
                               <option value="Heart">❤️ Heart</option>
                               <option value="Crown">👑 Crown</option>
                               <option value="ShoppingBag">🛍️ Shopping Bag</option>
+                              <option value="Pizza">🍕 Pizza Slice</option>
+                              <option value="Sun">☀️ Sun</option>
+                              <option value="Smile">😊 Smile</option>
+                              <option value="Brush">💅 Nail Brush</option>
+                              <option value="Compass">🧭 Compass</option>
+                              <option value="Flame">🔥 Fire</option>
                             </select>
                           </div>
 
@@ -782,6 +672,7 @@ export default function EditProgram() {
                               <option value="Crown">👑 Crown</option>
                               <option value="Coffee">☕ Coffee / Drink</option>
                               <option value="Utensils">🍴 Food Meal</option>
+                              <option value="Shield">🛡️ Security Shield</option>
                             </select>
                           </div>
                         </div>

@@ -1,10 +1,14 @@
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Coffee, Scissors, Car, Dumbbell, Utensils, Gift, Star, Check, Sparkles, Heart, Crown, CupSoda, ShoppingBag } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { 
+  Coffee, Scissors, Car, Dumbbell, Utensils, Gift, Star, Check, Sparkles, Heart, Crown, CupSoda, ShoppingBag,
+  Brush, Smile, Compass, Sun, Pizza, Flame, Sparkle, Shield
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const STAMP_ICONS: Record<string, React.ElementType> = {
-  Coffee, Scissors, Car, Dumbbell, Utensils, Star, Gift, Sparkles, Heart, Crown, CupSoda, ShoppingBag
+  Coffee, Scissors, Car, Dumbbell, Utensils, Star, Gift, Sparkles, Heart, Crown, CupSoda, ShoppingBag,
+  Brush, Smile, Compass, Sun, Pizza, Flame, Sparkle, Shield
 };
 
 export interface TemplateCustomization {
@@ -26,893 +30,186 @@ export interface LoyaltyCardProps {
   currentStamps: number;
   stampIcon?: string;
   rewardTitle?: string;
-  color?: string; // fallback legacy primary color
+  color?: string;
   className?: string;
   customization?: TemplateCustomization;
 }
 
-// Hook to standardize extraction of template values vs fallbacks
-function useTemplateData(props: LoyaltyCardProps) {
-  const { customization, stampIcon, color, stampTarget } = props;
+// 39 High-Definition Premium Design Theme Specifications
+const THEME_REGISTRY: Record<string, {
+  layout: "standard" | "modern" | "luxury" | "neon" | "gradient" | "glass" | "retro" | "pastel";
+  bg: string;
+  text: string;
+  fontClass?: string;
+  badgeText?: string;
+}> = {
+  // Industry Presets
+  classic: { layout: "standard", bg: "bg-white", text: "text-slate-900", badgeText: "Classic" },
+  modern: { layout: "modern", bg: "bg-slate-50", text: "text-slate-950", badgeText: "Modern" },
+  minimal: { layout: "standard", bg: "bg-white", text: "text-slate-900", badgeText: "Minimal" },
+  luxury: { layout: "luxury", bg: "bg-[#fdfbf7]", text: "text-[#1c1917]", fontClass: "font-serif", badgeText: "Premium" },
+  bold: { layout: "modern", bg: "bg-slate-950", text: "text-white", badgeText: "Bold" },
+  restaurant: { layout: "artistic" as any || "pastel", bg: "bg-[#fffbf5]", text: "text-[#431407]", badgeText: "Dining" },
+  beauty: { layout: "luxury", bg: "bg-[#fff1f2]", text: "text-[#4c0519]", badgeText: "Salon" },
+  automotive: { layout: "neon", bg: "bg-[#0f172a]", text: "text-[#f8fafc]", badgeText: "Garage" },
+  fitness: { layout: "modern", bg: "bg-[#111827]", text: "text-white", badgeText: "Athletic" },
+  cafe: { layout: "pastel", bg: "bg-[#fdf8f5]", text: "text-[#2d1500]", badgeText: "Café" },
+  retail: { layout: "standard", bg: "bg-[#fafaf9]", text: "text-[#1c1917]", badgeText: "Retail" },
+  barber: { layout: "luxury", bg: "bg-[#1e1b4b]", text: "text-slate-100", fontClass: "font-serif", badgeText: "Barber" },
+  hairsalon: { layout: "luxury", bg: "bg-[#faf5ff]", text: "text-[#4a044e]", badgeText: "Hair Salon" },
+  nailstudio: { layout: "luxury", bg: "bg-[#fff5f5]", text: "text-[#65052f]", badgeText: "Nail Lounge" },
+  lashbrow: { layout: "luxury", bg: "bg-[#fdf2f8]", text: "text-[#6d073d]", badgeText: "Lash Studio" },
+  spa: { layout: "luxury", bg: "bg-[#f0fdf4]", text: "text-[#064e3b]", badgeText: "Spa" },
+  carwash: { layout: "modern", bg: "bg-[#0b1329]", text: "text-white", badgeText: "Car Wash" },
+  garage: { layout: "modern", bg: "bg-[#18181b]", text: "text-[#f4f4f5]", badgeText: "Auto Garage" },
+  bakery: { layout: "pastel", bg: "bg-[#fcf8f2]", text: "text-[#451a03]", badgeText: "Bakery" },
+  foodpizza: { layout: "pastel", bg: "bg-[#fff8f6]", text: "text-[#7f1d1d]", badgeText: "Food & Pizza" },
+  boutique: { layout: "luxury", bg: "bg-[#fafaf9]", text: "text-[#1c1917]", fontClass: "font-serif", badgeText: "Boutique" },
+
+  // Styles
+  dark: { layout: "neon", bg: "bg-[#090d16]", text: "text-slate-100", badgeText: "Dark" },
+  colorful: { layout: "gradient", bg: "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500", text: "text-white", badgeText: "Vibrant" },
+  premiumblack: { layout: "neon", bg: "bg-[#09090b]", text: "text-[#f4f4f5]", badgeText: "Black Platinum" },
+  glass: { layout: "glass", bg: "bg-slate-900/40", text: "text-white", badgeText: "Glassmorphism" },
+  neon: { layout: "neon", bg: "bg-black", text: "text-[#f8fafc]", badgeText: "Neon Cyber" },
+  retro: { layout: "retro", bg: "bg-[#fefae0]", text: "text-[#283618]", fontClass: "font-mono", badgeText: "Retro" },
+  elegantscript: { layout: "luxury", bg: "bg-[#fcf8f2]", text: "text-[#1c1917]", fontClass: "font-serif", badgeText: "Elegant" },
+  playful: { layout: "pastel", bg: "bg-[#ecfeff]", text: "text-[#083344]", badgeText: "Playful" },
+  professional: { layout: "standard", bg: "bg-slate-50", text: "text-slate-900", badgeText: "Corporate" },
+  monochrome: { layout: "standard", bg: "bg-white", text: "text-black", fontClass: "font-mono", badgeText: "Monochrome" },
+  pastel: { layout: "pastel", bg: "bg-[#fdf4ff]", text: "text-[#4a044e]", badgeText: "Pastel Sweet" },
+  boldgradient: { layout: "gradient", bg: "bg-gradient-to-r from-amber-500 to-rose-500", text: "text-white", badgeText: "Vivid Gradient" },
+
+  // Aruba-inspired
+  oceanbreeze: { layout: "modern", bg: "bg-[#f0fdfa]", text: "text-[#0f3c3a]", badgeText: "Ocean Breeze" },
+  caribbeansunset: { layout: "gradient", bg: "bg-gradient-to-tr from-amber-500 via-rose-500 to-violet-600", text: "text-white", badgeText: "Caribbean Sunset" },
+  islandminimal: { layout: "standard", bg: "bg-[#fafaf6]", text: "text-emerald-950", badgeText: "Island Minimal" },
+  tropical: { layout: "pastel", bg: "bg-[#f0fdf4]", text: "text-emerald-950", badgeText: "Tropical" },
+  arubaocean: { layout: "gradient", bg: "bg-gradient-to-br from-cyan-400 via-teal-500 to-blue-600", text: "text-white", badgeText: "Aruba Ocean" },
+  arubasunset: { layout: "gradient", bg: "bg-gradient-to-br from-orange-400 via-pink-500 to-indigo-700", text: "text-white", badgeText: "Aruba Sunset" }
+};
+
+export function LoyaltyCard(props: LoyaltyCardProps) {
+  const { customization, stampIcon, color, stampTarget, currentStamps, programName, businessName, rewardTitle } = props;
+  const templateId = (customization?.template_id || "classic").toLowerCase();
+  
+  // Resolve Theme Specification
+  const theme = THEME_REGISTRY[templateId] || THEME_REGISTRY.classic;
   
   const primaryColor = customization?.primary_color || color || "#F87171";
-  const bgColor = customization?.bg_color || "var(--background)";
-  const textColor = customization?.text_color || "var(--foreground)";
-  const secondaryColor = customization?.secondary_color || `${primaryColor}15`;
-  const logoUrl = customization?.card_logo_url;
+  const overrideBg = customization?.bg_color;
+  const overrideText = customization?.text_color;
   
+  // Resolve branding assets
   const Icon = STAMP_ICONS[customization?.stamp_icon || stampIcon || "Star"] || Star;
   const RewardIcon = STAMP_ICONS[customization?.reward_icon || "Gift"] || Gift;
-
   const stamps = Array.from({ length: stampTarget }, (_, i) => i);
-  
-  return { primaryColor, bgColor, textColor, secondaryColor, logoUrl, Icon, RewardIcon, stamps };
-}
+  const logoUrl = customization?.card_logo_url;
 
-// 1. Classic Template (The original robust design)
-const ClassicTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, secondaryColor, logoUrl, Icon, RewardIcon, stamps } = useTemplateData(props);
-
+  // Render Shell: standard, modern, luxury, neon, gradient, glass, retro, pastel
   return (
     <Card 
-      className={cn("overflow-hidden border-2 relative", props.className)}
-      style={{ borderColor: primaryColor, backgroundColor: bgColor, color: textColor }}
+      className={cn(
+        "overflow-hidden border-2 shadow-md relative transition-all duration-300 w-full max-w-md mx-auto",
+        theme.layout === "standard" && "rounded-xl border-slate-200",
+        theme.layout === "modern" && "rounded-lg border-transparent",
+        theme.layout === "luxury" && "rounded-none p-1 border-current/20",
+        theme.layout === "neon" && "rounded-2xl border-current/40 shadow-[0_0_15px_rgba(0,0,0,0.4)]",
+        theme.layout === "gradient" && "rounded-3xl border-0 shadow-lg",
+        theme.layout === "glass" && "rounded-2xl border-white/20 shadow-2xl backdrop-blur-md",
+        theme.layout === "retro" && "rounded-none border-4 border-current",
+        theme.layout === "pastel" && "rounded-[2rem] border-transparent shadow-sm",
+        theme.fontClass,
+        props.className
+      )}
+      style={{ 
+        backgroundColor: overrideBg || undefined,
+        color: overrideText || undefined,
+        borderColor: !overrideBg && !overrideText ? primaryColor : undefined
+      }}
     >
-      <div 
-        className="absolute top-0 left-0 w-full h-2" 
-        style={{ backgroundColor: primaryColor }} 
-      />
-      <CardHeader className="pb-4">
-        <div className="flex justify-between items-start">
+      {/* Glow Effects for premium layouts */}
+      {theme.layout === "neon" && (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05),transparent)] pointer-events-none" />
+      )}
+
+      <CardContent className={cn(
+        "p-6 flex flex-col justify-between h-full min-h-[220px]",
+        theme.bg,
+        overrideBg && "bg-transparent", // let inline style take precedence
+        overrideText && "text-inherit"
+      )}>
+        {/* Header Block */}
+        <div className="flex justify-between items-start mb-6">
           <div>
             {logoUrl ? (
-              <img src={logoUrl} alt={props.businessName} className="h-8 w-auto object-contain mb-2" />
+              <img src={logoUrl} alt={businessName} className="h-8 w-auto object-contain mb-2 max-w-[120px]" />
             ) : (
-              <p className="text-xs font-medium uppercase tracking-wider mb-1 opacity-70">
-                {props.businessName}
+              <p className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80 mb-1" style={{ color: primaryColor }}>
+                {businessName}
               </p>
             )}
-            <CardTitle className="text-xl font-heading">{props.programName}</CardTitle>
+            <h3 className="text-xl font-bold tracking-tight leading-tight">{programName}</h3>
           </div>
-          <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm"
-            style={{ backgroundColor: primaryColor, color: "#fff" }}
-          >
+          
+          <div className="flex flex-col items-end shrink-0 ml-4">
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-black/10 text-inherit">
+              {theme.badgeText || "Loyalty"}
+            </span>
+            <span className="text-xs font-mono font-bold mt-1.5 opacity-80">
+              STAMPS: {currentStamps}/{stampTarget}
+            </span>
+          </div>
+        </div>
+
+        {/* Stamps Progress Grid */}
+        <div className="grid grid-cols-5 gap-2.5 mb-6">
+          {stamps.map((index) => {
+            const isStamped = index < currentStamps;
+            return (
+              <div key={index} className="aspect-square flex items-center justify-center">
+                <div
+                  className={cn(
+                    "w-full h-full border flex items-center justify-center transition-all duration-300",
+                    theme.layout === "standard" && "rounded-lg",
+                    theme.layout === "modern" && "rounded-md",
+                    theme.layout === "luxury" && "rounded-full border-current/30",
+                    theme.layout === "neon" && "rounded-xl shadow-inner",
+                    theme.layout === "gradient" && "rounded-full bg-white/20 border-white/30",
+                    theme.layout === "glass" && "rounded-xl bg-white/5 border-white/10",
+                    theme.layout === "retro" && "rounded-none border-2 border-current",
+                    theme.layout === "pastel" && "rounded-2xl border-transparent",
+                    isStamped ? "scale-105 shadow-sm opacity-100" : "opacity-30 border-dashed"
+                  )}
+                  style={{
+                    borderColor: isStamped ? primaryColor : undefined,
+                    backgroundColor: isStamped ? (theme.layout === "gradient" ? "rgba(255,255,255,0.9)" : `${primaryColor}20`) : undefined,
+                    color: isStamped ? (theme.layout === "gradient" ? primaryColor : primaryColor) : undefined
+                  }}
+                >
+                  {isStamped ? (
+                    theme.layout === "gradient" ? <Icon className="w-5 h-5 fill-current" /> : <Check className="w-5 h-5" strokeWidth={3} />
+                  ) : (
+                    <Icon className="w-4 h-4 opacity-50" />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer/Reward Section */}
+        <div className="border-t pt-4 flex items-center justify-between gap-4 border-current/10">
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block">Target Reward</span>
+            <span className="text-sm font-extrabold truncate block">{rewardTitle || "Unlocked Reward"}</span>
+          </div>
+          
+          <div className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-black/5" style={{ color: primaryColor }}>
             <RewardIcon className="w-5 h-5" />
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-5 gap-3 mb-6">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div
-                key={index}
-                className={cn(
-                  "aspect-square rounded-full flex items-center justify-center border-2 transition-all duration-300",
-                  isStamped ? "scale-100" : "scale-95 opacity-40 border-dashed"
-                )}
-                style={{
-                  borderColor: isStamped ? primaryColor : "currentColor",
-                  backgroundColor: isStamped ? secondaryColor : "transparent",
-                  color: isStamped ? primaryColor : "currentColor"
-                }}
-              >
-                {isStamped ? (
-                  <Check className="w-5 h-5" strokeWidth={3} />
-                ) : (
-                  <Icon className="w-4 h-4 opacity-50" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div className="rounded-lg p-3 flex items-center justify-between" style={{ backgroundColor: secondaryColor }}>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">Reward: {props.rewardTitle}</span>
-            <span className="text-xs opacity-70">
-              {props.currentStamps >= props.stampTarget 
-                ? "Reward Unlocked!" 
-                : `${props.stampTarget - props.currentStamps} more stamps to go`}
-            </span>
-          </div>
-          <div className="text-right">
-            <span className="text-2xl font-bold font-heading tabular-nums" style={{ color: primaryColor }}>
-              {props.currentStamps}
-            </span>
-            <span className="text-sm opacity-70">/{props.stampTarget}</span>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
-};
-
-// 2. Modern Template (Sleek, block-background header)
-const ModernTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, RewardIcon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border-0 shadow-lg relative", props.className)}
-      style={{ backgroundColor: bgColor, color: textColor }}
-    >
-      <div className="px-6 py-8 flex justify-between items-center text-white" style={{ backgroundColor: primaryColor }}>
-        <div>
-          {logoUrl ? (
-            <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mb-2 drop-shadow-sm" />
-          ) : (
-            <p className="text-xs font-semibold uppercase tracking-wider mb-1 opacity-90">
-              {props.businessName}
-            </p>
-          )}
-          <CardTitle className="text-2xl font-heading">{props.programName}</CardTitle>
-        </div>
-        <RewardIcon className="w-8 h-8 opacity-90" />
-      </div>
-      <CardContent className="pt-8">
-        <div className="flex flex-wrap gap-4 justify-center mb-8">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div
-                key={index}
-                className={cn(
-                  "w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300",
-                  isStamped ? "shadow-md" : "opacity-30 border-2"
-                )}
-                style={{
-                  backgroundColor: isStamped ? primaryColor : "transparent",
-                  color: isStamped ? "#fff" : "currentColor"
-                }}
-              >
-                {isStamped ? (
-                  <Check className="w-6 h-6" strokeWidth={3} />
-                ) : (
-                  <Icon className="w-5 h-5" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div className="text-center border-t pt-4">
-          <p className="text-sm font-medium uppercase tracking-wider opacity-70 mb-1">Current Reward</p>
-          <p className="text-lg font-bold" style={{ color: primaryColor }}>{props.rewardTitle}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 3. Minimal Template (Clean, typography focused)
-const MinimalTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border shadow-sm p-2", props.className)}
-      style={{ backgroundColor: bgColor, color: textColor }}
-    >
-      <CardContent className="p-6">
-        <div className="text-center mb-8">
-          {logoUrl ? (
-            <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mx-auto mb-3" />
-          ) : (
-            <p className="text-xs tracking-widest uppercase opacity-60 mb-2">
-              {props.businessName}
-            </p>
-          )}
-          <CardTitle className="text-xl font-light mb-1">{props.programName}</CardTitle>
-        </div>
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-4 mb-8">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="flex justify-center">
-                <div
-                  className={cn(
-                    "w-10 h-10 border-b-2 flex items-center justify-center transition-all",
-                    isStamped ? "opacity-100" : "opacity-20"
-                  )}
-                  style={{ borderColor: isStamped ? primaryColor : "currentColor" }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: isStamped ? primaryColor : "currentColor" }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="text-center">
-          <span className="text-sm opacity-60">Reward upon completion: </span>
-          <span className="text-sm font-semibold">{props.rewardTitle}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 4. Luxury Template (Premium/elegant design)
-const LuxuryTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border shadow-md rounded-none relative", props.className)}
-      style={{ backgroundColor: bgColor, color: textColor }}
-    >
-      <div className="absolute inset-2 border border-current opacity-20 pointer-events-none" style={{ borderColor: primaryColor }} />
-      <CardContent className="p-8">
-        <div className="text-center mb-10">
-          {logoUrl ? (
-            <img src={logoUrl} alt={props.businessName} className="h-12 w-auto object-contain mx-auto mb-4" />
-          ) : (
-            <p className="text-xs uppercase tracking-[0.2em] mb-2 opacity-70">
-              {props.businessName}
-            </p>
-          )}
-          <CardTitle className="text-2xl" style={{ fontFamily: "serif" }}>{props.programName}</CardTitle>
-        </div>
-        <div className="flex flex-wrap gap-5 justify-center mb-10">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="flex justify-center">
-                <div
-                  className={cn(
-                    "w-12 h-12 rounded-full border flex items-center justify-center transition-all",
-                    isStamped ? "opacity-100" : "opacity-30 border-dashed"
-                  )}
-                  style={{ 
-                    borderColor: isStamped ? primaryColor : "currentColor",
-                    backgroundColor: isStamped ? `${primaryColor}10` : "transparent"
-                  }}
-                >
-                  <Icon className="w-5 h-5" style={{ color: isStamped ? primaryColor : "currentColor" }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="text-center border-t pt-6" style={{ borderColor: `${primaryColor}30` }}>
-          <span className="text-xs uppercase tracking-widest opacity-60 block mb-1">Reward</span>
-          <span className="text-base" style={{ fontFamily: "serif", color: primaryColor }}>{props.rewardTitle}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 5. Bold Template (High impact, solid colors, sharp edges)
-const BoldTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border-4 shadow-none rounded-sm", props.className)}
-      style={{ backgroundColor: bgColor, color: textColor, borderColor: textColor }}
-    >
-      <div className="p-5 border-b-4 flex justify-between items-end" style={{ borderColor: textColor, backgroundColor: primaryColor, color: bgColor }}>
-        <div>
-          {logoUrl ? (
-            <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mb-2" />
-          ) : (
-            <p className="text-xs font-bold uppercase tracking-wider opacity-90 mb-1">
-              {props.businessName}
-            </p>
-          )}
-          <CardTitle className="text-2xl font-black uppercase tracking-tight leading-none">{props.programName}</CardTitle>
-        </div>
-        <div className="text-3xl font-black tabular-nums leading-none">
-          {props.currentStamps}/{props.stampTarget}
-        </div>
-      </div>
-      <CardContent className="p-5">
-        <div className="grid grid-cols-5 gap-2 mb-6">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="flex justify-center aspect-square">
-                <div
-                  className={cn(
-                    "w-full h-full border-4 flex items-center justify-center transition-all rounded-sm",
-                    isStamped ? "opacity-100" : "opacity-20"
-                  )}
-                  style={{ 
-                    borderColor: textColor,
-                    backgroundColor: isStamped ? textColor : "transparent",
-                    color: isStamped ? bgColor : textColor
-                  }}
-                >
-                  <Icon className="w-6 h-6" strokeWidth={3} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="p-3 flex justify-between items-center rounded-sm" style={{ backgroundColor: textColor, color: bgColor }}>
-          <span className="font-black uppercase tracking-wide text-xs">REWARD</span>
-          <span className="font-bold text-sm">{props.rewardTitle}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 6. Restaurant Template (Warm plate-inspired dining styling)
-const RestaurantTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border-2 shadow-sm rounded-2xl relative border-dashed", props.className)}
-      style={{ borderColor: primaryColor, backgroundColor: bgColor, color: textColor }}
-    >
-      <CardContent className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            {logoUrl ? (
-              <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mb-1" />
-            ) : (
-              <p className="text-xs font-bold uppercase tracking-[0.15em] opacity-80 mb-1" style={{ color: primaryColor }}>
-                {props.businessName}
-              </p>
-            )}
-            <CardTitle className="text-xl font-heading font-black">{props.programName}</CardTitle>
-          </div>
-          <div className="text-right">
-            <span className="text-xs uppercase font-semibold tracking-wider block opacity-70">Plates Completed</span>
-            <span className="text-2xl font-black tabular-nums">{props.currentStamps}/{props.stampTarget}</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-5 gap-3 mb-6">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="flex justify-center aspect-square">
-                <div
-                  className={cn(
-                    "w-full h-full rounded-full border-2 flex items-center justify-center transition-all duration-300 relative",
-                    isStamped ? "opacity-100 shadow-sm" : "opacity-30 border-dashed"
-                  )}
-                  style={{ 
-                    borderColor: isStamped ? primaryColor : "currentColor",
-                    backgroundColor: isStamped ? `${primaryColor}15` : "transparent",
-                    color: isStamped ? primaryColor : "currentColor"
-                  }}
-                >
-                  {isStamped ? (
-                    <Check className="w-5 h-5" strokeWidth={3} />
-                  ) : (
-                    <Icon className="w-5 h-5" />
-                  )}
-                  <div className="absolute inset-1 rounded-full border border-current opacity-10 pointer-events-none" />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="border-t-2 border-dashed pt-4 flex items-center justify-between" style={{ borderColor: `${primaryColor}30` }}>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider block opacity-60">Chef's Special Reward</span>
-            <span className="text-sm font-bold">{props.rewardTitle}</span>
-          </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}>
-            Bon Appétit
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 7. Beauty Template (Elegant salon/lashes style with floating sparkle elements)
-const BeautyTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border shadow-xl rounded-3xl relative", props.className)}
-      style={{ backgroundColor: bgColor, color: textColor, borderColor: `${primaryColor}20` }}
-    >
-      <div 
-        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-10 blur-xl pointer-events-none" 
-        style={{ backgroundColor: primaryColor }} 
-      />
-      <CardContent className="p-8 relative">
-        <div className="text-center mb-8">
-          {logoUrl ? (
-            <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mx-auto mb-2" />
-          ) : (
-            <p className="text-[10px] uppercase tracking-[0.25em] font-light opacity-80 mb-1" style={{ color: primaryColor }}>
-              {props.businessName}
-            </p>
-          )}
-          <CardTitle className="text-2xl font-light tracking-wide">{props.programName}</CardTitle>
-          <div className="w-8 h-[1px] bg-current mx-auto mt-3 opacity-30" style={{ backgroundColor: primaryColor }} />
-        </div>
-
-        <div className="flex flex-wrap gap-4 justify-center mb-8">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div
-                key={index}
-                className={cn(
-                  "w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 border",
-                  isStamped ? "shadow-sm scale-105" : "opacity-30 border-dashed"
-                )}
-                style={{
-                  borderColor: isStamped ? primaryColor : "currentColor",
-                  backgroundColor: isStamped ? `${primaryColor}15` : "transparent",
-                  color: isStamped ? primaryColor : "currentColor"
-                }}
-              >
-                {isStamped ? (
-                  <Sparkles className="w-4 h-4 animate-pulse" />
-                ) : (
-                  <Icon className="w-4 h-4" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="p-4 rounded-2xl text-center border border-dashed" style={{ backgroundColor: `${primaryColor}05`, borderColor: `${primaryColor}25` }}>
-          <span className="text-[10px] uppercase tracking-widest opacity-60 block mb-1">Your Exclusive Treatment</span>
-          <span className="text-sm font-semibold">{props.rewardTitle}</span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 8. Automotive Template (Sleek carbon dark industrial styling)
-const AutomotiveTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border-2 shadow-2xl rounded-xl relative", props.className)}
-      style={{ backgroundColor: bgColor, color: textColor, borderColor: primaryColor }}
-    >
-      <div className="absolute top-0 left-0 h-full w-1.5" style={{ backgroundColor: primaryColor }} />
-      <CardContent className="p-6 pl-8">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            {logoUrl ? (
-              <img src={logoUrl} alt={props.businessName} className="h-9 w-auto object-contain mb-1.5" />
-            ) : (
-              <p className="text-[11px] font-black uppercase tracking-wider opacity-85 mb-0.5" style={{ color: primaryColor }}>
-                {props.businessName}
-              </p>
-            )}
-            <CardTitle className="text-xl font-bold uppercase tracking-tight">{props.programName}</CardTitle>
-          </div>
-          <div className="bg-white/10 px-3 py-1.5 rounded border border-white/10 font-mono text-sm tracking-widest font-bold">
-            {props.currentStamps}/{props.stampTarget}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-5 gap-2.5 mb-6">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="aspect-square flex items-center justify-center">
-                <div
-                  className={cn(
-                    "w-full h-full border-2 flex items-center justify-center transition-all duration-200 rounded-lg",
-                    isStamped ? "scale-100 shadow-[0_0_10px_rgba(0,0,0,0.2)]" : "opacity-25"
-                  )}
-                  style={{ 
-                    borderColor: isStamped ? primaryColor : "currentColor",
-                    backgroundColor: isStamped ? primaryColor : "transparent",
-                    color: isStamped ? "#0f172a" : "currentColor"
-                  }}
-                >
-                  {isStamped ? (
-                    <Car className="w-5 h-5 text-slate-900" />
-                  ) : (
-                    <Icon className="w-4 h-4" />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="border-t pt-4 flex items-center justify-between" style={{ borderColor: `${primaryColor}20` }}>
-          <div>
-            <span className="text-[9px] font-bold uppercase tracking-wider block opacity-60">Completed Reward</span>
-            <span className="text-sm font-bold uppercase tracking-tight">{props.rewardTitle}</span>
-          </div>
-          <span className="text-xs border px-3 py-1 rounded font-mono font-bold tracking-wider" style={{ borderColor: primaryColor, color: primaryColor }}>
-            DRIVE SAFE
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 9. Fitness Template (Energetic bold athletic design)
-const FitnessTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border-4 shadow-none rounded-none relative", props.className)}
-      style={{ backgroundColor: bgColor, color: textColor, borderColor: primaryColor }}
-    >
-      <div className="absolute top-0 right-0 w-24 h-full bg-current opacity-5 transform skew-x-12 translate-x-8 pointer-events-none" />
-      <CardContent className="p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 pb-4 mb-6" style={{ borderColor: `${primaryColor}20` }}>
-          <div>
-            {logoUrl ? (
-              <img src={logoUrl} alt={props.businessName} className="h-8 w-auto object-contain mb-1.5" />
-            ) : (
-              <p className="text-xs font-black uppercase tracking-widest opacity-80" style={{ color: primaryColor }}>
-                {props.businessName}
-              </p>
-            )}
-            <CardTitle className="text-2xl font-black uppercase italic tracking-tight">{props.programName}</CardTitle>
-          </div>
-          <div className="text-sm font-bold uppercase italic tracking-wide shrink-0">
-            Progress: <span className="text-xl font-black italic" style={{ color: primaryColor }}>{Math.round((props.currentStamps / props.stampTarget) * 100)}%</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-5 gap-3 mb-6">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="aspect-square flex items-center justify-center">
-                <div
-                  className={cn(
-                    "w-full h-full border-2 flex items-center justify-center transition-all duration-300 transform",
-                    isStamped ? "scale-100 rotate-12 shadow-md" : "opacity-30 border-dashed"
-                  )}
-                  style={{ 
-                    borderColor: isStamped ? primaryColor : "currentColor",
-                    backgroundColor: isStamped ? primaryColor : "transparent",
-                    color: isStamped ? "#111827" : "currentColor"
-                  }}
-                >
-                  <Icon className={cn("w-5 h-5", isStamped && "animate-pulse")} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="p-3 flex items-center justify-between rounded" style={{ backgroundColor: `${primaryColor}15` }}>
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-wider block opacity-70">Goal Unlock Reward</span>
-            <span className="text-sm font-bold uppercase italic">{props.rewardTitle}</span>
-          </div>
-          <div className="text-right shrink-0">
-            <span className="text-lg font-black italic tabular-nums">{props.currentStamps}</span>
-            <span className="text-xs opacity-70">/{props.stampTarget}</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 10. Café Template (Warm coffee & pastry-inspired layout)
-const CafeTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border-2 shadow-md rounded-2xl relative", props.className)}
-      style={{ borderColor: primaryColor, backgroundColor: bgColor, color: textColor }}
-    >
-      <CardContent className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            {logoUrl ? (
-              <img src={logoUrl} alt={props.businessName} className="h-9 w-auto object-contain mb-1.5" />
-            ) : (
-              <p className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1" style={{ color: primaryColor }}>
-                {props.businessName}
-              </p>
-            )}
-            <CardTitle className="text-2xl font-heading font-bold">{props.programName}</CardTitle>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full shrink-0" style={{ backgroundColor: `${primaryColor}15` }}>
-            <Coffee className="w-4 h-4 animate-bounce" style={{ color: primaryColor }} />
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: primaryColor }}>Café Card</span>
-          </div>
-        </div>
-
-        <div className="p-3 rounded-xl mb-6 text-xs font-bold flex justify-between items-center border" style={{ backgroundColor: `${primaryColor}08`, borderColor: `${primaryColor}20` }}>
-          <span>Current Coffee Progress:</span>
-          <span className="text-sm font-black" style={{ color: primaryColor }}>{props.currentStamps} / {props.stampTarget} Cups</span>
-        </div>
-
-        <div className="grid grid-cols-5 gap-3 mb-6">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="flex justify-center aspect-square">
-                <div
-                  className={cn(
-                    "w-full h-full rounded-xl border-2 flex items-center justify-center transition-all duration-300 relative",
-                    isStamped ? "opacity-100 scale-105 shadow-sm" : "opacity-30 border-dashed"
-                  )}
-                  style={{ 
-                    borderColor: isStamped ? primaryColor : "currentColor",
-                    backgroundColor: isStamped ? `${primaryColor}15` : "transparent",
-                    color: isStamped ? primaryColor : "currentColor"
-                  }}
-                >
-                  {isStamped ? (
-                    <Coffee className="w-5 h-5 fill-current" />
-                  ) : (
-                    <Icon className="w-4 h-4" />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="border-t pt-4 flex items-center justify-between" style={{ borderColor: `${primaryColor}30` }}>
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider block opacity-60">Complete Card Reward</span>
-            <span className="text-sm font-bold" style={{ color: primaryColor }}>{props.rewardTitle}</span>
-          </div>
-          <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-1 rounded" style={{ backgroundColor: `${primaryColor}20`, color: textColor }}>
-            Easy Reward
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 11. Retail Template (Premium boutique box design)
-const RetailTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border shadow-sm rounded-none p-1", props.className)}
-      style={{ backgroundColor: bgColor, color: textColor, borderColor: `${primaryColor}30` }}
-    >
-      <div className="border p-6" style={{ borderColor: `${primaryColor}20` }}>
-        <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4 mb-8">
-          <div>
-            {logoUrl ? (
-              <img src={logoUrl} alt={props.businessName} className="h-8 w-auto object-contain mb-2" />
-            ) : (
-              <p className="text-[10px] uppercase tracking-[0.2em] opacity-60 mb-1">
-                {props.businessName}
-              </p>
-            )}
-            <CardTitle className="text-xl font-medium tracking-tight uppercase font-heading">{props.programName}</CardTitle>
-          </div>
-          <div className="text-left sm:text-right shrink-0">
-            <span className="text-[9px] uppercase tracking-widest opacity-60 block">Loyalty Card</span>
-            <span className="text-xs font-mono tracking-widest">#RTL-{Math.abs(props.stampTarget - props.currentStamps)}X</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-5 gap-3.5 mb-8">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="flex justify-center aspect-square">
-                <div
-                  className={cn(
-                    "w-full h-full border flex flex-col items-center justify-center transition-all duration-300",
-                    isStamped ? "opacity-100 scale-100" : "opacity-25"
-                  )}
-                  style={{ 
-                    borderColor: isStamped ? primaryColor : "currentColor",
-                    backgroundColor: isStamped ? `${primaryColor}05` : "transparent",
-                    color: isStamped ? primaryColor : "currentColor"
-                  }}
-                >
-                  <Icon className="w-5 h-5 mb-0.5" />
-                  <span className="text-[8px] font-mono">{index + 1}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="border-t pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2" style={{ borderColor: `${primaryColor}20` }}>
-          <div>
-            <span className="text-[9px] uppercase tracking-widest opacity-60 block mb-0.5">Boutique Reward</span>
-            <span className="text-sm font-semibold tracking-wide uppercase">{props.rewardTitle}</span>
-          </div>
-          <span className="text-xs font-mono opacity-80" style={{ color: primaryColor }}>
-            Stamps Earned: {props.currentStamps}
-          </span>
-        </div>
-      </div>
-    </Card>
-  );
-};
-
-// 12. Dark Template (Professional contrasting dark-themed style)
-const DarkTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border-2 shadow-2xl rounded-2xl relative", props.className)}
-      style={{ backgroundColor: "#090d16", color: "#f8fafc", borderColor: `${primaryColor}60` }}
-    >
-      <div 
-        className="absolute -top-16 -left-16 w-36 h-32 rounded-full opacity-20 blur-2xl pointer-events-none" 
-        style={{ backgroundColor: primaryColor }} 
-      />
-      <div 
-        className="absolute -bottom-16 -right-16 w-36 h-32 rounded-full opacity-10 blur-2xl pointer-events-none" 
-        style={{ backgroundColor: primaryColor }} 
-      />
-
-      <CardContent className="p-7 relative">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            {logoUrl ? (
-              <img src={logoUrl} alt={props.businessName} className="h-9 w-auto object-contain mb-1.5" />
-            ) : (
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] mb-1 text-slate-400">
-                {props.businessName}
-              </p>
-            )}
-            <CardTitle className="text-2xl font-black tracking-tight" style={{ color: "#ffffff" }}>{props.programName}</CardTitle>
-          </div>
-          <span className="text-xs bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1 rounded-full font-bold tabular-nums">
-            STAMPS: {props.currentStamps}/{props.stampTarget}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-5 gap-3 mb-6">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="aspect-square flex items-center justify-center">
-                <div
-                  className={cn(
-                    "w-full h-full border-2 flex items-center justify-center transition-all duration-300 rounded-xl relative",
-                    isStamped ? "border-solid shadow-[0_0_15px_rgba(255,255,255,0.1)] scale-105" : "border-dashed border-slate-700 bg-slate-900/40"
-                  )}
-                  style={{ 
-                    borderColor: isStamped ? primaryColor : "rgb(51 65 85)",
-                    backgroundColor: isStamped ? `${primaryColor}20` : "transparent",
-                    color: isStamped ? primaryColor : "rgb(100 116 139)"
-                  }}
-                >
-                  {isStamped ? (
-                    <Check className="w-5 h-5 animate-pulse" strokeWidth={3} />
-                  ) : (
-                    <Icon className="w-4 h-4" />
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-4">
-          <div>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">REWARD UNLOCK LOCKER</span>
-            <span className="text-sm font-extrabold text-white">{props.rewardTitle}</span>
-          </div>
-          <span className="text-xs font-black uppercase px-2.5 py-1 rounded shrink-0 tracking-widest" style={{ backgroundColor: primaryColor, color: "#000" }}>
-            LOCKED
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// 13. Colorful Template (Vibrant gradient with white assets)
-const ColorfulTemplate = (props: LoyaltyCardProps) => {
-  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
-
-  return (
-    <Card 
-      className={cn("overflow-hidden border-0 shadow-lg rounded-3xl relative", props.className)}
-      style={{ 
-        background: `linear-gradient(135deg, ${primaryColor}dd 0%, ${primaryColor}77 100%)`, 
-        color: "#ffffff" 
-      }}
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.15),transparent)] pointer-events-none" />
-      
-      <CardContent className="p-7 relative">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            {logoUrl ? (
-              <img src={logoUrl} alt={props.businessName} className="h-9 w-auto object-contain mb-1.5 drop-shadow-sm" />
-            ) : (
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/90">
-                {props.businessName}
-              </p>
-            )}
-            <CardTitle className="text-2xl font-black tracking-tight leading-tight">{props.programName}</CardTitle>
-          </div>
-          <div className="bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-2xl font-bold tracking-widest text-xs border border-white/20">
-            {props.currentStamps} / {props.stampTarget}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-5 gap-3.5 mb-6">
-          {stamps.map((index) => {
-            const isStamped = index < props.currentStamps;
-            return (
-              <div key={index} className="aspect-square flex items-center justify-center">
-                <div
-                  className={cn(
-                    "w-full h-full border-2 flex items-center justify-center transition-all duration-300 rounded-full",
-                    isStamped ? "bg-white border-white text-slate-900 shadow-md scale-105" : "border-white/30 text-white/40 border-dashed bg-white/5"
-                  )}
-                  style={{
-                    color: isStamped ? primaryColor : "rgba(255,255,255,0.4)"
-                  }}
-                >
-                  <Icon className="w-5 h-5" />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="bg-white text-slate-900 p-4 rounded-2xl flex items-center justify-between gap-4 shadow-sm border border-slate-100">
-          <div>
-            <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground block mb-0.5" style={{ color: primaryColor }}>Bright Reward Option</span>
-            <span className="text-sm font-extrabold">{props.rewardTitle}</span>
-          </div>
-          <span className="text-xs font-black uppercase text-white px-2.5 py-1 rounded-full shrink-0 tracking-wider" style={{ backgroundColor: primaryColor }}>
-            REDEEM
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-// Main Template Renderer
-export function LoyaltyCard(props: LoyaltyCardProps) {
-  const templateId = props.customization?.template_id || "classic";
-  
-  switch (templateId.toLowerCase()) {
-    case "modern":
-      return <ModernTemplate {...props} />;
-    case "minimal":
-      return <MinimalTemplate {...props} />;
-    case "luxury":
-      return <LuxuryTemplate {...props} />;
-    case "bold":
-      return <BoldTemplate {...props} />;
-    case "restaurant":
-      return <RestaurantTemplate {...props} />;
-    case "beauty":
-      return <BeautyTemplate {...props} />;
-    case "automotive":
-      return <AutomotiveTemplate {...props} />;
-    case "fitness":
-      return <FitnessTemplate {...props} />;
-    case "cafe":
-      return <CafeTemplate {...props} />;
-    case "retail":
-      return <RetailTemplate {...props} />;
-    case "dark":
-      return <DarkTemplate {...props} />;
-    case "colorful":
-      return <ColorfulTemplate {...props} />;
-    case "classic":
-    default:
-      return <ClassicTemplate {...props} />;
-  }
 }
