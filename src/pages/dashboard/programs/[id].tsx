@@ -82,6 +82,62 @@ const TEMPLATE_PRESETS = [
       stamp_icon: "ShoppingBag",
       reward_icon: "Crown"
     }
+  },
+  {
+    id: "restaurant",
+    name: "Restaurant",
+    desc: "Designed for restaurants and food businesses. Warm, delicious, plate-inspired dining visual style.",
+    style: "Food & Dining",
+    defaults: {
+      bg_color: "#fffbf5",
+      text_color: "#431407",
+      primary_color: "#ea580c",
+      secondary_color: "#ffedd5",
+      stamp_icon: "Utensils",
+      reward_icon: "Utensils"
+    }
+  },
+  {
+    id: "beauty",
+    name: "Beauty",
+    desc: "Designed for salons, lash studios, nail bars, and spas. Elegant, delicate rose gold luxury style.",
+    style: "Spa & Salon",
+    defaults: {
+      bg_color: "#fff1f2",
+      text_color: "#4c0519",
+      primary_color: "#db2777",
+      secondary_color: "#fce7f3",
+      stamp_icon: "Sparkles",
+      reward_icon: "Crown"
+    }
+  },
+  {
+    id: "automotive",
+    name: "Automotive",
+    desc: "Designed for car washes, auto garages, and detailing shops. Sleek carbon dark industrial styling.",
+    style: "Services",
+    defaults: {
+      bg_color: "#0f172a",
+      text_color: "#f8fafc",
+      primary_color: "#38bdf8",
+      secondary_color: "#1e293b",
+      stamp_icon: "Car",
+      reward_icon: "Gift"
+    }
+  },
+  {
+    id: "fitness",
+    name: "Fitness",
+    desc: "Designed for gyms, fitness centers, and personal trainers. Highly energetic dark theme with neon highlights.",
+    style: "Athletic & Wellness",
+    defaults: {
+      bg_color: "#111827",
+      text_color: "#f9fafb",
+      primary_color: "#a3e635",
+      secondary_color: "#1f2937",
+      stamp_icon: "Dumbbell",
+      reward_icon: "Crown"
+    }
   }
 ];
 

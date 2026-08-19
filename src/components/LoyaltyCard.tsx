@@ -339,6 +339,269 @@ const BoldTemplate = (props: LoyaltyCardProps) => {
   );
 };
 
+// 6. Restaurant Template (Warm plate-inspired dining styling)
+const RestaurantTemplate = (props: LoyaltyCardProps) => {
+  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
+
+  return (
+    <Card 
+      className={cn("overflow-hidden border-2 shadow-sm rounded-2xl relative border-dashed", props.className)}
+      style={{ borderColor: primaryColor, backgroundColor: bgColor, color: textColor }}
+    >
+      <CardContent className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mb-1" />
+            ) : (
+              <p className="text-xs font-bold uppercase tracking-[0.15em] opacity-80 mb-1" style={{ color: primaryColor }}>
+                {props.businessName}
+              </p>
+            )}
+            <CardTitle className="text-xl font-heading font-black">{props.programName}</CardTitle>
+          </div>
+          <div className="text-right">
+            <span className="text-xs uppercase font-semibold tracking-wider block opacity-70">Plates Completed</span>
+            <span className="text-2xl font-black tabular-nums">{props.currentStamps}/{props.stampTarget}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 gap-3 mb-6">
+          {stamps.map((index) => {
+            const isStamped = index < props.currentStamps;
+            return (
+              <div key={index} className="flex justify-center aspect-square">
+                <div
+                  className={cn(
+                    "w-full h-full rounded-full border-2 flex items-center justify-center transition-all duration-300 relative",
+                    isStamped ? "opacity-100 shadow-sm" : "opacity-30 border-dashed"
+                  )}
+                  style={{ 
+                    borderColor: isStamped ? primaryColor : "currentColor",
+                    backgroundColor: isStamped ? `${primaryColor}15` : "transparent",
+                    color: isStamped ? primaryColor : "currentColor"
+                  }}
+                >
+                  {isStamped ? (
+                    <Check className="w-5 h-5" strokeWidth={3} />
+                  ) : (
+                    <Icon className="w-5 h-5" />
+                  )}
+                  <div className="absolute inset-1 rounded-full border border-current opacity-10 pointer-events-none" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border-t-2 border-dashed pt-4 flex items-center justify-between" style={{ borderColor: `${primaryColor}30` }}>
+          <div>
+            <span className="text-[10px] font-bold uppercase tracking-wider block opacity-60">Chef's Special Reward</span>
+            <span className="text-sm font-bold">{props.rewardTitle}</span>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}>
+            Bon Appétit
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// 7. Beauty Template (Elegant salon/lashes style with floating sparkle elements)
+const BeautyTemplate = (props: LoyaltyCardProps) => {
+  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
+
+  return (
+    <Card 
+      className={cn("overflow-hidden border shadow-xl rounded-3xl relative", props.className)}
+      style={{ backgroundColor: bgColor, color: textColor, borderColor: `${primaryColor}20` }}
+    >
+      <div 
+        className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-10 blur-xl pointer-events-none" 
+        style={{ backgroundColor: primaryColor }} 
+      />
+      <CardContent className="p-8 relative">
+        <div className="text-center mb-8">
+          {logoUrl ? (
+            <img src={logoUrl} alt={props.businessName} className="h-10 w-auto object-contain mx-auto mb-2" />
+          ) : (
+            <p className="text-[10px] uppercase tracking-[0.25em] font-light opacity-80 mb-1" style={{ color: primaryColor }}>
+              {props.businessName}
+            </p>
+          )}
+          <CardTitle className="text-2xl font-light tracking-wide">{props.programName}</CardTitle>
+          <div className="w-8 h-[1px] bg-current mx-auto mt-3 opacity-30" style={{ backgroundColor: primaryColor }} />
+        </div>
+
+        <div className="flex flex-wrap gap-4 justify-center mb-8">
+          {stamps.map((index) => {
+            const isStamped = index < props.currentStamps;
+            return (
+              <div
+                key={index}
+                className={cn(
+                  "w-11 h-11 rounded-full flex items-center justify-center transition-all duration-300 border",
+                  isStamped ? "shadow-sm scale-105" : "opacity-30 border-dashed"
+                )}
+                style={{
+                  borderColor: isStamped ? primaryColor : "currentColor",
+                  backgroundColor: isStamped ? `${primaryColor}15` : "transparent",
+                  color: isStamped ? primaryColor : "currentColor"
+                }}
+              >
+                {isStamped ? (
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                ) : (
+                  <Icon className="w-4 h-4" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="p-4 rounded-2xl text-center border border-dashed" style={{ backgroundColor: `${primaryColor}05`, borderColor: `${primaryColor}25` }}>
+          <span className="text-[10px] uppercase tracking-widest opacity-60 block mb-1">Your Exclusive Treatment</span>
+          <span className="text-sm font-semibold">{props.rewardTitle}</span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// 8. Automotive Template (Sleek carbon dark industrial styling)
+const AutomotiveTemplate = (props: LoyaltyCardProps) => {
+  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
+
+  return (
+    <Card 
+      className={cn("overflow-hidden border-2 shadow-2xl rounded-xl relative", props.className)}
+      style={{ backgroundColor: bgColor, color: textColor, borderColor: primaryColor }}
+    >
+      <div className="absolute top-0 left-0 h-full w-1.5" style={{ backgroundColor: primaryColor }} />
+      <CardContent className="p-6 pl-8">
+        <div className="flex justify-between items-start mb-6">
+          <div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={props.businessName} className="h-9 w-auto object-contain mb-1.5" />
+            ) : (
+              <p className="text-[11px] font-black uppercase tracking-wider opacity-85 mb-0.5" style={{ color: primaryColor }}>
+                {props.businessName}
+              </p>
+            )}
+            <CardTitle className="text-xl font-bold uppercase tracking-tight">{props.programName}</CardTitle>
+          </div>
+          <div className="bg-white/10 px-3 py-1.5 rounded border border-white/10 font-mono text-sm tracking-widest font-bold">
+            {props.currentStamps}/{props.stampTarget}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 gap-2.5 mb-6">
+          {stamps.map((index) => {
+            const isStamped = index < props.currentStamps;
+            return (
+              <div key={index} className="aspect-square flex items-center justify-center">
+                <div
+                  className={cn(
+                    "w-full h-full border-2 flex items-center justify-center transition-all duration-200 rounded-lg",
+                    isStamped ? "scale-100 shadow-[0_0_10px_rgba(0,0,0,0.2)]" : "opacity-25"
+                  )}
+                  style={{ 
+                    borderColor: isStamped ? primaryColor : "currentColor",
+                    backgroundColor: isStamped ? primaryColor : "transparent",
+                    color: isStamped ? "#0f172a" : "currentColor"
+                  }}
+                >
+                  {isStamped ? (
+                    <Car className="w-5 h-5 text-slate-900" />
+                  ) : (
+                    <Icon className="w-4 h-4" />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="border-t pt-4 flex items-center justify-between" style={{ borderColor: `${primaryColor}20` }}>
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-wider block opacity-60">Completed Reward</span>
+            <span className="text-sm font-bold uppercase tracking-tight">{props.rewardTitle}</span>
+          </div>
+          <span className="text-xs border px-3 py-1 rounded font-mono font-bold tracking-wider" style={{ borderColor: primaryColor, color: primaryColor }}>
+            DRIVE SAFE
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// 9. Fitness Template (Energetic bold athletic design)
+const FitnessTemplate = (props: LoyaltyCardProps) => {
+  const { primaryColor, bgColor, textColor, logoUrl, Icon, stamps } = useTemplateData(props);
+
+  return (
+    <Card 
+      className={cn("overflow-hidden border-4 shadow-none rounded-none relative", props.className)}
+      style={{ backgroundColor: bgColor, color: textColor, borderColor: primaryColor }}
+    >
+      <div className="absolute top-0 right-0 w-24 h-full bg-current opacity-5 transform skew-x-12 translate-x-8 pointer-events-none" />
+      <CardContent className="p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 pb-4 mb-6" style={{ borderColor: `${primaryColor}20` }}>
+          <div>
+            {logoUrl ? (
+              <img src={logoUrl} alt={props.businessName} className="h-8 w-auto object-contain mb-1.5" />
+            ) : (
+              <p className="text-xs font-black uppercase tracking-widest opacity-80" style={{ color: primaryColor }}>
+                {props.businessName}
+              </p>
+            )}
+            <CardTitle className="text-2xl font-black uppercase italic tracking-tight">{props.programName}</CardTitle>
+          </div>
+          <div className="text-sm font-bold uppercase italic tracking-wide shrink-0">
+            Progress: <span className="text-xl font-black italic" style={{ color: primaryColor }}>{Math.round((props.currentStamps / props.stampTarget) * 100)}%</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-5 gap-3 mb-6">
+          {stamps.map((index) => {
+            const isStamped = index < props.currentStamps;
+            return (
+              <div key={index} className="aspect-square flex items-center justify-center">
+                <div
+                  className={cn(
+                    "w-full h-full border-2 flex items-center justify-center transition-all duration-300 transform",
+                    isStamped ? "scale-100 rotate-12 shadow-md" : "opacity-30 border-dashed"
+                  )}
+                  style={{ 
+                    borderColor: isStamped ? primaryColor : "currentColor",
+                    backgroundColor: isStamped ? primaryColor : "transparent",
+                    color: isStamped ? "#111827" : "currentColor"
+                  }}
+                >
+                  <Icon className={cn("w-5 h-5", isStamped && "animate-pulse")} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="p-3 flex items-center justify-between rounded" style={{ backgroundColor: `${primaryColor}15` }}>
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider block opacity-70">Goal Unlock Reward</span>
+            <span className="text-sm font-bold uppercase italic">{props.rewardTitle}</span>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-lg font-black italic tabular-nums">{props.currentStamps}</span>
+            <span className="text-xs opacity-70">/{props.stampTarget}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
 // Main Template Renderer
 export function LoyaltyCard(props: LoyaltyCardProps) {
   const templateId = props.customization?.template_id || "classic";
@@ -352,7 +615,14 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
       return <LuxuryTemplate {...props} />;
     case "bold":
       return <BoldTemplate {...props} />;
-    // Other templates (coffee shop, beauty, restaurant, etc.) can be easily added as cases here
+    case "restaurant":
+      return <RestaurantTemplate {...props} />;
+    case "beauty":
+      return <BeautyTemplate {...props} />;
+    case "automotive":
+      return <AutomotiveTemplate {...props} />;
+    case "fitness":
+      return <FitnessTemplate {...props} />;
     case "classic":
     default:
       return <ClassicTemplate {...props} />;
