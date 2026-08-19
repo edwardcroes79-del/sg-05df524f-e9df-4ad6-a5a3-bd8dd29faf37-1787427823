@@ -82,7 +82,7 @@ export default function DashboardOverview() {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'rewards', filter: `business_id=eq.${businessId}` },
+        { event: '*', schema: 'public', table: 'rewards', filter: `business_id=eq.${businessId}` },
         () => {
           fetchDashboardData();
         }

@@ -28,7 +28,7 @@ export default function MyCardsPage() {
     const channel = supabase.channel(`customer_cards_${customerId}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'customer_loyalty_cards' },
+        { event: 'UPDATE', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customerId}` },
         (payload) => {
           console.log("🔥 REALTIME EVENT: customer_loyalty_cards UPDATE", payload);
           if (payload.new && payload.new.id) {
@@ -38,7 +38,7 @@ export default function MyCardsPage() {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'customer_loyalty_cards' },
+        { event: 'INSERT', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customerId}` },
         (payload) => {
           console.log("🔥 REALTIME EVENT: customer_loyalty_cards INSERT", payload);
           fetchCards();
@@ -46,7 +46,7 @@ export default function MyCardsPage() {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'rewards' },
+        { event: 'INSERT', schema: 'public', table: 'rewards', filter: `customer_id=eq.${customerId}` },
         (payload) => {
           console.log("🔥 REALTIME EVENT: rewards", payload);
           if (payload.new) {
