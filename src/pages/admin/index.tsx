@@ -71,6 +71,10 @@ export default function AdminDashboard() {
   const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Business deletion states
+  const [businessToDelete, setBusinessToDelete] = useState<any | null>(null);
+  const [deletingBusiness, setDeletingBusiness] = useState(false);
+
   // Website settings states
   const [footerSettings, setFooterSettings] = useState({
     aboutText: "",
@@ -555,6 +559,48 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteBusiness = async () => {
+    if (!businessToDelete) return;
+
+    try {
+      setDeletingBusiness(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/admin/delete-business", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ businessId: businessToDelete.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete business");
+      }
+
+      toast({
+        title: "Business Deleted",
+        description: `Successfully removed ${businessToDelete.business_name} and all related demo data.`,
+      });
+
+      setBusinessToDelete(null);
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Deletion Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingBusiness(false);
+    }
+  };
+
   const handleSaveFooterSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -789,6 +835,14 @@ export default function AdminDashboard() {
                                 <Power className="h-3.5 w-3.5" /> Activate
                               </>
                             )}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            className="gap-1 text-xs"
+                            onClick={() => setBusinessToDelete(biz)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" /> Delete
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -1360,6 +1414,54 @@ export default function AdminDashboard() {
                 className="gap-2"
               >
                 {deleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" /> Confirm Delete
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Business Delete Confirmation Dialog */}
+      {businessToDelete && (
+        <Dialog open={!!businessToDelete} onOpenChange={(open) => !open && setBusinessToDelete(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-destructive flex items-center gap-2">
+                <Trash2 className="h-5 w-5" /> Delete this business?
+              </DialogTitle>
+              <DialogDescription className="space-y-3 pt-2">
+                <p>
+                  You are about to permanently delete the test business <strong className="text-foreground">{businessToDelete.business_name}</strong>.
+                </p>
+                <p className="text-xs font-semibold text-destructive uppercase tracking-wider bg-destructive/10 p-2.5 rounded border border-destructive/20">
+                  ⚠️ This action is irreversible. All related staff accounts, programs, loyalty cards, rewards, QR codes, and stamp transactions will be permanently deleted from the database.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setBusinessToDelete(null)}
+                disabled={deletingBusiness}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteBusiness}
+                disabled={deletingBusiness}
+                className="gap-2"
+              >
+                {deletingBusiness ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
                   </>
