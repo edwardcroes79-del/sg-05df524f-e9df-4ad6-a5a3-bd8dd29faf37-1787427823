@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/integrations/supabase/client";
@@ -77,10 +76,7 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>Aruba Royalty Stamp | Digital Loyalty for the Caribbean</title>
-        <meta name="description" content="Turn every visit into a loyal customer with our production-ready digital loyalty stamp SaaS for Aruba businesses." />
-      </Head>
+      
       
       {/* Navigation */}
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
