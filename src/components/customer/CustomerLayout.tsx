@@ -13,6 +13,7 @@ import {
   Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
 interface CustomerLayoutProps {
   children: React.ReactNode;
@@ -36,6 +37,12 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
       } else {
         router.push("/auth/login");
       }
+      return;
+    }
+
+    const mfaRequirement = await getMfaRouteRequirement();
+    if (mfaRequirement.required) {
+      router.replace(buildMfaRedirect(router.asPath));
       return;
     }
 

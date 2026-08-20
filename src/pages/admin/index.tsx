@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -120,6 +121,12 @@ export default function AdminDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push("/auth/login");
+        return;
+      }
+
+      const mfaRequirement = await getMfaRouteRequirement();
+      if (mfaRequirement.required) {
+        router.replace(buildMfaRedirect(router.asPath));
         return;
       }
 

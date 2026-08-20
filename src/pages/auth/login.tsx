@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { getMfaRouteRequirement } from "@/lib/authSecurity";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -62,12 +63,35 @@ export default function Login() {
     }
   };
 
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    const prepareExistingMfaSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const requirement = await getMfaRouteRequirement();
+
+      if (requirement.required && requirement.factorId) {
+        setMfaFactorId(requirement.factorId);
+        setMfaRequired(true);
+        return;
+      }
+
+      if (router.query.mfa === "required") {
+        await routeUser();
+      }
+    };
+
+    prepareExistingMfaSession();
+  }, [router.isReady, router.query.mfa]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -82,18 +106,13 @@ export default function Login() {
         return;
       } 
       
-      // Check if MFA is required (AAL step up)
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal && aal.nextLevel === 'aal2' && aal.currentLevel === 'aal1') {
-        const { data: factors } = await supabase.auth.mfa.listFactors();
-        const totpFactor = factors?.totp.find((f: any) => f.status === 'verified');
-        
-        if (totpFactor) {
-          setMfaFactorId(totpFactor.id);
-          setMfaRequired(true);
-          setLoading(false);
-          return;
-        }
+      const requirement = await getMfaRouteRequirement();
+
+      if (requirement.required && requirement.factorId) {
+        setMfaFactorId(requirement.factorId);
+        setMfaRequired(true);
+        setLoading(false);
+        return;
       }
 
       toast({

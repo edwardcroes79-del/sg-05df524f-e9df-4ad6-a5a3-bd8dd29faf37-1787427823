@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   CreditCard
 } from "lucide-react";
+import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -41,6 +42,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const mfaRequirement = await getMfaRouteRequirement();
+    if (mfaRequirement.required) {
+      router.replace(buildMfaRedirect(router.asPath));
+      return;
+    }
+
     // Check if is super admin
     const { data: profile } = await supabase
       .from("profiles")
@@ -56,26 +63,45 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       .from("businesses")
       .select("*")
       .eq("owner_id", session.user.id)
-      .single();
+      .maybeSingle();
 
-    if (error || !businessData) {
+    let resolvedBusiness = businessData;
+
+    if (!resolvedBusiness) {
+      const { data: staffMembership } = await supabase
+        .from("business_users")
+        .select("role, status, businesses(*)")
+        .eq("user_id", session.user.id)
+        .eq("status", "active")
+        .maybeSingle();
+
+      const staffBusiness = (staffMembership as any)?.businesses;
+      resolvedBusiness = Array.isArray(staffBusiness) ? staffBusiness[0] : staffBusiness;
+    }
+
+    if (error && error.code !== "PGRST116") {
       router.push("/onboarding");
       return;
     }
 
-    setBusiness(businessData);
+    if (!resolvedBusiness) {
+      router.push("/onboarding");
+      return;
+    }
+
+    setBusiness(resolvedBusiness);
 
     // Fetch Plan data to check for trial status
     const { data: planData } = await supabase
       .from("subscription_plans")
       .select("is_trial, trial_days")
-      .eq("id", businessData.subscription_plan)
+      .eq("id", resolvedBusiness.subscription_plan)
       .maybeSingle();
 
-    if (planData?.is_trial && businessData.trial_end) {
+    if (planData?.is_trial && resolvedBusiness.trial_end) {
       setIsTrial(true);
       const now = new Date();
-      const trialEnd = new Date(businessData.trial_end);
+      const trialEnd = new Date(resolvedBusiness.trial_end);
       
       if (now > trialEnd) {
         setIsExpiredTrial(true);
