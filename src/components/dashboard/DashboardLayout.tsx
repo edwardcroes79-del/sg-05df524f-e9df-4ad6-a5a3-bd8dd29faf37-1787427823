@@ -4,6 +4,7 @@ import Link from "next/link";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import { 
   LayoutDashboard, 
   Gift, 
@@ -21,7 +22,9 @@ import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [business, setBusiness] = useState<any>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -35,12 +38,71 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     checkUserAndBusiness();
   }, []);
 
+  useEffect(() => {
+    if (!business?.id || !business?.owner_id || !currentUserId) return;
+    if (business.owner_id !== currentUserId) return;
+
+    const channel = supabase
+      .channel(`owner_stamp_notifications_${business.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "stamp_transactions",
+          filter: `business_id=eq.${business.id}`,
+        },
+        (payload) => {
+          const transaction = payload.new as {
+            staff_user_id?: string | null;
+            customer_id?: string | null;
+          };
+
+          if (!transaction.staff_user_id || transaction.staff_user_id === currentUserId) {
+            return;
+          }
+
+          void (async () => {
+            const [{ data: staffProfile }, { data: customer }] = await Promise.all([
+              supabase
+                .from("profiles")
+                .select("full_name, email")
+                .eq("id", transaction.staff_user_id)
+                .maybeSingle(),
+              transaction.customer_id
+                ? supabase
+                    .from("customers")
+                    .select("name")
+                    .eq("id", transaction.customer_id)
+                    .maybeSingle()
+                : Promise.resolve({ data: null }),
+            ]);
+
+            const staffName = staffProfile?.full_name || staffProfile?.email || "A staff member";
+            const customerName = customer?.name ? ` to ${customer.name}` : "";
+
+            toast({
+              title: "Stamp issued by staff",
+              description: `${staffName} issued a stamp${customerName}.`,
+            });
+          })();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [business?.id, business?.owner_id, currentUserId, toast]);
+
   const checkUserAndBusiness = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       router.push("/auth/login");
       return;
     }
+
+    setCurrentUserId(session.user.id);
 
     const mfaRequirement = await getMfaRouteRequirement();
     if (mfaRequirement.required) {
