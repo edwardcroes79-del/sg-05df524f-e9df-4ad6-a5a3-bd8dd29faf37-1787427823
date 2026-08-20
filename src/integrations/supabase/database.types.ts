@@ -832,12 +832,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_access_business:
-        | { Args: { p_business_id: string }; Returns: boolean }
-        | {
-            Args: { p_business_id: string; p_user_id?: string }
-            Returns: boolean
-          }
+      can_access_business: {
+        Args: { p_business_id: string; p_user_id?: string }
+        Returns: boolean
+      }
       can_access_customer:
         | { Args: { p_customer_id: string }; Returns: boolean }
         | {
@@ -899,6 +897,15 @@ export type Database = {
       redeem_reward_tx: {
         Args: { p_business_id: string; p_reward_code: string }
         Returns: Json
+      }
+      search_business_customers: {
+        Args: { p_business_id: string; p_limit?: number; p_search?: string }
+        Returns: {
+          email: string
+          id: string
+          name: string
+          phone: string
+        }[]
       }
     }
     Enums: {
