@@ -120,6 +120,7 @@ export default function EditProgram() {
   });
 
   const [businessName, setBusinessName] = useState("Your Business");
+  const [businessId, setBusinessId] = useState<string>("");
 
   useEffect(() => {
     if (id) fetchProgram();
@@ -166,6 +167,8 @@ export default function EditProgram() {
         setHasPremiumTemplates(planData?.includes_premium_templates || ["business", "enterprise"].includes(currentPlan));
       }
 
+      setBusinessId(data.business_id);
+
       setCustomization({
         template_id: data.template_id || "classic",
         bg_color: data.bg_color || "#ffffff",
@@ -193,6 +196,11 @@ export default function EditProgram() {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     
+    if (!businessId) {
+      toast({ title: "Error", description: "Business context missing.", variant: "destructive" });
+      return;
+    }
+
     if (!file.type.startsWith("image/")) {
       toast({
         title: "Invalid file type",
@@ -206,7 +214,7 @@ export default function EditProgram() {
       setUploading(true);
       const fileExt = file.name.split(".").pop();
       const fileName = `${id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `logos/${fileName}`;
+      const filePath = `${businessId}/logos/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("loyalty-assets")
