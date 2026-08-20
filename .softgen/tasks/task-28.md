@@ -1,6 +1,6 @@
 ---
 title: Deep Fix for Customer QR Join Flow
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [qr, customer, join, rls, schema]
