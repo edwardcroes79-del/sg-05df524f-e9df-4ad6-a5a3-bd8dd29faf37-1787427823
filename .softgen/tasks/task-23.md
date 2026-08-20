@@ -17,9 +17,9 @@ position: 23
 - Verify stamp issuing still works.
 
 ## Checklist
-- [ ] Query pg_proc for can_access_business overloads
-- [ ] Identify the intended function and obsolete duplicates
-- [ ] Drop obsolete duplicate functions
-- [ ] Ensure RLS policies still use the correct function
-- [ ] Verify customer search flow for Admin and Staff
-- [ ] Deliver debug report
+- [x] Query pg_proc for can_access_business overloads
+- [x] Identify the intended function and obsolete duplicates
+- [x] Drop obsolete duplicate functions (consolidated signatures to eliminate default ambiguity)
+- [x] Ensure RLS policies still use the correct function
+- [x] Verify customer search flow for Admin and Staff
+- [x] Deliver debug report
