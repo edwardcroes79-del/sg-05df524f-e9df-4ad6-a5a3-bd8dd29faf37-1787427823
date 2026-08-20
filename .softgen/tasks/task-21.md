@@ -21,6 +21,7 @@ Ensure that:
 - [x] Inspect the transaction logic and RLS for `stamp_transactions`
 - [x] Open and examine `src/pages/dashboard/scan.tsx` implementation for issuing stamps
 - [/] Ensure the database function/RPC for issuing stamps supports both Owners and Staff members
+- [ ] Add a real-time business dashboard notification listener for owners when staff issue stamps
 - [ ] Verify `stamp_transactions` is correctly created and references the correct authenticated user
 - [ ] Run typescript and validation tests
 - [ ] Deliver short summary and wait for instructions
