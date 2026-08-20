@@ -48,9 +48,10 @@ export default function JoinProgram() {
 
         const { data: pData, error: pError } = await supabase
           .from("loyalty_programs")
-          .select("*")
+          .select("id, business_id, name, description, stamp_target, reward_title, stamp_icon, reward_icon, card_color, template_id, bg_color, primary_color, secondary_color, text_color, card_logo_url, card_bg_image_url, active")
           .eq("id", pId)
           .eq("business_id", bData.id)
+          .eq("active", true)
           .single();
 
         if (pError || !pData) throw new Error("Program not found");
@@ -113,6 +114,7 @@ export default function JoinProgram() {
             customer_id: customerId,
             business_id: business.id,
             loyalty_program_id: program.id,
+            user_id: user.id,
             total_stamps: program.stamp_target
           });
         

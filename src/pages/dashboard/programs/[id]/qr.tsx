@@ -29,27 +29,40 @@ export default function ProgramQR() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: staffData } = await supabase
-        .from("business_users")
-        .select("business_id")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .single();
+      const { data: ownedBusiness } = await supabase
+        .from("businesses")
+        .select("id, business_name, slug")
+        .eq("owner_id", user.id)
+        .maybeSingle();
 
-      if (!staffData) return;
+      let businessId = ownedBusiness?.id;
+
+      if (!businessId) {
+        const { data: staffData } = await supabase
+          .from("business_users")
+          .select("business_id")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .maybeSingle();
+
+        businessId = staffData?.business_id;
+      }
+
+      if (!businessId) return;
 
       const { data: bData } = await supabase
         .from("businesses")
-        .select("*")
-        .eq("id", staffData.business_id)
+        .select("id, business_name, slug")
+        .eq("id", businessId)
         .single();
       setBusiness(bData);
 
       const { data: pData } = await supabase
         .from("loyalty_programs")
-        .select("*")
+        .select("id, business_id, name, stamp_target, reward_title, stamp_icon, card_color, active")
         .eq("id", programId)
-        .eq("business_id", staffData.business_id)
+        .eq("business_id", businessId)
+        .eq("active", true)
         .single();
       setProgram(pData);
     } catch (error) {

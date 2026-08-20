@@ -42,19 +42,33 @@ export default function ScanQR() {
       return;
     }
 
-    const { data: businesses } = await supabase
+    const { data: ownedBusiness } = await supabase
       .from("businesses")
-      .select("*")
+      .select("id, business_name, subscription_plan")
       .eq("owner_id", session.user.id)
-      .single();
+      .maybeSingle();
 
-    if (businesses) {
-      setBusiness(businesses);
+    let resolvedBusiness = ownedBusiness;
+
+    if (!resolvedBusiness) {
+      const { data: staffMembership } = await supabase
+        .from("business_users")
+        .select("business_id, businesses(id, business_name, subscription_plan)")
+        .eq("user_id", session.user.id)
+        .eq("status", "active")
+        .maybeSingle();
+
+      const staffBusiness = (staffMembership as any)?.businesses;
+      resolvedBusiness = Array.isArray(staffBusiness) ? staffBusiness[0] : staffBusiness;
+    }
+
+    if (resolvedBusiness) {
+      setBusiness(resolvedBusiness);
       
       const { data: progs } = await supabase
         .from("loyalty_programs")
-        .select("*")
-        .eq("business_id", businesses.id)
+        .select("id, name, active")
+        .eq("business_id", resolvedBusiness.id)
         .eq("active", true);
         
       if (progs && progs.length > 0) {
