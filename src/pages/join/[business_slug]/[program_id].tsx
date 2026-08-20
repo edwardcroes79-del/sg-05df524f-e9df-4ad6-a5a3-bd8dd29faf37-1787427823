@@ -37,7 +37,7 @@ export default function JoinProgram() {
         // Fetch program details first since the ID is universally unique and immune to malformed business slugs in the URL
         const { data: pData, error: pError } = await supabase
           .from("loyalty_programs")
-          .select("id, business_id, name, description, stamp_target, reward_title, stamp_icon, reward_icon, card_color, template_id, bg_color, primary_color, secondary_color, text_color, card_logo_url, card_bg_image_url, active")
+          .select("id, business_id, name, description, stamp_target, reward_title, reward_description, stamp_icon, card_color, active")
           .eq("id", pId)
           .eq("active", true)
           .maybeSingle();
@@ -179,17 +179,6 @@ export default function JoinProgram() {
             rewardTitle={program.reward_title}
             rewardDescription={program.reward_description}
             color={program.card_color}
-            customization={{
-              template_id: program.template_id,
-              bg_color: program.bg_color,
-              primary_color: program.primary_color,
-              secondary_color: program.secondary_color,
-              text_color: program.text_color,
-              stamp_icon: program.stamp_icon,
-              reward_icon: program.reward_icon,
-              card_logo_url: program.card_logo_url,
-              card_bg_image_url: program.card_bg_image_url
-            }}
             className="shadow-xl"
           />
 
