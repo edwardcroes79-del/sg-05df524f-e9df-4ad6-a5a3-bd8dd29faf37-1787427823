@@ -16,9 +16,9 @@ position: 25
 - Ensure correct business isolation is maintained using real Supabase data and existing RLS on `qr_codes`.
 
 ## Checklist
-- [ ] Open `src/pages/dashboard/qr.tsx` and inspect user role and context loading
-- [ ] Update UI on the QR codes page to conditionally hide/disable Create, Edit, Delete actions for Staff role
-- [ ] Verify that Staff can view the exact same business QR codes as the Owner/Admin
-- [ ] Inspect and verify Supabase RLS policies for `qr_codes` table to ensure SELECT is allowed for Staff and WRITE is blocked
+- [x] Open `src/pages/dashboard/qr.tsx` and inspect user role and context loading
+- [x] Update UI on the QR codes page to conditionally hide/disable Create, Edit, Delete actions for Staff role
+- [x] Verify that Staff can view the exact same business QR codes as the Owner/Admin
+- [x] Inspect and verify Supabase RLS policies for `qr_codes` table to ensure SELECT is allowed for Staff and WRITE is blocked
 - [ ] Run build and check for errors
 - [ ] Deliver short summary and wait for instructions

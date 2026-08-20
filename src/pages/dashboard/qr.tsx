@@ -16,6 +16,7 @@ export default function QRManagement() {
   const [business, setBusiness] = useState<any>(null);
   const [programs, setPrograms] = useState<any[]>([]);
   const [qrCodes, setQrCodes] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState<"owner" | "staff" | null>(null);
 
   useEffect(() => {
     fetchQRData();
@@ -27,21 +28,48 @@ export default function QRManagement() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Get business
-      const { data: bData, error: bError } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("owner_id", session.user.id)
-        .single();
+      // 1. Resolve business & role
+      let resolvedBusiness: any = null;
+      let role: "owner" | "staff" | null = null;
 
-      if (bError || !bData) return;
-      setBusiness(bData);
+      const { data: membership } = await supabase
+        .from("business_users")
+        .select("business_id, role, status")
+        .eq("user_id", session.user.id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+
+      if (membership?.business_id) {
+        role = "staff";
+        const { data: bData } = await supabase
+          .from("businesses")
+          .select("*")
+          .eq("id", membership.business_id)
+          .single();
+        resolvedBusiness = bData;
+      } else {
+        const { data: bData } = await supabase
+          .from("businesses")
+          .select("*")
+          .eq("owner_id", session.user.id)
+          .maybeSingle();
+        
+        if (bData) {
+          role = "owner";
+          resolvedBusiness = bData;
+        }
+      }
+
+      if (!resolvedBusiness) return;
+      setBusiness(resolvedBusiness);
+      setUserRole(role);
 
       // Fetch active loyalty programs
       const { data: pData } = await supabase
         .from("loyalty_programs")
         .select("*")
-        .eq("business_id", bData.id)
+        .eq("business_id", resolvedBusiness.id)
         .eq("active", true);
 
       setPrograms(pData || []);
@@ -57,7 +85,7 @@ export default function QRManagement() {
             card_color
           )
         `)
-        .eq("business_id", bData.id);
+        .eq("business_id", resolvedBusiness.id);
 
       setQrCodes(qData || []);
     } catch (err: any) {
@@ -68,6 +96,14 @@ export default function QRManagement() {
   };
 
   const handleGenerateQR = async (programId: string) => {
+    if (userRole === "staff") {
+      toast({
+        title: "Access Denied",
+        description: "Staff are not permitted to generate new QR codes.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (generating) return;
     setGenerating(true);
 
@@ -138,6 +174,8 @@ export default function QRManagement() {
     prog => !qrCodes.some(q => q.loyalty_program_id === prog.id)
   );
 
+  const isStaff = userRole === "staff";
+
   return (
     <DashboardLayout>
       <Head>
@@ -148,15 +186,19 @@ export default function QRManagement() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-heading font-bold text-foreground">QR Codes & Posters</h1>
-            <p className="text-muted-foreground mt-2">Manage scannable customer touchpoints to register and enroll users.</p>
+            <p className="text-muted-foreground mt-2">
+              {isStaff 
+                ? "View and download scannable customer touchpoints created by the business owner."
+                : "Manage scannable customer touchpoints to register and enroll users."}
+            </p>
           </div>
           <Button variant="outline" size="sm" onClick={fetchQRData} className="gap-2 self-start md:self-auto">
             <RefreshCw className="h-4 w-4" /> Refresh Data
           </Button>
         </div>
 
-        {/* Generate Card Section */}
-        {programsWithoutQR.length > 0 && (
+        {/* Generate Card Section (Hone for Owners only) */}
+        {!isStaff && programsWithoutQR.length > 0 && (
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
               <CardTitle className="text-lg">Generate Missing QR Codes</CardTitle>
@@ -193,9 +235,11 @@ export default function QRManagement() {
               <div className="max-w-md mx-auto">
                 <h3 className="text-lg font-semibold text-foreground">No QR Codes generated yet</h3>
                 <p className="text-muted-foreground text-sm mt-1">
-                  Once you have active loyalty programs, you can generate QR codes here. Customers scan these to sign up and join your program.
+                  {isStaff
+                    ? "No QR codes have been created by your business administrator yet."
+                    : "Once you have active loyalty programs, you can generate QR codes here. Customers scan these to sign up and join your program."}
                 </p>
-                {programs.length === 0 && (
+                {!isStaff && programs.length === 0 && (
                   <Link href="/dashboard/programs/new" className="inline-block mt-4">
                     <Button>Create Your First Program</Button>
                   </Link>
