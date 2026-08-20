@@ -328,11 +328,11 @@ export default function BillingPage() {
                       </span>
                     </p>
                     
-                    {plan.features?.map((feature: string, idx: number) =>
-                    <p key={idx} className="text-sm flex items-center gap-2.5">
-                        <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                        <span>5,000 Active Customers</span>
-                      </p>
+                    {plan.features?.map((feature: string, idx: number) => {}
+
+
+
+
                     )}
                   </CardContent>
                   <CardFooter className="pt-4 border-t bg-muted/10">
