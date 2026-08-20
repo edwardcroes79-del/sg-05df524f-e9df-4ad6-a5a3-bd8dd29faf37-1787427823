@@ -1,6 +1,6 @@
 ---
 title: Phase 3 Issue Stamp workflow
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [phase-3, issue-stamp, transactions, staff-access]
@@ -20,8 +20,8 @@ Ensure that:
 ## Checklist
 - [x] Inspect the transaction logic and RLS for `stamp_transactions`
 - [x] Open and examine `src/pages/dashboard/scan.tsx` implementation for issuing stamps
-- [/] Ensure the database function/RPC for issuing stamps supports both Owners and Staff members
+- [x] Ensure the database function/RPC for issuing stamps supports both Owners and Staff members
 - [x] Add a real-time business dashboard notification listener for owners when staff issue stamps
-- [/] Verify `stamp_transactions` is correctly created and references the correct authenticated user
+- [x] Verify `stamp_transactions` is correctly created and references the correct authenticated user
 - [x] Run typescript and validation tests
-- [ ] Deliver short summary and wait for instructions
+- [x] Deliver short summary and wait for instructions
