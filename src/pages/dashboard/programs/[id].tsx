@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save, Trash2, QrCode, Upload, RefreshCw, Sparkles, Layout, Palette, Gift, Check } from "lucide-react";
+import { ArrowLeft, Save, Trash2, QrCode, Upload, RefreshCw, Sparkles, Layout, Palette, Gift, Check, ShieldAlert } from "lucide-react";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -91,6 +91,7 @@ export default function EditProgram() {
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [activeCategory, setActiveCategory] = useState<"All" | "Industry" | "Style" | "Aruba">("All");
+  const [isStaff, setIsStaff] = useState(false);
   
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>("starter");
   const [hasPremiumTemplates, setHasPremiumTemplates] = useState<boolean>(false);
@@ -128,6 +129,21 @@ export default function EditProgram() {
 
   const fetchProgram = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        if (profile?.role === "business_staff") {
+          setIsStaff(true);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data, error } = await supabase
         .from("loyalty_programs")
         .select(`
@@ -364,6 +380,22 @@ export default function EditProgram() {
   );
 
   if (loading) return <DashboardLayout><div className="flex p-8 justify-center">Loading...</div></DashboardLayout>;
+
+  if (isStaff) {
+    return (
+      <DashboardLayout>
+        <Head>
+          <title>Access Denied | Dashboard</title>
+        </Head>
+        <div className="max-w-md mx-auto my-12 text-center p-6 border rounded-xl bg-card shadow-sm">
+          <ShieldAlert className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+          <p className="text-muted-foreground mb-6">Only Business Owners can modify branding and loyalty program settings.</p>
+          <Button onClick={() => router.push("/dashboard/programs")}>Return to Programs</Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

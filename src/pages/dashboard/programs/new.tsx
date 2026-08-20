@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, ShieldAlert } from "lucide-react";
 
 export default function NewProgram() {
   const router = useRouter();
@@ -19,6 +19,7 @@ export default function NewProgram() {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [limitReached, setLimitLimitReached] = useState(false);
   const [maxPrograms, setMaxPrograms] = useState<number>(1);
+  const [isStaff, setIsStaff] = useState(false);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -33,6 +34,17 @@ export default function NewProgram() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (profile?.role === "business_staff") {
+        setIsStaff(true);
+        return;
+      }
+
       const { data: business } = await supabase
         .from("businesses")
         .select("id, subscription_plan")
@@ -108,6 +120,22 @@ export default function NewProgram() {
       setLoading(false);
     }
   };
+
+  if (isStaff) {
+    return (
+      <DashboardLayout>
+        <Head>
+          <title>Access Denied | Dashboard</title>
+        </Head>
+        <div className="max-w-md mx-auto my-12 text-center p-6 border rounded-xl bg-card shadow-sm">
+          <ShieldAlert className="w-12 h-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+          <p className="text-muted-foreground mb-6">Only Business Owners can create new loyalty programs.</p>
+          <Button onClick={() => router.push("/dashboard")}>Return to Dashboard</Button>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
