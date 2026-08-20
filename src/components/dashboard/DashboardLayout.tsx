@@ -28,6 +28,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [hasNoBusiness, setHasNoBusiness] = useState(false);
   
   // Trial states
   const [isExpiredTrial, setIsExpiredTrial] = useState(false);
@@ -146,7 +147,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       }
 
       if (!resolvedBusiness) {
-        router.push("/onboarding");
+        setHasNoBusiness(true);
+        setLoading(false);
         return;
       }
 
@@ -200,6 +202,30 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="flex flex-col items-center gap-4">
           <Skeleton className="h-12 w-12 rounded-full" />
           <p className="text-muted-foreground font-medium">Loading workspace...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (hasNoBusiness) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="p-4 bg-destructive/10 rounded-full text-destructive">
+          <ShieldAlert className="h-16 w-16" />
+        </div>
+        <div className="max-w-md space-y-3">
+          <h1 className="text-3xl font-heading font-bold text-foreground">Access Denied</h1>
+          <p className="text-muted-foreground">
+            You do not have an active business membership. If you are a staff member, please ask your business owner to verify your account status.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
+          <Button onClick={() => router.push("/onboarding")} className="bg-primary text-white font-bold px-8">
+            Create New Business
+          </Button>
+          <Button onClick={handleLogout} variant="outline" className="px-8">
+            Sign Out
+          </Button>
         </div>
       </div>
     );
