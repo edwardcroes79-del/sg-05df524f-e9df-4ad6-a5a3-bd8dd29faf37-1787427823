@@ -45,7 +45,7 @@ export default function NewProgram() {
         // Count existing loyalty programs
         const { count } = await supabase
           .from("loyalty_programs")
-          .select("*", { count: "exact", head: true })
+          .select("id", { count: "exact", head: true })
           .eq("business_id", business.id);
 
         // Fetch plan limits
