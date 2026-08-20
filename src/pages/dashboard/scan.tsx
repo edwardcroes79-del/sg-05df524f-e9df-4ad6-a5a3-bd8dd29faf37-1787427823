@@ -229,6 +229,8 @@ export default function ScanQR() {
     }
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session");
       if (!business?.id) throw new Error("Missing business configuration");
 
       // Handle Reward Redemption
@@ -237,7 +239,8 @@ export default function ScanQR() {
         
         const { data, error } = await (supabase.rpc as any)("redeem_reward_tx", {
           p_reward_code: rewardCode,
-          p_business_id: business.id
+          p_business_id: business.id,
+          p_staff_user_id: session.user.id
         });
 
         if (error) throw error;
@@ -274,7 +277,8 @@ export default function ScanQR() {
       const { data, error } = await (supabase.rpc as any)("issue_stamp_tx", {
         p_customer_id: customerId,
         p_business_id: business.id,
-        p_loyalty_program_id: selectedProgramId
+        p_loyalty_program_id: selectedProgramId,
+        p_staff_user_id: session.user.id
       });
 
       if (error) throw error;

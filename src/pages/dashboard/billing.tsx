@@ -25,6 +25,7 @@ export default function BillingPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [isStaff, setIsStaff] = useState(false);
   const [business, setBusiness] = useState<any>(null);
   const [currentPlan, setCurrentPlan] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
@@ -39,6 +40,19 @@ export default function BillingPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      // Check user role
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (profile?.role === "business_staff") {
+        setIsStaff(true);
+        setLoading(false);
+        return;
+      }
 
       // Fetch business
       const { data: businessData } = await supabase
@@ -133,6 +147,35 @@ export default function BillingPage() {
               <Skeleton key={i} className="h-96" />
             ))}
           </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isStaff) {
+    return (
+      <DashboardLayout>
+        <Head>
+          <title>Access Denied | Dashboard</title>
+        </Head>
+        <div className="max-w-md mx-auto my-12 text-center">
+          <Card className="border-destructive/20 shadow-md">
+            <CardHeader className="bg-destructive/5 border-b pb-4">
+              <div className="w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-2">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <CardTitle className="text-xl text-destructive">Access Denied</CardTitle>
+              <CardDescription>You do not have permission to view Billing & Subscription.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Only Business Owners can manage subscription tiers, billing profiles, and view payment history. Please contact your administrator.
+              </p>
+            </CardContent>
+            <CardFooter className="bg-muted/30 border-t justify-center py-4">
+              <Button onClick={() => router.push("/dashboard")}>Return to Dashboard</Button>
+            </CardFooter>
+          </Card>
         </div>
       </DashboardLayout>
     );

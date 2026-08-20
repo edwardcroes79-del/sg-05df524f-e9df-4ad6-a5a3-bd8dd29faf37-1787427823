@@ -15,6 +15,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [isStaff, setIsStaff] = useState(false);
   const [saving, setSaving] = useState(false);
   const [business, setBusiness] = useState<any>(null);
 
@@ -44,6 +45,19 @@ export default function SettingsPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       router.push("/auth/login");
+      return;
+    }
+
+    // Check user role
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (profile?.role === "business_staff") {
+      setIsStaff(true);
+      setLoading(false);
       return;
     }
 
@@ -224,6 +238,35 @@ export default function SettingsPage() {
       <DashboardLayout>
         <div className="flex h-full items-center justify-center min-h-[60vh]">
           <Loader2 className="animate-spin h-8 w-8 text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (isStaff) {
+    return (
+      <DashboardLayout>
+        <Head>
+          <title>Access Denied | Dashboard</title>
+        </Head>
+        <div className="max-w-md mx-auto my-12 text-center">
+          <Card className="border-destructive/20 shadow-md">
+            <CardHeader className="bg-destructive/5 border-b pb-4">
+              <div className="w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-2">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <CardTitle className="text-xl text-destructive">Access Denied</CardTitle>
+              <CardDescription>You do not have permission to modify Business Settings.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Only Business Owners are authorized to modify public brand profiles, public emails, phone details, addresses, and physical locations.
+              </p>
+            </CardContent>
+            <CardFooter className="bg-muted/30 border-t justify-center py-4">
+              <Button onClick={() => router.push("/dashboard")}>Return to Dashboard</Button>
+            </CardFooter>
+          </Card>
         </div>
       </DashboardLayout>
     );
