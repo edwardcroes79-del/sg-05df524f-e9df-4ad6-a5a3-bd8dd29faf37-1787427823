@@ -17,8 +17,8 @@ Investigate and fix only the underlying customer-to-business relationship. Curre
 - [x] Inspect working and broken customer visibility queries
 - [x] Inspect schema and RLS for customers, customer_loyalty_cards, loyalty_programs, and businesses
 - [x] Verify real customer-to-business relationship records in Supabase
-- [ ] Identify exact failing layer without changing Staff Loyalty Program functionality
-- [ ] Apply minimal fix only if relationship creation or visibility is broken
+- [x] Identify exact failing layer without changing Staff Loyalty Program functionality
+- [x] Apply minimal fix only if relationship creation or visibility is broken
 - [ ] Validate checks
 - [ ] Report findings and stop
 

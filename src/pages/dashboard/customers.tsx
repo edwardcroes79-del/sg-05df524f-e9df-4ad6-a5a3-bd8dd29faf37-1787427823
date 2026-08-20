@@ -85,50 +85,39 @@ export default function CustomersDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
+      let resolvedBusinessId: string | null = null;
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("business_users")
+        .select("business_id, role, status")
+        .eq("user_id", session.user.id)
+        .eq("status", "active")
+        .limit(1)
         .maybeSingle();
 
-      const isStaffUser = profile?.role === "business_staff";
-      let resolvedBusinessId = null;
+      if (membershipError) throw membershipError;
 
-      // 1. Fetch current business ID securely based on role
-      if (isStaffUser) {
-        const { data: membership, error: membershipError } = await supabase
-          .from("business_users")
-          .select("business_id")
-          .eq("user_id", session.user.id)
-          .eq("status", "active")
-          .limit(1)
-          .maybeSingle();
-
-        if (membershipError) throw membershipError;
-        if (membership) resolvedBusinessId = membership.business_id;
+      if (membership?.business_id) {
+        resolvedBusinessId = membership.business_id;
       } else {
         const { data: businessData, error: bizError } = await supabase
           .from("businesses")
           .select("id")
           .eq("owner_id", session.user.id)
           .limit(1)
-          .single();
+          .maybeSingle();
 
-        if (bizError) {
-          toast({
-            title: "Business Not Found",
-            description: "Please complete your onboarding first.",
-            variant: "destructive",
-          });
-          return;
+        if (bizError) throw bizError;
+
+        if (businessData) {
+          resolvedBusinessId = businessData.id;
         }
-        if (businessData) resolvedBusinessId = businessData.id;
       }
 
       if (!resolvedBusinessId) {
         toast({
           title: "Access Error",
-          description: "Could not resolve your business profile.",
+          description: "Could not resolve your active business relationship.",
           variant: "destructive",
         });
         return;
