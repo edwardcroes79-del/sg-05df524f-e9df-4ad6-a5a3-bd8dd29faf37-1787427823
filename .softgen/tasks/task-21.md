@@ -18,9 +18,9 @@ Ensure that:
 4. No fake counters, fake programs, or duplicate data is created.
 
 ## Checklist
-- [ ] Inspect the transaction logic and RLS for `stamp_transactions`
-- [ ] Open and examine `src/pages/dashboard/scan.tsx` implementation for issuing stamps
-- [ ] Ensure the database function/RPC for issuing stamps supports both Owners and Staff members
+- [x] Inspect the transaction logic and RLS for `stamp_transactions`
+- [x] Open and examine `src/pages/dashboard/scan.tsx` implementation for issuing stamps
+- [/] Ensure the database function/RPC for issuing stamps supports both Owners and Staff members
 - [ ] Verify `stamp_transactions` is correctly created and references the correct authenticated user
 - [ ] Run typescript and validation tests
 - [ ] Deliver short summary and wait for instructions
