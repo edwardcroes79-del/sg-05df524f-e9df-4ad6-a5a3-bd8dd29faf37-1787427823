@@ -18,8 +18,8 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle } from
-"@/components/ui/dialog";
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function BillingPage() {
   const router = useRouter();
@@ -42,11 +42,11 @@ export default function BillingPage() {
       if (!session) return;
 
       // Check user role
-      const { data: profile } = await supabase.
-      from("profiles").
-      select("role").
-      eq("id", session.user.id).
-      maybeSingle();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
 
       if (profile?.role === "business_staff") {
         setIsStaff(true);
@@ -55,44 +55,44 @@ export default function BillingPage() {
       }
 
       // Fetch business
-      const { data: businessData } = await supabase.
-      from("businesses").
-      select("*").
-      eq("owner_id", session.user.id).
-      single();
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("*")
+        .eq("owner_id", session.user.id)
+        .single();
 
       if (!businessData) return;
       setBusiness(businessData);
 
       // Fetch current plan
-      const { data: planData } = await supabase.
-      from("subscription_plans").
-      select("*").
-      eq("id", businessData.subscription_plan || "starter").
-      single();
+      const { data: planData } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("id", businessData.subscription_plan || "starter")
+        .single();
       setCurrentPlan(planData);
 
       // Fetch all plans
-      const { data: plansData } = await supabase.
-      from("subscription_plans").
-      select("*").
-      order("price_awg", { ascending: true });
+      const { data: plansData } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .order("price_awg", { ascending: true });
       setPlans(plansData || []);
 
       // Fetch pending payments
-      const { data: paymentsData } = await supabase.
-      from("subscription_payments").
-      select("*").
-      eq("business_id", businessData.id).
-      order("created_at", { ascending: false });
+      const { data: paymentsData } = await supabase
+        .from("subscription_payments")
+        .select("*")
+        .eq("business_id", businessData.id)
+        .order("created_at", { ascending: false });
       setPendingPayments(paymentsData || []);
 
       // Fetch bank account
-      const { data: bankData } = await supabase.
-      from("platform_bank_accounts").
-      select("*").
-      eq("is_active", true).
-      single();
+      const { data: bankData } = await supabase
+        .from("platform_bank_accounts")
+        .select("*")
+        .eq("is_active", true)
+        .single();
       setBankAccount(bankData);
 
       setLoading(false);
@@ -104,10 +104,10 @@ export default function BillingPage() {
 
   const handlePlanChange = async (plan: any) => {
     if (!plan || plan.id === business?.subscription_plan) return;
-
+    
     toast({
       title: "Admin approval required",
-      description: "Plan changes are reviewed before activation. Your current entitlements remain unchanged until approval."
+      description: "Plan changes are reviewed before activation. Your current entitlements remain unchanged until approval.",
     });
   };
 
@@ -143,13 +143,13 @@ export default function BillingPage() {
         <div className="space-y-8">
           <Skeleton className="h-12 w-64" />
           <div className="grid md:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) =>
-            <Skeleton key={i} className="h-96" />
-            )}
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-96" />
+            ))}
           </div>
         </div>
-      </DashboardLayout>);
-
+      </DashboardLayout>
+    );
   }
 
   if (isStaff) {
@@ -177,8 +177,8 @@ export default function BillingPage() {
             </CardFooter>
           </Card>
         </div>
-      </DashboardLayout>);
-
+      </DashboardLayout>
+    );
   }
 
   return (
@@ -194,28 +194,28 @@ export default function BillingPage() {
         </div>
 
         {/* Current Plan */}
-        {currentPlan &&
-        <Card className="border-primary/20 bg-primary/[0.02] shadow-sm relative overflow-hidden">
-            {currentPlan.id === 'business' &&
-          <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl">
+        {currentPlan && (
+          <Card className="border-primary/20 bg-primary/[0.02] shadow-sm relative overflow-hidden">
+            {currentPlan.id === 'business' && (
+              <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl">
                 Pro Member
               </div>
-          }
-            {currentPlan.id === 'enterprise' &&
-          <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl font-serif">
+            )}
+            {currentPlan.id === 'enterprise' && (
+              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl font-serif">
                 ★ VIP Enterprise
               </div>
-          }
+            )}
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl font-heading font-bold">
                   Active Subscription Plan
-                  {currentPlan.id === 'business' &&
-                <Badge className="bg-primary hover:bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Pro Business</Badge>
-                }
-                  {currentPlan.id === 'enterprise' &&
-                <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider font-serif">★ Enterprise</Badge>
-                }
+                  {currentPlan.id === 'business' && (
+                    <Badge className="bg-primary hover:bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Pro Business</Badge>
+                  )}
+                  {currentPlan.id === 'enterprise' && (
+                    <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider font-serif">★ Enterprise</Badge>
+                  )}
                 </CardTitle>
                 <Badge variant="default" className="gap-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold">
                   <Check className="h-3.5 w-3.5" /> Activated
@@ -248,17 +248,17 @@ export default function BillingPage() {
                       39 HD Design Presets & Templates {currentPlan.includes_premium_templates ? "✨" : "🔒"}
                     </span>
                   </p>
-                  {currentPlan.features?.map((feature: string, idx: number) =>
-                <p key={idx} className="text-sm text-muted-foreground flex items-center gap-2 sm:col-span-2">
+                  {currentPlan.features?.map((feature: string, idx: number) => (
+                    <p key={idx} className="text-sm text-muted-foreground flex items-center gap-2 sm:col-span-2">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
                       <span>{feature}</span>
                     </p>
-                )}
+                  ))}
                 </div>
               </div>
             </CardContent>
           </Card>
-        }
+        )}
 
         {/* Available Plans */}
         <div>
@@ -271,28 +271,28 @@ export default function BillingPage() {
               const isTrial = plan.is_trial;
 
               return (
-                <Card
-                  key={plan.id}
+                <Card 
+                  key={plan.id} 
                   className={`flex flex-col relative transition-all duration-300 overflow-hidden ${
-                  isCurrent ?
-                  "border-primary ring-2 ring-primary/20 shadow-md scale-[1.02] z-10 bg-primary/[0.01]" :
-                  isEnterprise ?
-                  "border-amber-500/30 hover:border-amber-500 bg-amber-500/[0.01] shadow-sm hover:shadow-md" :
-                  isBusiness ?
-                  "border-primary/20 hover:border-primary bg-primary/[0.005] shadow-sm hover:shadow-md" :
-                  "border-border bg-background shadow-sm hover:border-muted-foreground/30"}`
-                  }>
-                  
-                  {isBusiness &&
-                  <span className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase">
+                    isCurrent 
+                      ? "border-primary ring-2 ring-primary/20 shadow-md scale-[1.02] z-10 bg-primary/[0.01]" 
+                      : isEnterprise
+                      ? "border-amber-500/30 hover:border-amber-500 bg-amber-500/[0.01] shadow-sm hover:shadow-md"
+                      : isBusiness
+                      ? "border-primary/20 hover:border-primary bg-primary/[0.005] shadow-sm hover:shadow-md"
+                      : "border-border bg-background shadow-sm hover:border-muted-foreground/30"
+                  }`}
+                >
+                  {isBusiness && (
+                    <span className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase">
                       Recommended
                     </span>
-                  }
-                  {isEnterprise &&
-                  <span className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase font-serif">
+                  )}
+                  {isEnterprise && (
+                    <span className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase font-serif">
                       ★ Exclusive
                     </span>
-                  }
+                  )}
                   <CardHeader className="pb-4 pt-6">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xl font-heading font-extrabold">{plan.name}</CardTitle>
@@ -328,47 +328,47 @@ export default function BillingPage() {
                       </span>
                     </p>
                     
-                    {plan.features?.map((feature: string, idx: number) => {}
-
-
-
-
-                    )}
+                    {plan.features?.map((feature: string, idx: number) => (
+                      <p key={idx} className="text-sm flex items-center gap-2.5">
+                        <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <span>{feature}</span>
+                      </p>
+                    ))}
                   </CardContent>
                   <CardFooter className="pt-4 border-t bg-muted/10">
                     <Button
                       className={`w-full font-bold h-10 ${
-                      isCurrent ?
-                      "bg-muted text-muted-foreground border-border hover:bg-muted cursor-default" :
-                      isEnterprise ?
-                      "bg-amber-500 text-white hover:bg-amber-600 shadow-sm" :
-                      "bg-primary text-white hover:bg-primary/95 shadow-sm"}`
-                      }
+                        isCurrent 
+                          ? "bg-muted text-muted-foreground border-border hover:bg-muted cursor-default" 
+                          : isEnterprise
+                          ? "bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
+                          : "bg-primary text-white hover:bg-primary/95 shadow-sm"
+                      }`}
                       variant={isCurrent ? "outline" : "default"}
                       disabled={isCurrent}
-                      onClick={() => handlePlanChange(plan)}>
-                      
-                      {isCurrent ?
-                      "Active Plan" :
-                      plan.price_awg < (currentPlan?.price_awg || 0) ?
-                      "Downgrade Plan" :
-                      "Upgrade Plan"
+                      onClick={() => handlePlanChange(plan)}
+                    >
+                      {isCurrent 
+                        ? "Active Plan" 
+                        : (plan.price_awg < (currentPlan?.price_awg || 0)) 
+                        ? "Downgrade Plan" 
+                        : "Upgrade Plan"
                       }
                     </Button>
                   </CardFooter>
-                </Card>);
-
+                </Card>
+              );
             })}
           </div>
         </div>
 
         {/* Payment History */}
-        {pendingPayments.length > 0 &&
-        <div>
+        {pendingPayments.length > 0 && (
+          <div>
             <h2 className="text-xl font-heading font-semibold mb-4">Payment History</h2>
             <div className="space-y-4">
-              {pendingPayments.map((payment) =>
-            <Card key={payment.id}>
+              {pendingPayments.map((payment) => (
+                <Card key={payment.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">
@@ -393,26 +393,26 @@ export default function BillingPage() {
                         <p className="text-muted-foreground">Submitted</p>
                         <p className="font-semibold">{new Date(payment.created_at).toLocaleDateString()}</p>
                       </div>
-                      {payment.reviewed_at &&
-                  <div>
+                      {payment.reviewed_at && (
+                        <div>
                           <p className="text-muted-foreground">Reviewed</p>
                           <p className="font-semibold">{new Date(payment.reviewed_at).toLocaleDateString()}</p>
                         </div>
-                  }
-                      {payment.admin_notes &&
-                  <div className="sm:col-span-2">
+                      )}
+                      {payment.admin_notes && (
+                        <div className="sm:col-span-2">
                           <p className="text-muted-foreground">Admin Notes</p>
                           <p className="font-semibold">{payment.admin_notes}</p>
                         </div>
-                  }
+                      )}
                     </div>
                   </CardContent>
                 </Card>
-            )}
+              ))}
             </div>
           </div>
-        }
+        )}
       </div>
-    </DashboardLayout>);
-
+    </DashboardLayout>
+  );
 }
