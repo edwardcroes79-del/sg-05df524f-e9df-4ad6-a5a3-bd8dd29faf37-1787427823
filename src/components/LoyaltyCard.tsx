@@ -25,11 +25,13 @@ export interface TemplateCustomization {
 
 export interface LoyaltyCardProps {
   programName: string;
+  programDescription?: string;
   businessName: string;
   stampTarget: number;
   currentStamps: number;
   stampIcon?: string;
   rewardTitle?: string;
+  rewardDescription?: string;
   color?: string;
   className?: string;
   customization?: TemplateCustomization;
@@ -90,7 +92,7 @@ const THEME_REGISTRY: Record<string, {
 };
 
 export function LoyaltyCard(props: LoyaltyCardProps) {
-  const { customization, stampIcon, color, stampTarget, currentStamps, programName, businessName, rewardTitle } = props;
+  const { customization, stampIcon, color, stampTarget, currentStamps, programName, programDescription, businessName, rewardTitle, rewardDescription } = props;
   const templateId = (customization?.template_id || "classic").toLowerCase();
   
   // Resolve Theme Specification
@@ -209,6 +211,24 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
             <RewardIcon className="w-5 h-5" />
           </div>
         </div>
+
+        {/* Text Details Section */}
+        {(programDescription || rewardDescription) && (
+          <div className="mt-4 pt-4 border-t border-current/10 space-y-3">
+            {programDescription && (
+              <div>
+                <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">About This Program</span>
+                <p className="text-xs leading-relaxed opacity-90 break-words">{programDescription}</p>
+              </div>
+            )}
+            {rewardDescription && (
+              <div>
+                <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">Reward Terms</span>
+                <p className="text-xs leading-relaxed opacity-90 break-words">{rewardDescription}</p>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

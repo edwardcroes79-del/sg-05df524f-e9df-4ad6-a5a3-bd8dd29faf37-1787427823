@@ -421,11 +421,13 @@ export default function EditProgram() {
             <div className="border border-border rounded-xl p-4 bg-muted/30">
               <LoyaltyCard 
                 programName={formData.name || "Program Name"}
+                programDescription={formData.description}
                 businessName={businessName}
                 stampTarget={parseInt(formData.stamp_target, 10) || 10}
                 currentStamps={3} 
                 stampIcon={customization.stamp_icon}
                 rewardTitle={formData.reward_title || "Sample Reward"}
+                rewardDescription={formData.reward_description}
                 customization={customization}
               />
               <p className="text-center text-xs text-muted-foreground mt-3 italic">
