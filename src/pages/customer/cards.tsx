@@ -138,11 +138,13 @@ export default function MyCardsPage() {
               <LoyaltyCard
                 key={card.id}
                 programName={card.loyalty_programs?.name}
+                programDescription={card.loyalty_programs?.description}
                 businessName={card.businesses?.business_name}
                 stampTarget={card.loyalty_programs?.stamp_target}
                 currentStamps={card.current_stamps}
                 stampIcon={card.loyalty_programs?.stamp_icon}
                 rewardTitle={card.loyalty_programs?.reward_title}
+                rewardDescription={card.loyalty_programs?.reward_description}
                 customization={{
                   template_id: card.loyalty_programs?.template_id,
                   bg_color: card.loyalty_programs?.bg_color,
