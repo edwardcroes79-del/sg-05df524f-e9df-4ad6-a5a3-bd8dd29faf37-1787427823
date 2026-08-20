@@ -17,6 +17,7 @@ export default function ScanQR() {
   const [processing, setProcessing] = useState(false);
   const [business, setBusiness] = useState<any>(null);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
   
   // Scanner state
@@ -94,6 +95,19 @@ export default function ScanQR() {
         if (progs && progs.length > 0) {
           setPrograms(progs);
           setSelectedProgramId(progs[0].id);
+        }
+
+        // Fetch registered customers
+        const { data: cards, error: cardsErr } = await supabase
+          .from("customer_loyalty_cards")
+          .select(`customer_id, customers(id, name, email)`)
+          .eq("business_id", resolvedBusinessId);
+          
+        if (!cardsErr && cards) {
+          const uniqueCustomers = Array.from(
+            new Map(cards.filter(c => c.customers).map(c => [c.customer_id, c.customers])).values()
+          );
+          setCustomers(uniqueCustomers as any[]);
         }
       }
     } catch (err) {
@@ -487,21 +501,52 @@ export default function ScanQR() {
                       )}
                     </div>
                   ) : (
-                    <form onSubmit={handleManualSubmit} className="space-y-4 py-8">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Customer ID or Reward Code</label>
-                        <Input 
-                          placeholder="Scan with USB scanner or paste here..." 
-                          value={manualCode}
-                          onChange={(e) => setManualCode(e.target.value)}
-                          autoFocus
-                          disabled={processing}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Point your physical USB barcode scanner here and scan the customer's phone, or type a Reward Code directly.
-                        </p>
+                    <form onSubmit={handleManualSubmit} className="space-y-6 py-4">
+                      <div className="space-y-4">
+                        <div className="space-y-2 text-left">
+                          <label className="text-sm font-medium">Select Registered Customer</label>
+                          <Select 
+                            value={manualCode.startsWith("CUSTOMER:") ? manualCode : ""} 
+                            onValueChange={setManualCode} 
+                            disabled={processing}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Search or select customer..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {customers.length === 0 ? (
+                                <SelectItem value="none" disabled>No registered customers yet</SelectItem>
+                              ) : (
+                                customers.map((c: any) => (
+                                  <SelectItem key={c.id} value={`CUSTOMER:${c.id}`}>
+                                    {c.name} {c.email ? `(${c.email})` : ''}
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="relative flex py-2 items-center">
+                          <div className="flex-grow border-t border-border"></div>
+                          <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-medium uppercase tracking-wider">Or</span>
+                          <div className="flex-grow border-t border-border"></div>
+                        </div>
+
+                        <div className="space-y-2 text-left">
+                          <label className="text-sm font-medium">Customer ID or Reward Code</label>
+                          <Input 
+                            placeholder="Scan with USB scanner or paste code..." 
+                            value={manualCode.startsWith("CUSTOMER:") ? "" : manualCode}
+                            onChange={(e) => setManualCode(e.target.value)}
+                            disabled={processing}
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Point your physical USB barcode scanner here and scan the customer's phone, or type a Reward Code.
+                          </p>
+                        </div>
                       </div>
-                      <Button type="submit" className="w-full" disabled={!manualCode || processing}>
+                      <Button type="submit" className="w-full" disabled={!manualCode || manualCode === "none" || processing}>
                         {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Submit"}
                       </Button>
                     </form>
