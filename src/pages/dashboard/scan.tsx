@@ -4,11 +4,11 @@ import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { ScanLine, CheckCircle2, XCircle, Loader2, Camera, Keyboard } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle } from "lucide-react";
 
 export default function ScanQR() {
   const router = useRouter();
@@ -24,6 +24,13 @@ export default function ScanQR() {
   const [manualCode, setManualCode] = useState("");
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string; reward_earned?: boolean; reward_title?: string } | null>(null);
 
+  // Advanced camera control states
+  const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([]);
+  const [activeCameraId, setActiveCameraId] = useState<string>("");
+  const [isScanning, setIsScanning] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const qrCodeInstanceRef = useRef<any>(null);
+
   useEffect(() => {
     fetchBusinessAndPrograms();
   }, []);
@@ -35,7 +42,6 @@ export default function ScanQR() {
       return;
     }
 
-    // Get business ID (assuming owner for now, but in reality could be staff from business_users)
     const { data: businesses } = await supabase
       .from("businesses")
       .select("*")
@@ -59,40 +65,132 @@ export default function ScanQR() {
     setLoading(false);
   };
 
+  // Secure Scanner Lifecycle Manager (with strict Rear/Back camera filtering)
   useEffect(() => {
-    let scanner: any = null;
+    let active = true;
     
-    const initScanner = async () => {
-      if (scanMode === "camera" && !loading && programs.length > 0 && !scanResult) {
-        // Dynamically import to prevent Next.js SSR crash (window is not defined)
-        const { Html5QrcodeScanner } = await import("html5-qrcode");
+    const startScanner = async () => {
+      if (scanMode !== "camera" || loading || programs.length === 0 || scanResult) {
+        return;
+      }
+      
+      try {
+        const { Html5Qrcode } = await import("html5-qrcode");
         
-        scanner = new Html5QrcodeScanner(
-          "qr-reader",
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          false
+        // Retrieve and prioritize Back/Rear cameras
+        if (cameras.length === 0) {
+          try {
+            const devices = await Html5Qrcode.getCameras();
+            if (active) {
+              if (devices && devices.length > 0) {
+                setCameras(devices);
+                
+                // Identify default Back/Rear/Environment Camera
+                const backCamera = devices.find(device => 
+                  device.label.toLowerCase().includes("back") || 
+                  device.label.toLowerCase().includes("rear") || 
+                  device.label.toLowerCase().includes("environment") ||
+                  device.label.toLowerCase().includes("camera2")
+                );
+                
+                const defaultCamId = backCamera ? backCamera.id : devices[0].id;
+                setActiveCameraId(defaultCamId);
+              } else {
+                setCameraError("No video input cameras found on this device.");
+              }
+            }
+          } catch (err: any) {
+            if (active) {
+              setCameraError("Camera permission denied. Please allow camera access in browser settings.");
+              toast({
+                title: "Camera Access Required",
+                description: "Please enable camera permissions to scan your customer's QR loyalty cards.",
+                variant: "destructive"
+              });
+            }
+            return;
+          }
+        }
+        
+        const element = document.getElementById("qr-reader");
+        if (!element || !active) return;
+        
+        // Stop any running scanner before starting a new session to prevent hardware collision
+        if (qrCodeInstanceRef.current) {
+          try {
+            await qrCodeInstanceRef.current.stop();
+          } catch (e) {
+            // ignore if not running
+          }
+        }
+        
+        const html5QrCode = new Html5Qrcode("qr-reader");
+        qrCodeInstanceRef.current = html5QrCode;
+        
+        const targetCam = activeCameraId || (cameras.length > 0 ? cameras[0].id : null);
+        if (!targetCam && active) return;
+        
+        await html5QrCode.start(
+          targetCam ? targetCam : { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 }
+          },
+          (decodedText: string) => {
+            if (active) handleProcessQR(decodedText);
+          },
+          () => {
+            // silent fail for periodic frame noise
+          }
         );
         
-        scanner.render(onScanSuccess, onScanFailure);
+        if (active) {
+          setIsScanning(true);
+          setCameraError(null);
+        }
+      } catch (err: any) {
+        console.error("Scanner startup failed:", err);
+        if (active) {
+          setIsScanning(false);
+          setCameraError("Failed to access selected camera. Try switching devices.");
+        }
       }
     };
     
-    initScanner();
-
+    startScanner();
+    
     return () => {
-      if (scanner) {
-        scanner.clear().catch(console.error);
+      active = false;
+      if (qrCodeInstanceRef.current) {
+        const instance = qrCodeInstanceRef.current;
+        if (instance.isScanning) {
+          instance.stop().catch(console.error);
+        }
       }
     };
-  }, [scanMode, loading, programs.length, scanResult]);
+  }, [scanMode, loading, programs.length, scanResult, activeCameraId, cameras.length]);
 
-  const onScanSuccess = (decodedText: string) => {
-    // Expected format: "CUSTOMER:uuid" or "REWARD:code"
-    handleProcessQR(decodedText);
-  };
-
-  const onScanFailure = (error: any) => {
-    // Ignore frequent scan failures (just means no QR in view)
+  const switchCamera = async () => {
+    if (cameras.length <= 1) return;
+    
+    // Stop current scanning session
+    if (qrCodeInstanceRef.current && qrCodeInstanceRef.current.isScanning) {
+      try {
+        await qrCodeInstanceRef.current.stop();
+        setIsScanning(false);
+      } catch (err) {
+        console.error("Failed to stop previous camera:", err);
+      }
+    }
+    
+    const currentIndex = cameras.findIndex(c => c.id === activeCameraId);
+    const nextIndex = (currentIndex + 1) % cameras.length;
+    setActiveCameraId(cameras[nextIndex].id);
+    
+    toast({
+      title: "Switched Camera",
+      description: `Now scanning with: ${cameras[nextIndex].label || `Camera ${nextIndex + 1}`}`,
+    });
   };
 
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -105,6 +203,16 @@ export default function ScanQR() {
     if (processing) return;
     setProcessing(true);
     setScanResult(null);
+
+    // Stop active camera feed while processing a code to prevent multiple inputs and freeze preview
+    if (qrCodeInstanceRef.current && qrCodeInstanceRef.current.isScanning) {
+      try {
+        await qrCodeInstanceRef.current.stop();
+        setIsScanning(false);
+      } catch (err) {
+        console.error("Failed to stop camera:", err);
+      }
+    }
 
     try {
       if (!business?.id) throw new Error("Missing business configuration");
@@ -140,7 +248,6 @@ export default function ScanQR() {
         customerId = qrData.split(":")[1];
       }
 
-      // Basic UUID validation for customer IDs
       const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
       if (!uuidRegex.test(customerId)) {
         throw new Error("Invalid QR Code format. Please scan a Customer or Reward code.");
@@ -150,7 +257,6 @@ export default function ScanQR() {
         throw new Error("Missing loyalty program selection.");
       }
 
-      // Call secure RPC for stamps
       const { data, error } = await (supabase.rpc as any)("issue_stamp_tx", {
         p_customer_id: customerId,
         p_business_id: business.id,
@@ -159,9 +265,7 @@ export default function ScanQR() {
 
       if (error) throw error;
 
-      // Type cast the JSON response
       const result = data as { success: boolean; message: string; reward_earned?: boolean };
-      
       setScanResult(result);
       
       if (result.success) {
@@ -189,7 +293,7 @@ export default function ScanQR() {
       });
     } finally {
       setProcessing(false);
-      setManualCode(""); // Reset manual input
+      setManualCode("");
     }
   };
 
@@ -288,12 +392,55 @@ export default function ScanQR() {
                   </div>
 
                   {scanMode === "camera" ? (
-                    <div className="rounded-xl overflow-hidden bg-black text-white relative min-h-[300px] flex items-center justify-center">
-                      <div id="qr-reader" className="w-full !border-none" />
+                    <div className="rounded-xl overflow-hidden bg-black text-white relative min-h-[300px] flex flex-col items-center justify-center">
+                      
+                      {cameraError ? (
+                        <div className="p-6 text-center max-w-sm flex flex-col items-center gap-3 z-20">
+                          <AlertTriangle className="w-12 h-12 text-amber-500 animate-pulse" />
+                          <h3 className="font-bold text-lg text-white">Camera Offline</h3>
+                          <p className="text-sm text-slate-400 leading-normal">{cameraError}</p>
+                          {cameras.length > 1 && (
+                            <Button size="sm" onClick={switchCamera} className="mt-2 font-bold">
+                              Try Another Camera
+                            </Button>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <div id="qr-reader" className="w-full h-full min-h-[300px] !border-none flex items-center justify-center relative" />
+                          
+                          {/* Sleek Overlay Viewfinder HUD */}
+                          {isScanning && !processing && (
+                            <div className="absolute inset-0 border-[30px] border-black/50 pointer-events-none flex items-center justify-center z-10">
+                              <div className="w-[190px] h-[190px] border-2 border-dashed border-primary/85 rounded-lg relative shadow-[0_0_20px_rgba(20,250,200,0.1)]">
+                                {/* Active scanner corner brackets */}
+                                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-primary" />
+                                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-primary" />
+                                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-primary" />
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-primary" />
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {/* Camera Selection HUD Controls */}
+                      {scanMode === "camera" && cameras.length > 1 && !cameraError && !processing && (
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          size="sm"
+                          className="absolute bottom-4 right-4 bg-black/80 hover:bg-black border-white/20 hover:border-white/40 text-white z-20 font-bold gap-1.5 shadow-md h-9"
+                          onClick={switchCamera}
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" /> Switch Camera
+                        </Button>
+                      )}
+
                       {processing && (
-                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10">
-                          <Loader2 className="h-10 w-10 text-white animate-spin mb-4" />
-                          <p className="font-medium text-lg">Processing Stamp...</p>
+                        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30">
+                          <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+                          <p className="font-bold text-lg text-white">Processing Stamp...</p>
                         </div>
                       )}
                     </div>

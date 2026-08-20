@@ -9,8 +9,8 @@ interface SEOProps {
 
 // SEO elements that can be used in _document.tsx (returns JSX without Head wrapper)
 export function SEOElements({
-  title = "I want to build a real, production-ready SaaS appl",
-  description,
+  title = "Aruba Royalty Stamp",
+  description = "Our digital loyalty platform lets you issue stamps, track rewards, and retain both locals and tourists with simple QR code scanning.",
   image,
   url,
 }: SEOProps) {
