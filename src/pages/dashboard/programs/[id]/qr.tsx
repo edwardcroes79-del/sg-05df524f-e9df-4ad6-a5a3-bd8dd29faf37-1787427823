@@ -62,8 +62,8 @@ export default function ProgramQR() {
         .select("id, business_id, name, stamp_target, reward_title, stamp_icon, card_color, active")
         .eq("id", programId)
         .eq("business_id", businessId)
-        .eq("active", true)
-        .single();
+        .maybeSingle();
+        
       setProgram(pData);
     } catch (error) {
       console.error(error);
@@ -90,7 +90,19 @@ export default function ProgramQR() {
     );
   }
 
-  if (!program) return null;
+  if (!program) {
+    return (
+      <DashboardLayout>
+        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+          <h2 className="text-2xl font-bold text-foreground">Program Not Found</h2>
+          <p className="text-muted-foreground">The loyalty program you are looking for does not exist or you do not have permission to view it.</p>
+          <Link href="/dashboard/qr">
+            <Button variant="outline">Back to QR Codes</Button>
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
