@@ -7,6 +7,49 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+async function enforceApiRateLimit(rateKey: string, action: string, maxAttempts: number, windowSeconds: number): Promise<boolean> {
+  const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString();
+
+  const { data: existingLimit, error: readError } = await supabaseAdmin
+    .from("api_rate_limits")
+    .select("id, attempts, window_start")
+    .eq("rate_key", rateKey)
+    .eq("action", action)
+    .maybeSingle();
+
+  if (readError) {
+    return false;
+  }
+
+  if (!existingLimit || new Date(existingLimit.window_start).toISOString() < windowStart) {
+    const { error } = await supabaseAdmin
+      .from("api_rate_limits")
+      .upsert({
+        rate_key: rateKey,
+        action,
+        attempts: 1,
+        window_start: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "rate_key,action" });
+
+    return !error;
+  }
+
+  if ((existingLimit.attempts || 0) >= maxAttempts) {
+    return false;
+  }
+
+  const { error } = await supabaseAdmin
+    .from("api_rate_limits")
+    .update({
+      attempts: (existingLimit.attempts || 0) + 1,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", existingLimit.id);
+
+  return !error;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -15,6 +58,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const { businessId, name, email, password } = req.body;
     const authHeader = req.headers.authorization;
+
+    if (!businessId || typeof businessId !== "string" || !name || typeof name !== "string" || !email || typeof email !== "string" || !password || typeof password !== "string") {
+      return res.status(400).json({ error: "Missing or invalid staff account fields" });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: "Staff password must be at least 8 characters" });
+    }
 
     if (!authHeader) {
       return res.status(401).json({ error: "Missing authorization header" });
@@ -26,6 +77,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const rateKey = `${user.id}:${businessId}:staff_create`;
+    const withinLimit = await enforceApiRateLimit(rateKey, "staff_create", 5, 3600);
+
+    if (!withinLimit) {
+      return res.status(429).json({ error: "Too many staff creation attempts. Please try again later." });
     }
 
     // Check if the user is the owner of the business

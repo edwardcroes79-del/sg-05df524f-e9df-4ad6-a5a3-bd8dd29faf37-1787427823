@@ -29,7 +29,7 @@ export default function CustomerDashboardPage() {
     const channel = supabase.channel(`customer_dashboard_${customer.id}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'customer_loyalty_cards' },
+        { event: 'UPDATE', schema: 'public', table: 'customer_loyalty_cards', filter: `customer_id=eq.${customer.id}` },
         (payload) => {
           console.log("🔥 DASHBOARD REALTIME EVENT: customer_loyalty_cards UPDATE", payload);
           // Calculate difference if old record is available to securely update stats, otherwise just refetch
@@ -47,7 +47,7 @@ export default function CustomerDashboardPage() {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'rewards' },
+        { event: 'INSERT', schema: 'public', table: 'rewards', filter: `customer_id=eq.${customer.id}` },
         (payload) => {
           console.log("🔥 DASHBOARD REALTIME EVENT: rewards INSERT", payload);
           toast({
