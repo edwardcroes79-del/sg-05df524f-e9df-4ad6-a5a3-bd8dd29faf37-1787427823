@@ -1,6 +1,6 @@
 ---
 title: Issue Stamp customer search and Staff loyalty program access
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [staff-access, issue-stamp, rls, customers, loyalty-programs]
@@ -20,8 +20,8 @@ Fix the combined regression where Business Owners can see registered customers o
 - [x] Identify exact failing layer for Staff Issue Stamp customer search
 - [x] Identify exact failing layer for Staff Loyalty Programs visibility
 - [x] Apply minimal backend/frontend fix preserving Owner CRUD and Staff read/use permissions
-- [ ] Validate TypeScript/lint checks
-- [ ] Provide debug report with root cause and fix summary
+- [x] Validate TypeScript/lint checks
+- [x] Provide debug report with root cause and fix summary
 
 ## Acceptance
 Business Owner can search registered customers in Issue Stamp, select an existing Loyalty Program, and issue a real stamp.
