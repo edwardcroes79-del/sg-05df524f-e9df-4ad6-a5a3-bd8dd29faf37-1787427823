@@ -1,6 +1,6 @@
 ---
 title: Fix duplicate can_access_business function error
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [database, rls, functions, issue-stamp]
