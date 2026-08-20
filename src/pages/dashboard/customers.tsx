@@ -85,22 +85,56 @@ export default function CustomersDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // 1. Fetch current business
-      const { data: businessData, error: bizError } = await supabase
-        .from("businesses")
-        .select("*")
-        .limit(1)
-        .single();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
 
-      if (bizError || !businessData) {
+      const isStaffUser = profile?.role === "business_staff";
+      let resolvedBusinessId = null;
+
+      // 1. Fetch current business ID securely based on role
+      if (isStaffUser) {
+        const { data: membership, error: membershipError } = await supabase
+          .from("business_users")
+          .select("business_id")
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle();
+
+        if (membershipError) throw membershipError;
+        if (membership) resolvedBusinessId = membership.business_id;
+      } else {
+        const { data: businessData, error: bizError } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("owner_id", session.user.id)
+          .limit(1)
+          .single();
+
+        if (bizError) {
+          toast({
+            title: "Business Not Found",
+            description: "Please complete your onboarding first.",
+            variant: "destructive",
+          });
+          return;
+        }
+        if (businessData) resolvedBusinessId = businessData.id;
+      }
+
+      if (!resolvedBusinessId) {
         toast({
-          title: "Business Not Found",
-          description: "Please complete your onboarding first.",
+          title: "Access Error",
+          description: "Could not resolve your business profile.",
           variant: "destructive",
         });
         return;
       }
-      setBusiness(businessData);
+      
+      setBusiness({ id: resolvedBusinessId });
 
       // 2. Fetch customers associated via loyalty cards with pagination
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -131,7 +165,7 @@ export default function CustomersDashboard() {
             reward_title
           )
         `, { count: 'exact' })
-        .eq("business_id", businessData.id)
+        .eq("business_id", resolvedBusinessId)
         .range(startIndex, endIndex);
 
       if (cardsError) throw cardsError;

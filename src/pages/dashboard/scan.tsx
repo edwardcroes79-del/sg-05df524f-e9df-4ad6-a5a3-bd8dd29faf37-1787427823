@@ -36,47 +36,71 @@ export default function ScanQR() {
   }, []);
 
   const fetchBusinessAndPrograms = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push("/auth/login");
-      return;
-    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/auth/login");
+        return;
+      }
 
-    const { data: ownedBusiness } = await supabase
-      .from("businesses")
-      .select("id, business_name, subscription_plan")
-      .eq("owner_id", session.user.id)
-      .maybeSingle();
-
-    let resolvedBusiness = ownedBusiness;
-
-    if (!resolvedBusiness) {
-      const { data: staffMembership } = await supabase
-        .from("business_users")
-        .select("business_id, businesses(id, business_name, subscription_plan)")
-        .eq("user_id", session.user.id)
-        .eq("status", "active")
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
         .maybeSingle();
 
-      const staffBusiness = (staffMembership as any)?.businesses;
-      resolvedBusiness = Array.isArray(staffBusiness) ? staffBusiness[0] : staffBusiness;
-    }
+      const isStaffUser = profile?.role === "business_staff";
+      let resolvedBusinessId = null;
 
-    if (resolvedBusiness) {
-      setBusiness(resolvedBusiness);
-      
-      const { data: progs } = await supabase
-        .from("loyalty_programs")
-        .select("id, name, active")
-        .eq("business_id", resolvedBusiness.id)
-        .eq("active", true);
-        
-      if (progs && progs.length > 0) {
-        setPrograms(progs);
-        setSelectedProgramId(progs[0].id);
+      if (isStaffUser) {
+        const { data: staffMembership, error: membershipError } = await supabase
+          .from("business_users")
+          .select("business_id")
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle();
+
+        if (membershipError) throw membershipError;
+        if (staffMembership) {
+          resolvedBusinessId = staffMembership.business_id;
+        }
+      } else {
+        const { data: ownedBusiness, error: bizError } = await supabase
+          .from("businesses")
+          .select("id, business_name, subscription_plan")
+          .eq("owner_id", session.user.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (bizError) throw bizError;
+        if (ownedBusiness) {
+          resolvedBusinessId = ownedBusiness.id;
+        }
       }
+
+      if (resolvedBusinessId) {
+        // Set the minimal business object needed for the rest of the file
+        setBusiness({ id: resolvedBusinessId });
+        
+        const { data: progs, error: progsError } = await supabase
+          .from("loyalty_programs")
+          .select("id, name, active")
+          .eq("business_id", resolvedBusinessId)
+          .eq("active", true);
+          
+        if (progsError) throw progsError;
+          
+        if (progs && progs.length > 0) {
+          setPrograms(progs);
+          setSelectedProgramId(progs[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load scanner context:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // Secure Scanner Lifecycle Manager (with strict Rear/Back camera filtering)
