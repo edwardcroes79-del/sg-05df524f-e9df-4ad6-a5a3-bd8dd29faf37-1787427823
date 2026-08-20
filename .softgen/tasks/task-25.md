@@ -1,6 +1,6 @@
 ---
 title: Staff QR Codes - View Only
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [phase-staff-qr, qr-codes, role-permissions]
