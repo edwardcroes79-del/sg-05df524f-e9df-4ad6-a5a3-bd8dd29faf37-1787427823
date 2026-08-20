@@ -72,8 +72,9 @@ export default function ProgramQR() {
     }
   };
 
-  const joinUrl = typeof window !== 'undefined' && business && program 
-    ? `${window.location.origin}/join/${business.slug}/${program.id}` 
+  // Generate simplified robust public token URL
+  const joinUrl = typeof window !== 'undefined' && program 
+    ? `${window.location.origin}/join/${program.id}` 
     : '';
 
   const handlePrint = () => {
