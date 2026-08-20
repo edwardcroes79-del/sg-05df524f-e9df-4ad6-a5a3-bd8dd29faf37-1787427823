@@ -61,7 +61,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
     const { data: businessData, error } = await supabase
       .from("businesses")
-      .select("*")
+      .select("id, owner_id, business_name, status, subscription_plan, trial_end")
       .eq("owner_id", session.user.id)
       .maybeSingle();
 
@@ -70,7 +70,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (!resolvedBusiness) {
       const { data: staffMembership } = await supabase
         .from("business_users")
-        .select("role, status, businesses(*)")
+        .select("role, status, businesses(id, owner_id, business_name, status, subscription_plan, trial_end)")
         .eq("user_id", session.user.id)
         .eq("status", "active")
         .maybeSingle();

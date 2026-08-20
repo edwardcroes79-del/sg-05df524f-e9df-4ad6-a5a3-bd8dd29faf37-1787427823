@@ -49,7 +49,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
     // Retrieve or create customer profile
     const { data: customerData } = await supabase
       .from("customers")
-      .select("*")
+      .select("id, user_id, name, email, phone, avatar, created_at")
       .eq("user_id", session.user.id)
       .maybeSingle();
 
@@ -61,7 +61,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
           name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Customer",
           email: session.user.email
         })
-        .select()
+        .select("id, user_id, name, email, phone, avatar, created_at")
         .single();
       
       if (!error && newCustomer) {
