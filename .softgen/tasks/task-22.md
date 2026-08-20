@@ -18,9 +18,9 @@ position: 22
 - Must isolate by business for both Admin and Staff.
 
 ## Checklist
-- [ ] Inspect Total Customers query in Dashboard Overview
-- [ ] Verify Issue Stamp customer search RPC and usage
-- [ ] Fix Total Customers count to use real customer_loyalty_cards count
-- [ ] Ensure Issue Stamp uses the same relationship correctly
+- [x] Inspect Total Customers query in Dashboard Overview
+- [x] Verify Issue Stamp customer search RPC and usage
+- [x] Fix Total Customers count to use real customer_loyalty_cards count
+- [x] Ensure Issue Stamp uses the same relationship correctly (redirect to scan.tsx)
 - [ ] Test Admin and Staff roles
 - [ ] Run typescript and validation tests

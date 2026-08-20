@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +33,7 @@ interface CustomerLoyaltyCard {
 }
 
 export default function DashboardOverview() {
+  const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
@@ -100,32 +102,64 @@ export default function DashboardOverview() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("id, subscription_plan, trial_end")
-        .limit(1)
-        .single();
+      let resolvedBusinessId: string | null = null;
+      let subscriptionPlan = "starter";
+      let trialEnd = null;
 
-      if (!business) return;
-      setBusinessId(business.id);
+      const { data: membership, error: membershipError } = await supabase
+        .from("business_users")
+        .select("business_id, role, status")
+        .eq("user_id", session.user.id)
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+
+      if (membership?.business_id) {
+        resolvedBusinessId = membership.business_id;
+        const { data: bData } = await supabase
+          .from("businesses")
+          .select("subscription_plan, trial_end")
+          .eq("id", resolvedBusinessId)
+          .single();
+        if (bData) {
+          subscriptionPlan = bData.subscription_plan;
+          trialEnd = bData.trial_end;
+        }
+      } else {
+        const { data: ownedBusiness } = await supabase
+          .from("businesses")
+          .select("id, subscription_plan, trial_end")
+          .eq("owner_id", session.user.id)
+          .limit(1)
+          .maybeSingle();
+
+        if (ownedBusiness) {
+          resolvedBusinessId = ownedBusiness.id;
+          subscriptionPlan = ownedBusiness.subscription_plan;
+          trialEnd = ownedBusiness.trial_end;
+        }
+      }
+
+      if (!resolvedBusinessId) return;
+      setBusinessId(resolvedBusinessId);
 
       // Detect Plan Upgrade Transition
-      const cachedPlan = localStorage.getItem(`last_known_plan_id_${business.id}`);
-      if (cachedPlan && cachedPlan !== business.subscription_plan) {
+      const cachedPlan = localStorage.getItem(`last_known_plan_id_${resolvedBusinessId}`);
+      if (cachedPlan && cachedPlan !== subscriptionPlan) {
         // Fetch current plan name for confirmation
         const { data: planData } = await supabase
           .from("subscription_plans")
           .select("name, is_trial")
-          .eq("id", business.subscription_plan || "starter")
+          .eq("id", subscriptionPlan || "starter")
           .single();
         
         if (planData) {
           setUpgradeSuccessPlan(planData.name);
           
           // Check trial details for the dashboard UI
-          if (business.subscription_plan === "trial" || planData.is_trial) {
-            if (business.trial_end) {
-              const endDate = new Date(business.trial_end);
+          if (subscriptionPlan === "trial" || planData.is_trial) {
+            if (trialEnd) {
+              const endDate = new Date(trialEnd);
               const diffTime = endDate.getTime() - new Date().getTime();
               const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
               setTrialDetails({
@@ -141,11 +175,11 @@ export default function DashboardOverview() {
         const { data: planCheck } = await supabase
           .from("subscription_plans")
           .select("is_trial")
-          .eq("id", business.subscription_plan || "starter")
+          .eq("id", subscriptionPlan || "starter")
           .maybeSingle();
 
-        if (planCheck?.is_trial && business.trial_end) {
-          const endDate = new Date(business.trial_end);
+        if (planCheck?.is_trial && trialEnd) {
+          const endDate = new Date(trialEnd);
           const diffTime = endDate.getTime() - new Date().getTime();
           const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
           setTrialDetails({
@@ -157,7 +191,16 @@ export default function DashboardOverview() {
       }
       
       // Update cache
-      localStorage.setItem(`last_known_plan_id_${business.id}`, business.subscription_plan || "starter");
+      localStorage.setItem(`last_known_plan_id_${resolvedBusinessId}`, subscriptionPlan || "starter");
+
+      // Unique Customer Count
+      const { data: uniqueCustomersData } = await supabase
+        .from("customer_loyalty_cards")
+        .select("customer_id")
+        .eq("business_id", resolvedBusinessId)
+        .eq("status", "active");
+        
+      const uniqueCustomerCount = uniqueCustomersData ? new Set(uniqueCustomersData.map(c => c.customer_id)).size : 0;
 
       // Real Data Fetching
       const [
@@ -167,10 +210,10 @@ export default function DashboardOverview() {
         { count: rewardsRedeemed },
         { data: activityData }
       ] = await Promise.all([
-        supabase.from("customer_loyalty_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).eq("status", "active"),
-        supabase.from("stamp_transactions").select("*", { count: "exact", head: true }).eq("business_id", business.id),
-        supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", business.id),
-        supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", business.id).eq("status", "redeemed"),
+        supabase.from("customer_loyalty_cards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId).eq("status", "active"),
+        supabase.from("stamp_transactions").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId),
+        supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId),
+        supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId).eq("status", "redeemed"),
         supabase.from("stamp_transactions")
           .select(`
             id, 
@@ -182,13 +225,13 @@ export default function DashboardOverview() {
               )
             )
           `)
-          .eq("business_id", business.id)
+          .eq("business_id", resolvedBusinessId)
           .order("created_at", { ascending: false })
           .limit(5)
       ]);
 
       setStats({
-        customers: activeCards || 0,
+        customers: uniqueCustomerCount,
         activeCards: activeCards || 0,
         stampsIssued: stampsIssued || 0,
         rewardsEarned: rewardsEarned || 0,
@@ -339,7 +382,7 @@ export default function DashboardOverview() {
           </div>
           <div>
             <Button 
-              onClick={handleOpenStampModal} 
+              onClick={() => router.push("/dashboard/scan")} 
               size="lg" 
               className="w-full sm:w-auto font-bold gap-2 text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 transition-all duration-150 transform active:scale-[0.98]"
             >
