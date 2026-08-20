@@ -1,6 +1,6 @@
 ---
 title: Realtime Rate Limiting and Subscription Security Audit
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [realtime, rate-limiting, subscriptions, security]
