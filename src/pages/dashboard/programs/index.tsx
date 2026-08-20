@@ -33,46 +33,48 @@ export default function LoyaltyPrograms() {
         .maybeSingle();
 
       const isStaffUser = profile?.role === "business_staff";
-      let business;
+      let resolvedBusinessId = null;
 
       if (isStaffUser) {
-        const { data: membership } = await supabase
+        const { data: membership, error: membershipError } = await supabase
           .from("business_users")
           .select("business_id")
           .eq("user_id", session.user.id)
           .eq("status", "active")
           .limit(1)
-          .single();
+          .maybeSingle();
           
+        if (membershipError) throw membershipError;
+        
         if (membership) {
-          const { data: b } = await supabase
-            .from("businesses")
-            .select("id, owner_id")
-            .eq("id", membership.business_id)
-            .single();
-          business = b;
+          resolvedBusinessId = membership.business_id;
+          setIsOwner(false);
         }
       } else {
-        const { data: b } = await supabase
+        const { data: b, error: bizError } = await supabase
           .from("businesses")
           .select("id, owner_id")
           .eq("owner_id", session.user.id)
           .limit(1)
-          .single();
-        business = b;
+          .maybeSingle();
+          
+        if (bizError) throw bizError;
+          
+        if (b) {
+          resolvedBusinessId = b.id;
+          setIsOwner(true);
+        }
       }
 
-      if (!business) {
+      if (!resolvedBusinessId) {
         setLoading(false);
         return;
       }
-      
-      setIsOwner(business.owner_id === session.user.id);
 
       const { data: programsData, error } = await supabase
         .from("loyalty_programs")
         .select("*")
-        .eq("business_id", business.id)
+        .eq("business_id", resolvedBusinessId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;

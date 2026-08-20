@@ -857,6 +857,10 @@ export type Database = {
         Args: { b_id: string; u_id: string }
         Returns: boolean
       }
+      is_active_staff_of: {
+        Args: { p_business_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_business_operator:
         | { Args: { p_business_id: string }; Returns: boolean }
         | {
