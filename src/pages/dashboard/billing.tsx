@@ -91,30 +91,10 @@ export default function BillingPage() {
   const handlePlanChange = async (plan: any) => {
     if (!plan || plan.id === business?.subscription_plan) return;
     
-    try {
-      setLoading(true);
-      
-      const { error } = await supabase
-        .from("businesses")
-        .update({ subscription_plan: plan.id })
-        .eq("id", business.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Subscription Updated",
-        description: `Your plan has been changed to ${plan.name}.`,
-      });
-
-      await fetchData();
-    } catch (error: any) {
-      toast({
-        title: "Update Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-      setLoading(false);
-    }
+    toast({
+      title: "Admin approval required",
+      description: "Plan changes are reviewed before activation. Your current entitlements remain unchanged until approval.",
+    });
   };
 
   const getStatusIcon = (status: string) => {
