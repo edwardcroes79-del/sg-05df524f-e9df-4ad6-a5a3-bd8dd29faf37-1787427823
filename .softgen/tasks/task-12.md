@@ -1,6 +1,6 @@
 ---
 title: Database Performance and Query Optimization
-status: in_progress
+status: done
 priority: high
 type: chore
 tags: [performance, database, indexing, pagination]
@@ -22,8 +22,8 @@ Phase 4 audit scoped to query optimization, pagination implementation, index cre
 - [x] Create indexes for high-frequency lookup fields
 - [x] Replace unbounded queries with paginated equivalents
 - [x] Move client-side filters to database WHERE clauses
-- [ ] Test query performance and scalability
-- [ ] Run project error checks
+- [x] Test query performance and scalability
+- [x] Run project error checks
 
 ## Acceptance
 All list views use pagination, SELECT queries request only necessary columns, search operates at database level, appropriate indexes exist for business_id/customer_id/user_id/loyalty_program_id/status/created_at, and dashboards avoid redundant database requests.
