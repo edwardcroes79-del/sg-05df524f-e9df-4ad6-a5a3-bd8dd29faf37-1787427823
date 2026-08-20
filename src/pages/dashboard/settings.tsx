@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, ShieldCheck, ShieldAlert, Key } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -17,6 +17,15 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [business, setBusiness] = useState<any>(null);
+
+  // 2FA States
+  const [mfaFactors, setMfaFactors] = useState<any[]>([]);
+  const [isEnrollingMfa, setIsEnrollingMfa] = useState(false);
+  const [mfaQrCode, setMfaQrCode] = useState("");
+  const [mfaSecret, setMfaSecret] = useState("");
+  const [mfaFactorId, setMfaFactorId] = useState("");
+  const [mfaVerifyCode, setMfaVerifyCode] = useState("");
+  const [mfaLoading, setMfaLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     business_name: "",
@@ -59,7 +68,97 @@ export default function SettingsPage() {
       website: data.website || "",
       address: data.address || ""
     });
+
+    await fetchMfaFactors();
     setLoading(false);
+  };
+
+  const fetchMfaFactors = async () => {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (!error && data) {
+      setMfaFactors(data.totp.filter(f => f.status === 'verified') || []);
+    }
+  };
+
+  const handleEnableMfa = async () => {
+    setMfaLoading(true);
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+      if (error) throw error;
+      
+      setMfaQrCode(data.totp.qr_code);
+      setMfaSecret(data.totp.secret);
+      setMfaFactorId(data.id);
+      setIsEnrollingMfa(true);
+    } catch (err: any) {
+      toast({
+        title: "Setup Failed",
+        description: err.message,
+        variant: "destructive"
+      });
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleVerifyMfaSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMfaLoading(true);
+    
+    try {
+      const challenge = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+      if (challenge.error) throw challenge.error;
+
+      const verify = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: challenge.data.id,
+        code: mfaVerifyCode
+      });
+
+      if (verify.error) throw verify.error;
+
+      toast({
+        title: "2FA Enabled",
+        description: "Two-factor authentication has been successfully secured on your account.",
+      });
+
+      setIsEnrollingMfa(false);
+      setMfaVerifyCode("");
+      await fetchMfaFactors();
+    } catch (err: any) {
+      toast({
+        title: "Verification Failed",
+        description: err.message || "Invalid code. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleDisableMfa = async (factorId: string) => {
+    if (!window.confirm("Are you sure you want to disable 2FA? This will reduce your account security.")) return;
+    
+    setMfaLoading(true);
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      if (error) throw error;
+      
+      toast({
+        title: "2FA Disabled",
+        description: "Two-factor authentication has been removed from your account.",
+      });
+      
+      await fetchMfaFactors();
+    } catch (err: any) {
+      toast({
+        title: "Failed to Disable",
+        description: err.message,
+        variant: "destructive"
+      });
+    } finally {
+      setMfaLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -220,6 +319,125 @@ export default function SettingsPage() {
             </CardFooter>
           </Card>
         </form>
+
+        {/* Account Security Card (2FA) */}
+        <Card className="border-border shadow-sm">
+          <CardHeader className="bg-muted/10 border-b">
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              Account Security
+            </CardTitle>
+            <CardDescription>Add an extra layer of protection to your account by requiring a verification code when you sign in.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 border rounded-lg">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2 text-lg">
+                  Two-Factor Authentication (2FA)
+                  {mfaFactors.length > 0 ? (
+                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600 border-emerald-200">
+                      🟢 Enabled
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
+                      ⚪ Not Enabled
+                    </span>
+                  )}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-md">
+                  Protect your account with TOTP authenticator apps like Google Authenticator, Authy, or 1Password.
+                </p>
+              </div>
+              <div>
+                {mfaFactors.length > 0 ? (
+                  <Button 
+                    variant="destructive" 
+                    onClick={() => handleDisableMfa(mfaFactors[0].id)}
+                    disabled={mfaLoading}
+                  >
+                    {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Disable 2FA
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handleEnableMfa}
+                    disabled={mfaLoading || isEnrollingMfa}
+                  >
+                    {mfaLoading && !isEnrollingMfa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Enable 2FA
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {isEnrollingMfa && (
+              <div className="mt-6 p-6 border rounded-lg bg-muted/20 animate-in fade-in slide-in-from-top-4">
+                <h4 className="font-heading font-bold text-lg mb-4">Complete 2FA Setup</h4>
+                
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">1</div>
+                      <p className="text-sm text-muted-foreground">Open your authenticator app and scan this QR code.</p>
+                    </div>
+                    
+                    <div className="bg-white p-4 border rounded-xl inline-block shadow-sm">
+                      <img src={mfaQrCode} alt="2FA QR Code" className="w-40 h-40" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground font-medium">Or enter this setup key manually:</p>
+                      <code className="text-xs bg-muted px-2 py-1 rounded block w-max break-all select-all font-mono font-semibold">
+                        {mfaSecret}
+                      </code>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">2</div>
+                      <p className="text-sm text-muted-foreground">Enter the 6-digit code generated by your app to verify and enable 2FA.</p>
+                    </div>
+
+                    <form onSubmit={handleVerifyMfaSetup} className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="verificationCode">Verification Code</Label>
+                        <Input 
+                          id="verificationCode"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          placeholder="000 000"
+                          className="font-mono text-lg tracking-[0.25em] text-center"
+                          value={mfaVerifyCode}
+                          onChange={(e) => setMfaVerifyCode(e.target.value)}
+                          required
+                          disabled={mfaLoading}
+                        />
+                      </div>
+                      
+                      <div className="flex gap-2 pt-2">
+                        <Button type="button" variant="outline" className="w-full" onClick={() => setIsEnrollingMfa(false)} disabled={mfaLoading}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" className="w-full" disabled={mfaVerifyCode.length < 6 || mfaLoading}>
+                          {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Key className="h-4 w-4 mr-2" />}
+                          Verify & Enable
+                        </Button>
+                      </div>
+                    </form>
+                    
+                    <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded text-xs text-amber-700 mt-4 flex gap-2">
+                      <ShieldAlert className="h-4 w-4 shrink-0" />
+                      <p><strong>Backup Option:</strong> Please save the manual setup key in a secure password manager. It can be used to recover access if you lose your authenticator app.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
