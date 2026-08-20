@@ -25,6 +25,10 @@ export default function StaffPage() {
   const [addingStaff, setAddingStaff] = useState(false);
   const [newStaff, setNewStaff] = useState({ name: "", email: "", password: "" });
 
+  // Remove Staff Modal State
+  const [staffToRemove, setStaffToRemove] = useState<any>(null);
+  const [removingStaff, setRemovingStaff] = useState(false);
+
   useEffect(() => {
     fetchStaffData();
   }, []);
@@ -152,10 +156,11 @@ export default function StaffPage() {
     }
   };
 
-  const handleRemoveStaff = async (staffId: string) => {
-    if (!confirm("Are you sure you want to completely remove this staff member? They will lose access to the business immediately and their account will be deactivated.")) return;
+  const confirmRemoveStaff = async () => {
+    if (!staffToRemove) return;
     
     try {
+      setRemovingStaff(true);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No active session");
 
@@ -165,7 +170,7 @@ export default function StaffPage() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`
         },
-        body: JSON.stringify({ staffId })
+        body: JSON.stringify({ staffId: staffToRemove.id })
       });
 
       const result = await response.json();
@@ -175,9 +180,12 @@ export default function StaffPage() {
       }
       
       toast({ title: "Staff member removed", description: "The staff account has been completely removed." });
+      setStaffToRemove(null);
       fetchStaffData();
     } catch (err: any) {
       toast({ title: "Error removing staff", description: err.message, variant: "destructive" });
+    } finally {
+      setRemovingStaff(false);
     }
   };
 
@@ -309,7 +317,7 @@ export default function StaffPage() {
                             <PowerOff className="w-4 h-4 mr-2" /> Activate
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => handleRemoveStaff(member.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => setStaffToRemove(member)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" /> Remove
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -379,6 +387,42 @@ export default function StaffPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Staff Modal */}
+      <Dialog open={!!staffToRemove} onOpenChange={(open) => !open && setStaffToRemove(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Team Member?</DialogTitle>
+            <DialogDescription>
+              This action will completely remove the staff member from your business and deactivate their account. They will no longer be able to log in.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {staffToRemove && (
+            <div className="py-4 space-y-2">
+              <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
+                <span className="text-sm font-medium">Name:</span>
+                <span className="text-sm">{staffToRemove.profile?.full_name || "Unknown"}</span>
+              </div>
+              <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
+                <span className="text-sm font-medium">Email:</span>
+                <span className="text-sm">{staffToRemove.profile?.email || "No email"}</span>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStaffToRemove(null)} disabled={removingStaff}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmRemoveStaff} disabled={removingStaff}>
+              {removingStaff ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Removing...</>
+              ) : "Remove Staff"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
