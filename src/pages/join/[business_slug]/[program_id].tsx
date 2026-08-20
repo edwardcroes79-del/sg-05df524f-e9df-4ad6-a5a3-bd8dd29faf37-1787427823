@@ -41,9 +41,14 @@ export default function JoinProgram() {
           .from("businesses")
           .select("id, business_name, slug")
           .eq("slug", bSlug)
-          .single();
+          .maybeSingle();
 
-        if (bError || !bData) throw new Error("Business not found");
+        if (bError) throw bError;
+        if (!bData) {
+          setLoading(false);
+          return;
+        }
+        
         setBusiness(bData);
 
         const { data: pData, error: pError } = await supabase
@@ -52,14 +57,18 @@ export default function JoinProgram() {
           .eq("id", pId)
           .eq("business_id", bData.id)
           .eq("active", true)
-          .single();
+          .maybeSingle();
 
-        if (pError || !pData) throw new Error("Program not found");
+        if (pError) throw pError;
+        if (!pData) {
+          setLoading(false);
+          return;
+        }
+        
         setProgram(pData);
 
       } catch (err: any) {
         toast({ title: "Error", description: err.message, variant: "destructive" });
-      } finally {
         setLoading(false);
       }
     };
