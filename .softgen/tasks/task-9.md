@@ -1,6 +1,6 @@
 ---
 title: Database and RLS Security Audit
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [database, rls, security, audit]
@@ -19,7 +19,7 @@ Audit only the production database structure and Row Level Security for Aruba Ro
 - [x] Test representative unauthorized access scenarios at the database level
 - [x] Apply focused SQL fixes only for verified CRITICAL/HIGH issues
 - [x] Re-test policies and constraints after fixes
-- [ ] Run project error checks
+- [x] Run project error checks
 
 ## Acceptance
 Business A cannot access Business B private data through database policies.
