@@ -20,7 +20,7 @@ Phase 5 audit scoped only to realtime subscriptions, abuse/rate limiting, and su
 - [x] Review staff creation, stamp issuing, reward redemption, and QR flows for server-side rate/authorization checks
 - [x] Verify subscription plan limits and premium entitlements are enforced server-side or database-side
 - [x] Apply focused fixes for verified critical/high issues only
-- [ ] Test realtime/security behavior after fixes
+- [x] Test realtime/security behavior after fixes
 - [ ] Run project error checks
 
 ## Acceptance
