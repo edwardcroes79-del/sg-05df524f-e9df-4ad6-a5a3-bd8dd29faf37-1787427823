@@ -1,6 +1,6 @@
 ---
 title: Phase 2 customer list and issue stamp search
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [phase-2, customers, issue-stamp, rls, staff-access]
@@ -21,8 +21,8 @@ Phase 2 is limited to fixing Business Admin and Staff customer access plus Issue
 - [x] Identify exact failing layer for Staff customer list
 - [x] Identify exact failing layer for Issue Stamp search
 - [x] Apply minimal fix without changing Loyalty Program access
-- [ ] Validate TypeScript/lint checks
-- [ ] Report Phase 2 completion and stop
+- [x] Validate TypeScript/lint checks
+- [x] Report Phase 2 completion and stop
 
 ## Acceptance
 Business Admin Customers page shows real registered customers for their business.
