@@ -844,6 +844,14 @@ export type Database = {
             Args: { p_customer_id: string; p_user_id?: string }
             Returns: boolean
           }
+      can_view_loyalty_program: {
+        Args: {
+          p_business_id: string
+          p_program_id: string
+          p_user_id?: string
+        }
+        Returns: boolean
+      }
       check_and_increment_rate_limit: {
         Args: {
           p_action: string

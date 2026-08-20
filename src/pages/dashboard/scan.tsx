@@ -49,28 +49,20 @@ export default function ScanQR() {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
+      let resolvedBusinessId: string | null = null;
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("business_users")
+        .select("business_id, role, status")
+        .eq("user_id", session.user.id)
+        .eq("status", "active")
+        .limit(1)
         .maybeSingle();
 
-      const isStaffUser = profile?.role === "business_staff";
-      let resolvedBusinessId = null;
+      if (membershipError) throw membershipError;
 
-      if (isStaffUser) {
-        const { data: staffMembership, error: membershipError } = await supabase
-          .from("business_users")
-          .select("business_id")
-          .eq("user_id", session.user.id)
-          .eq("status", "active")
-          .limit(1)
-          .maybeSingle();
-
-        if (membershipError) throw membershipError;
-        if (staffMembership) {
-          resolvedBusinessId = staffMembership.business_id;
-        }
+      if (membership?.business_id) {
+        resolvedBusinessId = membership.business_id;
       } else {
         const { data: ownedBusiness, error: bizError } = await supabase
           .from("businesses")
@@ -105,12 +97,14 @@ export default function ScanQR() {
         // Fetch registered customers
         const { data: cards, error: cardsErr } = await supabase
           .from("customer_loyalty_cards")
-          .select(`customer_id, customers(id, name, email, phone)`)
+          .select(`customer_id, customer:customers(id, name, email, phone)`)
           .eq("business_id", resolvedBusinessId);
           
-        if (!cardsErr && cards) {
+        if (cardsErr) throw cardsErr;
+
+        if (cards) {
           const uniqueCustomers = Array.from(
-            new Map(cards.filter(c => c.customers).map(c => [c.customer_id, c.customers])).values()
+            new Map(cards.filter(c => c.customer).map(c => [c.customer_id, c.customer])).values()
           );
           setCustomers(uniqueCustomers as any[]);
         }
@@ -323,8 +317,7 @@ export default function ScanQR() {
       const { data, error } = await (supabase.rpc as any)("issue_stamp_tx", {
         p_customer_id: customerId,
         p_business_id: business.id,
-        p_loyalty_program_id: selectedProgramId,
-        p_staff_user_id: session.user.id
+        p_loyalty_program_id: selectedProgramId
       });
 
       if (error) throw error;

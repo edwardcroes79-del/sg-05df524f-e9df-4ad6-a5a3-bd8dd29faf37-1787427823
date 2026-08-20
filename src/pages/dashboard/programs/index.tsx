@@ -26,30 +26,22 @@ export default function LoyaltyPrograms() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
+      let resolvedBusinessId: string | null = null;
+      let ownerAccess = false;
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("business_users")
+        .select("business_id, role, status")
+        .eq("user_id", session.user.id)
+        .eq("status", "active")
+        .limit(1)
         .maybeSingle();
-
-      const isStaffUser = profile?.role === "business_staff";
-      let resolvedBusinessId = null;
-
-      if (isStaffUser) {
-        const { data: membership, error: membershipError } = await supabase
-          .from("business_users")
-          .select("business_id")
-          .eq("user_id", session.user.id)
-          .eq("status", "active")
-          .limit(1)
-          .maybeSingle();
-          
-        if (membershipError) throw membershipError;
         
-        if (membership) {
-          resolvedBusinessId = membership.business_id;
-          setIsOwner(false);
-        }
+      if (membershipError) throw membershipError;
+      
+      if (membership?.business_id) {
+        resolvedBusinessId = membership.business_id;
+        ownerAccess = membership.role === "owner";
       } else {
         const { data: b, error: bizError } = await supabase
           .from("businesses")
@@ -62,9 +54,11 @@ export default function LoyaltyPrograms() {
           
         if (b) {
           resolvedBusinessId = b.id;
-          setIsOwner(true);
+          ownerAccess = true;
         }
       }
+
+      setIsOwner(ownerAccess);
 
       if (!resolvedBusinessId) {
         setLoading(false);
