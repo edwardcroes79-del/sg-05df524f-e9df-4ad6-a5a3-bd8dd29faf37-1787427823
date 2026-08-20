@@ -1,6 +1,6 @@
 ---
 title: Storage API and Secrets Security Audit
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [storage, api, secrets, security]
@@ -19,7 +19,7 @@ Phase 3 audit scoped to Supabase Storage permissions and RLS, server/API route a
 - [x] Search codebase for exposed service-role keys, SMTP credentials, payment secrets
 - [x] Test unauthorized file access and API operations
 - [x] Fix critical/high storage and API security issues
-- [ ] Run project error checks
+- [x] Run project error checks
 
 ## Acceptance
 Storage buckets enforce business isolation, API routes verify authorization server-side without trusting client IDs/roles, and no secrets are exposed in frontend code.
