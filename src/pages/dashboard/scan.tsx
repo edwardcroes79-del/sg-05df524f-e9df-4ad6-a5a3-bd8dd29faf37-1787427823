@@ -105,7 +105,7 @@ export default function ScanQR() {
         // Fetch registered customers
         const { data: cards, error: cardsErr } = await supabase
           .from("customer_loyalty_cards")
-          .select(`customer_id, customers(id, name, email)`)
+          .select(`customer_id, customers(id, name, email, phone)`)
           .eq("business_id", resolvedBusinessId);
           
         if (!cardsErr && cards) {
