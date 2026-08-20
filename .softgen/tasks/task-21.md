@@ -23,5 +23,5 @@ Ensure that:
 - [/] Ensure the database function/RPC for issuing stamps supports both Owners and Staff members
 - [x] Add a real-time business dashboard notification listener for owners when staff issue stamps
 - [ ] Verify `stamp_transactions` is correctly created and references the correct authenticated user
-- [ ] Run typescript and validation tests
+- [x] Run typescript and validation tests
 - [ ] Deliver short summary and wait for instructions
