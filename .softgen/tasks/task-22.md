@@ -1,6 +1,6 @@
 ---
 title: Fix Total Customers and Issue Stamp Customer Search
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [dashboard, issue-stamp, customers, metrics]
@@ -22,5 +22,5 @@ position: 22
 - [x] Verify Issue Stamp customer search RPC and usage
 - [x] Fix Total Customers count to use real customer_loyalty_cards count
 - [x] Ensure Issue Stamp uses the same relationship correctly (redirect to scan.tsx)
-- [ ] Test Admin and Staff roles
-- [ ] Run typescript and validation tests
+- [x] Test Admin and Staff roles
+- [x] Run typescript and validation tests
