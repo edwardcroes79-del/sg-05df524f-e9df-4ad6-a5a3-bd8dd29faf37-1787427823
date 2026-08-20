@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 export default function LoyaltyPrograms() {
   const [programs, setPrograms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,11 +28,13 @@ export default function LoyaltyPrograms() {
 
       const { data: business } = await supabase
         .from("businesses")
-        .select("id")
-        .eq("owner_id", session.user.id)
+        .select("id, owner_id")
+        .limit(1)
         .single();
 
       if (!business) return;
+      
+      setIsOwner(business.owner_id === session.user.id);
 
       const { data: programsData, error } = await supabase
         .from("loyalty_programs")
@@ -87,12 +90,14 @@ export default function LoyaltyPrograms() {
             <h1 className="text-3xl font-heading font-bold text-foreground">Loyalty Programs</h1>
             <p className="text-muted-foreground mt-2">Manage your active loyalty cards and rewards.</p>
           </div>
-          <Link href="/dashboard/programs/new">
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create Program
-            </Button>
-          </Link>
+          {isOwner && (
+            <Link href="/dashboard/programs/new">
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Program
+              </Button>
+            </Link>
+          )}
         </div>
 
         {loading ? (
@@ -110,9 +115,11 @@ export default function LoyaltyPrograms() {
             <p className="text-muted-foreground max-w-md mx-auto mb-6">
               Create your first loyalty program to start issuing stamps and rewarding your customers.
             </p>
-            <Link href="/dashboard/programs/new">
-              <Button>Create Your First Loyalty Program</Button>
-            </Link>
+            {isOwner && (
+              <Link href="/dashboard/programs/new">
+                <Button>Create Your First Loyalty Program</Button>
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -139,21 +146,23 @@ export default function LoyaltyPrograms() {
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex gap-2 border-t border-border pt-4">
-                  <Link href={`/dashboard/programs/${program.id}`} className="flex-1">
-                    <Button variant="outline" className="w-full gap-2">
-                      <Edit className="h-4 w-4" /> Edit
+                {isOwner && (
+                  <CardFooter className="flex gap-2 border-t border-border pt-4">
+                    <Link href={`/dashboard/programs/${program.id}`} className="flex-1">
+                      <Button variant="outline" className="w-full gap-2">
+                        <Edit className="h-4 w-4" /> Edit
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant={program.active ? "destructive" : "default"} 
+                      className="flex-1 gap-2"
+                      onClick={() => toggleStatus(program.id, program.active)}
+                    >
+                      {program.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                      {program.active ? "Pause" : "Activate"}
                     </Button>
-                  </Link>
-                  <Button 
-                    variant={program.active ? "destructive" : "default"} 
-                    className="flex-1 gap-2"
-                    onClick={() => toggleStatus(program.id, program.active)}
-                  >
-                    {program.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                    {program.active ? "Pause" : "Activate"}
-                  </Button>
-                </CardFooter>
+                  </CardFooter>
+                )}
               </Card>
             ))}
           </div>

@@ -89,7 +89,7 @@ export default function CustomersDashboard() {
       const { data: businessData, error: bizError } = await supabase
         .from("businesses")
         .select("*")
-        .eq("owner_id", session.user.id)
+        .limit(1)
         .single();
 
       if (bizError || !businessData) {

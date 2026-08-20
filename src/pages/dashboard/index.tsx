@@ -103,7 +103,7 @@ export default function DashboardOverview() {
       const { data: business } = await supabase
         .from("businesses")
         .select("id, subscription_plan, trial_end")
-        .eq("owner_id", session.user.id)
+        .limit(1)
         .single();
 
       if (!business) return;
