@@ -54,7 +54,6 @@ export default function JoinProgramSimplified() {
         
         // Ensure the business relationship resolved (acts as an implicit active/trial check due to RLS)
         if (!pData || !pData.businesses) {
-          setLoading(false);
           return;
         }
         
@@ -62,6 +61,7 @@ export default function JoinProgramSimplified() {
 
       } catch (err: any) {
         toast({ title: "Error", description: err.message, variant: "destructive" });
+      } finally {
         setLoading(false);
       }
     };
