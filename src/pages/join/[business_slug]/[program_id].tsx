@@ -164,11 +164,13 @@ export default function JoinProgram() {
 
           <LoyaltyCard
             programName={program.name}
+            programDescription={program.description}
             businessName={business.business_name}
             stampTarget={program.stamp_target}
             currentStamps={0}
             stampIcon={program.stamp_icon}
             rewardTitle={program.reward_title}
+            rewardDescription={program.reward_description}
             color={program.card_color}
             customization={{
               template_id: program.template_id,
