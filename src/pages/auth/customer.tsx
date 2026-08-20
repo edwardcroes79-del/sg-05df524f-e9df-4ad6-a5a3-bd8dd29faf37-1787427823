@@ -10,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck } from "lucide-react";
+import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 
 export default function CustomerAuth() {
   const router = useRouter();
   const { returnUrl } = router.query;
+  const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
   const { toast } = useToast();
 
   const [loading, setLoading] = useState(false);
@@ -37,12 +39,12 @@ export default function CustomerAuth() {
   const [mfaCode, setMfaCode] = useState("");
 
   useEffect(() => {
-    if (!returnUrl) return;
+    if (!safeReturnUrl) return;
 
     const fetchBusinessContext = async () => {
       setFetchingContext(true);
       try {
-        const decodedUrl = decodeURIComponent(returnUrl as string);
+        const decodedUrl = safeReturnUrl;
         // Extracting slug and id from path: /join/[business_slug]/[program_id]
         const match = decodedUrl.match(/\/join\/([^/]+)\/([^/]+)/);
         if (match && match[1] && match[2]) {
@@ -79,7 +81,7 @@ export default function CustomerAuth() {
     };
 
     fetchBusinessContext();
-  }, [returnUrl]);
+  }, [safeReturnUrl]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,8 +123,8 @@ export default function CustomerAuth() {
       });
       
       // Return back to join program QR page
-      if (returnUrl) {
-        router.push(returnUrl as string);
+      if (safeReturnUrl) {
+        router.push(safeReturnUrl);
       } else {
         router.push("/customer");
       }
@@ -158,8 +160,8 @@ export default function CustomerAuth() {
         description: "Your identity has been verified.",
       });
       
-      if (returnUrl) {
-        router.push(returnUrl as string);
+      if (safeReturnUrl) {
+        router.push(safeReturnUrl);
       } else {
         router.push("/customer");
       }
@@ -227,8 +229,8 @@ export default function CustomerAuth() {
             description: "Welcome! Your loyalty card is ready.",
           });
 
-          if (returnUrl) {
-            router.push(returnUrl as string);
+          if (safeReturnUrl) {
+            router.push(safeReturnUrl);
           } else {
             router.push("/customer");
           }
@@ -261,9 +263,9 @@ export default function CustomerAuth() {
         <div className="w-full max-w-md space-y-6">
           
           {/* Back to original program button if available */}
-          {returnUrl && (
+          {safeReturnUrl && (
             <Link
-              href={returnUrl as string}
+              href={safeReturnUrl}
               className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { getURL } from "@/services/authService";
+import { normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail } from "lucide-react";
 import { SEO } from "@/components/SEO";
@@ -19,6 +20,7 @@ export default function Register() {
   const [registeredEmail, setRegisteredEmail] = useState("");
   const router = useRouter();
   const { returnUrl } = router.query;
+  const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
   const { toast } = useToast();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -30,7 +32,7 @@ export default function Register() {
         email,
         password,
         options: {
-          emailRedirectTo: `${getURL()}auth/login?confirmed=true`,
+          emailRedirectTo: `${getURL()}auth/login?confirmed=true${safeReturnUrl ? `&returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`,
         }
       });
 
@@ -44,15 +46,12 @@ export default function Register() {
         if (data.session) {
           toast({
             title: "Registration Successful",
-            description: returnUrl ? "Welcome! You can now join the loyalty program." : "Welcome! Let's get your business set up.",
+            description: safeReturnUrl ? "Welcome! You can now join the loyalty program." : "Welcome! Let's get your business set up.",
           });
-          // If returnUrl is present, it's a customer registering from a QR code
-          if (returnUrl) {
-            // Update profile role to customer
-            await supabase.from('profiles').update({ role: 'customer' }).eq('id', data.session.user.id);
-            router.push(returnUrl as string);
+          if (safeReturnUrl) {
+            await supabase.from("profiles").update({ role: "customer" }).eq("id", data.session.user.id);
+            router.push(safeReturnUrl);
           } else {
-            // Otherwise, normal business registration
             router.push("/onboarding");
           }
         } else {
@@ -102,7 +101,7 @@ export default function Register() {
                     type: 'signup',
                     email: registeredEmail,
                     options: {
-                      emailRedirectTo: `${getURL()}auth/login?confirmed=true`
+                      emailRedirectTo: `${getURL()}auth/login?confirmed=true${safeReturnUrl ? `&returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`
                     }
                   });
                   if (error) {
@@ -137,10 +136,10 @@ export default function Register() {
         <Card className="border-border shadow-sm">
           <CardHeader>
             <CardTitle className="text-2xl font-heading text-foreground">
-              {returnUrl ? "Create Customer Account" : "Create Account"}
+              {safeReturnUrl ? "Create Customer Account" : "Create Account"}
             </CardTitle>
             <CardDescription>
-              {returnUrl ? "Sign up to start earning rewards." : "Start turning your visitors into loyal customers today."}
+              {safeReturnUrl ? "Sign up to start earning rewards." : "Start turning your visitors into loyal customers today."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -176,7 +175,7 @@ export default function Register() {
           <CardFooter className="justify-center border-t p-4 mt-4">
             <p className="text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href={`/auth/login${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl as string)}` : ''}`} className="text-primary hover:underline font-medium">
+              <Link href={`/auth/login${safeReturnUrl ? `?returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`} className="text-primary hover:underline font-medium">
                 Sign in
               </Link>
             </p>
