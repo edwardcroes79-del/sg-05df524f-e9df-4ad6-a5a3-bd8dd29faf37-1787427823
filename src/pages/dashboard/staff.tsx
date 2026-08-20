@@ -294,7 +294,10 @@ export default function StaffPage() {
                   </div>
                   
                   <div className="flex items-center gap-4 shrink-0">
-                    <Badge variant={member.status === 'active' ? "default" : "secondary"} className="hidden sm:inline-flex">
+                    <Badge variant="outline" className="hidden sm:inline-flex capitalize">
+                      {member.role || "Staff"}
+                    </Badge>
+                    <Badge variant={member.status === 'active' ? "default" : "secondary"} className="hidden sm:inline-flex capitalize">
                       {member.status}
                     </Badge>
                     
