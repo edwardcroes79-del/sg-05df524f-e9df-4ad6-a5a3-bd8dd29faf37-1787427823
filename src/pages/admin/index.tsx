@@ -240,7 +240,7 @@ export default function AdminDashboard() {
       // 1. Fetch Subscription Plans
       const { data: plansData } = await supabase
         .from("subscription_plans")
-        .select("*")
+        .select("id, name, price_awg, max_loyalty_programs, max_customers, max_staff, is_active, is_trial, trial_days, includes_premium_templates")
         .order("price_awg", { ascending: true });
       setPlans(plansData || []);
 
@@ -274,8 +274,9 @@ export default function AdminDashboard() {
       // 4. Fetch Customers
       const { data: customersData } = await supabase
         .from("customers")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("id, user_id, name, email, phone, avatar, created_at")
+        .order("created_at", { ascending: false })
+        .limit(100);
       setCustomers(customersData || []);
 
       // 5. Fetch Platform Stats

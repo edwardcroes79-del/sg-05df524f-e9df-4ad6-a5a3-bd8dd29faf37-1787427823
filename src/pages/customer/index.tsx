@@ -75,7 +75,7 @@ export default function CustomerDashboardPage() {
 
       const { data: customerData } = await supabase
         .from("customers")
-        .select("*")
+        .select("id, user_id, name, email, phone, avatar, created_at")
         .eq("user_id", session.user.id)
         .single();
 

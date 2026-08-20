@@ -13,15 +13,15 @@ position: 12
 Phase 4 audit scoped to query optimization, pagination implementation, index creation, and scalability verification. Review all dashboard queries, customer/business/staff/transaction lists, search operations, and repeated fetches. Apply targeted fixes: replace SELECT * with explicit columns, add pagination to unbounded lists, create indexes for high-cardinality lookup fields (business_id, customer_id, user_id, loyalty_program_id, status, created_at), and move client-side filtering to database-level WHERE clauses.
 
 ## Checklist
-- [ ] Inspect existing database indexes
-- [ ] Review Business Dashboard query patterns
-- [ ] Review Customer Dashboard query patterns
-- [ ] Review Super Admin Dashboard query patterns
-- [ ] Review all list/table views for pagination gaps
-- [ ] Identify SELECT *, N+1, full-table scans, unnecessary joins
-- [ ] Create indexes for high-frequency lookup fields
-- [ ] Replace unbounded queries with paginated equivalents
-- [ ] Move client-side filters to database WHERE clauses
+- [x] Inspect existing database indexes
+- [x] Review Business Dashboard query patterns
+- [x] Review Customer Dashboard query patterns
+- [x] Review Super Admin Dashboard query patterns
+- [x] Review all list/table views for pagination gaps
+- [x] Identify SELECT *, N+1, full-table scans, unnecessary joins
+- [x] Create indexes for high-frequency lookup fields
+- [x] Replace unbounded queries with paginated equivalents
+- [x] Move client-side filters to database WHERE clauses
 - [ ] Test query performance and scalability
 - [ ] Run project error checks
 

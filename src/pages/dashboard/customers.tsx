@@ -60,6 +60,11 @@ export default function CustomersDashboard() {
   const [cards, setCards] = useState<CustomerLoyaltyCard[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 50;
+  
   // Selected Customer Modal State
   const [selectedCard, setSelectedCard] = useState<CustomerLoyaltyCard | null>(null);
   const [customerTransactions, setCustomerTransactions] = useState<any[]>([]);
@@ -97,8 +102,11 @@ export default function CustomersDashboard() {
       }
       setBusiness(businessData);
 
-      // 2. Fetch customers associated via loyalty cards
-      const { data: cardsData, error: cardsError } = await supabase
+      // 2. Fetch customers associated via loyalty cards with pagination
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage - 1;
+
+      const { data: cardsData, error: cardsError, count } = await supabase
         .from("customer_loyalty_cards")
         .select(`
           id,
@@ -122,11 +130,13 @@ export default function CustomersDashboard() {
             stamp_target,
             reward_title
           )
-        `)
-        .eq("business_id", businessData.id);
+        `, { count: 'exact' })
+        .eq("business_id", businessData.id)
+        .range(startIndex, endIndex);
 
       if (cardsError) throw cardsError;
 
+      setTotalCount(count || 0);
       // Type assert to verify the join conforms correctly
       const typedCards = (cardsData || []).filter(c => c.customer) as unknown as CustomerLoyaltyCard[];
       setCards(typedCards);
@@ -375,6 +385,39 @@ export default function CustomersDashboard() {
               </Table>
             </div>
           </Card>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && filteredCards.length > 0 && totalCount > itemsPerPage && (
+          <div className="flex items-center justify-between px-2">
+            <p className="text-sm text-muted-foreground">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} customers
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCurrentPage(prev => Math.max(1, prev - 1));
+                  fetchBusinessAndCustomers();
+                }}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCurrentPage(prev => prev + 1);
+                  fetchBusinessAndCustomers();
+                }}
+                disabled={currentPage * itemsPerPage >= totalCount}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         )}
 
         {/* Customer Detail Dialog with Dynamic Rewards Redemption List */}
