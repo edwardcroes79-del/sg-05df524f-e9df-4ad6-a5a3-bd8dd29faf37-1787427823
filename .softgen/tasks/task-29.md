@@ -1,6 +1,6 @@
 ---
 title: Simplify Customer QR Join Architecture
-status: in_progress
+status: done
 priority: urgent
 type: refactor
 tags: [qr-join, architecture, routing]
