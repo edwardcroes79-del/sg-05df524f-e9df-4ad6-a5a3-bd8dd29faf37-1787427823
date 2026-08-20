@@ -103,6 +103,7 @@ export default function AdminDashboard() {
 
   // 2FA States
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
+  const [pendingFactorId, setPendingFactorId] = useState<string | null>(null);
   const [isEnrollingMfa, setIsEnrollingMfa] = useState(false);
   const [mfaQrCode, setMfaQrCode] = useState("");
   const [mfaSecret, setMfaSecret] = useState("");
@@ -147,23 +148,34 @@ export default function AdminDashboard() {
 
   const fetchMfaFactors = async () => {
     const { data, error } = await supabase.auth.mfa.listFactors();
-    if (!error && data) {
-      setMfaFactors(data.totp.filter(f => f.status === 'verified') || []);
+    if (!error && data && data.totp) {
+      setMfaFactors(data.totp.filter((f: any) => f.status === 'verified'));
+      const unverified = data.totp.find((f: any) => f.status === 'unverified');
+      setPendingFactorId(unverified ? unverified.id : null);
+    }
+  };
+
+  const handleCancelPendingSetup = async (factorIdToCancel?: string) => {
+    const targetId = factorIdToCancel || pendingFactorId;
+    if (!targetId) return;
+    setMfaLoading(true);
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId: targetId });
+      if (error) throw error;
+      toast({ title: "Setup Canceled", description: "The pending 2FA setup was safely removed." });
+      setPendingFactorId(null);
+      setIsEnrollingMfa(false);
+      await fetchMfaFactors();
+    } catch (err: any) {
+      toast({ title: "Failed to cancel", description: err.message, variant: "destructive" });
+    } finally {
+      setMfaLoading(false);
     }
   };
 
   const handleEnableMfa = async () => {
     setMfaLoading(true);
     try {
-      // Clean up stale unverified factors to prevent duplicate error
-      const { data: currentFactors } = await supabase.auth.mfa.listFactors();
-      if (currentFactors?.totp) {
-        const unverified = currentFactors.totp.filter(f => (f as any).status === 'unverified');
-        for (const factor of unverified) {
-          await supabase.auth.mfa.unenroll({ factorId: factor.id });
-        }
-      }
-
       const { data, error } = await supabase.auth.mfa.enroll({ 
         factorType: 'totp',
         friendlyName: 'Super Admin (Royalty Stamp)'
@@ -173,6 +185,7 @@ export default function AdminDashboard() {
       setMfaQrCode(data.totp.qr_code);
       setMfaSecret(data.totp.secret);
       setMfaFactorId(data.id);
+      setPendingFactorId(data.id);
       setIsEnrollingMfa(true);
     } catch (err: any) {
       toast({ title: "Setup Failed", description: err.message, variant: "destructive" });
@@ -1492,11 +1505,15 @@ export default function AdminDashboard() {
                       Two-Factor Authentication (2FA)
                       {mfaFactors.length > 0 ? (
                         <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600 border-emerald-200">
-                          🟢 Enabled
+                          🟢 2FA Enabled
+                        </span>
+                      ) : pendingFactorId ? (
+                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-600 border-amber-200">
+                          🟡 Setup Pending
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
-                          ⚪ Not Enabled
+                          ⚪ 2FA Disabled
                         </span>
                       )}
                     </h3>
@@ -1509,11 +1526,15 @@ export default function AdminDashboard() {
                       <Button variant="destructive" onClick={() => handleDisableMfa(mfaFactors[0].id)} disabled={mfaLoading}>
                         {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Disable 2FA
                       </Button>
-                    ) : (
-                      <Button onClick={handleEnableMfa} disabled={mfaLoading || isEnrollingMfa}>
-                        {mfaLoading && !isEnrollingMfa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Enable 2FA
+                    ) : pendingFactorId && !isEnrollingMfa ? (
+                      <Button variant="outline" onClick={() => handleCancelPendingSetup()} disabled={mfaLoading}>
+                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Cancel Pending Setup
                       </Button>
-                    )}
+                    ) : !isEnrollingMfa ? (
+                      <Button onClick={handleEnableMfa} disabled={mfaLoading}>
+                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Enable 2FA
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1551,7 +1572,10 @@ export default function AdminDashboard() {
                             />
                           </div>
                           <div className="flex gap-2 pt-2">
-                            <Button type="button" variant="outline" className="w-full" onClick={() => setIsEnrollingMfa(false)} disabled={mfaLoading}>Cancel</Button>
+                            <Button type="button" variant="outline" className="w-full" onClick={() => {
+                              setIsEnrollingMfa(false);
+                              if (mfaFactorId) handleCancelPendingSetup(mfaFactorId);
+                            }} disabled={mfaLoading}>Cancel Setup</Button>
                             <Button type="submit" className="w-full" disabled={mfaVerifyCode.length < 6 || mfaLoading}>
                               {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Key className="h-4 w-4 mr-2" />} Verify & Enable
                             </Button>
