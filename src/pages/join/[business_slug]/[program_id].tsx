@@ -29,33 +29,16 @@ export default function JoinProgram() {
 
     const checkSessionAndFetch = async () => {
       try {
-        const bSlug = business_slug as string;
         const pId = program_id as string;
         
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user || null);
 
-        // Fetch business and program details (publicly accessible info via an edge case, or assume RLS allows public read for programs)
-        // Since we need to show it, we query directly. If RLS blocks, we might need a public view or public read policy on programs/businesses.
-        const { data: bData, error: bError } = await supabase
-          .from("businesses")
-          .select("id, business_name, slug")
-          .eq("slug", bSlug)
-          .maybeSingle();
-
-        if (bError) throw bError;
-        if (!bData) {
-          setLoading(false);
-          return;
-        }
-        
-        setBusiness(bData);
-
+        // Fetch program details first since the ID is universally unique and immune to malformed business slugs in the URL
         const { data: pData, error: pError } = await supabase
           .from("loyalty_programs")
           .select("id, business_id, name, description, stamp_target, reward_title, stamp_icon, reward_icon, card_color, template_id, bg_color, primary_color, secondary_color, text_color, card_logo_url, card_bg_image_url, active")
           .eq("id", pId)
-          .eq("business_id", bData.id)
           .eq("active", true)
           .maybeSingle();
 
@@ -66,6 +49,21 @@ export default function JoinProgram() {
         }
         
         setProgram(pData);
+
+        // Now fetch the business using the exact ID from the program
+        const { data: bData, error: bError } = await supabase
+          .from("businesses")
+          .select("id, business_name, slug")
+          .eq("id", pData.business_id)
+          .maybeSingle();
+
+        if (bError) throw bError;
+        if (!bData) {
+          setLoading(false);
+          return;
+        }
+        
+        setBusiness(bData);
 
       } catch (err: any) {
         toast({ title: "Error", description: err.message, variant: "destructive" });
