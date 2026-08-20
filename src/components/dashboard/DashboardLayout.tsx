@@ -121,59 +121,61 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setIsSuperAdmin(true);
     }
 
-    const { data: businessData, error } = await supabase
-      .from("businesses")
-      .select("id, owner_id, business_name, status, subscription_plan, trial_end")
-      .eq("owner_id", session.user.id)
-      .maybeSingle();
-
-    let resolvedBusiness = businessData;
-
-    if (!resolvedBusiness) {
-      const { data: staffMembership } = await supabase
-        .from("business_users")
-        .select("role, status, businesses(id, owner_id, business_name, status, subscription_plan, trial_end)")
-        .eq("user_id", session.user.id)
-        .eq("status", "active")
+    try {
+      const { data: businessData, error: ownerError } = await supabase
+        .from("businesses")
+        .select("id, owner_id, business_name, status, subscription_plan, trial_end")
+        .eq("owner_id", session.user.id)
         .maybeSingle();
 
-      const staffBusiness = (staffMembership as any)?.businesses;
-      resolvedBusiness = Array.isArray(staffBusiness) ? staffBusiness[0] : staffBusiness;
-    }
+      let resolvedBusiness = businessData;
 
-    if (error && error.code !== "PGRST116") {
-      router.push("/onboarding");
-      return;
-    }
+      if (!resolvedBusiness) {
+        const { data: staffMembership, error: staffError } = await supabase
+          .from("business_users")
+          .select("role, status, businesses(id, owner_id, business_name, status, subscription_plan, trial_end)")
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
+          .limit(1)
+          .maybeSingle();
 
-    if (!resolvedBusiness) {
-      router.push("/onboarding");
-      return;
-    }
-
-    setBusiness(resolvedBusiness);
-
-    // Fetch Plan data to check for trial status
-    const { data: planData } = await supabase
-      .from("subscription_plans")
-      .select("is_trial, trial_days")
-      .eq("id", resolvedBusiness.subscription_plan)
-      .maybeSingle();
-
-    if (planData?.is_trial && resolvedBusiness.trial_end) {
-      setIsTrial(true);
-      const now = new Date();
-      const trialEnd = new Date(resolvedBusiness.trial_end);
-      
-      if (now > trialEnd) {
-        setIsExpiredTrial(true);
-      } else {
-        const diffTime = Math.abs(trialEnd.getTime() - now.getTime());
-        setTrialDaysLeft(Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        if (staffMembership?.businesses) {
+          const staffBusiness = staffMembership.businesses;
+          resolvedBusiness = Array.isArray(staffBusiness) ? staffBusiness[0] : staffBusiness;
+        }
       }
-    }
 
-    setLoading(false);
+      if (!resolvedBusiness) {
+        router.push("/onboarding");
+        return;
+      }
+
+      setBusiness(resolvedBusiness);
+
+      // Fetch Plan data to check for trial status
+      const { data: planData } = await supabase
+        .from("subscription_plans")
+        .select("is_trial, trial_days")
+        .eq("id", resolvedBusiness.subscription_plan || 'starter')
+        .maybeSingle();
+
+      if (planData?.is_trial && resolvedBusiness.trial_end) {
+        setIsTrial(true);
+        const now = new Date();
+        const trialEnd = new Date(resolvedBusiness.trial_end);
+        
+        if (now > trialEnd) {
+          setIsExpiredTrial(true);
+        } else {
+          const diffTime = Math.abs(trialEnd.getTime() - now.getTime());
+          setTrialDaysLeft(Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        }
+      }
+    } catch (err) {
+      console.error("Dashboard layout error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = async () => {
