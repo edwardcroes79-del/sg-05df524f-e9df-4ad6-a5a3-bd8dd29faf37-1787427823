@@ -13,6 +13,13 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface RegisteredCustomer {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+}
+
 export default function ScanQR() {
   const router = useRouter();
   const { toast } = useToast();
@@ -20,7 +27,7 @@ export default function ScanQR() {
   const [processing, setProcessing] = useState(false);
   const [business, setBusiness] = useState<any>(null);
   const [programs, setPrograms] = useState<any[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<RegisteredCustomer[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
   
   // Scanner state
@@ -28,6 +35,8 @@ export default function ScanQR() {
   const [manualCode, setManualCode] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState("");
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string; reward_earned?: boolean; reward_title?: string } | null>(null);
 
   // Advanced camera control states
@@ -94,25 +103,40 @@ export default function ScanQR() {
           setSelectedProgramId(progs[0].id);
         }
 
-        // Fetch registered customers
-        const { data: cards, error: cardsErr } = await supabase
-          .from("customer_loyalty_cards")
-          .select(`customer_id, customer:customers(id, name, email, phone)`)
-          .eq("business_id", resolvedBusinessId);
-          
-        if (cardsErr) throw cardsErr;
-
-        if (cards) {
-          const uniqueCustomers = Array.from(
-            new Map(cards.filter(c => c.customer).map(c => [c.customer_id, c.customer])).values()
-          );
-          setCustomers(uniqueCustomers as any[]);
-        }
+        await searchRegisteredCustomers("", resolvedBusinessId);
       }
     } catch (err) {
       console.error("Failed to load scanner context:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const searchRegisteredCustomers = async (query: string, businessIdOverride?: string) => {
+    const targetBusinessId = businessIdOverride || business?.id;
+    if (!targetBusinessId) return;
+
+    try {
+      setCustomerSearchLoading(true);
+
+      const { data, error } = await (supabase.rpc as any)("search_business_customers", {
+        p_business_id: targetBusinessId,
+        p_search: query,
+        p_limit: 25
+      });
+
+      if (error) throw error;
+
+      setCustomers((data || []) as RegisteredCustomer[]);
+    } catch (err: any) {
+      console.error("Customer search failed:", err);
+      toast({
+        title: "Customer Search Failed",
+        description: err.message || "Could not search registered customers.",
+        variant: "destructive",
+      });
+    } finally {
+      setCustomerSearchLoading(false);
     }
   };
 
@@ -523,18 +547,27 @@ export default function ScanQR() {
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-full p-0 max-w-[calc(100vw-3rem)] sm:max-w-md" align="start">
-                              <Command>
-                                <CommandInput placeholder="Search customers..." />
+                              <Command shouldFilter={false}>
+                                <CommandInput
+                                  placeholder="Search customers..."
+                                  value={customerSearchTerm}
+                                  onValueChange={(value) => {
+                                    setCustomerSearchTerm(value);
+                                    void searchRegisteredCustomers(value);
+                                  }}
+                                />
                                 <CommandList>
-                                  <CommandEmpty>No registered customers found.</CommandEmpty>
+                                  <CommandEmpty>
+                                    {customerSearchLoading ? "Searching customers..." : "No registered customers found."}
+                                  </CommandEmpty>
                                   <CommandGroup>
-                                    {customers.map((c: any) => (
+                                    {customers.map((c) => (
                                       <CommandItem
                                         key={c.id}
-                                        value={`${c.name} ${c.email || ''} ${c.phone || ''}`}
+                                        value={c.id}
                                         onSelect={() => {
                                           setSelectedCustomer(c.id === selectedCustomer ? "" : c.id);
-                                          setManualCode(""); // clear USB input if selecting from dropdown
+                                          setManualCode("");
                                           setCustomerSearchOpen(false);
                                         }}
                                       >
