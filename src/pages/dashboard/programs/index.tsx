@@ -26,13 +26,46 @@ export default function LoyaltyPrograms() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const { data: business } = await supabase
-        .from("businesses")
-        .select("id, owner_id")
-        .limit(1)
-        .single();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
 
-      if (!business) return;
+      const isStaffUser = profile?.role === "business_staff";
+      let business;
+
+      if (isStaffUser) {
+        const { data: membership } = await supabase
+          .from("business_users")
+          .select("business_id")
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
+          .limit(1)
+          .single();
+          
+        if (membership) {
+          const { data: b } = await supabase
+            .from("businesses")
+            .select("id, owner_id")
+            .eq("id", membership.business_id)
+            .single();
+          business = b;
+        }
+      } else {
+        const { data: b } = await supabase
+          .from("businesses")
+          .select("id, owner_id")
+          .eq("owner_id", session.user.id)
+          .limit(1)
+          .single();
+        business = b;
+      }
+
+      if (!business) {
+        setLoading(false);
+        return;
+      }
       
       setIsOwner(business.owner_id === session.user.id);
 

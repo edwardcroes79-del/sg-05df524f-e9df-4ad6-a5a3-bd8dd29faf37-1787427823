@@ -853,6 +853,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_business_ownership: {
+        Args: { b_id: string; u_id: string }
+        Returns: boolean
+      }
       is_business_operator:
         | { Args: { p_business_id: string }; Returns: boolean }
         | {
