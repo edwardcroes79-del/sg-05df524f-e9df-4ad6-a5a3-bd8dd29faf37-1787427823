@@ -13,11 +13,11 @@ position: 16
 Ensure active Staff can issue stamps and redeem rewards safely, while blocking them immediately from Billing and Settings with a clean "Access Denied" screen.
 
 ## Checklist
-- [ ] Implement a reusable Access Denied interface or screen in `billing.tsx` and `settings.tsx`
-- [ ] Block Staff immediately on Billing page
-- [ ] Block Staff immediately on Settings page
-- [ ] Ensure `scan.tsx` captures the authenticated staff's user ID when issuing a stamp or redeeming a reward
-- [ ] Run project error checks
+- [x] Implement a reusable Access Denied interface or screen in `billing.tsx` and `settings.tsx`
+- [x] Block Staff immediately on Billing page
+- [x] Block Staff immediately on Settings page
+- [x] Ensure `scan.tsx` captures the authenticated staff's user ID when issuing a stamp or redeeming a reward
+- [x] Run project error checks
 
 ## Acceptance
 1. Staff cannot access Billing/Settings (displays Access Denied).
