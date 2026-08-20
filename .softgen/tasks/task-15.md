@@ -14,11 +14,11 @@ Phase 1 focuses on fixing the staff role, business membership, and RLS architect
 
 ## Checklist
 - [x] Fix RLS helper functions (`can_access_business`, `is_business_operator`, `can_access_customer`) to include active staff members.
-- [ ] Fix RLS policies on `business_users` so staff can read their own membership.
-- [ ] Fix RLS policies on `businesses` so staff can read their assigned business details.
-- [ ] Fix RLS policies on `loyalty_programs`, `customer_loyalty_cards`, `stamp_transactions`, and `rewards` to use the updated helper functions for staff access.
-- [ ] Verify `login.tsx` and `DashboardLayout.tsx` correctly route staff based on updated RLS.
-- [ ] Run project error checks.
+- [x] Fix RLS policies on `business_users` so staff can read their own membership.
+- [x] Fix RLS policies on `businesses` so staff can read their assigned business details.
+- [x] Fix RLS policies on `loyalty_programs`, `customer_loyalty_cards`, `stamp_transactions`, and `rewards` to use the updated helper functions for staff access.
+- [x] Verify `login.tsx` and `DashboardLayout.tsx` correctly route staff based on updated RLS.
+- [x] Run project error checks.
 
 ## Acceptance
 Staff members can log in, bypass onboarding, load their assigned Business Dashboard, and view/manage business customers, loyalty programs, and stamps according to their permissions without seeing Business B's data.
