@@ -30,8 +30,8 @@ export default function ScanQR() {
   const [customers, setCustomers] = useState<RegisteredCustomer[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
   
-  // Scanner state
-  const [scanMode, setScanMode] = useState<"camera" | "manual">("camera");
+  // Scanner state - Defaulting to manual so search is immediately visible
+  const [scanMode, setScanMode] = useState<"camera" | "manual">("manual");
   const [manualCode, setManualCode] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<string>("");
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
