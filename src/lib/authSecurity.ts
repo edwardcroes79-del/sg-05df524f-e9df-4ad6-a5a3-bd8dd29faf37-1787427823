@@ -5,6 +5,30 @@ export interface MfaRouteRequirement {
   factorId: string | null;
 }
 
+export function normalizeInternalReturnPath(value: string | string[] | undefined): string | null {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const decodedValue = decodeURIComponent(rawValue);
+
+    if (!decodedValue.startsWith("/") || decodedValue.startsWith("//") || decodedValue.includes("\\")) {
+      return null;
+    }
+
+    if (decodedValue.toLowerCase().startsWith("/auth/login")) {
+      return null;
+    }
+
+    return decodedValue;
+  } catch {
+    return null;
+  }
+}
+
 export async function getMfaRouteRequirement(): Promise<MfaRouteRequirement> {
   const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
 

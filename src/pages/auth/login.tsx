@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
 import { SEO } from "@/components/SEO";
-import { getMfaRouteRequirement } from "@/lib/authSecurity";
+import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -24,10 +24,11 @@ export default function Login() {
   const router = useRouter();
   const { returnUrl } = router.query;
   const { toast } = useToast();
+  const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
 
   const routeUser = async () => {
-    if (returnUrl) {
-      router.push(returnUrl as string);
+    if (safeReturnUrl) {
+      router.push(safeReturnUrl);
       return;
     }
 
@@ -228,8 +229,8 @@ export default function Login() {
             <CardFooter className="justify-center border-t p-4 mt-4">
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{" "}
-                <Link href={`/auth/register${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl as string)}` : ''}`} className="text-primary hover:underline font-medium">
-                  {returnUrl ? "Create Customer Account" : "Register your business"}
+                <Link href={`/auth/register${safeReturnUrl ? `?returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`} className="text-primary hover:underline font-medium">
+                  {safeReturnUrl ? "Create Customer Account" : "Register your business"}
                 </Link>
               </p>
             </CardFooter>
