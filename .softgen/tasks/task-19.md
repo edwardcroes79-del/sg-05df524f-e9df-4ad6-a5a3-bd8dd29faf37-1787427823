@@ -13,10 +13,10 @@ position: 19
 Investigate and fix only the underlying customer-to-business relationship. Current issue: neither Business Admin nor Staff can see registered customers. Staff can now see Loyalty Programs, so do not change that functionality. Trace Customer Registration → Customer Account → Loyalty Card → Loyalty Program → Business. Verify customers, customer_loyalty_cards, loyalty_programs, businesses, business_id, customer_id, user_id, and RLS. Confirm that when a customer joins a business loyalty program, Supabase correctly associates the customer with that business. Do not create duplicate customers or loyalty programs.
 
 ## Checklist
-- [ ] Inspect customer registration and join flow code
-- [ ] Inspect working and broken customer visibility queries
-- [ ] Inspect schema and RLS for customers, customer_loyalty_cards, loyalty_programs, and businesses
-- [ ] Verify real customer-to-business relationship records in Supabase
+- [x] Inspect customer registration and join flow code
+- [x] Inspect working and broken customer visibility queries
+- [x] Inspect schema and RLS for customers, customer_loyalty_cards, loyalty_programs, and businesses
+- [x] Verify real customer-to-business relationship records in Supabase
 - [ ] Identify exact failing layer without changing Staff Loyalty Program functionality
 - [ ] Apply minimal fix only if relationship creation or visibility is broken
 - [ ] Validate checks
