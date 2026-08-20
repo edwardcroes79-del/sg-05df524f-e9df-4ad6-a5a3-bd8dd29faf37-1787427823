@@ -840,6 +840,19 @@ export type Database = {
         Args: { p_customer_id: string; p_user_id?: string }
         Returns: boolean
       }
+      check_and_increment_rate_limit: {
+        Args: {
+          p_action: string
+          p_max_attempts: number
+          p_rate_key: string
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
+      is_business_operator: {
+        Args: { p_business_id: string; p_user_id?: string }
+        Returns: boolean
+      }
       is_super_admin_user: { Args: { p_user_id?: string }; Returns: boolean }
       issue_stamp: {
         Args: {

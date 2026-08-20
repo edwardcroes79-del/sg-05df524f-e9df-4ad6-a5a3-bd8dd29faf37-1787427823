@@ -21,7 +21,7 @@ Phase 5 audit scoped only to realtime subscriptions, abuse/rate limiting, and su
 - [x] Verify subscription plan limits and premium entitlements are enforced server-side or database-side
 - [x] Apply focused fixes for verified critical/high issues only
 - [x] Test realtime/security behavior after fixes
-- [ ] Run project error checks
+- [x] Run project error checks
 
 ## Acceptance
 Realtime updates are filtered to the correct tenant/customer and clean up correctly, sensitive actions have abuse protection, and subscription entitlements cannot be bypassed through frontend state changes.
