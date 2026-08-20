@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle, ChevronsUpDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function ScanQR() {
   const router = useRouter();
@@ -23,6 +26,8 @@ export default function ScanQR() {
   // Scanner state
   const [scanMode, setScanMode] = useState<"camera" | "manual">("camera");
   const [manualCode, setManualCode] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<string>("");
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string; reward_earned?: boolean; reward_title?: string } | null>(null);
 
   // Advanced camera control states
@@ -247,8 +252,11 @@ export default function ScanQR() {
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualCode) return;
-    handleProcessQR(manualCode);
+    if (selectedCustomer) {
+      handleProcessQR(`CUSTOMER:${selectedCustomer}`);
+    } else if (manualCode) {
+      handleProcessQR(manualCode);
+    }
   };
 
   const handleProcessQR = async (qrData: string) => {
@@ -350,6 +358,7 @@ export default function ScanQR() {
     } finally {
       setProcessing(false);
       setManualCode("");
+      setSelectedCustomer("");
     }
   };
 
@@ -504,50 +513,84 @@ export default function ScanQR() {
                     <form onSubmit={handleManualSubmit} className="space-y-6 py-4">
                       <div className="space-y-4">
                         <div className="space-y-2 text-left">
-                          <label className="text-sm font-medium">Select Registered Customer</label>
-                          <Select 
-                            value={manualCode.startsWith("CUSTOMER:") ? manualCode : ""} 
-                            onValueChange={setManualCode} 
-                            disabled={processing}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Search or select customer..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {customers.length === 0 ? (
-                                <SelectItem value="none" disabled>No registered customers yet</SelectItem>
-                              ) : (
-                                customers.map((c: any) => (
-                                  <SelectItem key={c.id} value={`CUSTOMER:${c.id}`}>
-                                    {c.name} {c.email ? `(${c.email})` : ''}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
+                          <label className="text-sm font-medium">Search Registered Customers</label>
+                          <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={customerSearchOpen}
+                                className="w-full justify-between font-normal bg-background"
+                                disabled={processing}
+                              >
+                                {selectedCustomer
+                                  ? customers.find((c) => c.id === selectedCustomer)?.name || "Customer selected"
+                                  : "Search by name, email, or phone..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-full p-0 max-w-[calc(100vw-3rem)] sm:max-w-md" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search customers..." />
+                                <CommandList>
+                                  <CommandEmpty>No registered customers found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {customers.map((c: any) => (
+                                      <CommandItem
+                                        key={c.id}
+                                        value={`${c.name} ${c.email || ''} ${c.phone || ''}`}
+                                        onSelect={() => {
+                                          setSelectedCustomer(c.id === selectedCustomer ? "" : c.id);
+                                          setManualCode(""); // clear USB input if selecting from dropdown
+                                          setCustomerSearchOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            selectedCustomer === c.id ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        <div className="flex flex-col">
+                                          <span>{c.name}</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            {[c.email, c.phone].filter(Boolean).join(" • ")}
+                                          </span>
+                                        </div>
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         
                         <div className="relative flex py-2 items-center">
                           <div className="flex-grow border-t border-border"></div>
-                          <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-medium uppercase tracking-wider">Or</span>
+                          <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-medium uppercase tracking-wider">Or Scan Phone</span>
                           <div className="flex-grow border-t border-border"></div>
                         </div>
 
                         <div className="space-y-2 text-left">
-                          <label className="text-sm font-medium">Customer ID or Reward Code</label>
+                          <label className="text-sm font-medium">Hardware Scanner (USB)</label>
                           <Input 
-                            placeholder="Scan with USB scanner or paste code..." 
-                            value={manualCode.startsWith("CUSTOMER:") ? "" : manualCode}
-                            onChange={(e) => setManualCode(e.target.value)}
+                            placeholder="Point scanner and scan QR..." 
+                            value={manualCode}
+                            onChange={(e) => {
+                              setManualCode(e.target.value);
+                              setSelectedCustomer(""); // clear dropdown selection if typing
+                            }}
                             disabled={processing}
+                            autoFocus
                           />
                           <p className="text-xs text-muted-foreground">
-                            Point your physical USB barcode scanner here and scan the customer's phone, or type a Reward Code.
+                            Use a physical barcode scanner or type a Reward Code.
                           </p>
                         </div>
                       </div>
-                      <Button type="submit" className="w-full" disabled={!manualCode || manualCode === "none" || processing}>
-                        {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Submit"}
+                      <Button type="submit" className="w-full" disabled={(!manualCode && !selectedCustomer) || processing}>
+                        {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Issue Stamp"}
                       </Button>
                     </form>
                   )}
