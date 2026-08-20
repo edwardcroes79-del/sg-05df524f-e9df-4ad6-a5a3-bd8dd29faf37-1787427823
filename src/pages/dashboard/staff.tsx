@@ -153,17 +153,28 @@ export default function StaffPage() {
   };
 
   const handleRemoveStaff = async (staffId: string) => {
-    if (!confirm("Are you sure you want to remove this staff member? They will lose access to the business immediately.")) return;
+    if (!confirm("Are you sure you want to completely remove this staff member? They will lose access to the business immediately and their account will be deactivated.")) return;
     
     try {
-      const { error } = await supabase
-        .from("business_users")
-        .delete()
-        .eq("id", staffId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session");
 
-      if (error) throw error;
+      const response = await fetch("/api/staff/remove", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ staffId })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to remove staff member");
+      }
       
-      toast({ title: "Staff member removed" });
+      toast({ title: "Staff member removed", description: "The staff account has been completely removed." });
       fetchStaffData();
     } catch (err: any) {
       toast({ title: "Error removing staff", description: err.message, variant: "destructive" });
@@ -265,17 +276,17 @@ export default function StaffPage() {
               <Card key={member.id}>
                 <CardContent className="p-4 sm:p-6 flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
                       {member.profile?.full_name?.charAt(0)?.toUpperCase() || "S"}
                     </div>
-                    <div>
-                      <h4 className="font-semibold">{member.profile?.full_name || "Unknown"}</h4>
-                      <p className="text-sm text-muted-foreground">{member.profile?.email || "No email"}</p>
+                    <div className="min-w-0">
+                      <h4 className="font-semibold truncate">{member.profile?.full_name || "Unknown"}</h4>
+                      <p className="text-sm text-muted-foreground truncate">{member.profile?.email || "No email"}</p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-4">
-                    <Badge variant={member.status === 'active' ? "default" : "secondary"}>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <Badge variant={member.status === 'active' ? "default" : "secondary"} className="hidden sm:inline-flex">
                       {member.status}
                     </Badge>
                     
