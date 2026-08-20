@@ -90,7 +90,7 @@ export default function JoinProgram() {
         .from("customers")
         .select("id")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
       let customerId = cData?.id;
       if (!customerId) {
@@ -113,7 +113,7 @@ export default function JoinProgram() {
         .select("id")
         .eq("customer_id", customerId)
         .eq("loyalty_program_id", program.id)
-        .single();
+        .maybeSingle();
 
       if (!cardData) {
         // Create new card
