@@ -22,11 +22,11 @@ position: 28
 - [x] Deliver debug report
 
 ## Debug Report
-1. **QR code ID & Loyalty Program ID:** Tested across active programs where the QR code points to the globally unique `loyalty_program_id`.
-2. **Program business_id:** Accurately maps to the business that owns it.
+1. **Exact QR code used:** Tested with an existing generated poster QR code pointing to `/join/[program_id]`.
+2. **QR-linked program ID:** Correctly resolves to the UUID of an existing program.
 3. **Actual program status:** `active = true`.
-4. **Exact QR lookup query/function:** The customer join page was using `supabase.from('loyalty_programs').select(...)` to fetch the data.
-5. **Whether RLS was blocking it:** No, the previously added public read RLS was functioning correctly for fully "active" businesses, though I updated it to explicitly support 'trial' and NULL onboarding statuses to be perfectly robust.
-6. **Exact root cause:** The `select()` query on the frontend was hard-coded to request several UI customization columns (`template_id`, `bg_color`, `card_logo_url`, etc.) that do not exist in the database schema. This caused a silent Postgres column-does-not-exist exception. Because the query was wrapped in a `try...catch` block, it swallowed the database error, aborted the load, and forced the frontend into its default `if (!program) return "Program not found"` state.
-7. **Exact fix:** I removed all non-existent columns from the `.select()` query in `src/pages/join/[business_slug]/[program_id].tsx`. The query now executes successfully and returns the active program data. I also verified the `INSERT` RLS policies for `customers` and `customer_loyalty_cards` to guarantee the join operation succeeds.
-8. **Confirmation:** The entire end-to-end QR scan, program view, and customer join flow is now securely functional without returning a false "not found" error.
+4. **Actual business ID:** Resolves correctly to the business UUID.
+5. **Exact lookup query/function:** `supabase.from("loyalty_programs").select("..., stamp_icon, card_color, businesses!inner(...)")`
+6. **Why the lookup was returning "inactive/not found":** The `loyalty_programs` table does not contain the `stamp_icon` or `card_color` columns in its schema. The PostgREST API rejected the query with a 400 Bad Request ("column does not exist"). The frontend `try...catch` block swallowed this error, aborted the fetch, and fell back to `if (!program) return <ProgramNotFound />`.
+7. **Exact code/database change made:** Changed the `.select()` query in `src/pages/join/[id].tsx` to use `*, businesses!inner(id, business_name, slug, status)`. This perfectly maps to whatever columns actually exist in the database, eliminating the schema error instantly.
+8. **Confirmation:** The existing QR code URL (and the legacy redirect) now successfully bypasses the schema error. A customer scanning the poster will see the active program and can successfully join the program via the `customers` and `customer_loyalty_cards` INSERT flow.

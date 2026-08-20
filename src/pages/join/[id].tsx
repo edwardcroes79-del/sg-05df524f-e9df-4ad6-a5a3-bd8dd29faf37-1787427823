@@ -34,20 +34,11 @@ export default function JoinProgramSimplified() {
         setUser(session?.user || null);
 
         // Single unified query: fetch the active program AND its associated active/trial business
-        // Using only explicitly defined schema columns to prevent silent query crashes
+        // Using * for loyalty_programs to prevent silent query crashes caused by missing UI columns (like stamp_icon)
         const { data: pData, error: pError } = await supabase
           .from("loyalty_programs")
           .select(`
-            id, 
-            business_id, 
-            name, 
-            description, 
-            stamp_target, 
-            reward_title, 
-            reward_description, 
-            stamp_icon, 
-            card_color, 
-            active,
+            *,
             businesses!inner (
               id,
               business_name,
