@@ -253,9 +253,9 @@ export default function QRManagement() {
               const programName = qr.loyalty_programs?.name || "Loyalty Program";
               const cardColor = qr.loyalty_programs?.card_color || "#EF4444";
               
-              // Correct full application join URL
+              // Correct full application join URL using simplified public token structure
               const joinUrl = typeof window !== "undefined"
-                ? `${window.location.origin}/join/${business.slug}/${qr.loyalty_program_id}`
+                ? `${window.location.origin}/join/${qr.loyalty_program_id}`
                 : "";
 
               return (
@@ -286,7 +286,7 @@ export default function QRManagement() {
                         <Printer className="h-4 w-4" /> Poster / Print
                       </Button>
                     </Link>
-                    <Link href={`/join/${business.slug}/${qr.loyalty_program_id}`} target="_blank" className="flex-1">
+                    <Link href={`/join/${qr.loyalty_program_id}`} target="_blank" className="flex-1">
                       <Button size="sm" className="w-full gap-1">
                         View Page <ArrowRight className="h-4 w-4" />
                       </Button>
