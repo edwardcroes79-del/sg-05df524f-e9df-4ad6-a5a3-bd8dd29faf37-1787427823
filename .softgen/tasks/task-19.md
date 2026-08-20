@@ -1,6 +1,6 @@
 ---
 title: Customer business relationship
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [customers, loyalty-cards, rls, business-relationship]
@@ -19,8 +19,8 @@ Investigate and fix only the underlying customer-to-business relationship. Curre
 - [x] Verify real customer-to-business relationship records in Supabase
 - [x] Identify exact failing layer without changing Staff Loyalty Program functionality
 - [x] Apply minimal fix only if relationship creation or visibility is broken
-- [ ] Validate checks
-- [ ] Report findings and stop
+- [x] Validate checks
+- [x] Report findings and stop
 
 ## Acceptance
 A real customer who registers and joins a business loyalty program has one correct customer_loyalty_cards row linking customer_id, loyalty_program_id, and business_id.
