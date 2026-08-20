@@ -14,8 +14,13 @@ tags: [qr, customer, loyalty-program]
 - Fix the root cause (likely RLS blocking unauthenticated reads or wrong status check).
 
 ## Checklist
-- [ ] Inspect `src/pages/join/[business_slug]/[program_id].tsx`
-- [ ] Check schema and RLS for `loyalty_programs`
-- [ ] Check schema and RLS for `businesses`
-- [ ] Fix the lookup logic / RLS
-- [ ] Deliver debug report
+- [x] Inspect `src/pages/join/[business_slug]/[program_id].tsx`
+- [x] Check schema and RLS for `loyalty_programs`
+- [x] Check schema and RLS for `businesses`
+- [x] Fix the lookup logic / RLS
+- [x] Deliver debug report
+
+## Debug Report
+- **Root Cause:** Row Level Security (RLS) policies on `businesses` and `loyalty_programs` were strictly limited to Business Owners and Staff. Public customers scanning the QR code were denied `SELECT` access, causing the database to return 0 rows for perfectly active programs, triggering the "not found" error.
+- **Fix:** Implemented `businesses_public_read_active` (allowing `status = 'active'`) and `loyalty_programs_public_read_active` (allowing `active = true`).
+- **Result:** Existing QR codes work immediately. Customers can view active programs, but RLS continues to block access to paused/inactive/deleted programs. No QR code regeneration is needed.
