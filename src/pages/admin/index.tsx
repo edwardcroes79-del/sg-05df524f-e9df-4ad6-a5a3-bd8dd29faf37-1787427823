@@ -158,7 +158,7 @@ export default function AdminDashboard() {
       // Clean up stale unverified factors to prevent duplicate error
       const { data: currentFactors } = await supabase.auth.mfa.listFactors();
       if (currentFactors?.totp) {
-        const unverified = currentFactors.totp.filter(f => f.status === 'unverified');
+        const unverified = currentFactors.totp.filter(f => (f as any).status === 'unverified');
         for (const factor of unverified) {
           await supabase.auth.mfa.unenroll({ factorId: factor.id });
         }
