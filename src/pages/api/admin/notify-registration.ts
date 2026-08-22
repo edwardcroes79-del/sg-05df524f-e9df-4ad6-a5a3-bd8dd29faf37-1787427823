@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { businessName, businessEmail, businessPhone, origin } = req.body;
+    const { businessName, businessEmail, businessPhone, origin, businessId, retryEmail } = req.body;
 
     if (!businessName || !businessEmail) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -60,16 +60,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       </div>
     `;
 
-    await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: adminEmail,
-      subject: "New Business Registration — Approval Required",
-      html: htmlBody,
-    });
+    // Attempt to send email
+    try {
+      await transporter.sendMail({
+        from: `"${fromName}" <${fromEmail}>`,
+        to: adminEmail,
+        subject: "New Business Registration — Approval Required",
+        html: htmlBody,
+      });
 
-    return res.status(200).json({ success: true });
+      // If successful, record the success in the database (if businessId is provided)
+      if (businessId) {
+        try {
+          const { createClient } = require("@supabase/supabase-js");
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          );
+          
+          await supabase
+            .from("businesses")
+            .update({ admin_notify_status: "sent", admin_notify_error: null })
+            .eq("id", businessId);
+        } catch (dbError) {
+          console.error("Failed to record admin email success:", dbError);
+        }
+      }
+    } catch (emailError: any) {
+      console.error("Super Admin Notification Error:", emailError);
+      
+      // If it fails, record the failure in the database
+      if (businessId) {
+        try {
+          const { createClient } = require("@supabase/supabase-js");
+          const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          );
+          
+          await supabase
+            .from("businesses")
+            .update({ 
+              admin_notify_status: "failed", 
+              admin_notify_error: emailError.message || "Unknown SMTP error" 
+            })
+            .eq("id", businessId);
+        } catch (dbError) {
+          console.error("Failed to record admin email failure:", dbError);
+        }
+      }
+      
+      // Always return 200 so onboarding doesn't crash, but pass the error flag
+      return res.status(200).json({ success: true, emailSent: false, error: emailError.message });
+    }
+
+    return res.status(200).json({ success: true, emailSent: true });
   } catch (error: any) {
-    console.error("Super Admin Notification Error:", error);
-    return res.status(500).json({ error: error.message || "Failed to send email" });
+    console.error("Critical Notification Error:", error);
+    return res.status(500).json({ error: error.message || "Failed to process request" });
   }
 }

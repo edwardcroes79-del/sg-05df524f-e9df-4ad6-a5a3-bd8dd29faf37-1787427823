@@ -109,6 +109,7 @@ export default function Onboarding() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            businessId: business.id,
             businessName,
             businessEmail: email,
             businessPhone: phone,
