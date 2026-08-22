@@ -113,6 +113,8 @@ export type Database = {
       businesses: {
         Row: {
           address: string | null
+          approval_email_error: string | null
+          approval_email_status: string | null
           business_name: string
           cover_image: string | null
           created_at: string | null
@@ -136,6 +138,8 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          approval_email_error?: string | null
+          approval_email_status?: string | null
           business_name: string
           cover_image?: string | null
           created_at?: string | null
@@ -159,6 +163,8 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          approval_email_error?: string | null
+          approval_email_status?: string | null
           business_name?: string
           cover_image?: string | null
           created_at?: string | null

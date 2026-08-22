@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
@@ -77,6 +77,7 @@ export default function AdminDashboard() {
   const [businessToDelete, setBusinessToDelete] = useState<any | null>(null);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
+  const [retryingEmail, setRetryingEmail] = useState<string | null>(null);
 
   // Website settings states
   const [footerSettings, setFooterSettings] = useState({
@@ -257,7 +258,9 @@ export default function AdminDashboard() {
           created_at,
           owner_id,
           trial_start,
-          trial_end
+          trial_end,
+          approval_email_status,
+          approval_email_error
         `)
         .order("created_at", { ascending: false });
       setBusinesses(bizData || []);
@@ -426,6 +429,47 @@ export default function AdminDashboard() {
       });
     } finally {
       setApproving(null);
+    }
+  };
+
+  const handleRetryEmail = async (bizId: string) => {
+    try {
+      setRetryingEmail(bizId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/admin/approve-business", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ businessId: bizId, retryEmail: true }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to resend email");
+      }
+
+      toast({
+        title: "Retry Email",
+        description: result.emailSent 
+          ? "The approval email was successfully resent."
+          : "The email failed to send again. Please check SMTP settings.",
+        variant: result.emailSent ? "default" : "destructive",
+      });
+
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Retry Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRetryingEmail(null);
     }
   };
 
@@ -945,6 +989,16 @@ export default function AdminDashboard() {
                           >
                             {biz.status?.toUpperCase()}
                           </Badge>
+                          {biz.status === "active" && biz.approval_email_status === "failed" && (
+                            <div className="mt-1 text-[10px] text-destructive flex items-center gap-1 font-semibold" title={biz.approval_email_error || "Email failed to send"}>
+                              <XCircle className="h-3 w-3" /> Email Failed
+                            </div>
+                          )}
+                          {biz.status === "active" && biz.approval_email_status === "sent" && (
+                            <div className="mt-1 text-[10px] text-emerald-600 flex items-center gap-1 font-semibold">
+                              <CheckCircle className="h-3 w-3" /> Email Sent
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
@@ -981,6 +1035,19 @@ export default function AdminDashboard() {
                             >
                               {approving === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
                               Approve
+                            </Button>
+                          )}
+
+                          {biz.status === "active" && biz.approval_email_status === "failed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs"
+                              onClick={() => handleRetryEmail(biz.id)}
+                              disabled={retryingEmail === biz.id}
+                            >
+                              {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                              Retry Email
                             </Button>
                           )}
 

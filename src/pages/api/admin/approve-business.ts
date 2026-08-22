@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "Forbidden: Super Admin access required" });
     }
 
-    const { businessId } = req.body;
+    const { businessId, retryEmail } = req.body;
     if (!businessId) {
       return res.status(400).json({ error: "Business ID is required" });
     }
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 1. Fetch current business data
     const { data: business, error: fetchError } = await supabase
       .from("businesses")
-      .select("id, business_name, owner_id, status")
+      .select("id, business_name, owner_id, status, approval_email_status")
       .eq("id", businessId)
       .single();
 
@@ -52,7 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Business not found" });
     }
 
-    if (business.status === "active") {
+    if (business.status === "active" && !retryEmail) {
       return res.status(200).json({ success: true, message: "Business is already active" });
     }
 
@@ -65,12 +65,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 3. Perform database update securely
-    const { error: updateError } = await supabase
-      .from("businesses")
-      .update({ status: "active" })
-      .eq("id", businessId);
+    if (business.status !== "active") {
+      const { error: updateError } = await supabase
+        .from("businesses")
+        .update({ status: "active" })
+        .eq("id", businessId);
 
-    if (updateError) throw updateError;
+      if (updateError) throw updateError;
+    }
 
     // 4. Send approval email via Nodemailer (wrapped in try/catch to prevent blocking the UI on failure)
     try {
@@ -117,10 +119,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       };
 
       await transporter.sendMail(mailOptions);
-    } catch (emailError) {
+
+      try {
+        await supabase
+          .from("businesses")
+          .update({ approval_email_status: "sent", approval_email_error: null })
+          .eq("id", businessId);
+      } catch (e) {
+        console.error("Failed to update email status", e);
+      }
+    } catch (emailError: any) {
       console.error("Non-fatal: Failed to send approval email", emailError);
+      try {
+        await supabase
+          .from("businesses")
+          .update({ 
+            approval_email_status: "failed", 
+            approval_email_error: emailError.message || "Unknown SMTP error" 
+          })
+          .eq("id", businessId);
+      } catch (e) {
+        console.error("Failed to update email failure status", e);
+      }
       // Return 200 anyway since the database was successfully updated
-      return res.status(200).json({ success: true, emailSent: false });
+      return res.status(200).json({ success: true, emailSent: false, error: emailError.message });
     }
 
     return res.status(200).json({ success: true, emailSent: true });
