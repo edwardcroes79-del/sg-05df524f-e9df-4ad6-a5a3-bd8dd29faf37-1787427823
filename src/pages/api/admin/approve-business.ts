@@ -111,12 +111,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 4. Send approval email via Nodemailer (wrapped in try/catch to prevent blocking the UI on failure)
     try {
       const transporter = nodemailer.createTransport({
-        host: process.env.MAIL_HOST,
+        host: process.env.MAIL_HOST || "smtp.titan.email",
         port: Number(process.env.MAIL_PORT) || 465,
         secure: process.env.MAIL_ENCRYPTION === 'ssl' || Number(process.env.MAIL_PORT) === 465,
         auth: {
-          user: process.env.MAIL_USERNAME,
-          pass: process.env.MAIL_PASSWORD,
+          user: (process.env.MAIL_USERNAME || "").trim(),
+          pass: (process.env.MAIL_PASSWORD || "").trim(),
         },
       });
 

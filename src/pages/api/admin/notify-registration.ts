@@ -41,10 +41,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const transporter = nodemailer.createTransport({
       host: process.env.MAIL_HOST || "smtp.titan.email",
       port: parseInt(process.env.MAIL_PORT || "465", 10),
-      secure: process.env.MAIL_PORT === "465", 
+      secure: process.env.MAIL_ENCRYPTION === 'ssl' || parseInt(process.env.MAIL_PORT || "465", 10) === 465, 
       auth: {
-        user: process.env.MAIL_USERNAME,
-        pass: process.env.MAIL_PASSWORD,
+        user: (process.env.MAIL_USERNAME || "").trim(),
+        pass: (process.env.MAIL_PASSWORD || "").trim(),
       },
     });
 
