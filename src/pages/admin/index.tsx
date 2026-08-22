@@ -411,7 +411,10 @@ export default function AdminDashboard() {
 
       toast({
         title: "Business Approved",
-        description: "The business is now active and the approval email has been sent.",
+        description: result.emailSent 
+          ? "The business is now active and the approval email has been sent."
+          : "The business is now active, but the approval email failed to send (SMTP timeout).",
+        variant: result.emailSent ? "default" : "destructive",
       });
 
       await fetchAdminData();
