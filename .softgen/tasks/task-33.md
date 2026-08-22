@@ -1,6 +1,6 @@
 ---
 title: Fix Registration Email Rate Limit Exceeded
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [auth, registration, rate-limit]
