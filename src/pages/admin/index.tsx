@@ -460,10 +460,10 @@ export default function AdminDashboard() {
       }
 
       toast({
-        title: "Retry Email",
+        title: result.emailSent ? "Email Resent" : "Email Failed",
         description: result.emailSent 
           ? "The approval email was successfully resent."
-          : "The email failed to send again. Please check SMTP settings.",
+          : `Email failed: ${result.error || 'Unknown error occurred.'}`,
         variant: result.emailSent ? "default" : "destructive",
       });
 
@@ -491,13 +491,16 @@ export default function AdminDashboard() {
 
       const result = await response.json();
 
-      if (!result.success || !result.emailSent) {
+      if (!result.success && !result.emailSent) {
         throw new Error(result.error || "Failed to resend admin notification");
       }
 
       toast({
-        title: "Notification Resent",
-        description: "The admin notification was successfully resent.",
+        title: result.emailSent ? "Notification Resent" : "Notification Failed",
+        description: result.emailSent
+          ? "The admin notification was successfully resent."
+          : `Email failed: ${result.error || 'Unknown error occurred.'}`,
+        variant: result.emailSent ? "default" : "destructive",
       });
 
       await fetchAdminData();
