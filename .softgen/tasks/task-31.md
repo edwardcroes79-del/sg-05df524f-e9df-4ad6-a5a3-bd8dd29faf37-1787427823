@@ -18,6 +18,6 @@ position: 31
 ## Checklist
 - [x] Inspect and update `redirectTo` parameters in frontend auth files
 - [x] Request SMTP credentials and Production URL from the user
-- [ ] Configure Supabase Auth Site URL and Redirect URLs
+- [x] Configure Supabase Auth Site URL and Redirect URLs
 - [x] Apply secure SMTP configuration via Supabase Auth settings
-- [ ] Deliver summary and wait for user testing
+- [x] Deliver summary and wait for user testing
