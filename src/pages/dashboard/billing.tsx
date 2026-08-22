@@ -7,19 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, CreditCard, Upload, Clock, CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Check, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 
 export default function BillingPage() {
   const router = useRouter();
@@ -30,7 +19,6 @@ export default function BillingPage() {
   const [currentPlan, setCurrentPlan] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
-  const [bankAccount, setBankAccount] = useState<any>(null);
 
   useEffect(() => {
     fetchData();
@@ -86,14 +74,6 @@ export default function BillingPage() {
         .eq("business_id", businessData.id)
         .order("created_at", { ascending: false });
       setPendingPayments(paymentsData || []);
-
-      // Fetch bank account
-      const { data: bankData } = await supabase
-        .from("platform_bank_accounts")
-        .select("*")
-        .eq("is_active", true)
-        .single();
-      setBankAccount(bankData);
 
       setLoading(false);
     } catch (error: any) {
@@ -196,12 +176,12 @@ export default function BillingPage() {
         {/* Current Plan */}
         {currentPlan && (
           <Card className="border-primary/20 bg-primary/[0.02] shadow-sm relative overflow-hidden">
-            {currentPlan.id === 'business' && (
+            {currentPlan.id === "business" && (
               <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl">
                 Pro Member
               </div>
             )}
-            {currentPlan.id === 'enterprise' && (
+            {currentPlan.id === "pro" && (
               <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl font-serif">
                 ★ VIP Enterprise
               </div>
@@ -210,10 +190,10 @@ export default function BillingPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl font-heading font-bold">
                   Active Subscription Plan
-                  {currentPlan.id === 'business' && (
-                    <Badge className="bg-primary hover:bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Pro Business</Badge>
+                  {currentPlan.id === "business" && (
+                    <Badge className="bg-primary hover:bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Business</Badge>
                   )}
-                  {currentPlan.id === 'enterprise' && (
+                  {currentPlan.id === "pro" && (
                     <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider font-serif">★ Enterprise</Badge>
                   )}
                 </CardTitle>
@@ -236,7 +216,7 @@ export default function BillingPage() {
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <span>Up to <strong>{currentPlan.max_customers === 999999 ? "Unlimited" : currentPlan.max_customers.toLocaleString()}</strong> active customer profiles</span>
+                    <span>Up to <strong>{currentPlan.max_customers === 999999 ? "Unlimited" : currentPlan.max_customers.toLocaleString()}</strong> Loyalty Members</span>
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Check className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -245,7 +225,7 @@ export default function BillingPage() {
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Check className={`h-4 w-4 shrink-0 ${currentPlan.includes_premium_templates ? "text-emerald-500" : "text-muted-foreground/30"}`} />
                     <span className={currentPlan.includes_premium_templates ? "font-semibold text-foreground" : "line-through opacity-50"}>
-                      39 HD Design Presets & Templates {currentPlan.includes_premium_templates ? "✨" : "🔒"}
+                      Premium Design Presets & Templates {currentPlan.includes_premium_templates ? "✨" : "🔒"}
                     </span>
                   </p>
                   {currentPlan.features?.map((feature: string, idx: number) => (
@@ -267,8 +247,7 @@ export default function BillingPage() {
             {plans.map((plan) => {
               const isCurrent = plan.id === business?.subscription_plan;
               const isBusiness = plan.id === "business";
-              const isEnterprise = plan.id === "enterprise";
-              const isTrial = plan.is_trial;
+              const isEnterprise = plan.id === "pro";
 
               return (
                 <Card 
@@ -285,7 +264,7 @@ export default function BillingPage() {
                 >
                   {isBusiness && (
                     <span className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase">
-                      Recommended
+                      Most Popular ⭐
                     </span>
                   )}
                   {isEnterprise && (
@@ -313,7 +292,7 @@ export default function BillingPage() {
                     </p>
                     <p className="text-sm flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <span><strong>{plan.max_customers === 999999 ? "Unlimited" : plan.max_customers.toLocaleString()}</strong> Active Customers</span>
+                      <span><strong>{plan.max_customers === 999999 ? "Unlimited" : plan.max_customers.toLocaleString()}</strong> Loyalty Members</span>
                     </p>
                     <p className="text-sm flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -324,7 +303,7 @@ export default function BillingPage() {
                     <p className="text-sm flex items-center gap-2.5 pt-2 border-t border-dashed">
                       <Check className={`h-4 w-4 shrink-0 ${plan.includes_premium_templates ? "text-emerald-500" : "text-muted-foreground/20"}`} />
                       <span className={plan.includes_premium_templates ? "font-semibold text-foreground" : "text-muted-foreground/60 line-through"}>
-                        39 HD Design Presets {!plan.includes_premium_templates && "🔒"}
+                        Premium Design Presets {!plan.includes_premium_templates && "🔒"}
                       </span>
                     </p>
                     
