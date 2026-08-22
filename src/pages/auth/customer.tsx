@@ -200,11 +200,32 @@ export default function CustomerAuth() {
       });
 
       if (error) {
-        toast({
-          title: "Registration Failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        const isRateLimit = error.message.toLowerCase().includes("rate limit") || error.status === 429;
+        
+        if (isRateLimit) {
+          // Check if the account was actually created but the email was rate-limited
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          
+          if (signInError && signInError.message.toLowerCase().includes("email not confirmed")) {
+            toast({
+              title: "Account Already Created",
+              description: "Your account exists but is unconfirmed. We've reached the email limit, please wait before requesting another email.",
+            });
+            return;
+          }
+          
+          toast({
+            title: "Too Many Email Requests",
+            description: "We've reached the email sending limit temporarily. Please wait a few minutes and try again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Registration Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         if (data.session) {
           // 1. Force role to 'customer' in the profile
