@@ -78,6 +78,7 @@ export default function AdminDashboard() {
   const [deletingBusiness, setDeletingBusiness] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
   const [retryingEmail, setRetryingEmail] = useState<string | null>(null);
+  const [retryingAdminEmail, setRetryingAdminEmail] = useState<string | null>(null);
 
   // Website settings states
   const [footerSettings, setFooterSettings] = useState({
@@ -260,7 +261,9 @@ export default function AdminDashboard() {
           trial_start,
           trial_end,
           approval_email_status,
-          approval_email_error
+          approval_email_error,
+          admin_notify_status,
+          admin_notify_error
         `)
         .order("created_at", { ascending: false });
       setBusinesses(bizData || []);
@@ -470,6 +473,39 @@ export default function AdminDashboard() {
       });
     } finally {
       setRetryingEmail(null);
+    }
+  };
+
+  const handleRetryAdminNotification = async (bizId: string) => {
+    try {
+      setRetryingAdminEmail(bizId);
+      
+      const response = await fetch("/api/admin/notify-registration", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessId: bizId, retryEmail: true, origin: window.location.origin }),
+      });
+
+      const result = await response.json();
+
+      if (!result.success || !result.emailSent) {
+        throw new Error(result.error || "Failed to resend admin notification");
+      }
+
+      toast({
+        title: "Notification Resent",
+        description: "The admin notification was successfully resent.",
+      });
+
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Retry Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRetryingAdminEmail(null);
     }
   };
 
@@ -990,13 +1026,18 @@ export default function AdminDashboard() {
                             {biz.status?.toUpperCase()}
                           </Badge>
                           {biz.status === "active" && biz.approval_email_status === "failed" && (
-                            <div className="mt-1 text-[10px] text-destructive flex items-center gap-1 font-semibold" title={biz.approval_email_error || "Email failed to send"}>
-                              <XCircle className="h-3 w-3" /> Email Failed
+                            <div className="mt-1 text-[10px] text-destructive flex items-center gap-1 font-semibold" title={biz.approval_email_error || "Approval email failed to send"}>
+                              <XCircle className="h-3 w-3" /> Approval Failed
                             </div>
                           )}
                           {biz.status === "active" && biz.approval_email_status === "sent" && (
                             <div className="mt-1 text-[10px] text-emerald-600 flex items-center gap-1 font-semibold">
-                              <CheckCircle className="h-3 w-3" /> Email Sent
+                              <CheckCircle className="h-3 w-3" /> Approval Sent
+                            </div>
+                          )}
+                          {biz.admin_notify_status === "failed" && (
+                            <div className="mt-1 text-[10px] text-destructive flex items-center gap-1 font-semibold" title={biz.admin_notify_error || "Admin Notification failed to send"}>
+                              <XCircle className="h-3 w-3" /> Admin Notif Failed
                             </div>
                           )}
                         </TableCell>
@@ -1047,7 +1088,20 @@ export default function AdminDashboard() {
                               disabled={retryingEmail === biz.id}
                             >
                               {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                              Retry Email
+                              Retry Approval Email
+                            </Button>
+                          )}
+
+                          {biz.admin_notify_status === "failed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs"
+                              onClick={() => handleRetryAdminNotification(biz.id)}
+                              disabled={retryingAdminEmail === biz.id}
+                            >
+                              {retryingAdminEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                              Retry Notif
                             </Button>
                           )}
 
