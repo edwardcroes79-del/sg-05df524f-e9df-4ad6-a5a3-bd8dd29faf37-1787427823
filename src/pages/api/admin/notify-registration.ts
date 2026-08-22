@@ -9,7 +9,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    let { businessName, businessEmail, businessPhone, origin, businessId, retryEmail } = req.body;
+    let businessName = req.body.businessName;
+    let businessEmail = req.body.businessEmail;
+    let businessPhone = req.body.businessPhone;
+    const { origin, businessId, retryEmail } = req.body;
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
