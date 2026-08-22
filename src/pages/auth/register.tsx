@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ export default function Register() {
   const { toast } = useToast();
 
   // Handle the countdown timer for the resend button
-  import { useEffect } from "react";
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (resendCooldown > 0) {
