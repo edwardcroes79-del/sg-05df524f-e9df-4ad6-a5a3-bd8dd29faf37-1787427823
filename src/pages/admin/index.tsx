@@ -76,6 +76,7 @@ export default function AdminDashboard() {
   // Business deletion states
   const [businessToDelete, setBusinessToDelete] = useState<any | null>(null);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
+  const [approving, setApproving] = useState<string | null>(null);
 
   // Website settings states
   const [footerSettings, setFooterSettings] = useState({
@@ -384,6 +385,44 @@ export default function AdminDashboard() {
         description: err.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleApproveBusiness = async (bizId: string) => {
+    try {
+      setApproving(bizId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/admin/approve-business", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ businessId: bizId }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to approve business");
+      }
+
+      toast({
+        title: "Business Approved",
+        description: "The business is now active and the approval email has been sent.",
+      });
+
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Approval Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setApproving(null);
     }
   };
 
@@ -897,7 +936,10 @@ export default function AdminDashboard() {
                         <TableCell className="font-semibold">{biz.business_name}</TableCell>
                         <TableCell>{new Date(biz.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <Badge variant={biz.status === "active" ? "default" : "destructive"}>
+                          <Badge 
+                            variant={biz.status === "active" ? "default" : biz.status === "pending" ? "secondary" : "destructive"}
+                            className={biz.status === "pending" ? "bg-amber-100 text-amber-800 hover:bg-amber-100" : ""}
+                          >
                             {biz.status?.toUpperCase()}
                           </Badge>
                         </TableCell>
@@ -925,6 +967,20 @@ export default function AdminDashboard() {
                               <option key={p.id} value={p.id}>{p.name}</option>
                             ))}
                           </select>
+
+                          {biz.status === "pending" && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700"
+                              onClick={() => handleApproveBusiness(biz.id)}
+                              disabled={approving === biz.id}
+                            >
+                              {approving === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                              Approve
+                            </Button>
+                          )}
+
                           <Button
                             variant={biz.status === "active" ? "destructive" : "default"}
                             size="sm"

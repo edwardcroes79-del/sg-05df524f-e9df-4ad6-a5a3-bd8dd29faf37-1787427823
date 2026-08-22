@@ -271,6 +271,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (business?.status === "pending") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="p-4 bg-amber-500/10 rounded-full text-amber-500">
+          <ShieldAlert className="h-16 w-16" />
+        </div>
+        <div className="max-w-md space-y-2">
+          <h1 className="text-3xl font-heading font-bold text-foreground">Account Pending Approval</h1>
+          <p className="text-muted-foreground">
+            Your business registration has been received and is currently being reviewed.
+          </p>
+        </div>
+        <Button onClick={handleLogout} variant="outline">Sign Out</Button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex">
       {/* Mobile Sidebar Overlay */}
