@@ -16,7 +16,7 @@ position: 31
 - Update email templates and Site URL.
 
 ## Checklist
-- [ ] Inspect and update `redirectTo` parameters in frontend auth files
+- [x] Inspect and update `redirectTo` parameters in frontend auth files
 - [ ] Request SMTP credentials and Production URL from the user
 - [ ] Configure Supabase Auth Site URL and Redirect URLs
 - [ ] Apply secure SMTP configuration via Supabase Auth settings
