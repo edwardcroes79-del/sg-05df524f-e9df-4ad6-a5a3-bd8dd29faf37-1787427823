@@ -103,6 +103,23 @@ export default function Onboarding() {
 
       if (programError) throw programError;
 
+      // 4. Notify Super Admin
+      try {
+        await fetch("/api/admin/notify-registration", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            businessName,
+            businessEmail: email,
+            businessPhone: phone,
+            origin: window.location.origin,
+          }),
+        });
+      } catch (notifyErr) {
+        console.error("Failed to send notification email:", notifyErr);
+        // We do not throw here to ensure the user setup successfully completes even if the notification fails
+      }
+
       toast({
         title: "Setup Complete!",
         description: "Your business is ready to issue stamps.",
