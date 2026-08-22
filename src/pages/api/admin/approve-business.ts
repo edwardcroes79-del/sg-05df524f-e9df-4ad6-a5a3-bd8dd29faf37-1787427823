@@ -5,13 +5,18 @@ import fs from "fs";
 import path from "path";
 
 const getEnv = (key: string) => {
-  if (process.env[key]) return process.env[key];
   try {
     const envContent = fs.readFileSync(path.join(process.cwd(), ".env.local"), "utf-8");
     const line = envContent.split("\n").find((l) => l.startsWith(`${key}=`));
-    if (line) return line.substring(key.length + 1).replace(/['"]/g, "").trim();
+    if (line) {
+      let val = line.substring(key.length + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.substring(1, val.length - 1);
+      }
+      return val;
+    }
   } catch (e) {}
-  return "";
+  return process.env[key] || "";
 };
 
 const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL")!;
