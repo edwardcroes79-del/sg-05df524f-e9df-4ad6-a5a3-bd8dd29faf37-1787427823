@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import nodemailer from "nodemailer";
+import { createClient } from "@supabase/supabase-js";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -8,7 +9,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { businessName, businessEmail, businessPhone, origin, businessId, retryEmail } = req.body;
+    let { businessName, businessEmail, businessPhone, origin, businessId, retryEmail } = req.body;
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    // If this is a retry from the admin dashboard, fetch the missing details from the database
+    if (retryEmail && businessId && (!businessName || !businessEmail)) {
+      const { data: biz } = await supabase
+        .from("businesses")
+        .select("business_name, email, phone")
+        .eq("id", businessId)
+        .single();
+        
+      if (biz) {
+        businessName = biz.business_name;
+        businessEmail = biz.email;
+        businessPhone = biz.phone;
+      }
+    }
 
     if (!businessName || !businessEmail) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -72,12 +93,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // If successful, record the success in the database (if businessId is provided)
       if (businessId) {
         try {
-          const { createClient } = require("@supabase/supabase-js");
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-          );
-          
           await supabase
             .from("businesses")
             .update({ admin_notify_status: "sent", admin_notify_error: null })
@@ -92,12 +107,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // If it fails, record the failure in the database
       if (businessId) {
         try {
-          const { createClient } = require("@supabase/supabase-js");
-          const supabase = createClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-          );
-          
           await supabase
             .from("businesses")
             .update({ 
