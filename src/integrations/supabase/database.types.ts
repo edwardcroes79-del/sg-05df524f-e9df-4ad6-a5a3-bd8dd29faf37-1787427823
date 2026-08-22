@@ -288,6 +288,50 @@ export type Database = {
         }
         Relationships: []
       }
+      email_logs: {
+        Row: {
+          attempt_count: number | null
+          business_id: string | null
+          created_at: string | null
+          email_type: string
+          error_message: string | null
+          id: string
+          recipient: string
+          sent_at: string | null
+          status: string | null
+        }
+        Insert: {
+          attempt_count?: number | null
+          business_id?: string | null
+          created_at?: string | null
+          email_type: string
+          error_message?: string | null
+          id?: string
+          recipient: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          attempt_count?: number | null
+          business_id?: string | null
+          created_at?: string | null
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          recipient?: string
+          sent_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loyalty_programs: {
         Row: {
           active: boolean | null

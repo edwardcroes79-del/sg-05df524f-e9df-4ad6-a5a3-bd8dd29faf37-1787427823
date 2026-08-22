@@ -263,7 +263,10 @@ export default function AdminDashboard() {
           approval_email_status,
           approval_email_error,
           admin_notify_status,
-          admin_notify_error
+          admin_notify_error,
+          email_logs (
+            id, email_type, status, attempt_count, error_message, sent_at
+          )
         `)
         .order("created_at", { ascending: false });
       setBusinesses(bizData || []);
@@ -1021,25 +1024,54 @@ export default function AdminDashboard() {
                         <TableCell>
                           <Badge 
                             variant={biz.status === "active" ? "default" : biz.status === "pending" ? "secondary" : "destructive"}
-                            className={biz.status === "pending" ? "bg-amber-100 text-amber-800 hover:bg-amber-100" : ""}
+                            className={biz.status === "pending" ? "bg-amber-100 text-amber-800 hover:bg-amber-100" : "mb-2"}
                           >
                             {biz.status?.toUpperCase()}
                           </Badge>
-                          {biz.status === "active" && biz.approval_email_status === "failed" && (
-                            <div className="mt-1 text-[10px] text-destructive flex items-center gap-1 font-semibold" title={biz.approval_email_error || "Approval email failed to send"}>
-                              <XCircle className="h-3 w-3" /> Approval Failed
-                            </div>
-                          )}
-                          {biz.status === "active" && biz.approval_email_status === "sent" && (
-                            <div className="mt-1 text-[10px] text-emerald-600 flex items-center gap-1 font-semibold">
-                              <CheckCircle className="h-3 w-3" /> Approval Sent
-                            </div>
-                          )}
-                          {biz.admin_notify_status === "failed" && (
-                            <div className="mt-1 text-[10px] text-destructive flex items-center gap-1 font-semibold" title={biz.admin_notify_error || "Admin Notification failed to send"}>
-                              <XCircle className="h-3 w-3" /> Admin Notif Failed
-                            </div>
-                          )}
+                          
+                          <div className="flex flex-col gap-1.5 mt-2 border-t pt-2">
+                            {/* Detailed Email Tracking via Logs */}
+                            {(() => {
+                              const approvalLog = biz.email_logs?.find((l: any) => l.email_type === 'client_approval');
+                              const adminNotifLog = biz.email_logs?.find((l: any) => l.email_type === 'admin_notification');
+
+                              return (
+                                <>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Approval Email</span>
+                                    {approvalLog ? (
+                                      approvalLog.status === 'sent' ? (
+                                        <div className="text-[11px] text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle className="h-3 w-3" /> Sent</div>
+                                      ) : approvalLog.status === 'failed' ? (
+                                        <div className="text-[11px] text-destructive flex items-center gap-1 font-medium" title={approvalLog.error_message}><XCircle className="h-3 w-3" /> Failed (Attempt {approvalLog.attempt_count})</div>
+                                      ) : (
+                                        <div className="text-[11px] text-amber-600 flex items-center gap-1 font-medium"><Clock className="h-3 w-3" /> Pending</div>
+                                      )
+                                    ) : biz.status === "active" ? (
+                                      <div className="text-[11px] text-muted-foreground italic">Missing log</div>
+                                    ) : (
+                                      <div className="text-[11px] text-muted-foreground">Not triggered</div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex flex-col gap-0.5 mt-1">
+                                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Admin Notif</span>
+                                    {adminNotifLog ? (
+                                      adminNotifLog.status === 'sent' ? (
+                                        <div className="text-[11px] text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle className="h-3 w-3" /> Sent</div>
+                                      ) : adminNotifLog.status === 'failed' ? (
+                                        <div className="text-[11px] text-destructive flex items-center gap-1 font-medium" title={adminNotifLog.error_message}><XCircle className="h-3 w-3" /> Failed (Attempt {adminNotifLog.attempt_count})</div>
+                                      ) : (
+                                        <div className="text-[11px] text-amber-600 flex items-center gap-1 font-medium"><Clock className="h-3 w-3" /> Pending</div>
+                                      )
+                                    ) : (
+                                      <div className="text-[11px] text-muted-foreground italic">Missing log</div>
+                                    )}
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
@@ -1079,29 +1111,55 @@ export default function AdminDashboard() {
                             </Button>
                           )}
 
-                          {biz.status === "active" && biz.approval_email_status === "failed" && (
+                          {biz.email_logs?.find((l: any) => l.email_type === 'client_approval')?.status === "failed" && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="gap-1 text-xs"
+                              className="gap-1 text-xs border-destructive/30 hover:bg-destructive/10 text-destructive"
                               onClick={() => handleRetryEmail(biz.id)}
                               disabled={retryingEmail === biz.id}
                             >
                               {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                              Retry Approval Email
+                              Resend Approval
                             </Button>
                           )}
 
-                          {biz.admin_notify_status === "failed" && (
+                          {biz.email_logs?.find((l: any) => l.email_type === 'admin_notification')?.status === "failed" && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="gap-1 text-xs"
+                              className="gap-1 text-xs border-destructive/30 hover:bg-destructive/10 text-destructive"
                               onClick={() => handleRetryAdminNotification(biz.id)}
                               disabled={retryingAdminEmail === biz.id}
                             >
                               {retryingAdminEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                              Retry Notif
+                              Resend Notif
+                            </Button>
+                          )}
+
+                          {/* Fallback buttons for legacy rows without logs yet */}
+                          {!biz.email_logs?.length && biz.status === "active" && biz.approval_email_status === "failed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs border-destructive/30 hover:bg-destructive/10 text-destructive"
+                              onClick={() => handleRetryEmail(biz.id)}
+                              disabled={retryingEmail === biz.id}
+                            >
+                              {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                              Resend Approval
+                            </Button>
+                          )}
+                          {!biz.email_logs?.length && biz.admin_notify_status === "failed" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1 text-xs border-destructive/30 hover:bg-destructive/10 text-destructive"
+                              onClick={() => handleRetryAdminNotification(biz.id)}
+                              disabled={retryingAdminEmail === biz.id}
+                            >
+                              {retryingAdminEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                              Resend Notif
                             </Button>
                           )}
 

@@ -74,6 +74,40 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (updateError) throw updateError;
     }
 
+    // Prepare Email Tracking Log
+    let emailLogId: string | null = null;
+    try {
+      const { data: existingLog } = await supabase
+        .from("email_logs")
+        .select("*")
+        .eq("business_id", businessId)
+        .eq("email_type", "client_approval")
+        .maybeSingle();
+
+      if (existingLog) {
+        if (existingLog.status === "sent" && !retryEmail) {
+          // Already sent and not a retry request
+          return res.status(200).json({ success: true, emailSent: true, message: "Email already sent" });
+        }
+        emailLogId = existingLog.id;
+        await supabase.from("email_logs").update({ 
+          attempt_count: (existingLog.attempt_count || 1) + 1, 
+          status: "pending", 
+          error_message: null 
+        }).eq("id", emailLogId);
+      } else {
+        const { data: newLog } = await supabase.from("email_logs").insert({
+          business_id: businessId,
+          email_type: "client_approval",
+          recipient: ownerEmail,
+          status: "pending"
+        }).select().single();
+        if (newLog) emailLogId = newLog.id;
+      }
+    } catch (logErr) {
+      console.error("Failed to setup email log", logErr);
+    }
+
     // 4. Send approval email via Nodemailer (wrapped in try/catch to prevent blocking the UI on failure)
     try {
       const transporter = nodemailer.createTransport({
@@ -120,6 +154,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       await transporter.sendMail(mailOptions);
 
+      // Update log to success
+      if (emailLogId) {
+        try {
+          await supabase.from("email_logs").update({ 
+            status: "sent", 
+            sent_at: new Date().toISOString() 
+          }).eq("id", emailLogId);
+        } catch (e) {
+          console.error("Failed to update email log to sent", e);
+        }
+      }
+
+      // Legacy fallback
       try {
         await supabase
           .from("businesses")
@@ -130,6 +177,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     } catch (emailError: any) {
       console.error("Non-fatal: Failed to send approval email", emailError);
+      
+      // Update log to failed
+      if (emailLogId) {
+        try {
+          await supabase.from("email_logs").update({ 
+            status: "failed", 
+            error_message: emailError.message || "Unknown SMTP error" 
+          }).eq("id", emailLogId);
+        } catch (e) {
+          console.error("Failed to update email log to failed", e);
+        }
+      }
+
+      // Legacy fallback
       try {
         await supabase
           .from("businesses")

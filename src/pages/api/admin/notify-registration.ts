@@ -84,6 +84,41 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       </div>
     `;
 
+    // Prepare Email Tracking Log
+    let emailLogId: string | null = null;
+    if (businessId) {
+      try {
+        const { data: existingLog } = await supabase
+          .from("email_logs")
+          .select("*")
+          .eq("business_id", businessId)
+          .eq("email_type", "admin_notification")
+          .maybeSingle();
+
+        if (existingLog) {
+          if (existingLog.status === "sent" && !retryEmail) {
+            return res.status(200).json({ success: true, emailSent: true, message: "Email already sent" });
+          }
+          emailLogId = existingLog.id;
+          await supabase.from("email_logs").update({ 
+            attempt_count: (existingLog.attempt_count || 1) + 1, 
+            status: "pending", 
+            error_message: null 
+          }).eq("id", emailLogId);
+        } else {
+          const { data: newLog } = await supabase.from("email_logs").insert({
+            business_id: businessId,
+            email_type: "admin_notification",
+            recipient: adminEmail,
+            status: "pending"
+          }).select().single();
+          if (newLog) emailLogId = newLog.id;
+        }
+      } catch (logErr) {
+        console.error("Failed to setup email log", logErr);
+      }
+    }
+
     // Attempt to send email
     try {
       await transporter.sendMail({
@@ -93,7 +128,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         html: htmlBody,
       });
 
-      // If successful, record the success in the database (if businessId is provided)
+      if (emailLogId) {
+        try {
+          await supabase.from("email_logs").update({ 
+            status: "sent", 
+            sent_at: new Date().toISOString() 
+          }).eq("id", emailLogId);
+        } catch (e) {
+          console.error("Failed to update admin email log to sent", e);
+        }
+      }
+
+      // If successful, record the success in the database (legacy fallback)
       if (businessId) {
         try {
           await supabase
@@ -107,7 +153,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (emailError: any) {
       console.error("Super Admin Notification Error:", emailError);
       
-      // If it fails, record the failure in the database
+      if (emailLogId) {
+        try {
+          await supabase.from("email_logs").update({ 
+            status: "failed", 
+            error_message: emailError.message || "Unknown SMTP error" 
+          }).eq("id", emailLogId);
+        } catch (e) {
+          console.error("Failed to update admin email log to failed", e);
+        }
+      }
+
+      // If it fails, record the failure in the database (legacy fallback)
       if (businessId) {
         try {
           await supabase
