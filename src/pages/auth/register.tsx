@@ -18,10 +18,21 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [isConfirmationSent, setIsConfirmationSent] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const router = useRouter();
   const { returnUrl } = router.query;
   const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
   const { toast } = useToast();
+
+  // Handle the countdown timer for the resend button
+  import { useEffect } from "react";
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,11 +48,36 @@ export default function Register() {
       });
 
       if (error) {
-        toast({
-          title: "Registration Failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        const isRateLimit = error.message.toLowerCase().includes("rate limit") || error.status === 429;
+        
+        if (isRateLimit) {
+          // Check if the account was actually created but the email was rate-limited
+          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+          
+          if (signInError && signInError.message.toLowerCase().includes("email not confirmed")) {
+            // Account exists, but email is unconfirmed.
+            setRegisteredEmail(email);
+            setIsConfirmationSent(true);
+            setResendCooldown(60);
+            toast({
+              title: "Account Already Created",
+              description: "Your account exists but is unconfirmed. We've reached the email limit, please wait before requesting another email.",
+            });
+            return;
+          }
+          
+          toast({
+            title: "Too Many Email Requests",
+            description: "We've reached the email sending limit temporarily. Please wait a few minutes and try again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Registration Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         if (data.session) {
           toast({
@@ -96,7 +132,9 @@ export default function Register() {
               <Button 
                 variant="outline" 
                 className="w-full font-semibold"
+                disabled={resendCooldown > 0}
                 onClick={async () => {
+                  setResendCooldown(60);
                   const { error } = await supabase.auth.resend({
                     type: 'signup',
                     email: registeredEmail,
@@ -105,13 +143,18 @@ export default function Register() {
                     }
                   });
                   if (error) {
-                    toast({ title: "Failed to resend", description: error.message, variant: "destructive" });
+                    const isRateLimit = error.message.toLowerCase().includes("rate limit") || error.status === 429;
+                    toast({ 
+                      title: isRateLimit ? "Too Many Email Requests" : "Failed to resend", 
+                      description: isRateLimit ? "Please wait a few minutes before trying again." : error.message, 
+                      variant: "destructive" 
+                    });
                   } else {
                     toast({ title: "Email resent", description: "Please check your inbox." });
                   }
                 }}
               >
-                Resend Confirmation Email
+                {resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : "Resend Confirmation Email"}
               </Button>
               <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground" asChild>
                 <Link href="/auth/login">Return to Login</Link>
