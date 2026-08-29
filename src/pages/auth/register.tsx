@@ -66,8 +66,8 @@ export default function Register() {
           }
           
           toast({
-            title: "Too Many Email Requests",
-            description: "We've reached the email sending limit temporarily. Please wait a few minutes and try again.",
+            title: "Email temporarily rate-limited",
+            description: "Please wait a short time before requesting another confirmation email.",
             variant: "destructive",
           });
         } else {
@@ -210,7 +210,14 @@ export default function Register() {
                 <p className="text-xs text-muted-foreground mt-1">Must be at least 6 characters long.</p>
               </div>
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold mt-6" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Create Account"}
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  safeReturnUrl ? "Create Customer Account" : "Create Account"
+                )}
               </Button>
             </form>
           </CardContent>
