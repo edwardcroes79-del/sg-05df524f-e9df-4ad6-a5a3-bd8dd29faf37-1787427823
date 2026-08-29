@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "Forbidden: Super Admin access required" });
     }
 
-    const { businessId, retryEmail } = req.body;
+    const { businessId, retryEmail, origin } = req.body;
     if (!businessId) {
       return res.status(400).json({ error: "Business ID is required" });
     }
@@ -138,8 +138,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       let dashboardUrl = "https://royaltystamp.com/dashboard";
-      if (getEnv("NEXT_PUBLIC_SITE_URL")) {
-        dashboardUrl = `${getEnv("NEXT_PUBLIC_SITE_URL")}/dashboard`;
+      if (origin) {
+        dashboardUrl = `${origin}/dashboard`;
+      } else if (getEnv("NEXT_PUBLIC_SITE_URL")) {
+        let siteUrl = getEnv("NEXT_PUBLIC_SITE_URL");
+        siteUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
+        dashboardUrl = `${siteUrl}/dashboard`;
       } else if (getEnv("NEXT_PUBLIC_VERCEL_URL")) {
         dashboardUrl = `https://${getEnv("NEXT_PUBLIC_VERCEL_URL")}/dashboard`;
       }

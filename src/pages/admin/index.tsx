@@ -409,7 +409,7 @@ export default function AdminDashboard() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ businessId: bizId }),
+        body: JSON.stringify({ businessId: bizId, origin: window.location.origin }),
       });
 
       const result = await response.json();
@@ -450,7 +450,7 @@ export default function AdminDashboard() {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ businessId: bizId, retryEmail: true }),
+        body: JSON.stringify({ businessId: bizId, retryEmail: true, origin: window.location.origin }),
       });
 
       const result = await response.json();
