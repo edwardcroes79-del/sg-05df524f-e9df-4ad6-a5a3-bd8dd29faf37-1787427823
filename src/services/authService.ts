@@ -15,13 +15,18 @@ export interface AuthError {
 
 // Dynamic URL Helper
 export const getURL = () => {
+  // 1. Strictly prioritize the browser's current domain for all client-side auth requests.
+  // This completely bypasses the Softgen sandbox URL (NEXT_PUBLIC_SITE_URL) when the app is running 
+  // on your real production domain, ensuring emails redirect exactly where the user came from.
+  if (typeof window !== "undefined" && window.location.origin) {
+    const url = window.location.origin;
+    return url.endsWith("/") ? url : `${url}/`;
+  }
+
+  // 2. Server-side fallbacks (only used during SSR)
   const siteUrl = process?.env?.NEXT_PUBLIC_SITE_URL;
   const vercelUrl = process?.env?.NEXT_PUBLIC_VERCEL_URL;
-  let url = siteUrl || vercelUrl || (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
-
-  if (!url) {
-    url = "http://localhost:3000";
-  }
+  let url = siteUrl || vercelUrl || "http://localhost:3000";
 
   url = url.startsWith("http") ? url : `https://${url}`;
   url = url.endsWith("/") ? url : `${url}/`;
