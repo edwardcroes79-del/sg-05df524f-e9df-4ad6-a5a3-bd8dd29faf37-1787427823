@@ -59,13 +59,39 @@ export default function Onboarding() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user");
 
+      // Generate base slug
+      let baseSlug = businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+      if (!baseSlug) baseSlug = "business"; // fallback
+
+      let uniqueSlug = baseSlug;
+      let counter = 1;
+      let slugExists = true;
+
+      // Ensure unique slug by checking DB before insert
+      while (slugExists) {
+        const { data: existingBusiness, error: checkError } = await supabase
+          .from("businesses")
+          .select("id")
+          .eq("slug", uniqueSlug)
+          .maybeSingle();
+
+        if (checkError) throw checkError;
+
+        if (existingBusiness) {
+          counter++;
+          uniqueSlug = `${baseSlug}-${counter}`;
+        } else {
+          slugExists = false;
+        }
+      }
+
       // 1. Create Business
       const { data: business, error: businessError } = await supabase
         .from("businesses")
         .insert({
           owner_id: user.id,
           business_name: businessName,
-          slug: businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''),
+          slug: uniqueSlug,
           description,
           phone,
           email,
