@@ -35,6 +35,7 @@ export default function Register() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return; // Prevent double-click race conditions
     setLoading(true);
 
     try {
@@ -133,6 +134,7 @@ export default function Register() {
                 className="w-full font-semibold"
                 disabled={resendCooldown > 0}
                 onClick={async () => {
+                  if (resendCooldown > 0) return; // Prevent rapid double-clicks
                   setResendCooldown(60);
                   const { error } = await supabase.auth.resend({
                     type: 'signup',
