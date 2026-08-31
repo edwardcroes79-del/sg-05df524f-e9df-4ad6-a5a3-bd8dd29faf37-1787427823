@@ -97,13 +97,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           // Ignore if auth user lookup fails
         }
 
-        const existingProfile = profiles?.find((p) => p.id === uid) || {};
+        const existingProfile = profiles?.find((p) => p.id === uid);
 
         return {
           id: uid,
-          ...existingProfile,
-          email: authEmail || existingProfile.email || null,
-          full_name: existingProfile.full_name || authName || null
+          ...(existingProfile || {}),
+          email: authEmail || existingProfile?.email || null,
+          full_name: existingProfile?.full_name || authName || null
         };
       })
     );
