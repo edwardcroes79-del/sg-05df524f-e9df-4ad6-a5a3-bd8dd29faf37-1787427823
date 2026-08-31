@@ -16,8 +16,11 @@ import {
   X,
   ScanLine,
   ShieldAlert,
-  CreditCard
+  CreditCard,
+  Bell
 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -35,9 +38,26 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isTrial, setIsTrial] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState(0);
 
+  // What's New states
+  const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
+  const [comingSoonModalOpen, setComingSoonModalOpen] = useState(false);
+  const [hasReadWhatsNew, setHasReadWhatsNew] = useState(false);
+
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const read = localStorage.getItem("whatsNewRead_v1");
+      if (read) setHasReadWhatsNew(true);
+    }
     checkUserAndBusiness();
   }, []);
+
+  const handleOpenWhatsNew = () => {
+    setIsWhatsNewOpen(true);
+    setHasReadWhatsNew(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("whatsNewRead_v1", "true");
+    }
+  };
 
   useEffect(() => {
     if (!business?.id || !business?.owner_id || !currentUserId) return;
@@ -361,7 +381,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-2">
+          <button 
+            onClick={handleOpenWhatsNew}
+            className={`
+              flex items-center justify-between w-full px-3 py-2.5 rounded-md text-sm font-medium transition-colors
+              ${isWhatsNewOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}
+            `}
+          >
+            <div className="flex items-center gap-3">
+              <Bell className="h-5 w-5" />
+              What's New
+            </div>
+            {!hasReadWhatsNew && (
+              <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
+                2
+              </span>
+            )}
+          </button>
           <button 
             onClick={handleLogout}
             className="flex w-full items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
@@ -376,17 +413,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Mobile */}
         <header className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-card">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl shrink-0">
               {business?.business_name?.charAt(0) || "A"}
             </div>
             <span className="font-heading font-semibold text-foreground truncate">
               {business?.business_name}
             </span>
           </div>
-          <button onClick={() => setIsMobileOpen(true)}>
-            <Menu className="h-6 w-6 text-foreground" />
-          </button>
+          <div className="flex items-center gap-4 shrink-0">
+            <button onClick={handleOpenWhatsNew} className="relative">
+              <Bell className="h-5 w-5 text-foreground" />
+              {!hasReadWhatsNew && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">2</span>
+              )}
+            </button>
+            <button onClick={() => setIsMobileOpen(true)}>
+              <Menu className="h-6 w-6 text-foreground" />
+            </button>
+          </div>
         </header>
 
         {isTrial && !isExpiredTrial && (
@@ -407,6 +452,84 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* What's New Sheet */}
+      <Sheet open={isWhatsNewOpen} onOpenChange={setIsWhatsNewOpen}>
+        <SheetContent className="overflow-y-auto w-full sm:max-w-md z-[60]">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="flex items-center gap-2 text-2xl font-heading">
+              <Bell className="h-6 w-6 text-primary" />
+              What's New
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Coming Soon</h3>
+              
+              <div className="space-y-4">
+                {/* Feature 1 */}
+                <div 
+                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
+                  onClick={() => setComingSoonModalOpen(true)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🆕</span>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Birthday Rewards</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
+                      Coming Soon
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Reward your customers with special birthday offers and incentives.
+                  </p>
+                </div>
+
+                {/* Feature 2 */}
+                <div 
+                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
+                  onClick={() => setComingSoonModalOpen(true)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🎁</span>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Bonus Stamps</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
+                      Coming Soon
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Give customers extra stamps for special promotions, events, or loyalty campaigns.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Coming Soon Modal */}
+      <Dialog open={comingSoonModalOpen} onOpenChange={setComingSoonModalOpen}>
+        <DialogContent className="sm:max-w-md text-center p-6 z-[70]">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <span className="text-2xl">🚀</span>
+            </div>
+            <DialogTitle className="text-2xl font-heading text-center">Coming Soon</DialogTitle>
+            <DialogDescription className="text-center text-base pt-2">
+              This feature is currently in development and will be available in a future Royalty Stamp update.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-6 flex justify-center w-full">
+            <Button type="button" onClick={() => setComingSoonModalOpen(false)} className="w-full sm:w-auto px-8">
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
