@@ -41,7 +41,7 @@ export default function QRManagement() {
         .maybeSingle();
 
       if (membership?.business_id) {
-        role = "staff";
+        role = membership.role as "owner" | "staff"; // Use their actual role (owner or staff), do not blindly force "staff"
         const { data: bData } = await supabase
           .from("businesses")
           .select("*")
