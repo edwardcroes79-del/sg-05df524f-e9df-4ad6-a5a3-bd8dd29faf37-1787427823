@@ -73,7 +73,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw profilesError;
     }
 
-    return res.status(200).json({ profiles });
+    // Enrich with actual auth emails to guarantee accuracy from the secure auth.users system
+    const enrichedProfiles = await Promise.all(
+      (profiles || []).map(async (profile) => {
+        try {
+          const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(profile.id);
+          return {
+            ...profile,
+            email: authUser?.email || profile.email,
+            full_name: profile.full_name || authUser?.user_metadata?.full_name || null
+          };
+        } catch (e) {
+          return profile;
+        }
+      })
+    );
+
+    return res.status(200).json({ profiles: enrichedProfiles });
 
   } catch (error: any) {
     console.error("Staff list error:", error);
