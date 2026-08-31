@@ -309,7 +309,7 @@ export default function StaffPage() {
                     </div>
                     <div className="min-w-0">
                       <h4 className="font-semibold truncate">{member.profile?.full_name || "Staff Member"}</h4>
-                      <p className="text-sm text-muted-foreground truncate">{member.profile?.email || "Email restricted"}</p>
+                      <p className="text-sm text-muted-foreground truncate">{member.profile?.email || "Email unavailable"}</p>
                     </div>
                   </div>
                   
@@ -427,11 +427,11 @@ export default function StaffPage() {
             <div className="py-4 space-y-2">
               <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
                 <span className="text-sm font-medium">Name:</span>
-                <span className="text-sm">{staffToRemove.profile?.full_name || "Unknown"}</span>
+                <span className="text-sm">{staffToRemove.profile?.full_name || "Staff Member"}</span>
               </div>
               <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
                 <span className="text-sm font-medium">Email:</span>
-                <span className="text-sm">{staffToRemove.profile?.email || "No email"}</span>
+                <span className="text-sm">{staffToRemove.profile?.email || "Email unavailable"}</span>
               </div>
             </div>
           )}

@@ -62,30 +62,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "Forbidden: You do not have access to this business" });
     }
 
-    // Now securely fetch the profiles for the requested users using Admin privileges
-    // We only fetch exactly what was requested, and only if the requester is authorized for the business
-    const { data: profiles, error: profilesError } = await supabaseAdmin
-      .from("profiles")
-      .select("id, email, full_name, avatar_url, role, status")
-      .in("id", userIds);
+    // STRICT SECURITY: Ensure requested userIds actually belong to this business
+    // This prevents an authorized admin from passing random user IDs to retrieve emails from other businesses
+    const { data: businessStaff } = await supabaseAdmin
+      .from("business_users")
+      .select("user_id")
+      .eq("business_id", businessId);
+      
+    const validStaffIds = businessStaff?.map(s => s.user_id) || [];
+    const allowedUserIds = userIds.filter(id => validStaffIds.includes(id));
 
-    if (profilesError) {
-      throw profilesError;
+    if (allowedUserIds.length === 0) {
+      return res.status(200).json({ profiles: [] });
     }
 
-    // Enrich with actual auth emails to guarantee accuracy from the secure auth.users system
+    // Now securely fetch the profiles for the authorized users
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, full_name, avatar_url, role, status")
+      .in("id", allowedUserIds);
+
+    // Enrich with actual auth emails to guarantee accuracy from the secure auth.users system,
+    // iterating over allowedUserIds so we don't miss users who lack a 'profiles' row (e.g. newly invited staff)
     const enrichedProfiles = await Promise.all(
-      (profiles || []).map(async (profile) => {
+      allowedUserIds.map(async (uid: string) => {
+        let authEmail = null;
+        let authName = null;
+        
         try {
-          const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(profile.id);
-          return {
-            ...profile,
-            email: authUser?.email || profile.email,
-            full_name: profile.full_name || authUser?.user_metadata?.full_name || null
-          };
+          const { data: { user: authUser } } = await supabaseAdmin.auth.admin.getUserById(uid);
+          authEmail = authUser?.email;
+          authName = authUser?.user_metadata?.full_name;
         } catch (e) {
-          return profile;
+          // Ignore if auth user lookup fails
         }
+
+        const existingProfile = profiles?.find((p) => p.id === uid) || {};
+
+        return {
+          id: uid,
+          ...existingProfile,
+          email: authEmail || existingProfile.email || null,
+          full_name: existingProfile.full_name || authName || null
+        };
       })
     );
 
