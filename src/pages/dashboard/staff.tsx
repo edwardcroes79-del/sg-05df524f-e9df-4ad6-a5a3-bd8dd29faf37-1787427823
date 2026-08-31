@@ -67,18 +67,38 @@ export default function StaffPage() {
           .order("created_at", { ascending: false });
 
         if (businessUsers && businessUsers.length > 0) {
-          // Fetch their profiles
-          const userIds = businessUsers.map(bu => bu.user_id).filter(Boolean);
-          const { data: profiles } = await supabase
-            .from("profiles")
-            .select("id, email, full_name, avatar_url")
-            .in("id", userIds);
+          // Get session for secure API call
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session) {
+            const userIds = businessUsers.map(bu => bu.user_id).filter(Boolean);
+            
+            // Fetch profiles via secure server-side API to bypass RLS restrictions on other users' profiles
+            const profileResponse = await fetch("/api/staff/list", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({
+                businessId: biz.id,
+                userIds: userIds
+              })
+            });
 
-          const mergedStaff = businessUsers.map(bu => {
-            const profile = profiles?.find(p => p.id === bu.user_id);
-            return { ...bu, profile };
-          });
-          setStaff(mergedStaff);
+            if (profileResponse.ok) {
+              const { profiles } = await profileResponse.json();
+              
+              const mergedStaff = businessUsers.map(bu => {
+                const profile = profiles?.find((p: any) => p.id === bu.user_id);
+                return { ...bu, profile };
+              });
+              setStaff(mergedStaff);
+            } else {
+              // Fallback to displaying just the role/status if profile fetch fails
+              setStaff(businessUsers.map(bu => ({ ...bu, profile: null })));
+            }
+          }
         } else {
           setStaff([]);
         }
@@ -288,8 +308,8 @@ export default function StaffPage() {
                       {member.profile?.full_name?.charAt(0)?.toUpperCase() || "S"}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-semibold truncate">{member.profile?.full_name || "Unknown"}</h4>
-                      <p className="text-sm text-muted-foreground truncate">{member.profile?.email || "No email"}</p>
+                      <h4 className="font-semibold truncate">{member.profile?.full_name || "Staff Member"}</h4>
+                      <p className="text-sm text-muted-foreground truncate">{member.profile?.email || "Email restricted"}</p>
                     </div>
                   </div>
                   
