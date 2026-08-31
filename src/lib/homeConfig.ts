@@ -159,7 +159,7 @@ export const homeConfig: HomeConfig = {
         price: "AWG 35",
         period: "/mo",
         description: "Perfect for single-location cafes and shops.",
-            features: ["Up to 75 Loyalty customers", "1 Loyalty Program", "1 Staff Accounts", "Basic Analytics", "Email Support", "And future updates"],
+            features: ["Up to 150 Loyalty customers", "1 Loyalty Program", "1 Staff Accounts", "Basic Analytics", "Email Support", "And future updates"],
         ctaText: "Contact Us",
         ctaHref: "https://wa.me/2975678222"
       },
