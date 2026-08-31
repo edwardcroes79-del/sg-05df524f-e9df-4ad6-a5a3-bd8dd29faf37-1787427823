@@ -197,6 +197,28 @@ export default function QRManagement() {
           </Button>
         </div>
 
+        {/* Require Loyalty Program State for New Businesses */}
+        {!isStaff && programs.length === 0 && qrCodes.length === 0 && (
+          <Card className="border-amber-500/50 bg-amber-500/5 shadow-sm">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2 text-amber-700">
+                <AlertCircle className="h-5 w-5" />
+                <CardTitle className="text-lg">Action Required: Create a Loyalty Program</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground text-sm mb-4">
+                You must have an active Loyalty Program before you can generate a QR code. Customers need a specific program to join when they scan your code.
+              </p>
+              <Link href="/dashboard/programs/new">
+                <Button className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
+                  Create Your First Program
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Generate Card Section (Hone for Owners only) */}
         {!isStaff && programsWithoutQR.length > 0 && (
           <Card className="border-primary/20 bg-primary/5">
@@ -227,7 +249,7 @@ export default function QRManagement() {
 
         {/* List Generated QR Codes */}
         {qrCodes.length === 0 ? (
-          <Card className="p-8 text-center">
+          <Card className="p-8 text-center mt-6">
             <CardContent className="space-y-4 pt-6">
               <div className="bg-muted p-4 rounded-full w-16 h-16 flex items-center justify-center mx-auto">
                 <QrCode className="h-8 w-8 text-muted-foreground" />
@@ -237,13 +259,10 @@ export default function QRManagement() {
                 <p className="text-muted-foreground text-sm mt-1">
                   {isStaff
                     ? "No QR codes have been created by your business administrator yet."
-                    : "Once you have active loyalty programs, you can generate QR codes here. Customers scan these to sign up and join your program."}
+                    : programs.length > 0 
+                      ? "You have active programs! Use the section above to generate your first QR code."
+                      : "Once you create an active loyalty program, you can generate QR codes here. Customers scan these to sign up and join your program."}
                 </p>
-                {!isStaff && programs.length === 0 && (
-                  <Link href="/dashboard/programs/new" className="inline-block mt-4">
-                    <Button>Create Your First Program</Button>
-                  </Link>
-                )}
               </div>
             </CardContent>
           </Card>
