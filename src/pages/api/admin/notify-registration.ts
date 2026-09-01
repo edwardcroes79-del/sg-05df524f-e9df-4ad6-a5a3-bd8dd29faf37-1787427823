@@ -1,6 +1,8 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import nodemailer from "nodemailer";
 import { createClient } from "@supabase/supabase-js";
+import fs from "fs";
+import path from "path";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -41,8 +43,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Safely extract the raw password to prevent Next.js from corrupting the $ symbols via variable expansion
     let mailPassword = process.env.MAIL_PASSWORD;
     try {
-      const fs = require('fs');
-      const path = require('path');
       const envPath = path.resolve(process.cwd(), '.env.local');
       if (fs.existsSync(envPath)) {
         const envContent = fs.readFileSync(envPath, 'utf-8');
