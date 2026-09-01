@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,8 @@ export default function Onboarding() {
   const [programName, setProgramName] = useState("Loyalty Rewards");
   const [stampTarget, setStampTarget] = useState(10);
   const [rewardTitle, setRewardTitle] = useState("Free Item");
+  
+  const isCompleting = useRef(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -54,7 +56,10 @@ export default function Onboarding() {
   }, [router]);
 
   const handleComplete = async () => {
+    if (isCompleting.current) return; // Prevent synchronous double-clicks
+    isCompleting.current = true;
     setLoading(true);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No authenticated user");
@@ -161,6 +166,8 @@ export default function Onboarding() {
         description: err.message || "An error occurred during setup. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      isCompleting.current = false;
       setLoading(false);
     }
   };

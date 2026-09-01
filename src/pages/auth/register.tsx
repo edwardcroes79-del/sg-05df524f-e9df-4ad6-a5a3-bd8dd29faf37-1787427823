@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ export default function Register() {
   const [isConfirmationSent, setIsConfirmationSent] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const isSubmitting = useRef(false);
+  const isResending = useRef(false);
   const router = useRouter();
   const { returnUrl } = router.query;
   const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
@@ -35,7 +37,8 @@ export default function Register() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // Prevent double-click race conditions
+    if (isSubmitting.current) return; // Prevent synchronous double-click race conditions
+    isSubmitting.current = true;
     setLoading(true);
 
     try {
@@ -103,6 +106,7 @@ export default function Register() {
         variant: "destructive",
       });
     } finally {
+      isSubmitting.current = false;
       setLoading(false);
     }
   };
@@ -134,24 +138,29 @@ export default function Register() {
                 className="w-full font-semibold"
                 disabled={resendCooldown > 0}
                 onClick={async () => {
-                  if (resendCooldown > 0) return; // Prevent rapid double-clicks
+                  if (resendCooldown > 0 || isResending.current) return; // Prevent rapid double-clicks synchronously
+                  isResending.current = true;
                   setResendCooldown(60);
-                  const { error } = await supabase.auth.resend({
-                    type: 'signup',
-                    email: registeredEmail,
-                    options: {
-                      emailRedirectTo: `${getURL()}auth/login?confirmed=true${safeReturnUrl ? `&returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`
-                    }
-                  });
-                  if (error) {
-                    const isRateLimit = error.message.toLowerCase().includes("rate limit") || error.status === 429;
-                    toast({ 
-                      title: isRateLimit ? "Too Many Email Requests" : "Failed to resend", 
-                      description: isRateLimit ? "Please wait a few minutes before trying again." : error.message, 
-                      variant: "destructive" 
+                  try {
+                    const { error } = await supabase.auth.resend({
+                      type: 'signup',
+                      email: registeredEmail,
+                      options: {
+                        emailRedirectTo: `${getURL()}auth/login?confirmed=true${safeReturnUrl ? `&returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`
+                      }
                     });
-                  } else {
-                    toast({ title: "Email resent", description: "Please check your inbox." });
+                    if (error) {
+                      const isRateLimit = error.message.toLowerCase().includes("rate limit") || error.status === 429;
+                      toast({ 
+                        title: isRateLimit ? "Too Many Email Requests" : "Failed to resend", 
+                        description: isRateLimit ? "Please wait a few minutes before trying again." : error.message, 
+                        variant: "destructive" 
+                      });
+                    } else {
+                      toast({ title: "Email resent", description: "Please check your inbox." });
+                    }
+                  } finally {
+                    isResending.current = false;
                   }
                 }}
               >
