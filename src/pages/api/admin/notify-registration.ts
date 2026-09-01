@@ -38,13 +38,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    // Safely extract the raw password to prevent Next.js from corrupting the $ symbols via variable expansion
+    let mailPassword = process.env.MAIL_PASSWORD;
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const envPath = path.resolve(process.cwd(), '.env.local');
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf-8');
+        const match = envContent.match(/^MAIL_PASSWORD=(.*)$/m);
+        if (match) {
+          let rawPass = match[1].trim();
+          if ((rawPass.startsWith('"') && rawPass.endsWith('"')) || (rawPass.startsWith("'") && rawPass.endsWith("'"))) {
+            rawPass = rawPass.slice(1, -1);
+          }
+          mailPassword = rawPass;
+        }
+      }
+    } catch(e) {
+      // Fallback to process.env in Vercel production
+    }
+
     const transporter = nodemailer.createTransport({
       host: process.env.MAIL_HOST || "smtp.titan.email",
       port: parseInt(process.env.MAIL_PORT || "465", 10),
       secure: process.env.MAIL_ENCRYPTION === "ssl" || parseInt(process.env.MAIL_PORT || "465", 10) === 465, 
       auth: {
         user: process.env.MAIL_USERNAME,
-        pass: process.env.MAIL_PASSWORD,
+        pass: mailPassword,
       },
     });
 
@@ -52,8 +73,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const fromName = process.env.MAIL_FROM_NAME || "Royalty Stamp";
     const fromEmail = process.env.MAIL_FROM_ADDRESS || "mail@royaltystamp.com";
     
-    // Use the dynamic origin passed from the frontend for the dashboard link
-    const adminUrl = origin ? `${origin}/admin` : "https://arubaroyaltystamp.com/admin";
+    // Strictly enforce production URL to prevent softgen.dev sandbox links in emails
+    let finalOrigin = origin || "https://arubaroyaltystamp.com";
+    if (finalOrigin.includes("softgen.dev") || finalOrigin.includes("localhost")) {
+      finalOrigin = "https://arubaroyaltystamp.com";
+    }
+    const adminUrl = `${finalOrigin}/admin`;
     const date = new Date().toLocaleString('en-US', { 
       timeZone: 'America/Aruba',
       dateStyle: 'medium',

@@ -110,25 +110,45 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 4. Send approval email via Nodemailer (wrapped in try/catch to prevent blocking the UI on failure)
     try {
+      // Safely extract the raw password to prevent Next.js from corrupting the $ symbols via variable expansion
+      let mailPassword = process.env.MAIL_PASSWORD;
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const envPath = path.resolve(process.cwd(), '.env.local');
+        if (fs.existsSync(envPath)) {
+          const envContent = fs.readFileSync(envPath, 'utf-8');
+          const match = envContent.match(/^MAIL_PASSWORD=(.*)$/m);
+          if (match) {
+            let rawPass = match[1].trim();
+            if ((rawPass.startsWith('"') && rawPass.endsWith('"')) || (rawPass.startsWith("'") && rawPass.endsWith("'"))) {
+              rawPass = rawPass.slice(1, -1);
+            }
+            mailPassword = rawPass;
+          }
+        }
+      } catch(e) {
+        // Fallback to process.env in Vercel production
+      }
+
       const transporter = nodemailer.createTransport({
         host: process.env.MAIL_HOST || "smtp.titan.email",
         port: Number(process.env.MAIL_PORT) || 465,
         secure: process.env.MAIL_ENCRYPTION === "ssl" || Number(process.env.MAIL_PORT) === 465,
         auth: {
           user: process.env.MAIL_USERNAME,
-          pass: process.env.MAIL_PASSWORD,
+          pass: mailPassword,
         },
       });
 
-      let dashboardUrl = "https://royaltystamp.com/dashboard";
-      if (origin) {
-        dashboardUrl = `${origin}/dashboard`;
-      } else if (process.env.NEXT_PUBLIC_SITE_URL) {
-        let siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-        siteUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
-        dashboardUrl = `${siteUrl}/dashboard`;
-      } else if (process.env.NEXT_PUBLIC_VERCEL_URL) {
-        dashboardUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/dashboard`;
+      // Strictly enforce production URL to prevent softgen.dev sandbox links in emails
+      let dashboardUrl = "https://arubaroyaltystamp.com/dashboard";
+      let finalOrigin = origin || process.env.NEXT_PUBLIC_SITE_URL || "";
+      if (finalOrigin.includes("softgen.dev") || finalOrigin.includes("localhost")) {
+        finalOrigin = "https://arubaroyaltystamp.com";
+      }
+      if (finalOrigin) {
+        dashboardUrl = `${finalOrigin}/dashboard`;
       }
 
       const senderName = process.env.MAIL_FROM_NAME || "Royalty Stamp";

@@ -15,23 +15,24 @@ export interface AuthError {
 
 // Dynamic URL Helper
 export const getURL = () => {
-  // 1. Strictly prioritize the browser's current domain for all client-side auth requests.
-  // This completely bypasses the Softgen sandbox URL (NEXT_PUBLIC_SITE_URL) when the app is running 
-  // on your real production domain, ensuring emails redirect exactly where the user came from.
+  let url = "https://arubaroyaltystamp.com";
+
   if (typeof window !== "undefined" && window.location.origin) {
-    const url = window.location.origin;
-    return url.endsWith("/") ? url : `${url}/`;
+    url = window.location.origin;
+  } else if (process?.env?.NEXT_PUBLIC_SITE_URL) {
+    url = process.env.NEXT_PUBLIC_SITE_URL;
+  } else if (process?.env?.NEXT_PUBLIC_VERCEL_URL) {
+    url = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
   }
 
-  // 2. Server-side fallbacks (only used during SSR)
-  const siteUrl = process?.env?.NEXT_PUBLIC_SITE_URL;
-  const vercelUrl = process?.env?.NEXT_PUBLIC_VERCEL_URL;
-  let url = siteUrl || vercelUrl || "http://localhost:3000";
+  // FORCE PRODUCTION URL: If running in the Softgen sandbox or localhost, 
+  // Supabase Auth will silently drop the email if the redirect URL isn't in its allowed list.
+  // We must strictly enforce the production domain for emails.
+  if (url.includes("softgen.dev") || url.includes("localhost")) {
+    url = "https://arubaroyaltystamp.com";
+  }
 
-  url = url.startsWith("http") ? url : `https://${url}`;
-  url = url.endsWith("/") ? url : `${url}/`;
-
-  return url;
+  return url.endsWith("/") ? url : `${url}/`;
 }
 
 export const authService = {
