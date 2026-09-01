@@ -1,26 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
-import fs from "fs";
-import path from "path";
 
-const getEnv = (key: string) => {
-  try {
-    const envContent = fs.readFileSync(path.join(process.cwd(), ".env.local"), "utf-8");
-    const line = envContent.split("\n").find((l) => l.startsWith(`${key}=`));
-    if (line) {
-      let val = line.substring(key.length + 1).trim();
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-        val = val.substring(1, val.length - 1);
-      }
-      return val;
-    }
-  } catch (e) {}
-  return process.env[key] || "";
-};
-
-const supabaseUrl = getEnv("NEXT_PUBLIC_SUPABASE_URL")!;
-const supabaseServiceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -128,28 +111,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 4. Send approval email via Nodemailer (wrapped in try/catch to prevent blocking the UI on failure)
     try {
       const transporter = nodemailer.createTransport({
-        host: getEnv("MAIL_HOST") || "smtp.titan.email",
-        port: Number(getEnv("MAIL_PORT")) || 465,
-        secure: getEnv("MAIL_ENCRYPTION") === "ssl" || Number(getEnv("MAIL_PORT")) === 465,
+        host: process.env.MAIL_HOST || "smtp.titan.email",
+        port: Number(process.env.MAIL_PORT) || 465,
+        secure: process.env.MAIL_ENCRYPTION === "ssl" || Number(process.env.MAIL_PORT) === 465,
         auth: {
-          user: getEnv("MAIL_USERNAME"),
-          pass: getEnv("MAIL_PASSWORD"),
+          user: process.env.MAIL_USERNAME,
+          pass: process.env.MAIL_PASSWORD,
         },
       });
 
       let dashboardUrl = "https://royaltystamp.com/dashboard";
       if (origin) {
         dashboardUrl = `${origin}/dashboard`;
-      } else if (getEnv("NEXT_PUBLIC_SITE_URL")) {
-        let siteUrl = getEnv("NEXT_PUBLIC_SITE_URL");
+      } else if (process.env.NEXT_PUBLIC_SITE_URL) {
+        let siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
         siteUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl;
         dashboardUrl = `${siteUrl}/dashboard`;
-      } else if (getEnv("NEXT_PUBLIC_VERCEL_URL")) {
-        dashboardUrl = `https://${getEnv("NEXT_PUBLIC_VERCEL_URL")}/dashboard`;
+      } else if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+        dashboardUrl = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}/dashboard`;
       }
 
-      const senderName = getEnv("MAIL_FROM_NAME") || "Royalty Stamp";
-      const senderEmail = getEnv("MAIL_FROM_ADDRESS") || "mail@royaltystamp.com";
+      const senderName = process.env.MAIL_FROM_NAME || "Royalty Stamp";
+      const senderEmail = process.env.MAIL_FROM_ADDRESS || "mail@royaltystamp.com";
 
       const mailOptions = {
         from: `"${senderName}" <${senderEmail}>`,

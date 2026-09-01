@@ -1,23 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
 import nodemailer from "nodemailer";
 import { createClient } from "@supabase/supabase-js";
-import fs from "fs";
-import path from "path";
-
-const getEnv = (key: string) => {
-  try {
-    const envContent = fs.readFileSync(path.join(process.cwd(), ".env.local"), "utf-8");
-    const line = envContent.split("\n").find((l) => l.startsWith(`${key}=`));
-    if (line) {
-      let val = line.substring(key.length + 1).trim();
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-        val = val.substring(1, val.length - 1);
-      }
-      return val;
-    }
-  } catch (e) {}
-  return process.env[key] || "";
-};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -32,8 +15,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { origin, businessId, retryEmail } = req.body;
 
     const supabase = createClient(
-      getEnv("NEXT_PUBLIC_SUPABASE_URL")!,
-      getEnv("SUPABASE_SERVICE_ROLE_KEY")!
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     // If this is a retry from the admin dashboard, fetch the missing details from the database
@@ -56,18 +39,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const transporter = nodemailer.createTransport({
-      host: getEnv("MAIL_HOST") || "smtp.titan.email",
-      port: parseInt(getEnv("MAIL_PORT") || "465", 10),
-      secure: getEnv("MAIL_ENCRYPTION") === "ssl" || parseInt(getEnv("MAIL_PORT") || "465", 10) === 465, 
+      host: process.env.MAIL_HOST || "smtp.titan.email",
+      port: parseInt(process.env.MAIL_PORT || "465", 10),
+      secure: process.env.MAIL_ENCRYPTION === "ssl" || parseInt(process.env.MAIL_PORT || "465", 10) === 465, 
       auth: {
-        user: getEnv("MAIL_USERNAME"),
-        pass: getEnv("MAIL_PASSWORD"),
+        user: process.env.MAIL_USERNAME,
+        pass: process.env.MAIL_PASSWORD,
       },
     });
 
     const adminEmail = "297plugins@gmail.com";
-    const fromName = getEnv("MAIL_FROM_NAME") || "Royalty Stamp";
-    const fromEmail = getEnv("MAIL_FROM_ADDRESS") || "mail@royaltystamp.com";
+    const fromName = process.env.MAIL_FROM_NAME || "Royalty Stamp";
+    const fromEmail = process.env.MAIL_FROM_ADDRESS || "mail@royaltystamp.com";
     
     // Use the dynamic origin passed from the frontend for the dashboard link
     const adminUrl = origin ? `${origin}/admin` : "https://arubaroyaltystamp.com/admin";
