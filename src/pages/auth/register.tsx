@@ -42,62 +42,29 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${getURL()}auth/login?confirmed=true${safeReturnUrl ? `&returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`,
-        }
+      const response = await fetch("/api/auth/register-business", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          returnUrl: safeReturnUrl,
+          origin: typeof window !== "undefined" ? window.location.origin : ""
+        }),
       });
 
-      if (error) {
-        const isRateLimit = error.message.toLowerCase().includes("rate limit") || error.status === 429;
-        
-        if (isRateLimit) {
-          // Check if the account was actually created but the email was rate-limited
-          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-          
-          if (signInError && signInError.message.toLowerCase().includes("email not confirmed")) {
-            // Account exists, but email is unconfirmed.
-            setRegisteredEmail(email);
-            setIsConfirmationSent(true);
-            setResendCooldown(60);
-            toast({
-              title: "Account Already Created",
-              description: "Your account exists but is unconfirmed. We've reached the email limit, please wait before requesting another email.",
-            });
-            return;
-          }
-          
-          toast({
-            title: "Email temporarily rate-limited",
-            description: "Please wait a short time before requesting another confirmation email.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Registration Failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast({
+          title: "Registration Failed",
+          description: result.error || "Failed to create account.",
+          variant: "destructive",
+        });
       } else {
-        if (data.session) {
-          toast({
-            title: "Registration Successful",
-            description: safeReturnUrl ? "Welcome! You can now join the loyalty program." : "Welcome! Let's get your business set up.",
-          });
-          if (safeReturnUrl) {
-            await supabase.from("profiles").update({ role: "customer" }).eq("id", data.session.user.id);
-            router.push(safeReturnUrl);
-          } else {
-            router.push("/onboarding");
-          }
-        } else {
-          // Email confirmation is required
-          setRegisteredEmail(email);
-          setIsConfirmationSent(true);
-        }
+        // Email confirmation is required via Titan SMTP
+        setRegisteredEmail(email);
+        setIsConfirmationSent(true);
       }
     } catch (err: any) {
       toast({
@@ -142,23 +109,30 @@ export default function Register() {
                   isResending.current = true;
                   setResendCooldown(60);
                   try {
-                    const { error } = await supabase.auth.resend({
-                      type: 'signup',
-                      email: registeredEmail,
-                      options: {
-                        emailRedirectTo: `${getURL()}auth/login?confirmed=true${safeReturnUrl ? `&returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`
-                      }
+                    const response = await fetch("/api/auth/register-business", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        email: registeredEmail,
+                        password: password, // Re-use the password still in state
+                        returnUrl: safeReturnUrl,
+                        origin: typeof window !== "undefined" ? window.location.origin : ""
+                      }),
                     });
-                    if (error) {
-                      const isRateLimit = error.message.toLowerCase().includes("rate limit") || error.status === 429;
+                    
+                    const result = await response.json();
+                    
+                    if (!response.ok) {
                       toast({ 
-                        title: isRateLimit ? "Too Many Email Requests" : "Failed to resend", 
-                        description: isRateLimit ? "Please wait a few minutes before trying again." : error.message, 
+                        title: "Failed to resend", 
+                        description: result.error || "Please try again later.", 
                         variant: "destructive" 
                       });
                     } else {
                       toast({ title: "Email resent", description: "Please check your inbox." });
                     }
+                  } catch (err: any) {
+                    toast({ title: "Error", description: "Could not resend email", variant: "destructive" });
                   } finally {
                     isResending.current = false;
                   }
