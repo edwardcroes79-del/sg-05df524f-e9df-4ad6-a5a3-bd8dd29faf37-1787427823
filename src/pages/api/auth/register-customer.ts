@@ -35,10 +35,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       type: 'signup',
       email: email,
       password: password,
-      data: {
-        full_name: name,
-      },
       options: {
+        data: {
+          full_name: name,
+        },
         redirectTo: redirectUrl
       }
     });
