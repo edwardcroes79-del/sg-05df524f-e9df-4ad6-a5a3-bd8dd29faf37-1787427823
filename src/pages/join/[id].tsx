@@ -86,17 +86,19 @@ export default function JoinProgramSimplified() {
 
       let customerId = cData?.id;
       if (!customerId) {
-        const { data: newCustomer, error: cError } = await supabase
+        // Generate UUID on the client to avoid RLS returning clause visibility issues
+        customerId = crypto.randomUUID();
+        
+        const { error: cError } = await supabase
           .from("customers")
           .insert({
+            id: customerId,
             user_id: user.id,
             name: user.email?.split("@")[0] || "Customer",
             email: user.email,
-          })
-          .select("id")
-          .single();
+          });
+          
         if (cError) throw cError;
-        customerId = newCustomer.id;
       }
 
       // Check if card exists
