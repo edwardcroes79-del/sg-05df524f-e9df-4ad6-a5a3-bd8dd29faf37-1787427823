@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck } from "lucide-react";
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
+import { useRef } from "react";
 
 export default function CustomerAuth() {
   const router = useRouter();
@@ -37,6 +38,8 @@ export default function CustomerAuth() {
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState("");
   const [mfaCode, setMfaCode] = useState("");
+
+  const isSubmitting = useRef(false);
 
   useEffect(() => {
     if (!safeReturnUrl) return;
@@ -186,81 +189,36 @@ export default function CustomerAuth() {
       });
       return;
     }
+    if (isSubmitting.current) return;
+    isSubmitting.current = true;
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          }
-        }
+      const response = await fetch("/api/auth/register-customer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          name,
+          returnUrl: safeReturnUrl,
+          origin: typeof window !== "undefined" ? window.location.origin : ""
+        }),
       });
 
-      if (error) {
-        const isRateLimit = error.message.toLowerCase().includes("rate limit") || error.status === 429;
-        
-        if (isRateLimit) {
-          // Check if the account was actually created but the email was rate-limited
-          const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-          
-          if (signInError && signInError.message.toLowerCase().includes("email not confirmed")) {
-            toast({
-              title: "Account Already Created",
-              description: "Your account exists but is unconfirmed. We've reached the email limit, please wait before requesting another email.",
-            });
-            return;
-          }
-          
-          toast({
-            title: "Too Many Email Requests",
-            description: "We've reached the email sending limit temporarily. Please wait a few minutes and try again.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Registration Failed",
-            description: error.message,
-            variant: "destructive",
-          });
-        }
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast({
+          title: "Registration Failed",
+          description: result.error || "Failed to create account.",
+          variant: "destructive",
+        });
       } else {
-        if (data.session) {
-          // 1. Force role to 'customer' in the profile
-          await supabase
-            .from("profiles")
-            .update({ role: "customer" })
-            .eq("id", data.session.user.id);
-
-          // 2. Pre-create customer record
-          const { error: customerError } = await supabase
-            .from("customers")
-            .insert({
-              user_id: data.session.user.id,
-              name: name,
-              email: email,
-            });
-
-          if (customerError) console.error("Error setting up customer record:", customerError);
-
-          toast({
-            title: "Account Created!",
-            description: "Welcome! Your loyalty card is ready.",
-          });
-
-          if (safeReturnUrl) {
-            router.push(safeReturnUrl);
-          } else {
-            router.push("/customer");
-          }
-        } else {
-          toast({
-            title: "Check your email",
-            description: "We sent a confirmation link to verify your account.",
-          });
-        }
+        toast({
+          title: "Check your email",
+          description: "We sent a confirmation link to verify your account.",
+        });
       }
     } catch (err: any) {
       toast({
@@ -269,6 +227,7 @@ export default function CustomerAuth() {
         variant: "destructive",
       });
     } finally {
+      isSubmitting.current = false;
       setLoading(false);
     }
   };
