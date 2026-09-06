@@ -22,9 +22,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    let finalOrigin = origin || "https://arubaroyaltystamp.com";
-    if (finalOrigin.includes("softgen.dev") || finalOrigin.includes("localhost")) {
-      finalOrigin = "https://arubaroyaltystamp.com";
+    let finalOrigin = origin || "https://royaltystamp.com";
+    
+    // Correct any legacy domain references to the strict production URL
+    if (finalOrigin.includes("arubaroyaltystamp.com")) {
+      finalOrigin = "https://royaltystamp.com";
     }
 
     const safeReturnUrl = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : "";
