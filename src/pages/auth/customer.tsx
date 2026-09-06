@@ -33,6 +33,7 @@ export default function CustomerAuth() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [activeTab, setActiveTab] = useState("signin");
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // MFA States
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -214,11 +215,21 @@ export default function CustomerAuth() {
           description: result.error || "Failed to create account.",
           variant: "destructive",
         });
+        isSubmitting.current = false;
+        setLoading(false);
       } else {
+        // Strict Success State - Lock the form and prevent duplicate emails
+        setIsSuccess(true);
+        setPassword("");
+        setName("");
+        // Keep email state for the success message UI, but lock the form
+        
         toast({
-          title: "Check your email",
-          description: "We sent a confirmation link to verify your account.",
+          title: "Account created successfully!",
+          description: "Please check your email to verify your account.",
         });
+        
+        // We do NOT reset loading/isSubmitting here, intentionally leaving the form locked
       }
     } catch (err: any) {
       toast({
@@ -226,10 +237,9 @@ export default function CustomerAuth() {
         description: err.message,
         variant: "destructive",
       });
-    } finally {
       isSubmitting.current = false;
       setLoading(false);
-    }
+    } 
   };
 
   return (
@@ -374,7 +384,7 @@ export default function CustomerAuth() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
-                            disabled={loading}
+                            disabled={loading || isSuccess}
                           />
                         </div>
                       </div>
@@ -391,39 +401,49 @@ export default function CustomerAuth() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
-                            disabled={loading}
+                            disabled={loading || isSuccess}
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="signup-password">Create Password</Label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            id="signup-password"
-                            type="password"
-                            placeholder="Minimum 6 characters"
-                            className="pl-10"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength={6}
-                            disabled={loading}
-                          />
+                      {isSuccess ? (
+                        <div className="p-4 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm text-center">
+                          <ShieldCheck className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                          <p className="font-semibold">Account created successfully!</p>
+                          <p className="mt-1">We sent a verification link to <strong>{email}</strong>. Please click it to activate your wallet.</p>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label htmlFor="signup-password">Create Password</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="signup-password"
+                              type="password"
+                              placeholder="Minimum 6 characters"
+                              className="pl-10"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              required
+                              minLength={6}
+                              disabled={loading}
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       <Button 
                         type="submit" 
                         className="w-full h-11 text-base mt-2" 
-                        disabled={loading || fetchingContext}
+                        disabled={loading || isSuccess || fetchingContext}
                         style={{ 
-                          backgroundColor: accentColor || undefined, 
-                          color: accentColor ? "#fff" : undefined 
+                          backgroundColor: isSuccess ? "#22c55e" : (accentColor || undefined), 
+                          color: (isSuccess || accentColor) ? "#fff" : undefined 
                         }}
                       >
-                        {loading ? (
+                        {isSuccess ? (
+                          "Check Your Email"
+                        ) : loading ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Creating Account...
