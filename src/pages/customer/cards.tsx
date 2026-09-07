@@ -125,16 +125,23 @@ export default function MyCardsPage() {
                const stampTarget = oldCard.loyalty_programs?.stamp_target || 0;
                const isFinalStamp = payload.new.current_stamps >= stampTarget;
                
-               if (isFinalStamp) {
-                 playRewardSound();
-                 setCompletingCardId(payload.new.id);
-                 setTimeout(() => setCompletingCardId(null), 3000);
-               } else {
-                 playStampSound();
-               }
+               // 1. ALWAYS play the normal stamp sound, exactly as it works today
+               playStampSound();
                
+               // 2. Trigger animation for the specific stamp
                setAnimatingCardId(payload.new.id);
                setTimeout(() => setAnimatingCardId(null), 1500);
+
+               // 3. If it's the final stamp, trigger the separate reward sound and card glow
+               if (isFinalStamp) {
+                 // Stagger the reward sound by 400ms so it doesn't collide with the normal stamp sound
+                 setTimeout(() => {
+                   playRewardSound();
+                 }, 400);
+                 
+                 setCompletingCardId(payload.new.id);
+                 setTimeout(() => setCompletingCardId(null), 3000);
+               }
              }
              
              setCards(prev => prev.map(card => card.id === payload.new.id ? { ...card, ...payload.new } : card));
