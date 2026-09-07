@@ -11,7 +11,7 @@ import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
 
-// Safe, browser-native synthesizer for normal stamp
+// Safe, browser-native synthesizer. Needs no MP3s, fails silently if blocked.
 const playStampSound = () => {
   try {
     if (typeof window === 'undefined') return;
@@ -43,49 +43,12 @@ const playStampSound = () => {
   }
 };
 
-// Safe, browser-native synthesizer for FINAL reward stamp
-// Rebuilt to EXACTLY match the proven architecture of playStampSound
-const playRewardSound = () => {
-  try {
-    if (typeof window === 'undefined') return;
-    if (localStorage.getItem('stamp_sound_enabled') === 'false') return;
-    
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
-    
-    const osc = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    
-    osc.type = 'sine';
-    
-    // C-major arpeggio using the exact same exponentialRamp mechanism
-    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-    osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.1); // E5
-    osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.2); // G5
-    osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.3); // C6
-    
-    gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-    
-    osc.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    
-    osc.start();
-    osc.stop(ctx.currentTime + 0.8);
-  } catch (e) {
-    console.error("Reward audio playback failed:", e);
-  }
-};
-
 export default function MyCardsPage() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [unlockedReward, setUnlockedReward] = useState<any | null>(null);
   const [animatingCardId, setAnimatingCardId] = useState<string | null>(null);
-  const [completingCardId, setCompletingCardId] = useState<string | null>(null);
   const { toast } = useToast();
   
   const cardsRef = useRef(cards);
@@ -112,26 +75,9 @@ export default function MyCardsPage() {
              
              // ONLY trigger effects if the stamp count specifically went up
              if (oldCard && payload.new.current_stamps > oldCard.current_stamps) {
-               const stampTarget = oldCard.loyalty_programs?.stamp_target || 0;
-               const isFinalStamp = payload.new.current_stamps >= stampTarget;
-               
-               // 1. ALWAYS play the normal stamp sound, exactly as it works today
-               playStampSound();
-               
-               // 2. Trigger animation for the specific stamp
                setAnimatingCardId(payload.new.id);
+               playStampSound();
                setTimeout(() => setAnimatingCardId(null), 1500);
-
-               // 3. If it's the final stamp, trigger the separate reward sound and card glow
-               if (isFinalStamp) {
-                 // Safely sequence the reward sound to play immediately after the normal stamp sound finishes
-                 setTimeout(() => {
-                   playRewardSound();
-                 }, 400);
-                 
-                 setCompletingCardId(payload.new.id);
-                 setTimeout(() => setCompletingCardId(null), 3000);
-               }
              }
              
              setCards(prev => prev.map(card => card.id === payload.new.id ? { ...card, ...payload.new } : card));
@@ -240,7 +186,6 @@ export default function MyCardsPage() {
               <LoyaltyCard
                 key={card.id}
                 animateStamp={animatingCardId === card.id}
-                isCompleting={completingCardId === card.id}
                 programName={card.loyalty_programs?.name}
                 programDescription={card.loyalty_programs?.description}
                 businessName={card.businesses?.business_name}
