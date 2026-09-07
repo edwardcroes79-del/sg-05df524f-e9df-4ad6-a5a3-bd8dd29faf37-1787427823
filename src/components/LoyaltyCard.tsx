@@ -36,6 +36,7 @@ export interface LoyaltyCardProps {
   className?: string;
   customization?: TemplateCustomization;
   animateStamp?: boolean;
+  isCompleting?: boolean;
 }
 
 // 39 High-Definition Premium Design Theme Specifications
@@ -93,7 +94,7 @@ const THEME_REGISTRY: Record<string, {
 };
 
 export function LoyaltyCard(props: LoyaltyCardProps) {
-  const { customization, stampIcon, color, stampTarget, currentStamps, programName, programDescription, businessName, rewardTitle, rewardDescription, animateStamp } = props;
+  const { customization, stampIcon, color, stampTarget, currentStamps, programName, programDescription, businessName, rewardTitle, rewardDescription, animateStamp, isCompleting } = props;
   const templateId = (customization?.template_id || "classic").toLowerCase();
   
   // Resolve Theme Specification
@@ -123,13 +124,15 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         theme.layout === "retro" && "rounded-none border-4 border-current",
         theme.layout === "pastel" && "rounded-[2rem] border-transparent shadow-sm",
         theme.fontClass,
+        isCompleting && "animate-card-glow",
         props.className
       )}
       style={{ 
         backgroundColor: overrideBg || undefined,
         color: overrideText || undefined,
-        borderColor: !overrideBg && !overrideText ? primaryColor : undefined
-      }}
+        borderColor: !overrideBg && !overrideText ? primaryColor : undefined,
+        '--primary-glow': primaryColor
+      } as React.CSSProperties}
     >
       {/* Glow Effects for premium layouts */}
       {theme.layout === "neon" && (
@@ -145,6 +148,15 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         .animate-stamp-pop {
           animation: stamp-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
           z-index: 10;
+        }
+        @keyframes card-glow {
+          0% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: scale(1); }
+          20% { box-shadow: 0 0 40px var(--primary-glow); transform: scale(1.02); }
+          100% { box-shadow: 0 0 0 rgba(0,0,0,0); transform: scale(1); }
+        }
+        .animate-card-glow {
+          animation: card-glow 2.0s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          z-index: 20;
         }
       `}</style>
 

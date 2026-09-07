@@ -11,7 +11,7 @@ import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
 
-// Safe, browser-native synthesizer. Needs no MP3s, fails silently if blocked.
+// Safe, browser-native synthesizer for normal stamp
 const playStampSound = () => {
   try {
     if (typeof window === 'undefined') return;
@@ -43,12 +43,59 @@ const playStampSound = () => {
   }
 };
 
+// Safe, browser-native synthesizer for FINAL reward stamp
+const playRewardSound = () => {
+  try {
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem('stamp_sound_enabled') === 'false') return;
+    
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc1.type = 'triangle';
+    osc2.type = 'sine';
+    
+    // Pleasant C-major ascending arpeggio
+    const now = ctx.currentTime;
+    osc1.frequency.setValueAtTime(523.25, now); // C5
+    osc1.frequency.setValueAtTime(659.25, now + 0.15); // E5
+    osc1.frequency.setValueAtTime(783.99, now + 0.3); // G5
+    osc1.frequency.setValueAtTime(1046.50, now + 0.45); // C6
+    
+    osc2.frequency.setValueAtTime(523.25, now);
+    osc2.frequency.setValueAtTime(659.25, now + 0.15);
+    osc2.frequency.setValueAtTime(783.99, now + 0.3);
+    osc2.frequency.setValueAtTime(1046.50, now + 0.45);
+    
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(0.1, now + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+    
+    osc1.connect(gainNode);
+    osc2.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + 1.2);
+    osc2.stop(now + 1.2);
+  } catch (e) {
+    console.error("Audio playback blocked or failed:", e);
+  }
+};
+
 export default function MyCardsPage() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [unlockedReward, setUnlockedReward] = useState<any | null>(null);
   const [animatingCardId, setAnimatingCardId] = useState<string | null>(null);
+  const [completingCardId, setCompletingCardId] = useState<string | null>(null);
   const { toast } = useToast();
   
   const cardsRef = useRef(cards);
@@ -75,8 +122,18 @@ export default function MyCardsPage() {
              
              // ONLY trigger effects if the stamp count specifically went up
              if (oldCard && payload.new.current_stamps > oldCard.current_stamps) {
+               const stampTarget = oldCard.loyalty_programs?.stamp_target || 0;
+               const isFinalStamp = payload.new.current_stamps >= stampTarget;
+               
+               if (isFinalStamp) {
+                 playRewardSound();
+                 setCompletingCardId(payload.new.id);
+                 setTimeout(() => setCompletingCardId(null), 3000);
+               } else {
+                 playStampSound();
+               }
+               
                setAnimatingCardId(payload.new.id);
-               playStampSound();
                setTimeout(() => setAnimatingCardId(null), 1500);
              }
              
@@ -186,6 +243,7 @@ export default function MyCardsPage() {
               <LoyaltyCard
                 key={card.id}
                 animateStamp={animatingCardId === card.id}
+                isCompleting={completingCardId === card.id}
                 programName={card.loyalty_programs?.name}
                 programDescription={card.loyalty_programs?.description}
                 businessName={card.businesses?.business_name}
