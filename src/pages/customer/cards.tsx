@@ -44,7 +44,8 @@ const playStampSound = () => {
 };
 
 // Safe, browser-native synthesizer for FINAL reward stamp
-const playRewardSound = (delay = 0) => {
+// Rebuilt to EXACTLY match the proven architecture of playStampSound
+const playRewardSound = () => {
   try {
     if (typeof window === 'undefined') return;
     if (localStorage.getItem('stamp_sound_enabled') === 'false') return;
@@ -53,44 +54,28 @@ const playRewardSound = (delay = 0) => {
     if (!AudioContext) return;
     const ctx = new AudioContext();
     
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
+    const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
     
-    osc1.type = 'triangle';
-    osc2.type = 'sine';
+    osc.type = 'sine';
     
-    // Pleasant C-major ascending arpeggio, scheduled natively in the future
-    const now = ctx.currentTime + delay;
-    osc1.frequency.setValueAtTime(523.25, now); // C5
-    osc1.frequency.setValueAtTime(659.25, now + 0.15); // E5
-    osc1.frequency.setValueAtTime(783.99, now + 0.3); // G5
-    osc1.frequency.setValueAtTime(1046.50, now + 0.45); // C6
+    // C-major arpeggio using the exact same exponentialRamp mechanism
+    osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+    osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.1); // E5
+    osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.2); // G5
+    osc.frequency.exponentialRampToValueAtTime(1046.50, ctx.currentTime + 0.3); // C6
     
-    osc2.frequency.setValueAtTime(523.25, now);
-    osc2.frequency.setValueAtTime(659.25, now + 0.15);
-    osc2.frequency.setValueAtTime(783.99, now + 0.3);
-    osc2.frequency.setValueAtTime(1046.50, now + 0.45);
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
     
-    gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(0.1, now + 0.05);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-    
-    osc1.connect(gainNode);
-    osc2.connect(gainNode);
+    osc.connect(gainNode);
     gainNode.connect(ctx.destination);
     
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + 1.2);
-    osc2.stop(now + 1.2);
-    
-    // Explicitly wake up the audio context if the browser suspended it
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(e => console.error("Could not resume AudioContext:", e));
-    }
+    osc.start();
+    osc.stop(ctx.currentTime + 0.8);
   } catch (e) {
-    console.error("Audio playback blocked or failed:", e);
+    console.error("Reward audio playback failed:", e);
   }
 };
 
@@ -139,8 +124,10 @@ export default function MyCardsPage() {
 
                // 3. If it's the final stamp, trigger the separate reward sound and card glow
                if (isFinalStamp) {
-                 // Call synchronously to preserve audio permissions, but stagger playback internally by 400ms
-                 playRewardSound(0.4);
+                 // Safely sequence the reward sound to play immediately after the normal stamp sound finishes
+                 setTimeout(() => {
+                   playRewardSound();
+                 }, 400);
                  
                  setCompletingCardId(payload.new.id);
                  setTimeout(() => setCompletingCardId(null), 3000);
