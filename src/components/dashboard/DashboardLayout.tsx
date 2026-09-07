@@ -520,7 +520,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Customers can now hear a satisfying sound when they receive a stamp, with a special celebration sound when they complete their loyalty card.
+                    Customers can now hear a satisfying sound when they receive a stamp.
                   </p>
                 </div>
               </div>
