@@ -35,7 +35,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
       if (lastQrPath) {
         router.push(`/auth/customer?returnUrl=${encodeURIComponent(lastQrPath)}`);
       } else {
-        router.push("/auth/login");
+        router.push("/auth/customer");
       }
       return;
     }
@@ -79,7 +79,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
     if (lastQrPath) {
       router.push(`/auth/customer?returnUrl=${encodeURIComponent(lastQrPath)}`);
     } else {
-      router.push("/auth/login");
+      router.push("/auth/customer");
     }
   };
 
