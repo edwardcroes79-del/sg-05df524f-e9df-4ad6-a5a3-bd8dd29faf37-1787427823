@@ -508,20 +508,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
                 {/* Feature 3 */}
                 <div 
-                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
-                  onClick={() => setComingSoonModalOpen(true)}
+                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🔊</span>
                       <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Stamp Sounds</h4>
                     </div>
-                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                      Coming Soon
+                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                      NEW
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Customers will soon hear a satisfying sound when they receive a stamp, with a special celebration sound when they complete their loyalty card.
+                    Customers can now hear a satisfying sound when they receive a stamp, with a special celebration sound when they complete their loyalty card.
                   </p>
                 </div>
               </div>
