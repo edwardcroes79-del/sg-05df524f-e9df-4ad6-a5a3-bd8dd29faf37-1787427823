@@ -35,6 +35,7 @@ export interface LoyaltyCardProps {
   color?: string;
   className?: string;
   customization?: TemplateCustomization;
+  animateStamp?: boolean;
 }
 
 // 39 High-Definition Premium Design Theme Specifications
@@ -92,7 +93,7 @@ const THEME_REGISTRY: Record<string, {
 };
 
 export function LoyaltyCard(props: LoyaltyCardProps) {
-  const { customization, stampIcon, color, stampTarget, currentStamps, programName, programDescription, businessName, rewardTitle, rewardDescription } = props;
+  const { customization, stampIcon, color, stampTarget, currentStamps, programName, programDescription, businessName, rewardTitle, rewardDescription, animateStamp } = props;
   const templateId = (customization?.template_id || "classic").toLowerCase();
   
   // Resolve Theme Specification
@@ -135,6 +136,18 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05),transparent)] pointer-events-none" />
       )}
 
+      <style jsx>{`
+        @keyframes stamp-pop {
+          0% { transform: scale(0.5); opacity: 0; box-shadow: 0 0 0 rgba(0,0,0,0); }
+          50% { transform: scale(1.25); opacity: 1; box-shadow: 0 0 20px var(--primary-glow); }
+          100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 rgba(0,0,0,0); }
+        }
+        .animate-stamp-pop {
+          animation: stamp-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          z-index: 10;
+        }
+      `}</style>
+
       <CardContent className={cn(
         "p-6 flex flex-col justify-between h-full min-h-[220px]",
         theme.bg,
@@ -168,8 +181,10 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         <div className="grid grid-cols-5 gap-2.5 mb-6">
           {stamps.map((index) => {
             const isStamped = index < currentStamps;
+            const isNewlyStamped = animateStamp && index === currentStamps - 1;
+            
             return (
-              <div key={index} className="aspect-square flex items-center justify-center">
+              <div key={index} className="aspect-square flex items-center justify-center relative">
                 <div
                   className={cn(
                     "w-full h-full border flex items-center justify-center transition-all duration-300",
@@ -181,13 +196,15 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
                     theme.layout === "glass" && "rounded-xl bg-white/5 border-white/10",
                     theme.layout === "retro" && "rounded-none border-2 border-current",
                     theme.layout === "pastel" && "rounded-2xl border-transparent",
-                    isStamped ? "scale-105 shadow-sm opacity-100" : "opacity-30 border-dashed"
+                    isStamped ? "scale-105 shadow-sm opacity-100" : "opacity-30 border-dashed",
+                    isNewlyStamped ? "animate-stamp-pop" : ""
                   )}
                   style={{
                     borderColor: isStamped ? primaryColor : undefined,
                     backgroundColor: isStamped ? (theme.layout === "gradient" ? "rgba(255,255,255,0.9)" : `${primaryColor}20`) : undefined,
-                    color: isStamped ? (theme.layout === "gradient" ? primaryColor : primaryColor) : undefined
-                  }}
+                    color: isStamped ? (theme.layout === "gradient" ? primaryColor : primaryColor) : undefined,
+                    '--primary-glow': primaryColor // Custom property for the keyframe animation
+                  } as React.CSSProperties}
                 >
                   {isStamped ? (
                     theme.layout === "gradient" ? <Icon className="w-5 h-5 fill-current" /> : <Check className="w-5 h-5" strokeWidth={3} />

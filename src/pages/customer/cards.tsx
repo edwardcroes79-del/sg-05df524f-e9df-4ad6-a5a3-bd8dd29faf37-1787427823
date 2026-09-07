@@ -9,13 +9,52 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Button } from "@/components/ui/button";
+import { useRef } from "react";
+
+// Safe, browser-native synthesizer. Needs no MP3s, fails silently if blocked.
+const playStampSound = () => {
+  try {
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem('stamp_sound_enabled') === 'false') return;
+    
+    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1046.50, ctx.currentTime); // C6
+    osc.frequency.exponentialRampToValueAtTime(1318.51, ctx.currentTime + 0.1); // E6
+    osc.frequency.exponentialRampToValueAtTime(1567.98, ctx.currentTime + 0.2); // G6
+    
+    gainNode.gain.setValueAtTime(0, ctx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {
+    console.error("Audio playback blocked or failed:", e);
+  }
+};
 
 export default function MyCardsPage() {
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [unlockedReward, setUnlockedReward] = useState<any | null>(null);
+  const [animatingCardId, setAnimatingCardId] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  const cardsRef = useRef(cards);
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
 
   useEffect(() => {
     fetchCards();
@@ -32,6 +71,15 @@ export default function MyCardsPage() {
         (payload) => {
           console.log("🔥 REALTIME EVENT: customer_loyalty_cards UPDATE", payload);
           if (payload.new && payload.new.id) {
+             const oldCard = cardsRef.current.find(c => c.id === payload.new.id);
+             
+             // ONLY trigger effects if the stamp count specifically went up
+             if (oldCard && payload.new.current_stamps > oldCard.current_stamps) {
+               setAnimatingCardId(payload.new.id);
+               playStampSound();
+               setTimeout(() => setAnimatingCardId(null), 1500);
+             }
+             
              setCards(prev => prev.map(card => card.id === payload.new.id ? { ...card, ...payload.new } : card));
           }
         }
@@ -137,6 +185,7 @@ export default function MyCardsPage() {
             {cards.map((card) => (
               <LoyaltyCard
                 key={card.id}
+                animateStamp={animatingCardId === card.id}
                 programName={card.loyalty_programs?.name}
                 programDescription={card.loyalty_programs?.description}
                 businessName={card.businesses?.business_name}

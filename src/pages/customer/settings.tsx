@@ -14,6 +14,7 @@ export default function CustomerSettingsPage() {
   const { toast } = useToast();
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [promoAlerts, setPromoNotifications] = useState(false);
+  const [stampSounds, setStampSounds] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // 2FA States
@@ -27,6 +28,10 @@ export default function CustomerSettingsPage() {
 
   useEffect(() => {
     fetchMfaFactors();
+    const savedSoundPref = localStorage.getItem('stamp_sound_enabled');
+    if (savedSoundPref !== null) {
+      setStampSounds(savedSoundPref === 'true');
+    }
   }, []);
 
   const fetchMfaFactors = async () => {
@@ -130,7 +135,7 @@ export default function CustomerSettingsPage() {
                   <Bell className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Notifications</CardTitle>
+                  <CardTitle className="text-lg">Notifications & Preferences</CardTitle>
                   <CardDescription>Control how and when you receive stamp updates.</CardDescription>
                 </div>
               </div>
@@ -157,6 +162,21 @@ export default function CustomerSettingsPage() {
                   id="promo-alerts" 
                   checked={promoAlerts} 
                   onCheckedChange={setPromoNotifications}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-t pt-4 mt-2">
+                <div className="space-y-0.5">
+                  <Label htmlFor="stamp-sounds">Stamp Sounds</Label>
+                  <p className="text-xs text-muted-foreground">Play a short sound and animation when you receive a new stamp.</p>
+                </div>
+                <Switch 
+                  id="stamp-sounds" 
+                  checked={stampSounds} 
+                  onCheckedChange={(val) => {
+                    setStampSounds(val);
+                    localStorage.setItem('stamp_sound_enabled', String(val));
+                  }}
                 />
               </div>
             </CardContent>
