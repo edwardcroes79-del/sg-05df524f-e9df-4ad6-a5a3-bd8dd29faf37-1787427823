@@ -44,7 +44,7 @@ const playStampSound = () => {
 };
 
 // Safe, browser-native synthesizer for FINAL reward stamp
-const playRewardSound = () => {
+const playRewardSound = (delay = 0) => {
   try {
     if (typeof window === 'undefined') return;
     if (localStorage.getItem('stamp_sound_enabled') === 'false') return;
@@ -60,8 +60,8 @@ const playRewardSound = () => {
     osc1.type = 'triangle';
     osc2.type = 'sine';
     
-    // Pleasant C-major ascending arpeggio
-    const now = ctx.currentTime;
+    // Pleasant C-major ascending arpeggio, scheduled natively in the future
+    const now = ctx.currentTime + delay;
     osc1.frequency.setValueAtTime(523.25, now); // C5
     osc1.frequency.setValueAtTime(659.25, now + 0.15); // E5
     osc1.frequency.setValueAtTime(783.99, now + 0.3); // G5
@@ -84,6 +84,11 @@ const playRewardSound = () => {
     osc2.start(now);
     osc1.stop(now + 1.2);
     osc2.stop(now + 1.2);
+    
+    // Explicitly wake up the audio context if the browser suspended it
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(e => console.error("Could not resume AudioContext:", e));
+    }
   } catch (e) {
     console.error("Audio playback blocked or failed:", e);
   }
@@ -134,10 +139,8 @@ export default function MyCardsPage() {
 
                // 3. If it's the final stamp, trigger the separate reward sound and card glow
                if (isFinalStamp) {
-                 // Stagger the reward sound by 400ms so it doesn't collide with the normal stamp sound
-                 setTimeout(() => {
-                   playRewardSound();
-                 }, 400);
+                 // Call synchronously to preserve audio permissions, but stagger playback internally by 400ms
+                 playRewardSound(0.4);
                  
                  setCompletingCardId(payload.new.id);
                  setTimeout(() => setCompletingCardId(null), 3000);
