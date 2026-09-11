@@ -101,8 +101,9 @@ export default function CustomerRewardsPage() {
 
       if (error) throw error;
       
-      if (data && data.token) {
-        setQrToken(data.token);
+      // The RPC returns a single UUID string, not an object
+      if (data) {
+        setQrToken(data as string);
         setActiveReward(reward);
         setTimeLeft(60);
         setQrModalOpen(true);
