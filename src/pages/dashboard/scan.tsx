@@ -440,9 +440,11 @@ export default function ScanQR() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session || !business?.id) throw new Error("Unauthorized");
 
-      const { data, error } = await supabase.rpc('redeem_reward_by_qr_tx', {
+      // Pass the staff user id to the updated 3-argument wrapper function
+      const { data, error } = await (supabase.rpc as any)('redeem_reward_by_qr_tx', {
         p_token: pendingRewardQR.token,
-        p_business_id: business.id
+        p_business_id: business.id,
+        p_staff_user_id: session.user.id
       });
 
       if (error) {
