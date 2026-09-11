@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle, ChevronsUpDown, Check } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle, ChevronsUpDown, Check, Badge } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RegisteredCustomer {
@@ -38,6 +38,16 @@ export default function ScanQR() {
   const [customerSearchTerm, setCustomerSearchTerm] = useState("");
   const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
   const [scanResult, setScanResult] = useState<{ success: boolean; message: string; reward_earned?: boolean; reward_title?: string } | null>(null);
+
+  // Reward Preview State
+  const [pendingRewardQR, setPendingRewardQR] = useState<{
+    token: string;
+    reward_id: string;
+    reward_title: string;
+    customer_name: string;
+    program_name: string;
+    status: string;
+  } | null>(null);
 
   // Advanced camera control states
   const [cameras, setCameras] = useState<Array<{ id: string; label: string }>>([]);
@@ -281,6 +291,7 @@ export default function ScanQR() {
     if (processing) return;
     setProcessing(true);
     setScanResult(null);
+    setPendingRewardQR(null);
 
     // Stop active camera feed while processing a code to prevent multiple inputs and freeze preview
     if (qrCodeInstanceRef.current && qrCodeInstanceRef.current.isScanning) {
@@ -297,7 +308,43 @@ export default function ScanQR() {
       if (!session) throw new Error("No active session");
       if (!business?.id) throw new Error("Missing business configuration");
 
-      // Handle Reward Redemption
+      // Handle Temporary Customer Reward QR (Phase 3)
+      if (qrData.startsWith("REWARD_TOKEN:")) {
+        const token = qrData.split(":")[1];
+        
+        // 1. Preview and validate the token on the server
+        const { data: rewardData, error: tokenError } = await supabase.rpc('get_reward_by_qr_token', {
+          p_token: token,
+          p_business_id: business.id
+        });
+
+        if (tokenError) {
+          // Check for specific server-enforced expiration message
+          if (tokenError.message.includes('expired')) {
+            throw new Error("🔒 QR Code Expired. Ask the customer to generate a new QR.");
+          }
+          throw new Error(tokenError.message || "Invalid or unauthorized reward QR");
+        }
+
+        // If valid, show the confirmation screen instead of auto-redeeming
+        if (rewardData && (rewardData as any).status === 'available') {
+          setPendingRewardQR({
+            token,
+            reward_id: (rewardData as any).reward_id,
+            reward_title: (rewardData as any).reward_title,
+            customer_name: (rewardData as any).customer_name,
+            program_name: (rewardData as any).program_name,
+            status: (rewardData as any).status
+          });
+          setProcessing(false);
+          setManualCode("");
+          return;
+        } else {
+          throw new Error("This reward has already been redeemed or is no longer available.");
+        }
+      }
+
+      // Handle Legacy/Static Reward Redemption
       if (qrData.startsWith("REWARD:") || (!qrData.startsWith("CUSTOMER:") && qrData.length <= 12)) {
         const rewardCode = qrData.startsWith("REWARD:") ? qrData.split(":")[1] : qrData;
         
@@ -368,7 +415,7 @@ export default function ScanQR() {
         message: err.message || "Failed to process QR code"
       });
       toast({
-        title: "Error",
+        title: err.message?.includes('Expired') ? "QR Code Expired" : "Error",
         description: err.message || "Failed to process QR code",
         variant: "destructive",
       });
@@ -381,6 +428,55 @@ export default function ScanQR() {
 
   const resetScanner = () => {
     setScanResult(null);
+    setPendingRewardQR(null);
+  };
+
+  const confirmRewardRedemption = async () => {
+    if (!pendingRewardQR || processing) return;
+    setProcessing(true);
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !business?.id) throw new Error("Unauthorized");
+
+      const { data, error } = await supabase.rpc('redeem_reward_by_qr_tx', {
+        p_token: pendingRewardQR.token,
+        p_business_id: business.id
+      });
+
+      if (error) {
+        if (error.message.includes('expired')) {
+          throw new Error("🔒 QR Code Expired during confirmation. Ask the customer to generate a new QR.");
+        }
+        if (error.message.includes('already redeemed')) {
+          throw new Error("Reward already redeemed.");
+        }
+        throw error;
+      }
+
+      const result = data as { success: boolean; message: string };
+      setScanResult(result);
+      
+      toast({
+        title: result.success ? "✅ Reward Redeemed" : "Redemption Failed",
+        description: result.message,
+        variant: result.success ? "default" : "destructive",
+      });
+
+    } catch (err: any) {
+      setScanResult({
+        success: false,
+        message: err.message || "Failed to redeem reward"
+      });
+      toast({
+        title: "Redemption Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+      setPendingRewardQR(null);
+    }
   };
 
   if (loading) return <DashboardLayout><div className="flex h-full items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div></DashboardLayout>;
@@ -412,7 +508,7 @@ export default function ScanQR() {
               <CardTitle className="text-lg">Select Program</CardTitle>
               <CardDescription>Which loyalty program are you stamping today?</CardDescription>
               <div className="mt-4">
-                <Select value={selectedProgramId} onValueChange={setSelectedProgramId} disabled={processing || !!scanResult}>
+                <Select value={selectedProgramId} onValueChange={setSelectedProgramId} disabled={processing || !!scanResult || !!pendingRewardQR}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a program" />
                   </SelectTrigger>
@@ -426,7 +522,41 @@ export default function ScanQR() {
             </CardHeader>
 
             <CardContent className="p-0">
-              {scanResult ? (
+              {pendingRewardQR ? (
+                <div className="p-8 text-center flex flex-col items-center">
+                  <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4">
+                    <Check className="w-8 h-8" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-foreground mb-1">Reward Found</h2>
+                  <Badge variant="outline" className="mb-6 bg-green-50 text-green-700 border-green-200">
+                    STATUS: {pendingRewardQR.status.toUpperCase()}
+                  </Badge>
+                  
+                  <div className="w-full text-left bg-muted/30 p-4 rounded-xl space-y-3 mb-6 border">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase font-semibold">Customer</p>
+                      <p className="font-medium text-foreground">{pendingRewardQR.customer_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase font-semibold">Program</p>
+                      <p className="font-medium text-foreground">{pendingRewardQR.program_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase font-semibold">Reward to Redeem</p>
+                      <p className="font-bold text-lg text-primary">{pendingRewardQR.reward_title}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex w-full gap-3">
+                    <Button onClick={resetScanner} variant="outline" className="flex-1" disabled={processing}>
+                      Cancel
+                    </Button>
+                    <Button onClick={confirmRewardRedemption} className="flex-1 bg-primary text-primary-foreground" disabled={processing}>
+                      {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Redeem Reward"}
+                    </Button>
+                  </div>
+                </div>
+              ) : scanResult ? (
                 <div className="p-8 text-center flex flex-col items-center">
                   {scanResult.success ? (
                     <>
