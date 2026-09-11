@@ -972,6 +972,10 @@ export type Database = {
         Args: { p_reward_id: string }
         Returns: string
       }
+      get_reward_by_qr_token: {
+        Args: { p_business_id: string; p_token: string }
+        Returns: Json
+      }
       is_active_staff_of: {
         Args: { p_business_id: string; p_user_id: string }
         Returns: boolean
