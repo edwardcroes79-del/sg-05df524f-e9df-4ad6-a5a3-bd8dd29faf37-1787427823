@@ -337,6 +337,7 @@ export type Database = {
           active: boolean | null
           bg_color: string | null
           business_id: string | null
+          card_banner_url: string | null
           card_bg_image_url: string | null
           card_color: string | null
           card_logo_url: string | null
@@ -361,6 +362,7 @@ export type Database = {
           active?: boolean | null
           bg_color?: string | null
           business_id?: string | null
+          card_banner_url?: string | null
           card_bg_image_url?: string | null
           card_color?: string | null
           card_logo_url?: string | null
@@ -385,6 +387,7 @@ export type Database = {
           active?: boolean | null
           bg_color?: string | null
           business_id?: string | null
+          card_banner_url?: string | null
           card_bg_image_url?: string | null
           card_color?: string | null
           card_logo_url?: string | null

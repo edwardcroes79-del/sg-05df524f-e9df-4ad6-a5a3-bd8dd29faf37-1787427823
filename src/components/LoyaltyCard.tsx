@@ -21,6 +21,7 @@ export interface TemplateCustomization {
   reward_icon?: string;
   card_logo_url?: string;
   card_bg_image_url?: string;
+  card_banner_url?: string;
 }
 
 export interface LoyaltyCardProps {
@@ -108,6 +109,7 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
   const RewardIcon = STAMP_ICONS[customization?.reward_icon || "Gift"] || Gift;
   const stamps = Array.from({ length: stampTarget }, (_, i) => i);
   const logoUrl = customization?.card_logo_url;
+  const bannerUrl = customization?.card_banner_url;
 
   // Render Shell: standard, modern, luxury, neon, gradient, glass, retro, pastel
   return (
@@ -136,6 +138,18 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05),transparent)] pointer-events-none" />
       )}
 
+      {bannerUrl && (
+        <div className="w-full h-32 sm:h-40 overflow-hidden relative shrink-0">
+          <img 
+            src={bannerUrl} 
+            alt="Business Banner" 
+            className="w-full h-full object-cover"
+          />
+          {/* Subtle gradient overlay to ensure the logo/text below it transitions smoothly if needed, though they sit below it */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
+        </div>
+      )}
+
       <style jsx>{`
         @keyframes stamp-pop {
           0% { transform: scale(0.5); opacity: 0; box-shadow: 0 0 0 rgba(0,0,0,0); }
@@ -149,7 +163,8 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
       `}</style>
 
       <CardContent className={cn(
-        "p-6 flex flex-col justify-between h-full min-h-[220px]",
+        "p-6 flex flex-col justify-between h-full",
+        !bannerUrl && "min-h-[220px]", // Only enforce min-height if there's no banner pushing the card height
         theme.bg,
         overrideBg && "bg-transparent", // let inline style take precedence
         overrideText && "text-inherit"

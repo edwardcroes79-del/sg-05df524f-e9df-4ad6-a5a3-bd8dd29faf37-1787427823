@@ -117,7 +117,8 @@ export default function EditProgram() {
     stamp_icon: "Star",
     reward_icon: "Gift",
     card_logo_url: "",
-    card_bg_image_url: ""
+    card_bg_image_url: "",
+    card_banner_url: ""
   });
 
   const [businessName, setBusinessName] = useState("Your Business");
@@ -194,7 +195,8 @@ export default function EditProgram() {
         stamp_icon: data.stamp_icon || "Star",
         reward_icon: data.reward_icon || "Gift",
         card_logo_url: data.card_logo_url || "",
-        card_bg_image_url: data.card_bg_image_url || ""
+        card_bg_image_url: data.card_bg_image_url || "",
+        card_banner_url: data.card_banner_url || ""
       });
     } catch (error: any) {
       toast({
@@ -262,9 +264,68 @@ export default function EditProgram() {
     }
   };
 
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    if (!businessId) {
+      toast({ title: "Error", description: "Business context missing.", variant: "destructive" });
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${id}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${businessId}/banners/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("loyalty-assets")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("loyalty-assets")
+        .getPublicUrl(filePath);
+
+      setCustomization(prev => ({
+        ...prev,
+        card_banner_url: publicUrl
+      }));
+
+      toast({
+        title: "Banner uploaded",
+        description: "Your hero banner was successfully uploaded.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const removeLogo = () => {
     setCustomization(prev => ({ ...prev, card_logo_url: "" }));
     toast({ title: "Logo removed", description: "Logo has been removed from active preview." });
+  };
+
+  const removeBanner = () => {
+    setCustomization(prev => ({ ...prev, card_banner_url: "" }));
+    toast({ title: "Banner removed", description: "Banner has been removed from active preview." });
   };
 
   const handleSelectTemplate = (preset: typeof TEMPLATE_PRESETS[0]) => {
@@ -326,6 +387,7 @@ export default function EditProgram() {
           reward_icon: customization.reward_icon,
           card_logo_url: customization.card_logo_url,
           card_bg_image_url: customization.card_bg_image_url,
+          card_banner_url: customization.card_banner_url,
           updated_at: new Date().toISOString()
         })
         .eq("id", id as string);
@@ -613,6 +675,57 @@ export default function EditProgram() {
                               )}
                             </div>
                             <p className="text-[11px] text-muted-foreground">Compatible with PNG, JPG up to 2MB. Symmetrical icons recommended.</p>
+                          </div>
+                        </div>
+
+                        {/* Banner Asset Configuration */}
+                        <div className="mt-4 pt-4 border-t">
+                          <Label className="text-base font-semibold">Hero Banner Image (Optional)</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">Add a wide background banner to the top of your loyalty card.</p>
+                          
+                          <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 bg-muted/20 p-4 rounded-xl border">
+                            {customization.card_banner_url ? (
+                              <div className="relative w-full sm:w-32 h-16 rounded-lg border bg-background overflow-hidden flex items-center justify-center shrink-0">
+                                <img src={customization.card_banner_url} alt="Banner Preview" className="object-cover w-full h-full" />
+                              </div>
+                            ) : (
+                              <div className="w-full sm:w-32 h-16 rounded-lg border bg-muted/50 border-dashed flex items-center justify-center text-muted-foreground text-xs font-semibold shrink-0">
+                                No Banner
+                              </div>
+                            )}
+                            
+                            <div className="flex-grow space-y-2 w-full text-center sm:text-left">
+                              <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="relative cursor-pointer gap-2 h-9"
+                                  disabled={uploading}
+                                >
+                                  <Upload className="w-4 h-4" />
+                                  {uploading ? "Uploading..." : "Upload Banner Image"}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleBannerUpload}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                  />
+                                </Button>
+                                {customization.card_banner_url && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={removeBanner}
+                                    className="text-destructive hover:bg-destructive/10 h-9"
+                                  >
+                                    Remove Banner
+                                  </Button>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">Recommended: 1200x500px JPG/PNG up to 2MB. Appears at the very top of the card.</p>
+                            </div>
                           </div>
                         </div>
                       </div>
