@@ -395,7 +395,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
             {!hasReadWhatsNew && (
               <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                2
+                3
               </span>
             )}
           </button>
@@ -425,7 +425,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <button onClick={handleOpenWhatsNew} className="relative">
               <Bell className="h-5 w-5 text-foreground" />
               {!hasReadWhatsNew && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">2</span>
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
               )}
             </button>
             <button onClick={() => setIsMobileOpen(true)}>
@@ -521,6 +521,42 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Customers can now hear a satisfying sound when they receive a stamp.
+                  </p>
+                </div>
+
+                {/* Feature 4 */}
+                <div 
+                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🎨</span>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Custom Loyalty Card Banner</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                      NEW
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Business owners can now upload their own custom banner image to their Loyalty Card.
+                  </p>
+                </div>
+
+                {/* Feature 5 */}
+                <div 
+                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📷</span>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Customer Reward Scan</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                      NEW
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Businesses can now scan a customer's Reward QR code to quickly verify and redeem available rewards.
                   </p>
                 </div>
               </div>
