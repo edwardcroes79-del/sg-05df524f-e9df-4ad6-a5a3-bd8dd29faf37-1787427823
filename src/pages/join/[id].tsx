@@ -190,6 +190,18 @@ export default function JoinProgramSimplified() {
             rewardDescription={program.reward_description || ""}
             color={program.card_color || "#EF4444"}
             className="shadow-xl transform hover:scale-[1.02] transition-transform duration-300"
+            customization={{
+              template_id: program.template_id,
+              bg_color: program.bg_color,
+              primary_color: program.primary_color,
+              secondary_color: program.secondary_color,
+              text_color: program.text_color,
+              stamp_icon: program.stamp_icon,
+              reward_icon: program.reward_icon,
+              card_logo_url: program.card_logo_url,
+              card_bg_image_url: program.card_bg_image_url,
+              card_banner_url: program.card_banner_url
+            }}
           />
         </div>
 

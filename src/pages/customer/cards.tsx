@@ -203,7 +203,8 @@ export default function MyCardsPage() {
                   stamp_icon: card.loyalty_programs?.stamp_icon,
                   reward_icon: card.loyalty_programs?.reward_icon,
                   card_logo_url: card.loyalty_programs?.card_logo_url,
-                  card_bg_image_url: card.loyalty_programs?.card_bg_image_url
+                  card_bg_image_url: card.loyalty_programs?.card_bg_image_url,
+                  card_banner_url: card.loyalty_programs?.card_banner_url
                 }}
               />
             ))}
