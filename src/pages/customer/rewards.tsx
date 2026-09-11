@@ -8,11 +8,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import QRCode from "react-qr-code";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function CustomerRewardsPage() {
   const [loading, setLoading] = useState(true);
   const [rewards, setRewards] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
+  
+  // Temporary QR Modal State
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [activeReward, setActiveReward] = useState<any | null>(null);
+  const [qrToken, setQrToken] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -78,6 +88,58 @@ export default function CustomerRewardsPage() {
     }
   };
 
+  // QR Token Generation Logic
+  const generateQrToken = async (reward: any) => {
+    try {
+      setQrLoading(true);
+      setQrToken(null);
+      setTimeLeft(0);
+      
+      const { data, error } = await supabase.rpc('generate_reward_qr_token', {
+        p_reward_id: reward.id
+      });
+
+      if (error) throw error;
+      
+      if (data && data.token) {
+        setQrToken(data.token);
+        setActiveReward(reward);
+        setTimeLeft(60);
+        setQrModalOpen(true);
+      }
+    } catch (err: any) {
+      console.error("Error generating QR token:", err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err.message || "Failed to generate temporary QR code.",
+      });
+    } finally {
+      setQrLoading(false);
+    }
+  };
+
+  // Countdown Timer Effect
+  useEffect(() => {
+    if (timeLeft <= 0 || !qrModalOpen) return;
+    
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [timeLeft, qrModalOpen]);
+
+  // Clean up timer when modal closes
+  const handleModalClose = (open: boolean) => {
+    setQrModalOpen(open);
+    if (!open) {
+      setQrToken(null);
+      setTimeLeft(0);
+      setActiveReward(null);
+    }
+  };
+
   const availableRewards = rewards.filter((r) => r.status === "available");
   const redeemedRewards = rewards.filter((r) => r.status === "redeemed" || r.status === "expired");
 
@@ -134,17 +196,13 @@ export default function CustomerRewardsPage() {
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-2 flex flex-col items-center justify-center">
-                        <div className="bg-white p-3 rounded-lg border shadow-sm flex flex-col items-center">
-                          <QRCode 
-                            value={`REWARD:${reward.reward_code}`} 
-                            size={120}
-                            level="H"
-                            fgColor="#0F172A"
-                          />
-                          <p className="font-mono text-sm font-bold tracking-widest mt-3 bg-muted px-3 py-1 rounded">
-                            {reward.reward_code}
-                          </p>
-                        </div>
+                        <Button 
+                          onClick={() => generateQrToken(reward)}
+                          disabled={qrLoading}
+                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-xl shadow-md"
+                        >
+                          SHOW REWARD QR
+                        </Button>
                       </CardContent>
                     </Card>
                   ))}
@@ -204,6 +262,72 @@ export default function CustomerRewardsPage() {
           </div>
         )}
       </div>
+
+      {/* Temporary Reward QR Modal */}
+      <Dialog open={qrModalOpen} onOpenChange={handleModalClose}>
+        <DialogContent className="sm:max-w-md text-center">
+          <DialogHeader>
+            <DialogTitle className="text-center font-heading text-2xl flex items-center justify-center gap-2">
+              <Gift className="h-6 w-6 text-primary" />
+              REWARD READY
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Show this QR code to the cashier to redeem your reward.
+            </DialogDescription>
+          </DialogHeader>
+
+          {activeReward && (
+            <div className="flex flex-col items-center justify-center py-6 space-y-6">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  {activeReward.businesses?.business_name}
+                </p>
+                <h3 className="text-xl font-bold mt-1 text-foreground">
+                  {activeReward.reward_title}
+                </h3>
+              </div>
+
+              {timeLeft > 0 && qrToken ? (
+                <>
+                  <div className="bg-white p-4 rounded-xl border-2 shadow-sm inline-block">
+                    <QRCode 
+                      value={`REWARD_TOKEN:${qrToken}`} 
+                      size={200}
+                      level="H"
+                      fgColor="#0F172A"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Expires in</p>
+                    <p className="font-mono text-3xl font-bold text-foreground tracking-widest">
+                      00:{timeLeft.toString().padStart(2, '0')}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                  <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center border-4 border-border">
+                    <Clock className="w-10 h-10 text-muted-foreground opacity-50" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-lg text-foreground">QR CODE EXPIRED</h4>
+                    <p className="text-sm text-muted-foreground">This QR code has expired for security.</p>
+                  </div>
+                  <Button 
+                    onClick={() => generateQrToken(activeReward)}
+                    disabled={qrLoading}
+                    variant="outline"
+                    className="mt-4"
+                  >
+                    GENERATE NEW QR
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </CustomerLayout>
   );
 }
