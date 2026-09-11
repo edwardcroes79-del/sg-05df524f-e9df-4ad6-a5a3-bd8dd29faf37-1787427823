@@ -486,13 +486,17 @@ export default function ScanQR() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Issue Stamp | Aruba Royalty Stamp</title>
+        <title>Stamps & Rewards | Aruba Royalty Stamp</title>
       </Head>
       
       <div className="max-w-xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Issue Stamp</h1>
-          <p className="text-muted-foreground mt-1">Scan a customer's QR code to add a stamp to their card.</p>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Stamps & Rewards</h1>
+          <p className="text-muted-foreground mt-2">
+            <strong>➕ Issue Stamp:</strong> Add a loyalty stamp to a customer.<br/>
+            <strong>🎁 Redeem Reward:</strong> Redeem an available customer reward.<br/>
+            <span className="text-xs mt-1 block">Scan a Customer QR or a Reward QR below to automatically process the action.</span>
+          </p>
         </div>
 
         {programs.length === 0 ? (
