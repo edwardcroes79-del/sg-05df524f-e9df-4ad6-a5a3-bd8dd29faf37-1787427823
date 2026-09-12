@@ -56,6 +56,7 @@ export default function ScanQR() {
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const qrCodeInstanceRef = useRef<any>(null);
+  const processingRef = useRef(false);
 
   useEffect(() => {
     fetchBusinessAndPrograms();
@@ -289,7 +290,8 @@ export default function ScanQR() {
   };
 
   const handleProcessQR = async (qrData: string) => {
-    if (processing) return;
+    if (processingRef.current || processing) return;
+    processingRef.current = true;
     setProcessing(true);
     setScanResult(null);
     setPendingRewardQR(null);
@@ -421,6 +423,7 @@ export default function ScanQR() {
         variant: "destructive",
       });
     } finally {
+      processingRef.current = false;
       setProcessing(false);
       setManualCode("");
       setSelectedCustomer("");
