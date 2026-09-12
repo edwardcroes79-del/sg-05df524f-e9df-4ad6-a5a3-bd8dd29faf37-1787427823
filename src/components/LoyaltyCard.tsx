@@ -139,11 +139,11 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
       )}
 
       {bannerUrl && (
-        <div className="w-full h-32 sm:h-40 overflow-hidden relative shrink-0">
+        <div className="w-full aspect-[21/9] sm:aspect-[2.5/1] overflow-hidden relative shrink-0">
           <img 
             src={bannerUrl} 
             alt="Business Banner" 
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-center"
           />
           {/* Subtle gradient overlay to ensure the logo/text below it transitions smoothly if needed, though they sit below it */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
