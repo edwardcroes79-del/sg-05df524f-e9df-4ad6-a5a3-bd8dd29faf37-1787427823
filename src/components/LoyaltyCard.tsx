@@ -177,12 +177,12 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         <div className="flex justify-between items-start mb-6">
           <div>
             {logoUrl ? (
-              <div className="relative h-10 w-40 mb-2">
+              <div className="relative h-14 w-48 sm:h-10 sm:w-40 mb-3 sm:mb-2">
                 <Image 
                   src={logoUrl} 
                   alt={businessName}
                   fill
-                  sizes="160px"
+                  sizes="(max-width: 640px) 192px, 160px"
                   className="object-contain object-left"
                   priority={true}
                 />
