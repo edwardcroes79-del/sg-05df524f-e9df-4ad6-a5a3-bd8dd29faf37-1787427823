@@ -396,10 +396,10 @@ export default function ScanQR() {
 
       if (error) throw error;
 
-      const result = data as { success: boolean; message: string; reward_earned?: boolean; transaction_id?: string };
+      const result = data as { success: boolean; message: string; reward_earned?: boolean; transaction_id?: string; loyalty_card_id?: string; new_stamps?: number; total_stamps?: number };
       
-      // CRITICAL: Force the system to prove the stamp was actually persisted.
-      if (result.success && !result.transaction_id) {
+      // CRITICAL: Force the system to prove the stamp was actually persisted and tied to a real card.
+      if (result.success && (!result.transaction_id || !result.loyalty_card_id)) {
         throw new Error("System verification failed: Stamp record could not be confirmed in the database.");
       }
 
