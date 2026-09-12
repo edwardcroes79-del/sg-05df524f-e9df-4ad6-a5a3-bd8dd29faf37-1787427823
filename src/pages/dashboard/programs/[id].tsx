@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import Image from "next/image";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -228,6 +229,15 @@ export default function EditProgram() {
       return;
     }
 
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please ensure your logo is under 2MB before uploading.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setUploading(true);
       const fileExt = file.name.split(".").pop();
@@ -277,6 +287,15 @@ export default function EditProgram() {
       toast({
         title: "Invalid file type",
         description: "Please upload an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please ensure your banner image is under 2MB before uploading.",
         variant: "destructive",
       });
       return;
@@ -636,7 +655,7 @@ export default function EditProgram() {
                         <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 bg-muted/20 p-4 rounded-xl border">
                           {customization.card_logo_url ? (
                             <div className="relative w-16 h-16 rounded-lg border bg-background overflow-hidden flex items-center justify-center p-1 shrink-0">
-                              <img src={customization.card_logo_url} alt="Logo Preview" className="object-contain max-w-full max-h-full" />
+                              <Image src={customization.card_logo_url} alt="Logo Preview" fill className="object-contain p-2" sizes="64px" />
                             </div>
                           ) : (
                             <div className="w-16 h-16 rounded-lg border bg-muted/50 border-dashed flex items-center justify-center text-muted-foreground text-xs font-semibold shrink-0">
@@ -686,7 +705,7 @@ export default function EditProgram() {
                           <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 bg-muted/20 p-4 rounded-xl border">
                             {customization.card_banner_url ? (
                               <div className="relative w-full sm:w-32 h-16 rounded-lg border bg-background overflow-hidden flex items-center justify-center shrink-0">
-                                <img src={customization.card_banner_url} alt="Banner Preview" className="object-cover w-full h-full" />
+                                <Image src={customization.card_banner_url} alt="Banner Preview" fill className="object-cover" sizes="(max-width: 640px) 100vw, 128px" />
                               </div>
                             ) : (
                               <div className="w-full sm:w-32 h-16 rounded-lg border bg-muted/50 border-dashed flex items-center justify-center text-muted-foreground text-xs font-semibold shrink-0">
