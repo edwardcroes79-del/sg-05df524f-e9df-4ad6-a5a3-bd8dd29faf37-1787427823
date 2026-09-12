@@ -58,6 +58,10 @@ export default function ScanQR() {
   const qrCodeInstanceRef = useRef<any>(null);
   const processingRef = useRef(false);
 
+  // CRITICAL: Prevent React Stale Closures in the camera callback
+  // This ensures the scanner always uses the latest selectedProgramId without restarting the camera hardware
+  const handleProcessQRRef = useRef<((qrData: string) => Promise<void>) | null>(null);
+
   useEffect(() => {
     fetchBusinessAndPrograms();
   }, []);
@@ -152,6 +156,11 @@ export default function ScanQR() {
     }
   };
 
+  // Always keep the ref updated with the latest function closure
+  useEffect(() => {
+    handleProcessQRRef.current = handleProcessQR;
+  });
+
   // Secure Scanner Lifecycle Manager (with strict Rear/Back camera filtering)
   useEffect(() => {
     let active = true;
@@ -224,7 +233,9 @@ export default function ScanQR() {
             qrbox: { width: 250, height: 250 }
           },
           (decodedText: string) => {
-            if (active) handleProcessQR(decodedText);
+            if (active && handleProcessQRRef.current) {
+              handleProcessQRRef.current(decodedText);
+            }
           },
           () => {
             // silent fail for periodic frame noise
