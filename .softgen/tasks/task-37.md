@@ -1,6 +1,6 @@
 ---
 title: Customer Wallet Program Text Visibility
-status: done
+status: in_progress
 priority: urgent
 type: bug
 tags: [customer-wallet, loyalty-card, supabase]
@@ -9,18 +9,19 @@ created_at: 2026-09-14T16:45:13Z
 position: 37
 ---
 ## Notes
-Investigate why customer-facing Loyalty Cards still do not show populated Loyalty Program description and reward instructions / expiration rules even though Business/Admin can see and edit them. Real Supabase checks confirmed active `loyalty_programs.description` and `loyalty_programs.reward_description` values exist. The `/customer/cards` query returns `loyalty_programs (*)`, and `LoyaltyCard` receives/rendered props, but the wallet lacked an explicit customer-visible fallback when the themed card presentation made the lower text block easy to miss or not visible. Added a focused wallet-level details panel under each customer card using the same published program fields.
+Investigate why customer-facing Loyalty Cards still do not show populated Loyalty Program description and reward instructions / expiration rules even though Business/Admin can see and edit them. User-provided screenshots show the Admin preview for the pizza card rendering "About This Program" and "Reward Instructions", while the customer-facing pizza card ends after "Target Reward". Current open code shows `LoyaltyCard.tsx` has conditional rendering for `programDescription` and `rewardDescription`, and `/customer/cards` attempts to pass `loyalty_programs.description` and `loyalty_programs.reward_description`. The active investigation must prove whether the real pizza program stores those values in these columns, whether the customer query returns them, whether the props are empty, or whether a different customer-facing component/path is being used.
 
 ## Checklist
-- [x] Verify real active loyalty programs have populated `description` and `reward_description` fields in Supabase
-- [x] Inspect customer wallet/card queries and confirm whether the fields are returned
-- [x] Inspect RLS policies for customer-safe read access to active loyalty program fields
-- [x] Inspect customer-facing `LoyaltyCard` prop mapping and rendering conditions
-- [x] Identify exact disappearance point: database, query/RLS, prop mapping, or rendering/CSS
-- [x] Apply the smallest customer-facing fix only
-- [x] Validate existing/new customer behavior and run project error checks
+- [x] Verify current customer wallet code path passes program text props to `LoyaltyCard`
+- [x] Verify current `LoyaltyCard` has internal rendering logic for both sections
+- [ ] Verify the exact pizza loyalty program database row and populated field names from the screenshots
+- [ ] Compare Admin preview prop mapping against Customer wallet prop mapping
+- [ ] Identify exact disappearance point: database, query/RLS, prop mapping, different component, or CSS/layout
+- [ ] Apply the smallest customer-facing fix only
+- [ ] Validate no duplicate external section appears below the card
+- [ ] Run project error checks
 
 ## Acceptance
-Customers can see Program Description when `loyalty_programs.description` is populated.
-Customers can see Reward Instructions when `loyalty_programs.reward_description` is populated.
-Empty fields remain hidden and no unrelated features are changed.
+Customers can see About This Program inside the Loyalty Card when the business-configured program description is populated.
+Customers can see Reward Instructions inside the Loyalty Card when the business-configured reward instructions / expiration rules are populated.
+No duplicate details panel appears below the card and no unrelated systems are changed.
