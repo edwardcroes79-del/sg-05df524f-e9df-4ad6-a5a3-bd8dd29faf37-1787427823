@@ -9,16 +9,16 @@ created_at: 2026-09-14T16:45:13Z
 position: 37
 ---
 ## Notes
-Investigate why customer-facing Loyalty Cards still do not show populated Loyalty Program description and reward instructions / expiration rules even though Business/Admin can see and edit them. User-provided screenshots show the Admin preview for the pizza card rendering "About This Program" and "Reward Instructions", while the customer-facing pizza card ends after "Target Reward". Current open code shows `LoyaltyCard.tsx` has conditional rendering for `programDescription` and `rewardDescription`, and `/customer/cards` attempts to pass `loyalty_programs.description` and `loyalty_programs.reward_description`. The active investigation must prove whether the real pizza program stores those values in these columns, whether the customer query returns them, whether the props are empty, or whether a different customer-facing component/path is being used.
+Investigate why customer-facing Loyalty Cards still do not show populated Loyalty Program description and reward instructions / expiration rules even though Business/Admin can see and edit them. User-provided screenshots show the Admin preview for the pizza card rendering "About This Program" and "Reward Instructions", while the customer-facing pizza card ends after "Target Reward". Live Supabase proof confirms pizza program `ca9cafa0-4883-4a04-b1d9-7d85943be98e` stores `description` = "With every purchase of one large pizza you will receive a stamp " and `reward_description` = "Valid for the purchase of on large Pizza"; customer card `74803154-8f43-4d87-8b21-32e7ad3c79ae` is tied to that same program. RLS is row-level and active program read is allowed, so the fix is customer data mapping/rendering only: make the customer wallet embedded program select explicit and normalize the two text props inside `LoyaltyCard`. No external duplicate details panel is reintroduced.
 
 ## Checklist
 - [x] Verify current customer wallet code path passes program text props to `LoyaltyCard`
 - [x] Verify current `LoyaltyCard` has internal rendering logic for both sections
-- [ ] Verify the exact pizza loyalty program database row and populated field names from the screenshots
-- [ ] Compare Admin preview prop mapping against Customer wallet prop mapping
-- [ ] Identify exact disappearance point: database, query/RLS, prop mapping, different component, or CSS/layout
-- [ ] Apply the smallest customer-facing fix only
-- [ ] Validate no duplicate external section appears below the card
+- [x] Verify the exact pizza loyalty program database row and populated field names from the screenshots
+- [x] Compare Admin preview prop mapping against Customer wallet prop mapping
+- [x] Identify exact disappearance point: customer wallet query/mapping needed explicit published fields and card-level normalization
+- [x] Apply the smallest customer-facing fix only
+- [x] Validate no duplicate external section appears below the card
 - [ ] Run project error checks
 
 ## Acceptance

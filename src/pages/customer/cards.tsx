@@ -135,15 +135,38 @@ export default function MyCardsPage() {
 
       if (customerData) {
         setCustomerId(customerData.id);
-        const { data: cardsData } = await supabase
+        const { data: cardsData, error: cardsError } = await supabase
           .from("customer_loyalty_cards")
           .select(`
             *,
-            loyalty_programs (*),
+            loyalty_programs (
+              id,
+              business_id,
+              name,
+              description,
+              stamp_target,
+              reward_title,
+              reward_description,
+              reward_image,
+              active,
+              card_template,
+              stamp_icon,
+              reward_icon,
+              card_color,
+              template_id,
+              bg_color,
+              primary_color,
+              secondary_color,
+              text_color,
+              card_logo_url,
+              card_bg_image_url,
+              card_banner_url
+            ),
             businesses (business_name, primary_color, address)
           `)
           .eq("customer_id", customerData.id);
         
+        if (cardsError) throw cardsError;
         if (cardsData) setCards(cardsData);
       }
     } catch (err) {
@@ -184,8 +207,8 @@ export default function MyCardsPage() {
           <div className="grid gap-8 max-w-md mx-auto sm:max-w-none sm:grid-cols-2 lg:grid-cols-2">
             {cards.map((card) => {
               const prog = card.loyalty_programs || {};
-              const programDescription = prog.description || "";
-              const rewardDescription = prog.reward_description || "";
+              const programDescription = typeof prog.description === "string" ? prog.description.trim() : "";
+              const rewardDescription = typeof prog.reward_description === "string" ? prog.reward_description.trim() : "";
 
               return (
                 <LoyaltyCard

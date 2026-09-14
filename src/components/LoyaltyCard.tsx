@@ -111,6 +111,8 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
   const stamps = Array.from({ length: stampTarget }, (_, i) => i);
   const logoUrl = customization?.card_logo_url;
   const bannerUrl = customization?.card_banner_url;
+  const visibleProgramDescription = typeof programDescription === "string" ? programDescription.trim() : "";
+  const visibleRewardDescription = typeof rewardDescription === "string" ? rewardDescription.trim() : "";
 
   // Render Shell: standard, modern, luxury, neon, gradient, glass, retro, pastel
   return (
@@ -258,18 +260,18 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         </div>
 
         {/* Text Details Section */}
-        {(programDescription || rewardDescription) && (
+        {(visibleProgramDescription || visibleRewardDescription) && (
           <div className="mt-4 pt-4 border-t border-current/10 space-y-3">
-            {programDescription && (
+            {visibleProgramDescription && (
               <div>
                 <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">About This Program</span>
-                <p className="text-xs leading-relaxed opacity-90 break-words">{programDescription}</p>
+                <p className="text-xs leading-relaxed opacity-90 break-words">{visibleProgramDescription}</p>
               </div>
             )}
-            {rewardDescription && (
+            {visibleRewardDescription && (
               <div>
                 <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">Reward Instructions</span>
-                <p className="text-xs leading-relaxed opacity-90 break-words">{rewardDescription}</p>
+                <p className="text-xs leading-relaxed opacity-90 break-words">{visibleRewardDescription}</p>
               </div>
             )}
           </div>
