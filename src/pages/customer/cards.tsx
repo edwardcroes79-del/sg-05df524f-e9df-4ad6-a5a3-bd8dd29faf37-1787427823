@@ -182,32 +182,70 @@ export default function MyCardsPage() {
           </Card>
         ) : (
           <div className="grid gap-8 max-w-md mx-auto sm:max-w-none sm:grid-cols-2 lg:grid-cols-2">
-            {cards.map((card) => (
-              <LoyaltyCard
-                key={card.id}
-                animateStamp={animatingCardId === card.id}
-                programName={card.loyalty_programs?.name}
-                programDescription={card.loyalty_programs?.description}
-                businessName={card.businesses?.business_name}
-                stampTarget={card.loyalty_programs?.stamp_target}
-                currentStamps={card.current_stamps}
-                stampIcon={card.loyalty_programs?.stamp_icon}
-                rewardTitle={card.loyalty_programs?.reward_title}
-                rewardDescription={card.loyalty_programs?.reward_description}
-                customization={{
-                  template_id: card.loyalty_programs?.template_id,
-                  bg_color: card.loyalty_programs?.bg_color,
-                  primary_color: card.loyalty_programs?.primary_color,
-                  secondary_color: card.loyalty_programs?.secondary_color,
-                  text_color: card.loyalty_programs?.text_color,
-                  stamp_icon: card.loyalty_programs?.stamp_icon,
-                  reward_icon: card.loyalty_programs?.reward_icon,
-                  card_logo_url: card.loyalty_programs?.card_logo_url,
-                  card_bg_image_url: card.loyalty_programs?.card_bg_image_url,
-                  card_banner_url: card.loyalty_programs?.card_banner_url
-                }}
-              />
-            ))}
+            {cards.map((card) => {
+              const programDescription = typeof card.loyalty_programs?.description === "string"
+                ? card.loyalty_programs.description.trim()
+                : "";
+              const rewardDescription = typeof card.loyalty_programs?.reward_description === "string"
+                ? card.loyalty_programs.reward_description.trim()
+                : "";
+
+              return (
+                <div key={card.id} className="space-y-3">
+                  <LoyaltyCard
+                    animateStamp={animatingCardId === card.id}
+                    programName={card.loyalty_programs?.name}
+                    programDescription={programDescription}
+                    businessName={card.businesses?.business_name}
+                    stampTarget={card.loyalty_programs?.stamp_target}
+                    currentStamps={card.current_stamps}
+                    stampIcon={card.loyalty_programs?.stamp_icon}
+                    rewardTitle={card.loyalty_programs?.reward_title}
+                    rewardDescription={rewardDescription}
+                    customization={{
+                      template_id: card.loyalty_programs?.template_id,
+                      bg_color: card.loyalty_programs?.bg_color,
+                      primary_color: card.loyalty_programs?.primary_color,
+                      secondary_color: card.loyalty_programs?.secondary_color,
+                      text_color: card.loyalty_programs?.text_color,
+                      stamp_icon: card.loyalty_programs?.stamp_icon,
+                      reward_icon: card.loyalty_programs?.reward_icon,
+                      card_logo_url: card.loyalty_programs?.card_logo_url,
+                      card_bg_image_url: card.loyalty_programs?.card_bg_image_url,
+                      card_banner_url: card.loyalty_programs?.card_banner_url
+                    }}
+                  />
+
+                  {(programDescription || rewardDescription) && (
+                    <Card className="border-border/60 bg-card/95 shadow-sm">
+                      <CardContent className="p-4 space-y-4">
+                        {programDescription && (
+                          <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                              Program Description
+                            </h3>
+                            <p className="mt-1 text-sm leading-relaxed text-foreground">
+                              {programDescription}
+                            </p>
+                          </div>
+                        )}
+
+                        {rewardDescription && (
+                          <div>
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                              Reward Instructions
+                            </h3>
+                            <p className="mt-1 text-sm leading-relaxed text-foreground">
+                              {rewardDescription}
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

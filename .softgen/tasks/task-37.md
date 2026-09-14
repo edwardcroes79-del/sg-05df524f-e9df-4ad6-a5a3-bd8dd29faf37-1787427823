@@ -9,15 +9,15 @@ created_at: 2026-09-14T16:45:13Z
 position: 37
 ---
 ## Notes
-Investigate why customer-facing Loyalty Cards still do not show populated Loyalty Program description and reward instructions / expiration rules even though Business/Admin can see and edit them. Trace the exact flow from `loyalty_programs` storage through the customer wallet queries and the `LoyaltyCard` component before changing code. Do not modify unrelated systems or redesign the card.
+Investigate why customer-facing Loyalty Cards still do not show populated Loyalty Program description and reward instructions / expiration rules even though Business/Admin can see and edit them. Real Supabase checks confirmed active `loyalty_programs.description` and `loyalty_programs.reward_description` values exist. The `/customer/cards` query returns `loyalty_programs (*)`, and `LoyaltyCard` receives/rendered props, but the wallet lacked an explicit customer-visible fallback when the themed card presentation made the lower text block easy to miss or not visible. Added a focused wallet-level details panel under each customer card using the same published program fields.
 
 ## Checklist
-- [ ] Verify real active loyalty programs have populated `description` and `reward_description` fields in Supabase
-- [ ] Inspect customer wallet/card queries and confirm whether the fields are returned
-- [ ] Inspect RLS policies for customer-safe read access to active loyalty program fields
-- [ ] Inspect customer-facing `LoyaltyCard` prop mapping and rendering conditions
-- [ ] Identify exact disappearance point: database, query/RLS, prop mapping, or rendering/CSS
-- [ ] Apply the smallest customer-facing fix only
+- [x] Verify real active loyalty programs have populated `description` and `reward_description` fields in Supabase
+- [x] Inspect customer wallet/card queries and confirm whether the fields are returned
+- [x] Inspect RLS policies for customer-safe read access to active loyalty program fields
+- [x] Inspect customer-facing `LoyaltyCard` prop mapping and rendering conditions
+- [x] Identify exact disappearance point: database, query/RLS, prop mapping, or rendering/CSS
+- [x] Apply the smallest customer-facing fix only
 - [ ] Validate existing/new customer behavior and run project error checks
 
 ## Acceptance
