@@ -183,36 +183,33 @@ export default function MyCardsPage() {
         ) : (
           <div className="grid gap-8 max-w-md mx-auto sm:max-w-none sm:grid-cols-2 lg:grid-cols-2">
             {cards.map((card) => {
-              const programDescription = typeof card.loyalty_programs?.description === "string"
-                ? card.loyalty_programs.description.trim()
-                : "";
-              const rewardDescription = typeof card.loyalty_programs?.reward_description === "string"
-                ? card.loyalty_programs.reward_description.trim()
-                : "";
+              const prog = card.loyalty_programs || {};
+              const programDescription = prog.description || "";
+              const rewardDescription = prog.reward_description || "";
 
               return (
                 <LoyaltyCard
                   key={card.id}
                   animateStamp={animatingCardId === card.id}
-                  programName={card.loyalty_programs?.name}
+                  programName={prog.name}
                   programDescription={programDescription}
                   businessName={card.businesses?.business_name}
-                  stampTarget={card.loyalty_programs?.stamp_target}
+                  stampTarget={prog.stamp_target}
                   currentStamps={card.current_stamps}
-                  stampIcon={card.loyalty_programs?.stamp_icon}
-                  rewardTitle={card.loyalty_programs?.reward_title}
+                  stampIcon={prog.stamp_icon}
+                  rewardTitle={prog.reward_title}
                   rewardDescription={rewardDescription}
                   customization={{
-                    template_id: card.loyalty_programs?.template_id,
-                    bg_color: card.loyalty_programs?.bg_color,
-                    primary_color: card.loyalty_programs?.primary_color,
-                    secondary_color: card.loyalty_programs?.secondary_color,
-                    text_color: card.loyalty_programs?.text_color,
-                    stamp_icon: card.loyalty_programs?.stamp_icon,
-                    reward_icon: card.loyalty_programs?.reward_icon,
-                    card_logo_url: card.loyalty_programs?.card_logo_url,
-                    card_bg_image_url: card.loyalty_programs?.card_bg_image_url,
-                    card_banner_url: card.loyalty_programs?.card_banner_url
+                    template_id: prog.template_id,
+                    bg_color: prog.bg_color,
+                    primary_color: prog.primary_color,
+                    secondary_color: prog.secondary_color,
+                    text_color: prog.text_color,
+                    stamp_icon: prog.stamp_icon,
+                    reward_icon: prog.reward_icon,
+                    card_logo_url: prog.card_logo_url,
+                    card_bg_image_url: prog.card_bg_image_url,
+                    card_banner_url: prog.card_banner_url
                   }}
                 />
               );
