@@ -169,7 +169,7 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
       `}</style>
 
       <CardContent className={cn(
-        "p-6 flex flex-col justify-between h-full",
+        "p-6 flex flex-col",
         !bannerUrl && "min-h-[220px]", // Only enforce min-height if there's no banner pushing the card height
         theme.bg,
         overrideBg && "bg-transparent", // let inline style take precedence
