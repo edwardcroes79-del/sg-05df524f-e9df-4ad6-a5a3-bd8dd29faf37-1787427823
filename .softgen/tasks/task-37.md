@@ -1,6 +1,6 @@
 ---
 title: Customer Wallet Program Text Visibility
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [customer-wallet, loyalty-card, supabase]
@@ -18,7 +18,7 @@ Investigate why customer-facing Loyalty Cards still do not show populated Loyalt
 - [x] Inspect customer-facing `LoyaltyCard` prop mapping and rendering conditions
 - [x] Identify exact disappearance point: database, query/RLS, prop mapping, or rendering/CSS
 - [x] Apply the smallest customer-facing fix only
-- [ ] Validate existing/new customer behavior and run project error checks
+- [x] Validate existing/new customer behavior and run project error checks
 
 ## Acceptance
 Customers can see Program Description when `loyalty_programs.description` is populated.
