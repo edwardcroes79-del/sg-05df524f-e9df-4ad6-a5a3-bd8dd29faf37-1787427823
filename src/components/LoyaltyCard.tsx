@@ -268,7 +268,7 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
             )}
             {rewardDescription && (
               <div>
-                <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">Reward Terms</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">Reward Instructions</span>
                 <p className="text-xs leading-relaxed opacity-90 break-words">{rewardDescription}</p>
               </div>
             )}
