@@ -5,13 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import {
-  Stamp,
-  ArrowRight,
-  QrCode,
-  Smartphone,
-  Users,
-  CheckCircle2,
+import { 
+  Stamp, 
+  ArrowRight, 
+  QrCode, 
+  Smartphone, 
+  Users, 
+  CheckCircle2, 
   LineChart,
   Sparkles,
   Coffee,
@@ -24,17 +24,17 @@ import {
   HeartHandshake,
   ShieldCheck,
   Menu,
-  X } from
-"lucide-react";
+  X
+} from "lucide-react";
 import { homeConfig } from "@/lib/homeConfig";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
   const { pricing, faq, footer: defaultFooter } = homeConfig;
-
+  
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-
+  
   // Explicitly type the footer state to allow the optional database-driven copyrightText
   const [footer, setFooter] = useState<{
     aboutText: string;
@@ -54,18 +54,18 @@ export default function Home() {
   useEffect(() => {
     async function loadFooter() {
       try {
-        const { data, error } = await supabase.
-        from("website_settings").
-        select("value").
-        eq("key", "footer").
-        maybeSingle();
-
+        const { data, error } = await supabase
+          .from("website_settings")
+          .select("value")
+          .eq("key", "footer")
+          .maybeSingle();
+        
         if (data && data.value) {
           const val = data.value as any;
           setFooter({
             ...defaultFooter,
             aboutText: val.aboutText || defaultFooter.aboutText,
-            copyrightText: val.copyrightText || `© ${new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.`
+            copyrightText: val.copyrightText || `© ${new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.`,
           });
         }
       } catch (err) {
@@ -118,19 +118,19 @@ export default function Home() {
             </Link>
             
             {/* Mobile Menu Toggle */}
-            <button
+            <button 
               className="lg:hidden p-1.5 sm:p-2 -mr-1 sm:-mr-2 text-foreground hover:text-primary transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Toggle Menu">
-              
+              aria-label="Toggle Menu"
+            >
               {isMobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
             </button>
           </div>
         </div>
 
         {/* Mobile Menu Overlay */}
-        {isMobileMenuOpen &&
-        <div className="fixed inset-0 top-[88px] z-40 bg-background/98 backdrop-blur-md lg:hidden animate-fade-in-up overflow-y-auto">
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 top-[88px] z-40 bg-background/98 backdrop-blur-md lg:hidden animate-fade-in-up overflow-y-auto">
             <nav className="flex flex-col items-center gap-6 pt-12 p-6 min-h-full pb-32">
               <Link href="#features" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-foreground hover:text-primary transition-colors">Features</Link>
               <Link href="#how-it-works" onClick={() => setIsMobileMenuOpen(false)} className="text-xl font-bold text-foreground hover:text-primary transition-colors">How It Works</Link>
@@ -148,7 +148,7 @@ export default function Home() {
               </div>
             </nav>
           </div>
-        }
+        )}
       </header>
 
       <main>
@@ -210,11 +210,11 @@ export default function Home() {
                       
                       {/* Stamp Grid */}
                       <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-8">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) =>
-                        <div key={i} className="aspect-square rounded-full border-2 border-dashed border-primary/30 flex items-center justify-center relative overflow-hidden bg-primary/5">
+                        {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                          <div key={i} className="aspect-square rounded-full border-2 border-dashed border-primary/30 flex items-center justify-center relative overflow-hidden bg-primary/5">
                             {i <= 6 && <Stamp className="w-7 h-7 text-primary absolute animate-stamp-pop" />}
                           </div>
-                        )}
+                        ))}
                       </div>
                       
                       {/* Reward */}
@@ -275,19 +275,19 @@ export default function Home() {
             
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
               {[
-              { icon: Smartphone, title: "Beautiful Loyalty Cards", desc: "Design stunning digital cards with your brand colors and logo in minutes." },
-              { icon: Users, title: "Easy Enrollment", desc: "Customers join instantly by scanning a QR code—no app download required." },
-              { icon: QrCode, title: "Simple Stamping", desc: "Staff securely issue stamps in seconds using our built-in QR scanner." },
-              { icon: LineChart, title: "Business Insights", desc: "Track customer visits, popular times, and reward redemptions in real-time." }].
-              map((feat, i) =>
-              <div key={i} className="p-8 rounded-3xl bg-background border border-border/50 shadow-sm hover:shadow-md transition-shadow group">
+                { icon: Smartphone, title: "Beautiful Loyalty Cards", desc: "Design stunning digital cards with your brand colors and logo in minutes." },
+                { icon: Users, title: "Easy Enrollment", desc: "Customers join instantly by scanning a QR code—no app download required." },
+                { icon: QrCode, title: "Simple Stamping", desc: "Staff securely issue stamps in seconds using our built-in QR scanner." },
+                { icon: LineChart, title: "Business Insights", desc: "Track customer visits, popular times, and reward redemptions in real-time." }
+              ].map((feat, i) => (
+                <div key={i} className="p-8 rounded-3xl bg-background border border-border/50 shadow-sm hover:shadow-md transition-shadow group">
                   <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                     <feat.icon className="w-7 h-7" />
                   </div>
                   <h3 className="text-xl font-bold font-heading mb-3">{feat.title}</h3>
                   <p className="text-muted-foreground leading-relaxed">{feat.desc}</p>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </section>
@@ -305,11 +305,11 @@ export default function Home() {
                   Your customers carry their phones everywhere. Give them a digital loyalty experience that lives right in their browser. They can check their stamp progress, view rewards, and update their profile anytime.
                 </p>
                 <ul className="space-y-4 pt-4">
-                  {["Zero friction sign-up", "Always accessible on mobile", "Clear progress towards rewards"].map((item, i) =>
-                  <li key={i} className="flex items-center gap-3 text-lg font-medium text-foreground">
+                  {["Zero friction sign-up", "Always accessible on mobile", "Clear progress towards rewards"].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-lg font-medium text-foreground">
                       <CheckCircle2 className="w-6 h-6 text-primary shrink-0" /> {item}
                     </li>
-                  )}
+                  ))}
                 </ul>
               </div>
               <div className="flex-1 relative w-full flex justify-center perspective-1000">
@@ -326,11 +326,11 @@ export default function Home() {
                         </div>
                         <h4 className="font-bold text-xl mt-4 relative z-10 text-foreground">Local Boutique</h4>
                         <div className="grid grid-cols-4 gap-3 mt-6">
-                           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) =>
-                        <div key={i} className="aspect-square rounded-full border-2 border-border flex items-center justify-center bg-background">
+                           {[1,2,3,4,5,6,7,8].map(i => (
+                             <div key={i} className="aspect-square rounded-full border-2 border-border flex items-center justify-center bg-background">
                                {i <= 3 && <Stamp className="w-5 h-5 text-primary" />}
                              </div>
-                        )}
+                           ))}
                         </div>
                         <div className="mt-auto bg-background rounded-xl p-4 border border-border/50 text-center">
                           <QrCode className="w-24 h-24 sm:w-32 sm:h-32 mx-auto text-foreground mb-3 opacity-80" />
@@ -402,12 +402,12 @@ export default function Home() {
                       <div className="flex-1 bg-background rounded-xl border border-border/50 p-4 shadow-sm flex flex-col">
                         <div className="h-4 w-1/4 bg-muted rounded mb-4"></div>
                         <div className="space-y-3 flex-1">
-                          {[1, 2, 3].map((i) =>
-                          <div key={i} className="h-10 border-b border-border/50 flex items-center justify-between pb-2">
+                          {[1,2,3].map(i => (
+                            <div key={i} className="h-10 border-b border-border/50 flex items-center justify-between pb-2">
                               <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-secondary"></div><div className="h-3 w-24 bg-muted rounded"></div></div>
                               <div className="h-4 w-16 bg-primary/20 rounded-full"></div>
                             </div>
-                          )}
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -500,14 +500,14 @@ export default function Home() {
                 <div className="relative aspect-square sm:aspect-[4/3] lg:aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50 bg-secondary/20 flex items-center justify-center p-4 sm:p-8">
                   {/* Abstract Chart Background */}
                   <div className="absolute inset-0 p-8 flex items-end justify-between gap-2 opacity-10 pointer-events-none">
-                    <div className="w-full bg-primary rounded-t-xl" style={{ height: '30%' }}></div>
-                    <div className="w-full bg-primary rounded-t-xl" style={{ height: '45%' }}></div>
-                    <div className="w-full bg-primary rounded-t-xl" style={{ height: '20%' }}></div>
-                    <div className="w-full bg-primary rounded-t-xl" style={{ height: '60%' }}></div>
-                    <div className="w-full bg-primary rounded-t-xl" style={{ height: '80%' }}></div>
-                    <div className="w-full bg-primary rounded-t-xl" style={{ height: '50%' }}></div>
-                    <div className="w-full bg-primary rounded-t-xl" style={{ height: '90%' }}></div>
-                    <div className="w-full bg-primary rounded-t-xl" style={{ height: '100%' }}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '30%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '45%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '20%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '60%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '80%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '50%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '90%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '100%'}}></div>
                   </div>
                   
                   <div className="relative z-10 w-full max-w-[280px] sm:max-w-sm bg-card p-5 sm:p-6 rounded-2xl shadow-xl border border-border/50">
@@ -592,11 +592,11 @@ export default function Home() {
                     </div>
                     <div className="w-3/4 h-3 sm:h-4 bg-foreground rounded mb-4 sm:mb-6"></div>
                     <div className="grid grid-cols-4 gap-1 sm:gap-2 w-full px-1 sm:px-2">
-                      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) =>
-                    <div key={i} className="aspect-square rounded-full border border-border flex items-center justify-center bg-background">
+                      {[1,2,3,4,5,6,7,8].map(i => (
+                        <div key={i} className="aspect-square rounded-full border border-border flex items-center justify-center bg-background">
                            {i <= 4 && <Stamp className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />}
                         </div>
-                    )}
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -618,18 +618,18 @@ export default function Home() {
               <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-border/20 -z-10"></div>
               
               {[
-              { step: "01", title: "Create Your Program", desc: "Sign up and use our visual editor to design your card. Set your stamp target and reward." },
-              { step: "02", title: "Customers Join", desc: "Display your QR code. Customers scan it to instantly add the card to their digital wallet." },
-              { step: "03", title: "Stamp & Reward", desc: "Staff scan customer codes to issue stamps. When full, customers redeem their reward." }].
-              map((s, i) =>
-              <div key={i} className="flex flex-col items-center text-center relative z-10">
+                { step: "01", title: "Create Your Program", desc: "Sign up and use our visual editor to design your card. Set your stamp target and reward." },
+                { step: "02", title: "Customers Join", desc: "Display your QR code. Customers scan it to instantly add the card to their digital wallet." },
+                { step: "03", title: "Stamp & Reward", desc: "Staff scan customer codes to issue stamps. When full, customers redeem their reward." }
+              ].map((s, i) => (
+                <div key={i} className="flex flex-col items-center text-center relative z-10">
                   <div className="w-24 h-24 bg-foreground rounded-full border-4 border-background flex items-center justify-center mb-8 shadow-xl">
                     <span className="text-3xl font-extrabold text-primary font-heading">{s.step}</span>
                   </div>
                   <h3 className="text-2xl font-bold font-heading mb-4 text-white">{s.title}</h3>
                   <p className="text-lg text-muted-foreground/80 leading-relaxed max-w-sm">{s.desc}</p>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </section>
@@ -644,20 +644,20 @@ export default function Home() {
             
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
               {[
-              { icon: Coffee, label: "Cafés & Coffee" },
-              { icon: Utensils, label: "Restaurants" },
-              { icon: Scissors, label: "Salons & Beauty" },
-              { icon: Car, label: "Car Washes" },
-              { icon: Dumbbell, label: "Fitness Classes" },
-              { icon: ShoppingBag, label: "Retail Stores" }].
-              map((ind, i) =>
-              <div key={i} className="flex flex-col items-center justify-center p-6 text-center bg-background rounded-2xl border border-border/50 hover:border-primary/50 hover:shadow-lg transition-all group cursor-pointer">
+                { icon: Coffee, label: "Cafés & Coffee" },
+                { icon: Utensils, label: "Restaurants" },
+                { icon: Scissors, label: "Salons & Beauty" },
+                { icon: Car, label: "Car Washes" },
+                { icon: Dumbbell, label: "Fitness Classes" },
+                { icon: ShoppingBag, label: "Retail Stores" },
+              ].map((ind, i) => (
+                <div key={i} className="flex flex-col items-center justify-center p-6 text-center bg-background rounded-2xl border border-border/50 hover:border-primary/50 hover:shadow-lg transition-all group cursor-pointer">
                   <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors">
                     <ind.icon className="w-8 h-8 text-primary" />
                   </div>
                   <h4 className="font-bold text-foreground text-sm">{ind.label}</h4>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </section>
@@ -672,16 +672,16 @@ export default function Home() {
             </div>
             
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {pricing.plans.map((plan, i) =>
-              <Card key={i} className={cn(
-                "border-border/50 shadow-xl flex flex-col relative rounded-3xl overflow-hidden transition-transform hover:-translate-y-1 bg-card",
-                plan.isPopular ? "border-primary shadow-2xl shadow-primary/10 scale-105 md:-translate-y-4" : ""
-              )}>
-                  {plan.isPopular &&
-                <div className="bg-primary text-primary-foreground py-2 text-center text-sm font-bold uppercase tracking-wider">
+              {pricing.plans.map((plan, i) => (
+                <Card key={i} className={cn(
+                  "border-border/50 shadow-xl flex flex-col relative rounded-3xl overflow-hidden transition-transform hover:-translate-y-1 bg-card", 
+                  plan.isPopular ? "border-primary shadow-2xl shadow-primary/10 scale-105 md:-translate-y-4" : ""
+                )}>
+                  {plan.isPopular && (
+                    <div className="bg-primary text-primary-foreground py-2 text-center text-sm font-bold uppercase tracking-wider">
                       Most Popular
                     </div>
-                }
+                  )}
                   <CardHeader className="p-8 pb-6">
                     <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
                     <CardDescription className="text-base mt-2">{plan.description}</CardDescription>
@@ -692,35 +692,35 @@ export default function Home() {
                   </CardHeader>
                   <CardContent className="flex-1 p-8 pt-0">
                     <ul className="space-y-4">
-                      {plan.features.map((item, idx) =>
-                    <li key={idx} className="flex items-start text-base font-medium text-foreground">
+                      {plan.features.map((item, idx) => (
+                        <li key={idx} className="flex items-start text-base font-medium text-foreground">
                           <CheckCircle2 className="w-5 h-5 text-primary mr-3 flex-shrink-0 mt-0.5" /> 
-                          <span>Up to 20 Loyalty Programs</span>
+                          <span>{item}</span>
                         </li>
-                    )}
+                      ))}
                     </ul>
                   </CardContent>
                   <CardFooter className="p-8 pt-0">
-                    {plan.ctaHref ?
-                  <a href={plan.ctaHref} className="w-full">
-                        <Button
-                      size="lg"
-                      className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}>
-                      
+                    {plan.ctaHref ? (
+                      <a href={plan.ctaHref} className="w-full">
+                        <Button 
+                          size="lg"
+                          className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
+                        >
                           {plan.ctaText}
                         </Button>
-                      </a> :
-
-                  <Button
-                    size="lg"
-                    className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}>
-                    
+                      </a>
+                    ) : (
+                      <Button 
+                        size="lg"
+                        className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
+                      >
                         {plan.ctaText}
                       </Button>
-                  }
+                    )}
                   </CardFooter>
                 </Card>
-              )}
+              ))}
             </div>
           </div>
         </section>
@@ -732,8 +732,8 @@ export default function Home() {
               <h2 className="text-3xl md:text-5xl font-bold font-heading tracking-tight">{faq.title}</h2>
             </div>
             <Accordion type="single" collapsible className="w-full space-y-4">
-              {faq.items.map((item) =>
-              <AccordionItem key={item.id} value={item.id} className="bg-background border border-border/50 rounded-2xl px-6 shadow-sm data-[state=open]:border-primary/30 transition-colors">
+              {faq.items.map((item) => (
+                <AccordionItem key={item.id} value={item.id} className="bg-background border border-border/50 rounded-2xl px-6 shadow-sm data-[state=open]:border-primary/30 transition-colors">
                   <AccordionTrigger className="text-left font-bold text-lg hover:no-underline py-6">
                     {item.question}
                   </AccordionTrigger>
@@ -741,7 +741,7 @@ export default function Home() {
                     {item.answer}
                   </AccordionContent>
                 </AccordionItem>
-              )}
+              ))}
             </Accordion>
           </div>
         </section>
@@ -787,34 +787,34 @@ export default function Home() {
               </p>
             </div>
             
-            {footer.sections.map((section, idx) =>
-            <div key={idx}>
+            {footer.sections.map((section, idx) => (
+              <div key={idx}>
                 <h4 className="font-bold text-foreground mb-6 uppercase tracking-wider text-sm">{section.title}</h4>
                 <ul className="space-y-4">
                   {section.links.map((link, lIdx) => {
-                  const isExternal = link.href.startsWith("http");
-                  return (
-                    <li key={lIdx}>
-                        {isExternal ?
-                      <a
-                        href={link.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-primary font-medium transition-colors">
-                        
+                    const isExternal = link.href.startsWith("http");
+                    return (
+                      <li key={lIdx}>
+                        {isExternal ? (
+                          <a 
+                            href={link.href} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-muted-foreground hover:text-primary font-medium transition-colors"
+                          >
                             {link.label}
-                          </a> :
-
-                      <Link href={link.href} className="text-muted-foreground hover:text-primary font-medium transition-colors">
+                          </a>
+                        ) : (
+                          <Link href={link.href} className="text-muted-foreground hover:text-primary font-medium transition-colors">
                             {link.label}
                           </Link>
-                      }
-                      </li>);
-
-                })}
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
-            )}
+            ))}
           </div>
           <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground font-medium">
             <p>{footer.copyrightText || `© ${new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.`}</p>
@@ -825,6 +825,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div>);
-
+    </div>
+  );
 }
