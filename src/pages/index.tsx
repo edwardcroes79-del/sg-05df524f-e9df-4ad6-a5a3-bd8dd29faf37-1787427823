@@ -747,11 +747,13 @@ export default function Home() {
         </section>
 
         {/* FINAL CTA */}
-        <section className="py-24 md:py-32 relative overflow-hidden">
-          <div className="absolute inset-0 bg-primary -z-20"></div>
-          {/* Decorative circles */}
-          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-black/10 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/3 pointer-events-none"></div>
+        <section className="py-24 md:py-32 relative overflow-hidden bg-primary">
+          {/* Abstract decorative background (no images) */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-primary/80 -z-20"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1),transparent_50%)] pointer-events-none -z-10"></div>
+          <div className="absolute inset-0 opacity-[0.05] pointer-events-none -z-10" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px' }}></div>
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/3 pointer-events-none -z-10"></div>
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-black/10 rounded-full blur-[120px] translate-y-1/3 -translate-x-1/3 pointer-events-none -z-10"></div>
           
           <div className="container mx-auto px-4 md:px-8 text-center relative z-10">
             <h2 className="text-4xl md:text-6xl font-extrabold font-heading text-primary-foreground mb-8 tracking-tight max-w-3xl mx-auto leading-tight">
