@@ -21,7 +21,8 @@ import {
   Dumbbell,
   ShoppingBag,
   Store,
-  HeartHandshake
+  HeartHandshake,
+  ShieldCheck
 } from "lucide-react";
 import { homeConfig } from "@/lib/homeConfig";
 
@@ -291,6 +292,69 @@ export default function Home() {
                   <Image src="/generated/qr-standee.png" alt="QR Code display in store" fill className="object-cover" />
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FEATURE STORY 4: Analytics */}
+        <section className="py-24 md:py-32 bg-primary/5 border-y border-border/50 overflow-hidden">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="flex flex-col-reverse lg:flex-row items-center gap-16">
+              <div className="flex-1 relative w-full">
+                <div className="relative aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50 bg-background flex items-center justify-center p-8">
+                  <Image src="/generated/dashboard-abstract-coral.png" alt="Business Analytics" fill className="object-cover opacity-80 mix-blend-multiply" />
+                  <div className="relative z-10 w-full max-w-sm bg-card p-6 rounded-2xl shadow-xl border border-border/50">
+                     <h4 className="font-bold mb-4 text-foreground text-lg">Monthly Engagement</h4>
+                     <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">New Customers</span>
+                          <span className="font-bold text-primary">+124</span>
+                        </div>
+                        <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                           <div className="h-full bg-primary w-[75%] rounded-full"></div>
+                        </div>
+                        <div className="flex items-center justify-between mt-4">
+                          <span className="text-sm text-muted-foreground">Rewards Claimed</span>
+                          <span className="font-bold text-foreground">42</span>
+                        </div>
+                        <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                           <div className="h-full bg-foreground w-[45%] rounded-full"></div>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 space-y-8 max-w-2xl mx-auto lg:mx-0">
+                <span className="text-primary font-bold tracking-widest uppercase text-sm">Actionable Insights</span>
+                <h2 className="text-4xl md:text-5xl font-bold font-heading tracking-tight leading-tight">
+                  Discover insights across all your loyalty data.
+                </h2>
+                <p className="text-xl text-muted-foreground leading-relaxed">
+                  Track engagement, rewards, and customer activity in real time. Understand what keeps your customers coming back and optimize your business.
+                </p>
+                <div className="flex items-center gap-4 pt-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <LineChart className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg">Live Analytics</h4>
+                    <p className="text-sm text-muted-foreground">No more guessing—know exactly how your program performs.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* PRODUCT SHOWCASE */}
+        <section className="py-24 md:py-32 overflow-hidden">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold font-heading mb-6 tracking-tight">The Complete Solution</h2>
+              <p className="text-xl text-muted-foreground">Everything you need to run a world-class loyalty program from any device.</p>
+            </div>
+            <div className="relative max-w-5xl mx-auto aspect-[16/9] md:aspect-[21/9] rounded-[2rem] md:rounded-[3rem] bg-gradient-to-tr from-primary/10 to-primary/5 p-4 md:p-8 flex items-center justify-center shadow-2xl border border-border/50 overflow-hidden">
+                <Image src="/generated/hero-business.png" alt="Product Showcase Mockup" fill className="object-cover" />
             </div>
           </div>
         </section>
