@@ -290,7 +290,7 @@ export default function Home() {
           <div className="container mx-auto px-4 md:px-8">
             <div className="flex flex-col-reverse lg:flex-row items-center gap-16">
               <div className="flex-1 relative w-full">
-                <div className="relative aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50">
+                <div className="relative aspect-[4/3] lg:aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50">
                   <Image src="/generated/dashboard-abstract-coral.png" alt="Business Dashboard Interface" fill className="object-cover" />
                 </div>
               </div>
@@ -349,10 +349,10 @@ export default function Home() {
           <div className="container mx-auto px-4 md:px-8">
             <div className="flex flex-col-reverse lg:flex-row items-center gap-16">
               <div className="flex-1 relative w-full">
-                <div className="relative aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50 bg-background flex items-center justify-center p-8">
+                <div className="relative aspect-square sm:aspect-[4/3] lg:aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50 bg-background flex items-center justify-center p-4 sm:p-8">
                   <Image src="/generated/dashboard-abstract-coral.png" alt="Business Analytics" fill className="object-cover opacity-80 mix-blend-multiply" />
-                  <div className="relative z-10 w-full max-w-sm bg-card p-6 rounded-2xl shadow-xl border border-border/50">
-                       <h4 className="font-bold mb-4 text-foreground text-lg">Monthly Engagement</h4>
+                  <div className="relative z-10 w-full max-w-[280px] sm:max-w-sm bg-card p-5 sm:p-6 rounded-2xl shadow-xl border border-border/50">
+                       <h4 className="font-bold mb-4 text-foreground text-base sm:text-lg">Monthly Engagement</h4>
                        <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-muted-foreground">New Customers</span>
