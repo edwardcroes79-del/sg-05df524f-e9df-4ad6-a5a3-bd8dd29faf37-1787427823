@@ -91,7 +91,7 @@ export default function Home() {
         "fixed top-0 z-50 w-full transition-all duration-300",
         scrolled ? "bg-background/90 backdrop-blur-xl border-b border-border/40 shadow-sm py-0" : "bg-transparent py-2"
       )}>
-        <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
+        <div className="container mx-auto px-2 sm:px-4 md:px-8 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
               <Stamp className="w-6 h-6" />
@@ -107,19 +107,19 @@ export default function Home() {
             <Link href="#pricing" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
             <Link href="#faq" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
             <Link href="/auth/login" className="hidden sm:block">
               <Button variant="ghost" className="font-semibold text-base px-6 h-12 rounded-full hover:bg-primary/5 hover:text-primary">Log in</Button>
             </Link>
             <Link href="/auth/register">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base px-6 h-12 rounded-full shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5">
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-[11px] sm:text-base px-2.5 sm:px-6 h-10 sm:h-12 rounded-full shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 whitespace-nowrap">
                 Start Free Trial
               </Button>
             </Link>
             
             {/* Mobile Menu Toggle */}
             <button 
-              className="lg:hidden p-2 -mr-2 text-foreground hover:text-primary transition-colors"
+              className="lg:hidden p-1.5 sm:p-2 -mr-1 sm:-mr-2 text-foreground hover:text-primary transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label="Toggle Menu"
             >
