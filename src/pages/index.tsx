@@ -8,31 +8,25 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { 
   Stamp, 
   ArrowRight, 
-  ShieldCheck, 
   QrCode, 
   Smartphone, 
   Users, 
-  MapPin, 
   CheckCircle2, 
-  HelpCircle,
-  LucideIcon
+  LineChart,
+  Sparkles,
+  Coffee,
+  Utensils,
+  Scissors,
+  Car,
+  Dumbbell,
+  ShoppingBag,
+  Store,
+  HeartHandshake
 } from "lucide-react";
 import { homeConfig } from "@/lib/homeConfig";
 
-// Lucide icon mapping to allow dynamic rendering based on the config file
-const iconMap: Record<string, LucideIcon> = {
-  Stamp,
-  QrCode,
-  Smartphone,
-  ShieldCheck,
-  Users,
-  MapPin,
-  CheckCircle2,
-  HelpCircle
-};
-
 export default function Home() {
-  const { hero, howItWorks, features, pricing, faq, cta, navigation, footer: defaultFooter } = homeConfig;
+  const { pricing, faq, footer: defaultFooter } = homeConfig;
   
   // Explicitly type the footer state to allow the optional database-driven copyrightText
   const [footer, setFooter] = useState<{
@@ -75,78 +69,200 @@ export default function Home() {
   }, [defaultFooter]);
 
   return (
-    <>
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       
-      
-      {/* Navigation */}
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Stamp className="w-6 h-6 text-primary" />
-            <span className="font-heading font-bold text-xl tracking-tight text-foreground">Royalty<span className="text-primary">Stamp</span></span>
-          </div>
-          <nav className="hidden md:flex gap-6">
-            {navigation.links.map((link, idx) => (
-              <Link 
-                key={idx} 
-                href={link.href} 
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
+      {/* PREMIUM NAVIGATION */}
+      <header className="fixed top-0 z-50 w-full bg-background/80 backdrop-blur-xl border-b border-border/40 transition-all duration-300">
+        <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-10 h-10 bg-primary text-primary-foreground rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform">
+              <Stamp className="w-6 h-6" />
+            </div>
+            <span className="font-heading font-bold text-2xl tracking-tight">
+              Royalty<span className="text-primary">Stamp</span>
+            </span>
+          </Link>
+          <nav className="hidden lg:flex items-center gap-8">
+            <Link href="#features" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">Features</Link>
+            <Link href="#how-it-works" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">How It Works</Link>
+            <Link href="#industries" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">Industries</Link>
+            <Link href="#pricing" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
+            <Link href="#faq" className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
           </nav>
-          <div className="flex items-center gap-4">
-            <Link href="/auth/login">
-              <Button variant="ghost" className="font-semibold text-foreground">Log in</Button>
+          <div className="flex items-center gap-3">
+            <Link href="/auth/login" className="hidden sm:block">
+              <Button variant="ghost" className="font-semibold text-base px-6 h-12 rounded-full hover:bg-primary/5 hover:text-primary">Log in</Button>
             </Link>
             <Link href="/auth/register">
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">Get Started</Button>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base px-6 h-12 rounded-full shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5">
+                Start Free Trial
+              </Button>
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="min-h-screen bg-background">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden pt-16 md:pt-24 pb-32">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col lg:flex-row items-center gap-12">
-              <div className="flex-1 space-y-8 text-center lg:text-left z-10">
-                <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-                  <MapPin className="mr-1 h-3 w-3" /> {hero.badgeText}
+      <main>
+        {/* IMMERSIVE HERO SECTION */}
+        <section className="relative pt-32 pb-24 md:pt-48 md:pb-32 overflow-hidden">
+          {/* Subtle background glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[500px] bg-primary/10 blur-[120px] rounded-full pointer-events-none -z-10" />
+          
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-8">
+              
+              {/* Left: Copy & CTAs */}
+              <div className="flex-1 space-y-8 text-center lg:text-left z-10 max-w-2xl lg:max-w-none mx-auto">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-bold text-sm tracking-wide border border-primary/20">
+                  <Sparkles className="w-4 h-4" /> Designed for local businesses
                 </div>
-                <h1 
-                  className="text-4xl md:text-6xl lg:text-7xl font-bold font-heading text-foreground leading-[1.1]"
-                  dangerouslySetInnerHTML={{ __html: hero.titleHtml }}
-                />
-                <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto lg:mx-0">
-                  {hero.subtitle}
+                <h1 className="text-5xl md:text-7xl font-extrabold font-heading text-foreground leading-[1.1] tracking-tight">
+                  Turn Every Visit Into a <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/70">Reward</span>
+                </h1>
+                <p className="text-xl text-muted-foreground leading-relaxed max-w-xl mx-auto lg:mx-0">
+                  Create and manage digital stamp cards in minutes. Reward repeat visits, capture insights, and keep your customers coming back without the hassle of paper cards.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-                  <Link href={hero.ctaPrimaryHref}>
-                    <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-base font-semibold bg-primary hover:bg-primary/90 text-primary-foreground">
-                      {hero.ctaPrimaryText} <ArrowRight className="ml-2 w-5 h-5" />
+                <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-4">
+                  <Link href="/auth/register" className="w-full sm:w-auto">
+                    <Button size="lg" className="w-full sm:w-auto h-16 px-10 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-xl shadow-primary/30 transition-all hover:-translate-y-1">
+                      Start Your 14-Day Free Trial <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>
                   </Link>
-                  <Link href={hero.ctaSecondaryHref}>
-                    <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-base font-semibold">
-                      {hero.ctaSecondaryText}
+                  <Link href="#how-it-works" className="w-full sm:w-auto">
+                    <Button size="lg" variant="outline" className="w-full sm:w-auto h-16 px-10 text-lg font-bold rounded-full border-2 hover:bg-muted/50 transition-colors">
+                      See How It Works
                     </Button>
                   </Link>
                 </div>
+                <p className="text-sm text-muted-foreground font-medium pt-2">No credit card required to get started.</p>
               </div>
-              <div className="flex-1 relative w-full max-w-lg lg:max-w-none">
-                <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden shadow-2xl border border-border">
-                  <Image src={hero.heroImage} alt="Local Aruba business owner" fill className="object-cover" priority />
+
+              {/* Right: Product Composition */}
+              <div className="flex-1 relative w-full max-w-lg lg:max-w-xl mx-auto lg:ml-auto perspective-1000">
+                <div className="relative aspect-[4/5] md:aspect-[4/5] w-full z-10 animate-fade-in-up">
+                  <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-tr from-primary/20 to-transparent p-1">
+                    <div className="w-full h-full rounded-[2.4rem] overflow-hidden shadow-2xl bg-card border border-border/50 relative">
+                      <Image 
+                        src="/generated/hero-mockup.png" 
+                        alt="Royalty Stamp Digital Card" 
+                        fill 
+                        className="object-cover object-center"
+                        priority 
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="absolute -bottom-6 -left-6 bg-card p-4 rounded-xl border border-border shadow-lg flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                    <CheckCircle2 className="text-primary w-6 h-6" />
+
+                {/* Floating UI Element 1 */}
+                <div className="absolute -left-6 top-24 bg-card p-4 rounded-2xl shadow-xl border border-border/50 flex items-center gap-4 z-20 animate-float">
+                  <div className="w-12 h-12 bg-[#E8F5E9] rounded-full flex items-center justify-center">
+                    <CheckCircle2 className="text-[#2E7D32] w-6 h-6" />
                   </div>
                   <div>
-                    <p className="font-bold text-foreground">{hero.floatingTextTitle}</p>
-                    <p className="text-sm text-muted-foreground">{hero.floatingTextDesc}</p>
+                    <p className="font-bold text-foreground text-sm">Stamp Added!</p>
+                    <p className="text-xs text-muted-foreground font-medium">Coffee Purchase</p>
+                  </div>
+                </div>
+
+                {/* Floating UI Element 2 */}
+                <div className="absolute -right-8 bottom-32 bg-card p-4 rounded-2xl shadow-xl border border-border/50 flex items-center gap-4 z-20 animate-float-delayed">
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                    <Stamp className="text-primary w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground text-sm">Reward Unlocked</p>
+                    <p className="text-xs text-primary font-bold">10/10 Stamps</p>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* CORE FEATURES (4-column) */}
+        <section id="features" className="py-24 bg-card border-y border-border/50">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold font-heading mb-6 tracking-tight">Everything you need to run a modern loyalty program</h2>
+              <p className="text-xl text-muted-foreground">Say goodbye to lost paper cards and hello to seamless digital retention.</p>
+            </div>
+            
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[
+                { icon: Smartphone, title: "Beautiful Loyalty Cards", desc: "Design stunning digital cards with your brand colors and logo in minutes." },
+                { icon: Users, title: "Easy Enrollment", desc: "Customers join instantly by scanning a QR code—no app download required." },
+                { icon: QrCode, title: "Simple Stamping", desc: "Staff securely issue stamps in seconds using our built-in QR scanner." },
+                { icon: LineChart, title: "Business Insights", desc: "Track customer visits, popular times, and reward redemptions in real-time." }
+              ].map((feat, i) => (
+                <div key={i} className="p-8 rounded-3xl bg-background border border-border/50 shadow-sm hover:shadow-md transition-shadow group">
+                  <div className="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <feat.icon className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-xl font-bold font-heading mb-3">{feat.title}</h3>
+                  <p className="text-muted-foreground leading-relaxed">{feat.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* FEATURE STORY 1: Customer Experience */}
+        <section className="py-24 md:py-32 overflow-hidden">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="flex flex-col lg:flex-row items-center gap-16">
+              <div className="flex-1 space-y-8 max-w-2xl mx-auto lg:mx-0">
+                <span className="text-primary font-bold tracking-widest uppercase text-sm">Customer Experience</span>
+                <h2 className="text-4xl md:text-5xl font-bold font-heading tracking-tight leading-tight">
+                  A loyalty card they'll never lose.
+                </h2>
+                <p className="text-xl text-muted-foreground leading-relaxed">
+                  Your customers carry their phones everywhere. Give them a digital loyalty experience that lives right in their browser. They can check their stamp progress, view rewards, and update their profile anytime.
+                </p>
+                <ul className="space-y-4 pt-4">
+                  {["Zero friction sign-up", "Always accessible on mobile", "Clear progress towards rewards"].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-lg font-medium text-foreground">
+                      <CheckCircle2 className="w-6 h-6 text-primary shrink-0" /> {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex-1 relative w-full">
+                <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border border-border/50">
+                  <Image src="/generated/lifestyle-scan.png" alt="Customer scanning QR code" fill className="object-cover" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FEATURE STORY 2: Business Dashboard */}
+        <section className="py-24 md:py-32 bg-primary/5 border-y border-border/50 overflow-hidden">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="flex flex-col-reverse lg:flex-row items-center gap-16">
+              <div className="flex-1 relative w-full">
+                <div className="relative aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50">
+                  <Image src="/generated/dashboard-abstract-coral.png" alt="Business Dashboard Interface" fill className="object-cover" />
+                </div>
+              </div>
+              <div className="flex-1 space-y-8 max-w-2xl mx-auto lg:mx-0">
+                <span className="text-primary font-bold tracking-widest uppercase text-sm">Business Operations</span>
+                <h2 className="text-4xl md:text-5xl font-bold font-heading tracking-tight leading-tight">
+                  Control everything from a powerful dashboard.
+                </h2>
+                <p className="text-xl text-muted-foreground leading-relaxed">
+                  Manage your entire loyalty program effortlessly. View recent transactions, authorize staff members to issue stamps, and track how many rewards are being claimed daily.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-6 pt-4">
+                  <div className="bg-card p-6 rounded-2xl shadow-sm border border-border/50">
+                    <Users className="w-8 h-8 text-primary mb-3" />
+                    <h4 className="font-bold text-lg mb-1">Customer CRM</h4>
+                    <p className="text-sm text-muted-foreground">See exactly who your best customers are.</p>
+                  </div>
+                  <div className="bg-card p-6 rounded-2xl shadow-sm border border-border/50">
+                    <ShieldCheck className="w-8 h-8 text-primary mb-3" />
+                    <h4 className="font-bold text-lg mb-1">Staff Management</h4>
+                    <p className="text-sm text-muted-foreground">Securely authorize staff to stamp.</p>
                   </div>
                 </div>
               </div>
@@ -154,120 +270,140 @@ export default function Home() {
           </div>
         </section>
 
-        {/* How It Works */}
-        <section id="how-it-works" className="py-24 bg-card border-y border-border">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-bold font-heading text-foreground">{howItWorks.title}</h2>
-              <p className="text-muted-foreground mt-4 text-lg">{howItWorks.subtitle}</p>
+        {/* FEATURE STORY 3: QR Enrollment */}
+        <section className="py-24 md:py-32 overflow-hidden">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="flex flex-col lg:flex-row items-center gap-16">
+              <div className="flex-1 space-y-8 max-w-2xl mx-auto lg:mx-0">
+                <span className="text-primary font-bold tracking-widest uppercase text-sm">Seamless Growth</span>
+                <h2 className="text-4xl md:text-5xl font-bold font-heading tracking-tight leading-tight">
+                  Make your program easy to find and join.
+                </h2>
+                <p className="text-xl text-muted-foreground leading-relaxed">
+                  Print your unique QR code on receipts, posters, or display it on a stand by the register. Customers simply point their camera, sign up in seconds, and collect their first stamp.
+                </p>
+                <Button variant="outline" className="h-14 px-8 text-lg font-bold rounded-full border-2">
+                  View Enrollment Flow
+                </Button>
+              </div>
+              <div className="flex-1 relative w-full">
+                <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border border-border/50">
+                  <Image src="/generated/qr-standee.png" alt="QR Code display in store" fill className="object-cover" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* HOW IT WORKS */}
+        <section id="how-it-works" className="py-24 md:py-32 bg-foreground text-background">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-20">
+              <h2 className="text-3xl md:text-5xl font-bold font-heading mb-6 tracking-tight text-white">Launch in three simple steps</h2>
+              <p className="text-xl text-muted-foreground/80">Get your digital loyalty program running today. No technical skills required.</p>
             </div>
             
             <div className="grid md:grid-cols-3 gap-12 relative">
-              <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-border -z-10"></div>
+              {/* Connecting line for desktop */}
+              <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-border/20 -z-10"></div>
               
-              {howItWorks.steps.map((s, i) => {
-                const IconComponent = iconMap[s.iconName] || Stamp;
-                return (
-                  <div key={i} className="flex flex-col items-center text-center space-y-4 bg-background p-6 rounded-xl border border-border shadow-sm">
-                    <div className="w-24 h-24 bg-primary/5 rounded-full flex items-center justify-center border-8 border-background relative">
-                      <span className="absolute -top-2 -right-2 bg-foreground text-background text-xs font-bold px-2 py-1 rounded-full">{s.step}</span>
-                      <IconComponent className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-xl font-bold font-heading">{s.title}</h3>
-                    <p className="text-muted-foreground">{s.desc}</p>
+              {[
+                { step: "01", title: "Create Your Program", desc: "Sign up and use our visual editor to design your card. Set your stamp target and reward." },
+                { step: "02", title: "Customers Join", desc: "Display your QR code. Customers scan it to instantly add the card to their digital wallet." },
+                { step: "03", title: "Stamp & Reward", desc: "Staff scan customer codes to issue stamps. When full, customers redeem their reward." }
+              ].map((s, i) => (
+                <div key={i} className="flex flex-col items-center text-center relative z-10">
+                  <div className="w-24 h-24 bg-foreground rounded-full border-4 border-background flex items-center justify-center mb-8 shadow-xl">
+                    <span className="text-3xl font-extrabold text-primary font-heading">{s.step}</span>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* Features & Benefits */}
-        <section id="features" className="py-24">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col lg:flex-row items-center gap-16">
-              <div className="flex-1 w-full">
-                <div className="relative aspect-square w-full rounded-2xl overflow-hidden shadow-xl border border-border">
-                  <Image src={features.dashboardImage} alt="Dashboard interface" fill className="object-cover" />
+                  <h3 className="text-2xl font-bold font-heading mb-4 text-white">{s.title}</h3>
+                  <p className="text-lg text-muted-foreground/80 leading-relaxed max-w-sm">{s.desc}</p>
                 </div>
-              </div>
-              <div className="flex-1 space-y-8">
-                <h2 className="text-3xl md:text-4xl font-bold font-heading text-foreground">{features.title}</h2>
-                <p className="text-lg text-muted-foreground">
-                  {features.description}
-                </p>
-                
-                <ul className="space-y-6">
-                  {features.items.map((feat, i) => {
-                    const IconComponent = iconMap[feat.iconName] || ShieldCheck;
-                    return (
-                      <li key={i} className="flex gap-4">
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mt-1">
-                          <IconComponent className="w-5 h-5 text-primary" />
-                        </div>
-                        <div>
-                          <h4 className="text-lg font-bold text-foreground">{feat.title}</h4>
-                          <p className="text-muted-foreground mt-1">{feat.desc}</p>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Pricing */}
-        <section id="pricing" className="py-24 bg-card border-y border-border">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold font-heading text-foreground mb-4">{pricing.title}</h2>
-            <p className="text-muted-foreground mb-16 text-lg max-w-2xl mx-auto">{pricing.subtitle}</p>
+        {/* INDUSTRIES */}
+        <section id="industries" className="py-24 md:py-32 bg-card border-b border-border/50">
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold font-heading mb-6 tracking-tight">Built for every kind of local business</h2>
+              <p className="text-xl text-muted-foreground">Royalty Stamp is designed to drive repeat visits across industries.</p>
+            </div>
             
-            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto text-left">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+              {[
+                { icon: Coffee, label: "Cafés & Coffee" },
+                { icon: Utensils, label: "Restaurants" },
+                { icon: Scissors, label: "Salons & Beauty" },
+                { icon: Car, label: "Car Washes" },
+                { icon: Dumbbell, label: "Fitness Classes" },
+                { icon: ShoppingBag, label: "Retail Stores" },
+              ].map((ind, i) => (
+                <div key={i} className="flex flex-col items-center justify-center p-6 text-center bg-background rounded-2xl border border-border/50 hover:border-primary/50 hover:shadow-lg transition-all group cursor-pointer">
+                  <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary/10 transition-colors">
+                    <ind.icon className="w-8 h-8 text-primary" />
+                  </div>
+                  <h4 className="font-bold text-foreground text-sm">{ind.label}</h4>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* PRICING */}
+        <section id="pricing" className="py-24 md:py-32 relative overflow-hidden">
+          <div className="absolute top-0 w-full h-[600px] bg-primary/5 -z-10 skew-y-[-2deg] origin-top-left" />
+          <div className="container mx-auto px-4 md:px-8">
+            <div className="text-center max-w-3xl mx-auto mb-20">
+              <h2 className="text-3xl md:text-5xl font-bold font-heading mb-6 tracking-tight">{pricing.title}</h2>
+              <p className="text-xl text-muted-foreground">{pricing.subtitle}</p>
+            </div>
+            
+            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {pricing.plans.map((plan, i) => (
-                <Card key={i} className={cn("border-border shadow-sm flex flex-col relative", plan.isPopular && "border-primary shadow-md")}>
+                <Card key={i} className={cn(
+                  "border-border/50 shadow-xl flex flex-col relative rounded-3xl overflow-hidden transition-transform hover:-translate-y-1 bg-card", 
+                  plan.isPopular ? "border-primary shadow-2xl shadow-primary/10 scale-105 md:-translate-y-4" : ""
+                )}>
                   {plan.isPopular && (
-                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                    <div className="bg-primary text-primary-foreground py-2 text-center text-sm font-bold uppercase tracking-wider">
                       Most Popular
                     </div>
                   )}
-                  <CardHeader>
-                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                    <CardDescription>{plan.description}</CardDescription>
-                    <div className="mt-4 font-heading">
-                      <span className="text-4xl font-bold">{plan.price}</span>
-                      {plan.period && <span className="text-muted-foreground">{plan.period}</span>}
+                  <CardHeader className="p-8 pb-6">
+                    <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+                    <CardDescription className="text-base mt-2">{plan.description}</CardDescription>
+                    <div className="mt-6 font-heading flex items-baseline gap-2">
+                      <span className="text-5xl font-extrabold">{plan.price}</span>
+                      {plan.period && <span className="text-lg text-muted-foreground font-medium">{plan.period}</span>}
                     </div>
                   </CardHeader>
-                  <CardContent className="flex-1">
-                    <ul className="space-y-3">
+                  <CardContent className="flex-1 p-8 pt-0">
+                    <ul className="space-y-4">
                       {plan.features.map((item, idx) => (
-                        <li key={idx} className="flex items-center text-sm text-foreground">
-                          <CheckCircle2 className="w-4 h-4 text-primary mr-3 flex-shrink-0" /> {item}
+                        <li key={idx} className="flex items-start text-base font-medium text-foreground">
+                          <CheckCircle2 className="w-5 h-5 text-primary mr-3 flex-shrink-0 mt-0.5" /> 
+                          <span>{item}</span>
                         </li>
                       ))}
                     </ul>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="p-8 pt-0">
                     {plan.ctaHref ? (
-                      <a 
-                        href={plan.ctaHref} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="w-full"
-                      >
+                      <a href={plan.ctaHref} className="w-full">
                         <Button 
-                          className={cn("w-full font-semibold", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "outline")}
-                          variant={plan.isPopular ? "default" : "outline"}
+                          size="lg"
+                          className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
                         >
                           {plan.ctaText}
                         </Button>
                       </a>
                     ) : (
                       <Button 
-                        className={cn("w-full font-semibold", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "outline")}
-                        variant={plan.isPopular ? "default" : "outline"}
+                        size="lg"
+                        className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
                       >
                         {plan.ctaText}
                       </Button>
@@ -280,16 +416,18 @@ export default function Home() {
         </section>
 
         {/* FAQ */}
-        <section id="faq" className="py-24">
-          <div className="container mx-auto px-4 max-w-3xl">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold font-heading text-foreground">{faq.title}</h2>
+        <section id="faq" className="py-24 md:py-32 bg-card border-y border-border/50">
+          <div className="container mx-auto px-4 md:px-8 max-w-4xl">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-5xl font-bold font-heading tracking-tight">{faq.title}</h2>
             </div>
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="single" collapsible className="w-full space-y-4">
               {faq.items.map((item) => (
-                <AccordionItem key={item.id} value={item.id}>
-                  <AccordionTrigger className="text-left font-semibold text-lg">{item.question}</AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground text-base">
+                <AccordionItem key={item.id} value={item.id} className="bg-background border border-border/50 rounded-2xl px-6 shadow-sm data-[state=open]:border-primary/30 transition-colors">
+                  <AccordionTrigger className="text-left font-bold text-lg hover:no-underline py-6">
+                    {item.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground text-lg leading-relaxed pb-6">
                     {item.answer}
                   </AccordionContent>
                 </AccordionItem>
@@ -298,41 +436,49 @@ export default function Home() {
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="py-24 relative overflow-hidden">
-          <div className="absolute inset-0 bg-foreground -z-20"></div>
-          <div className="absolute inset-0 bg-primary/20 -z-10"></div>
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl md:text-5xl font-bold font-heading text-background mb-6">{cta.heading}</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 text-background/80">
-              {cta.description}
+        {/* FINAL CTA */}
+        <section className="py-24 md:py-32 relative overflow-hidden">
+          <div className="absolute inset-0 bg-primary -z-20"></div>
+          {/* Decorative circles */}
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-white/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-black/10 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/3 pointer-events-none"></div>
+          
+          <div className="container mx-auto px-4 md:px-8 text-center relative z-10">
+            <h2 className="text-4xl md:text-6xl font-extrabold font-heading text-primary-foreground mb-8 tracking-tight max-w-3xl mx-auto leading-tight">
+              Ready to turn visits into loyal customers?
+            </h2>
+            <p className="text-xl md:text-2xl text-primary-foreground/90 max-w-2xl mx-auto mb-12 font-medium">
+              Start your 14-day free trial today. No credit card required. Setup takes less than 5 minutes.
             </p>
-            <Link href={cta.ctaHref}>
-              <Button size="lg" className="h-14 px-10 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground border-none">
-                {cta.ctaText}
+            <Link href="/auth/register">
+              <Button size="lg" className="h-16 px-12 text-xl font-extrabold bg-background text-primary hover:bg-background/90 rounded-full shadow-2xl transition-all hover:scale-105 border-none">
+                Start Free Trial
               </Button>
             </Link>
           </div>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="bg-card border-t border-border py-12">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <Stamp className="w-5 h-5 text-primary" />
-                <span className="font-heading font-bold text-lg text-foreground">Royalty<span className="text-primary">Stamp</span></span>
-              </div>
-              <p className="text-muted-foreground max-w-sm mb-4">
+      {/* FOOTER */}
+      <footer className="bg-card pt-20 pb-10 border-t border-border/50">
+        <div className="container mx-auto px-4 md:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
+            <div className="lg:col-span-2">
+              <Link href="/" className="flex items-center gap-2 mb-6 group inline-flex">
+                <div className="w-8 h-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">
+                  <Stamp className="w-5 h-5" />
+                </div>
+                <span className="font-heading font-bold text-xl tracking-tight">Royalty<span className="text-primary">Stamp</span></span>
+              </Link>
+              <p className="text-muted-foreground text-base leading-relaxed max-w-md pr-8">
                 {footer.aboutText}
               </p>
             </div>
+            
             {footer.sections.map((section, idx) => (
               <div key={idx}>
-                <h4 className="font-bold text-foreground mb-4">{section.title}</h4>
-                <ul className="space-y-2 text-sm text-muted-foreground">
+                <h4 className="font-bold text-foreground mb-6 uppercase tracking-wider text-sm">{section.title}</h4>
+                <ul className="space-y-4">
                   {section.links.map((link, lIdx) => {
                     const isExternal = link.href.startsWith("http");
                     return (
@@ -342,12 +488,12 @@ export default function Home() {
                             href={link.href} 
                             target="_blank" 
                             rel="noopener noreferrer" 
-                            className="hover:text-primary transition-colors"
+                            className="text-muted-foreground hover:text-primary font-medium transition-colors"
                           >
                             {link.label}
                           </a>
                         ) : (
-                          <Link href={link.href} className="hover:text-primary transition-colors">
+                          <Link href={link.href} className="text-muted-foreground hover:text-primary font-medium transition-colors">
                             {link.label}
                           </Link>
                         )}
@@ -358,16 +504,20 @@ export default function Home() {
               </div>
             ))}
           </div>
-          <div className="pt-8 border-t border-border text-center text-sm text-muted-foreground">
+          <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground font-medium">
             <p>{footer.copyrightText || `© ${new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.`}</p>
+            <div className="flex gap-6">
+              <Link href="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              <Link href="/terms-of-service" className="hover:text-primary transition-colors">Terms of Service</Link>
+            </div>
           </div>
         </div>
       </footer>
-    </>
+    </div>
   );
 }
 
-// Custom CSS helper or conditional styling wrapper
-function cn(...classes: any[]) {
+// Helper
+function cn(...classes: (string | undefined | null | false)[]) {
   return classes.filter(Boolean).join(" ");
 }
