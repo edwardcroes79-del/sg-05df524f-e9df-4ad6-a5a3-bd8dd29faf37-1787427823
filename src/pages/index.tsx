@@ -670,6 +670,19 @@ export default function Home() {
               <h2 className="text-3xl md:text-5xl font-bold font-heading mb-6 tracking-tight">{pricing.title}</h2>
               <p className="text-xl text-muted-foreground">{pricing.subtitle}</p>
             </div>
+
+            <div className="max-w-4xl mx-auto mb-10 md:mb-14 rounded-3xl border border-primary/20 bg-card/95 shadow-xl shadow-primary/5 overflow-hidden">
+              <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
+                {["No fee per customer", "No fee per stamp", "One simple monthly price"].map((item) => (
+                  <div key={item} className="flex items-center justify-center gap-2 px-4 py-4 sm:py-5 text-center">
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                    <span className="text-xs sm:text-sm font-extrabold uppercase tracking-[0.14em] text-foreground">
+                      {item}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
             
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
               {pricing.plans.map((plan, i) => (
