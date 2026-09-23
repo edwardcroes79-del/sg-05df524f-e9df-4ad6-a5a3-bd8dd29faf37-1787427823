@@ -190,14 +190,50 @@ export default function Home() {
               <div className="flex-1 relative w-full max-w-md sm:max-w-lg lg:max-w-xl mx-auto lg:ml-auto perspective-1000 mt-12 lg:mt-0">
                 <div className="relative aspect-[4/5] md:aspect-[4/5] w-full z-10 animate-fade-in-up">
                   <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-tr from-primary/20 to-transparent p-1">
-                    <div className="w-full h-full rounded-[2.4rem] overflow-hidden shadow-2xl bg-card border border-border/50 relative">
-                      <Image 
-                        src="/generated/hero-mockup.png" 
-                        alt="Royalty Stamp Digital Card" 
-                        fill 
-                        className="object-cover object-center"
-                        priority 
-                      />
+                    <div className="w-full h-full rounded-[2.4rem] overflow-hidden shadow-2xl bg-card border border-border/50 relative flex flex-col p-6 sm:p-8">
+                      {/* Header */}
+                      <div className="flex justify-between items-start mb-8">
+                        <div className="w-14 h-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                          <Coffee className="w-7 h-7" />
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Stamps</p>
+                          <p className="text-3xl font-extrabold text-foreground font-heading">6<span className="text-muted-foreground text-xl">/10</span></p>
+                        </div>
+                      </div>
+                      
+                      {/* Program Info */}
+                      <div className="mb-8">
+                        <h3 className="font-bold text-2xl font-heading mb-1 text-foreground">Aruba Coffee Co.</h3>
+                        <p className="text-muted-foreground text-sm">Buy 9 coffees, get the 10th free!</p>
+                      </div>
+                      
+                      {/* Stamp Grid */}
+                      <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-8">
+                        {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                          <div key={i} className="aspect-square rounded-full border-2 border-dashed border-primary/30 flex items-center justify-center relative overflow-hidden bg-primary/5">
+                            {i <= 6 && <Stamp className="w-7 h-7 text-primary absolute animate-stamp-pop" />}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Reward */}
+                      <div className="bg-primary/10 rounded-2xl p-5 flex items-center justify-between border border-primary/20">
+                        <div>
+                          <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">Target Reward</p>
+                          <p className="font-bold text-foreground">Free Large Coffee</p>
+                        </div>
+                        <div className="w-12 h-12 bg-background rounded-full flex items-center justify-center text-primary shadow-sm border border-border/50">
+                          <Sparkles className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      {/* Fake Scan Action */}
+                      <div className="mt-auto pt-6 border-t border-border/50">
+                         <div className="w-full h-14 rounded-full bg-foreground text-background flex items-center justify-center font-bold shadow-md">
+                           <QrCode className="w-5 h-5 mr-2" /> Show Member QR
+                         </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -276,9 +312,43 @@ export default function Home() {
                   ))}
                 </ul>
               </div>
-              <div className="flex-1 relative w-full">
-                <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border border-border/50">
-                  <Image src="/generated/lifestyle-scan.png" alt="Customer scanning QR code" fill className="object-cover" />
+              <div className="flex-1 relative w-full flex justify-center perspective-1000">
+                {/* Phone mockup */}
+                <div className="relative w-[280px] sm:w-[320px] aspect-[1/2] rounded-[3rem] border-[8px] border-foreground/10 bg-background shadow-2xl overflow-hidden flex flex-col rotate-y-[-5deg] rotate-x-[5deg]">
+                   {/* Top notch */}
+                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-foreground/10 rounded-b-2xl z-20"></div>
+                   
+                   <div className="flex-1 p-5 pt-12 flex flex-col bg-secondary/30">
+                      <div className="bg-card rounded-3xl p-5 shadow-lg border border-border/50 flex flex-col flex-1 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-br from-primary/80 to-primary"></div>
+                        <div className="w-16 h-16 bg-background rounded-2xl flex items-center justify-center shadow-md relative z-10 mt-6 border border-border/50">
+                          <Store className="w-8 h-8 text-primary" />
+                        </div>
+                        <h4 className="font-bold text-xl mt-4 relative z-10 text-foreground">Local Boutique</h4>
+                        <div className="grid grid-cols-4 gap-3 mt-6">
+                           {[1,2,3,4,5,6,7,8].map(i => (
+                             <div key={i} className="aspect-square rounded-full border-2 border-border flex items-center justify-center bg-background">
+                               {i <= 3 && <Stamp className="w-5 h-5 text-primary" />}
+                             </div>
+                           ))}
+                        </div>
+                        <div className="mt-auto bg-background rounded-xl p-4 border border-border/50 text-center">
+                          <QrCode className="w-24 h-24 sm:w-32 sm:h-32 mx-auto text-foreground mb-3 opacity-80" />
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Member QR</p>
+                        </div>
+                      </div>
+                   </div>
+                </div>
+                
+                {/* Floating Notification */}
+                <div className="absolute top-1/3 -right-8 sm:-right-4 bg-card p-4 rounded-2xl shadow-xl border border-border/50 flex items-center gap-3 animate-float z-30">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0">
+                    <Smartphone className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-foreground">Wallet Pass Saved</p>
+                    <p className="text-xs text-muted-foreground">Always accessible</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -290,8 +360,58 @@ export default function Home() {
           <div className="container mx-auto px-4 md:px-8">
             <div className="flex flex-col-reverse lg:flex-row items-center gap-16">
               <div className="flex-1 relative w-full">
-                <div className="relative aspect-[4/3] lg:aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50">
-                  <Image src="/generated/dashboard-abstract-coral.png" alt="Business Dashboard Interface" fill className="object-cover" />
+                <div className="relative aspect-[4/3] lg:aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50 bg-background flex flex-col">
+                  {/* Browser Header */}
+                  <div className="h-12 bg-secondary/50 border-b border-border/50 flex items-center px-4 gap-2">
+                    <div className="flex gap-1.5 mr-4">
+                      <div className="w-3 h-3 rounded-full bg-destructive/60"></div>
+                      <div className="w-3 h-3 rounded-full bg-yellow-500/60"></div>
+                      <div className="w-3 h-3 rounded-full bg-green-500/60"></div>
+                    </div>
+                    <div className="flex-1 max-w-sm h-7 bg-background rounded-md flex items-center px-3 text-xs text-muted-foreground font-medium border border-border/50">
+                      dashboard.royaltystamp.com
+                    </div>
+                  </div>
+                  {/* Dashboard Content */}
+                  <div className="flex-1 flex bg-muted/20 p-4 gap-4">
+                    {/* Sidebar */}
+                    <div className="w-1/4 max-w-[140px] flex-col gap-2 hidden sm:flex">
+                      <div className="h-8 bg-primary/10 rounded-md flex items-center px-3 border border-primary/20"><div className="w-4 h-4 bg-primary rounded-sm mr-2"></div><div className="h-3 w-12 bg-primary/40 rounded"></div></div>
+                      <div className="h-8 bg-background rounded-md border border-border/50 flex items-center px-3"><div className="w-4 h-4 bg-muted-foreground/30 rounded-sm mr-2"></div><div className="h-3 w-16 bg-muted rounded"></div></div>
+                      <div className="h-8 bg-background rounded-md border border-border/50 flex items-center px-3"><div className="w-4 h-4 bg-muted-foreground/30 rounded-sm mr-2"></div><div className="h-3 w-14 bg-muted rounded"></div></div>
+                    </div>
+                    {/* Main */}
+                    <div className="flex-1 flex flex-col gap-4">
+                      <div className="h-8 w-1/3 bg-background rounded-md border border-border/50"></div>
+                      <div className="flex gap-4">
+                        <div className="flex-1 h-24 bg-background rounded-xl border border-border/50 p-4 flex flex-col justify-between shadow-sm">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><Users className="w-4 h-4 text-primary" /></div>
+                          <div>
+                            <div className="h-3 w-16 bg-muted rounded mb-2"></div>
+                            <div className="h-5 w-12 bg-foreground rounded"></div>
+                          </div>
+                        </div>
+                        <div className="flex-1 h-24 bg-background rounded-xl border border-border/50 p-4 flex flex-col justify-between shadow-sm">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><Stamp className="w-4 h-4 text-primary" /></div>
+                          <div>
+                            <div className="h-3 w-20 bg-muted rounded mb-2"></div>
+                            <div className="h-5 w-14 bg-foreground rounded"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex-1 bg-background rounded-xl border border-border/50 p-4 shadow-sm flex flex-col">
+                        <div className="h-4 w-1/4 bg-muted rounded mb-4"></div>
+                        <div className="space-y-3 flex-1">
+                          {[1,2,3].map(i => (
+                            <div key={i} className="h-10 border-b border-border/50 flex items-center justify-between pb-2">
+                              <div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-secondary"></div><div className="h-3 w-24 bg-muted rounded"></div></div>
+                              <div className="h-4 w-16 bg-primary/20 rounded-full"></div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex-1 space-y-8 max-w-2xl mx-auto lg:mx-0">
@@ -335,9 +455,37 @@ export default function Home() {
                   View Enrollment Flow
                 </Button>
               </div>
-              <div className="flex-1 relative w-full">
-                <div className="relative aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl border border-border/50">
-                  <Image src="/generated/qr-standee.png" alt="QR Code display in store" fill className="object-cover" />
+              <div className="flex-1 relative w-full flex justify-center perspective-1000">
+                {/* Physical Table Tent Mockup */}
+                <div className="relative w-[260px] sm:w-[300px] aspect-[3/4] bg-white rounded-t-3xl rounded-b-md shadow-[0_30px_60px_-15px_rgba(0,0,0,0.15)] border-x-4 border-t-4 border-border/30 flex flex-col overflow-hidden rotate-y-[10deg] rotate-x-[5deg] transform-origin-bottom">
+                  {/* Stand base */}
+                  <div className="absolute bottom-0 w-full h-8 bg-gradient-to-t from-black/20 to-transparent z-20"></div>
+                  
+                  {/* Print design */}
+                  <div className="flex-1 flex flex-col p-6 sm:p-8 bg-gradient-to-b from-primary to-primary/80 text-primary-foreground text-center relative z-10">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
+                      <Coffee className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="font-heading font-bold text-2xl mb-1 text-white">Join Our Club</h3>
+                    <p className="text-white/80 text-sm mb-6">Scan to get your digital card</p>
+                    
+                    <div className="mt-auto bg-white p-4 rounded-2xl shadow-inner mx-auto w-full aspect-square flex flex-col items-center justify-center relative">
+                      {/* Fake QR pattern using grid */}
+                      <div className="w-full h-full border-4 border-foreground rounded-lg p-2 flex flex-col gap-1 relative overflow-hidden">
+                         <div className="absolute top-1 left-1 w-6 h-6 border-4 border-foreground"></div>
+                         <div className="absolute top-1 right-1 w-6 h-6 border-4 border-foreground"></div>
+                         <div className="absolute bottom-1 left-1 w-6 h-6 border-4 border-foreground"></div>
+                         <div className="w-full h-full flex flex-wrap gap-1 content-center justify-center p-6 opacity-60">
+                           <div className="w-3 h-3 bg-foreground"></div><div className="w-2 h-2 bg-foreground"></div><div className="w-4 h-2 bg-foreground"></div>
+                           <div className="w-2 h-4 bg-foreground"></div><div className="w-3 h-3 bg-foreground"></div><div className="w-2 h-2 bg-foreground"></div>
+                           <div className="w-2 h-2 bg-foreground"></div><div className="w-4 h-3 bg-foreground"></div><div className="w-3 h-2 bg-foreground"></div>
+                         </div>
+                         <QrCode className="absolute inset-0 w-full h-full text-foreground/90 p-6" />
+                      </div>
+                    </div>
+                    
+                    <p className="mt-4 text-xs font-medium text-white/90 uppercase tracking-widest">Powered by Royalty Stamp</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -349,8 +497,19 @@ export default function Home() {
           <div className="container mx-auto px-4 md:px-8">
             <div className="flex flex-col-reverse lg:flex-row items-center gap-16">
               <div className="flex-1 relative w-full">
-                <div className="relative aspect-square sm:aspect-[4/3] lg:aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50 bg-background flex items-center justify-center p-4 sm:p-8">
-                  <Image src="/generated/dashboard-abstract-coral.png" alt="Business Analytics" fill className="object-cover opacity-80 mix-blend-multiply" />
+                <div className="relative aspect-square sm:aspect-[4/3] lg:aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl shadow-primary/10 border border-border/50 bg-secondary/20 flex items-center justify-center p-4 sm:p-8">
+                  {/* Abstract Chart Background */}
+                  <div className="absolute inset-0 p-8 flex items-end justify-between gap-2 opacity-10 pointer-events-none">
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '30%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '45%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '20%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '60%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '80%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '50%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '90%'}}></div>
+                    <div className="w-full bg-primary rounded-t-xl" style={{height: '100%'}}></div>
+                  </div>
+                  
                   <div className="relative z-10 w-full max-w-[280px] sm:max-w-sm bg-card p-5 sm:p-6 rounded-2xl shadow-xl border border-border/50">
                        <h4 className="font-bold mb-4 text-foreground text-base sm:text-lg">Monthly Engagement</h4>
                        <div className="space-y-3">
@@ -401,8 +560,47 @@ export default function Home() {
               <h2 className="text-3xl md:text-5xl font-bold font-heading mb-6 tracking-tight">The Complete Solution</h2>
               <p className="text-xl text-muted-foreground">Everything you need to run a world-class loyalty program from any device.</p>
             </div>
-            <div className="relative max-w-5xl mx-auto aspect-[16/9] md:aspect-[21/9] rounded-[2rem] md:rounded-[3rem] bg-gradient-to-tr from-primary/10 to-primary/5 p-4 md:p-8 flex items-center justify-center shadow-2xl border border-border/50 overflow-hidden">
-                <Image src="/generated/hero-business.png" alt="Product Showcase Mockup" fill className="object-cover" />
+            <div className="relative max-w-5xl mx-auto aspect-[16/9] md:aspect-[21/9] rounded-[2rem] md:rounded-[3rem] bg-gradient-to-tr from-primary/10 to-primary/5 p-4 md:p-12 flex items-center justify-center shadow-2xl border border-border/50 overflow-hidden">
+                
+                {/* Desktop Dashboard */}
+                <div className="w-full h-full max-w-3xl rounded-xl sm:rounded-2xl border border-border/50 bg-background shadow-2xl flex flex-col overflow-hidden relative z-10 mr-12 sm:mr-24 mt-4 sm:mt-12">
+                   <div className="h-6 sm:h-10 bg-secondary/50 border-b border-border/50 flex items-center px-3 sm:px-4 gap-2">
+                     <div className="flex gap-1.5"><div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-destructive/60"></div><div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-yellow-500/60"></div><div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-500/60"></div></div>
+                   </div>
+                   <div className="flex-1 flex p-2 sm:p-4 gap-4 bg-muted/20">
+                     <div className="w-1/4 flex flex-col gap-2">
+                        <div className="h-6 sm:h-8 bg-primary/10 rounded-md border border-primary/20"></div>
+                        <div className="h-6 sm:h-8 bg-background rounded-md border border-border/50"></div>
+                     </div>
+                     <div className="flex-1 flex flex-col gap-2 sm:gap-4">
+                        <div className="h-16 sm:h-24 bg-background rounded-lg border border-border/50 shadow-sm p-3">
+                          <div className="h-3 w-1/3 bg-muted rounded mb-2"></div>
+                          <div className="h-6 w-1/4 bg-foreground rounded"></div>
+                        </div>
+                        <div className="flex-1 bg-background rounded-lg border border-border/50 shadow-sm"></div>
+                     </div>
+                   </div>
+                </div>
+
+                {/* Overlapping Phone Card */}
+                <div className="absolute right-4 sm:right-12 bottom-4 sm:bottom-[-20%] w-[120px] sm:w-[220px] aspect-[1/2] rounded-[1.5rem] sm:rounded-[2.5rem] border-[4px] sm:border-[6px] border-foreground/10 bg-background shadow-2xl overflow-hidden z-20 flex flex-col transform -rotate-6">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 sm:w-24 h-4 sm:h-5 bg-foreground/10 rounded-b-xl z-20"></div>
+                  <div className="h-1/3 bg-gradient-to-br from-primary/80 to-primary"></div>
+                  <div className="flex-1 bg-secondary/30 p-2 sm:p-4 flex flex-col items-center">
+                    <div className="w-10 h-10 sm:w-16 sm:h-16 bg-background rounded-xl sm:rounded-2xl -mt-8 sm:-mt-12 flex items-center justify-center shadow-md border border-border/50 z-10 mb-2 sm:mb-4">
+                       <Store className="w-5 h-5 sm:w-8 sm:h-8 text-primary" />
+                    </div>
+                    <div className="w-3/4 h-3 sm:h-4 bg-foreground rounded mb-4 sm:mb-6"></div>
+                    <div className="grid grid-cols-4 gap-1 sm:gap-2 w-full px-1 sm:px-2">
+                      {[1,2,3,4,5,6,7,8].map(i => (
+                        <div key={i} className="aspect-square rounded-full border border-border flex items-center justify-center bg-background">
+                           {i <= 4 && <Stamp className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
             </div>
           </div>
         </section>
