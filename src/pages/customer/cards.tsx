@@ -296,6 +296,9 @@ export default function MyCardsPage() {
                     <h3 className="font-heading font-bold text-lg text-foreground leading-tight">
                       {unlockedReward.reward_title || "Free Reward"}
                     </h3>
+                    <p className="text-xs font-bold text-muted-foreground mt-1">
+                      {unlockedReward.expires_at ? `Expires: ${new Date(unlockedReward.expires_at).toLocaleDateString()}` : "No expiration"}
+                    </p>
                   </div>
                 </div>
               </div>

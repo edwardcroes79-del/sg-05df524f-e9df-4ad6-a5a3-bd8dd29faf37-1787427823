@@ -1,6 +1,6 @@
 ---
 title: Reward Expiration Customer Display
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [rewards, customer-ui, expiration]
@@ -14,13 +14,13 @@ Implement Phase 4 only for Royalty Stamp reward expiration. Update the customer-
 Do not modify reward creation logic, QR generation, reward redemption, or business-facing functionality.
 
 ## Checklist
-- [ ] Open and inspect `src/pages/customer/rewards.tsx`, `src/pages/customer/cards.tsx`, and `src/components/LoyaltyCard.tsx`
-- [ ] Display "Expires: [date]" for rewards with future expiration
-- [ ] Display "No expiration" for rewards with no expiration
-- [ ] Display "⏰ Reward Expired" and disabled state for expired rewards
-- [ ] Move expired rewards to history or appropriate section
-- [ ] Validate UI on mobile/tablet/desktop
-- [ ] Run project validation
+- [x] Open and inspect `src/pages/customer/rewards.tsx`, `src/pages/customer/cards.tsx`, and `src/components/LoyaltyCard.tsx`
+- [x] Display "Expires: [date]" for rewards with future expiration
+- [x] Display "No expiration" for rewards with no expiration
+- [x] Display "⏰ Reward Expired" and disabled state for expired rewards
+- [x] Move expired rewards to history or appropriate section
+- [x] Validate UI on mobile/tablet/desktop
+- [x] Run project validation
 
 ## Acceptance
 Customer sees clear expiration status for available rewards.

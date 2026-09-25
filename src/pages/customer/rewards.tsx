@@ -141,8 +141,15 @@ export default function CustomerRewardsPage() {
     }
   };
 
-  const availableRewards = rewards.filter((r) => r.status === "available");
-  const redeemedRewards = rewards.filter((r) => r.status === "redeemed" || r.status === "expired");
+  const now = new Date();
+  
+  const availableRewards = rewards.filter(
+    (r) => r.status === "available" && (!r.expires_at || new Date(r.expires_at) > now)
+  );
+  
+  const redeemedRewards = rewards.filter(
+    (r) => r.status === "redeemed" || r.status === "expired" || (r.status === "available" && r.expires_at && new Date(r.expires_at) <= now)
+  );
 
   return (
     <CustomerLayout>
@@ -191,9 +198,17 @@ export default function CustomerRewardsPage() {
                             Available
                           </Badge>
                         </div>
-                        <CardTitle className="text-lg mt-1">{reward.reward_title}</CardTitle>
-                        <CardDescription className="text-xs">
-                          Earned on {new Date(reward.earned_at).toLocaleDateString()}
+                        <CardTitle className="text-lg mt-1 flex items-center gap-2">
+                          🎁 Reward Available
+                        </CardTitle>
+                        <div className="font-medium text-foreground text-base">
+                          {reward.reward_title}
+                        </div>
+                        <CardDescription className="text-xs mt-2 space-y-1">
+                          <div className="font-bold text-foreground">
+                            {reward.expires_at ? `Expires: ${new Date(reward.expires_at).toLocaleDateString()}` : "No expiration"}
+                          </div>
+                          <div>Earned on {new Date(reward.earned_at).toLocaleDateString()}</div>
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-2 flex flex-col items-center justify-center">
@@ -215,7 +230,7 @@ export default function CustomerRewardsPage() {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
                 <CheckCircle className="h-5 w-5 text-emerald-500" />
-                Redemption History ({redeemedRewards.length})
+                History ({redeemedRewards.length})
               </h2>
 
               {redeemedRewards.length === 0 ? (
@@ -226,37 +241,53 @@ export default function CustomerRewardsPage() {
                 </Card>
               ) : (
                 <div className="grid gap-4">
-                  {redeemedRewards.map((reward) => (
-                    <Card key={reward.id} className="opacity-75 bg-muted/10 border-border/50">
-                      <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2.5 bg-muted rounded-full">
-                            <Gift className="h-5 w-5 text-muted-foreground" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                              {reward.businesses?.business_name}
-                            </p>
-                            <h4 className="font-medium text-foreground">{reward.reward_title}</h4>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Code: <span className="font-mono font-semibold">{reward.reward_code}</span>
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-left sm:text-right shrink-0">
-                          <Badge variant="outline" className="bg-muted text-muted-foreground border-none font-medium">
-                            {reward.status.toUpperCase()}
-                          </Badge>
-                          {reward.redeemed_at && (
-                            <div className="flex items-center sm:justify-end gap-1 text-xs text-muted-foreground mt-1">
-                              <Calendar className="h-3.5 w-3.5" />
-                              <span>{new Date(reward.redeemed_at).toLocaleDateString()}</span>
+                  {redeemedRewards.map((reward) => {
+                    const isExpired = reward.status === "expired" || (reward.status === "available" && reward.expires_at && new Date(reward.expires_at) <= now);
+                    
+                    return (
+                      <Card key={reward.id} className="opacity-75 bg-muted/10 border-border/50">
+                        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-muted rounded-full">
+                              {isExpired ? <Clock className="h-5 w-5 text-muted-foreground" /> : <Gift className="h-5 w-5 text-muted-foreground" />}
                             </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                {reward.businesses?.business_name}
+                              </p>
+                              <h4 className="font-medium text-foreground">{reward.reward_title}</h4>
+                              
+                              {isExpired ? (
+                                <div className="mt-2">
+                                  <p className="text-sm font-bold text-destructive flex items-center gap-1">
+                                    ⏰ Reward Expired
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                                    This reward is no longer available for redemption.
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  Code: <span className="font-mono font-semibold">{reward.reward_code}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-left sm:text-right shrink-0">
+                            <Badge variant="outline" className={isExpired ? "bg-destructive/10 text-destructive border-none font-medium" : "bg-muted text-muted-foreground border-none font-medium"}>
+                              {isExpired ? "EXPIRED" : reward.status.toUpperCase()}
+                            </Badge>
+                            {reward.redeemed_at && !isExpired && (
+                              <div className="flex items-center sm:justify-end gap-1 text-xs text-muted-foreground mt-1">
+                                <Calendar className="h-3.5 w-3.5" />
+                                <span>{new Date(reward.redeemed_at).toLocaleDateString()}</span>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               )}
             </div>
