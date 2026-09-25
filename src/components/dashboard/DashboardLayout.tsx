@@ -468,6 +468,58 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Coming Soon</h3>
               
               <div className="space-y-4">
+                {/* Multi-Location Announcement */}
+                <div 
+                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
+                  onClick={() => setComingSoonModalOpen(true)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📍</span>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Multi-Location</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
+                      Coming Soon
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      One Business. Multiple Locations. One Loyalty Card.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Manage multiple business locations under one Royalty Stamp account. Customers will be able to use the same loyalty card and earn stamps at different locations of your business.
+                    </p>
+                    
+                    <div className="pt-2 space-y-2">
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">📍</span>
+                        <span><strong>Multiple Locations</strong> - Manage multiple physical locations under one business.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">💳</span>
+                        <span><strong>One Customer Loyalty Card</strong> - Customers will use one loyalty card across your business locations.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">⭐</span>
+                        <span><strong>Stamps Across Locations</strong> - Customers will be able to earn stamps at different authorized locations.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">👥</span>
+                        <span><strong>Location-Based Staff</strong> - Assign staff to the locations where they are authorized to work.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">📱</span>
+                        <span><strong>Location QR Codes</strong> - Each location will be able to use its own QR code where applicable.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">📊</span>
+                        <span><strong>Location Activity</strong> - Business owners will be able to view activity across all locations and filter by location.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Feature 1 */}
                 <div 
                   className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
