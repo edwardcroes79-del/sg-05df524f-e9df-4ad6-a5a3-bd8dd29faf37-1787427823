@@ -9,7 +9,6 @@ type DeleteSummary = {
   paymentTransactions: number;
   customerDeleted: boolean;
   profileDeleted: boolean;
-  publicUserDeleted: boolean;
   authUserDeleted: boolean;
   authUserAlreadyMissing: boolean;
 };
@@ -125,7 +124,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       paymentTransactions: 0,
       customerDeleted: false,
       profileDeleted: false,
-      publicUserDeleted: false,
       authUserDeleted: false,
       authUserAlreadyMissing,
     };
@@ -175,17 +173,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       summary.profileDeleted = true;
-
-      const { error: publicUserDeleteError } = await supabaseAdmin
-        .from("users")
-        .delete()
-        .eq("id", customer.user_id);
-
-      if (publicUserDeleteError) {
-        throw new Error(`Failed to delete public user row: ${publicUserDeleteError.message}`);
-      }
-
-      summary.publicUserDeleted = true;
 
       if (!authUserAlreadyMissing) {
         const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(customer.user_id);
