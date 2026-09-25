@@ -19,7 +19,7 @@ Implement Phase 3 only for Royalty Stamp reward expiration. Modify the existing 
 - [x] Ensure configured expiration is calculated using trusted database time
 - [x] Preserve duplicate prevention, transaction behavior, and staff/admin shared logic
 - [ ] Verify actual database behavior for null and configured expiration cases without modifying existing rewards
-- [ ] Run project validation
+- [x] Run project validation
 
 ## Acceptance
 Newly earned rewards store `expires_at = null` when the program has no expiration.
