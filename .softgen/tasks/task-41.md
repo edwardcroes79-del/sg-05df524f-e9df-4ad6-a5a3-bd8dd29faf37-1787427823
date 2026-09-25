@@ -10,16 +10,16 @@ position: 41
 ---
 
 ## Notes
-Implement Phase 5 only for Royalty Stamp reward expiration. Update only the existing reward redemption flow so expired rewards cannot be redeemed. Inspect existing redemption RPC/functions first and reuse the current redemption architecture. Do not create duplicate redemption systems. Preserve RLS, business isolation, customer isolation, staff authorization, double-redemption protection, QR token behavior, and existing SaaS functionality. Do not modify customer UI except where required to show controlled expired-reward redemption errors in the existing Business/Staff redemption screens.
+Implement Phase 5 only for Royalty Stamp reward expiration. Update only the existing reward redemption flow so expired rewards cannot be redeemed. Inspected existing redemption RPC/functions first and reused the current redemption architecture. Did not create duplicate redemption systems. Preserved RLS, business isolation, customer isolation, staff authorization, double-redemption protection, QR token behavior, and existing SaaS functionality. Updated Business/Staff UI only to display controlled expired-reward redemption errors in the existing redemption screens.
 
 ## Checklist
-- [ ] Inspect existing reward redemption RPC/function bodies
-- [ ] Identify every existing redemption path used by Business Admin or Staff
-- [ ] Add trusted database-time expiration validation to existing redemption RPCs
-- [ ] Ensure expired rewards return a clear controlled "Reward Expired" result
-- [ ] Preserve atomic redemption and double-redemption/race-condition protection
-- [ ] Update existing Business/Staff UI only if needed to display the controlled expired message
-- [ ] Validate valid, expired, no-expiration, redeemed, wrong-business, unauthorized, and concurrent redemption behavior
+- [x] Inspect existing reward redemption RPC/function bodies
+- [x] Identify every existing redemption path used by Business Admin or Staff
+- [x] Add trusted database-time expiration validation to existing redemption RPCs
+- [x] Ensure expired rewards return a clear controlled "Reward Expired" result
+- [x] Preserve atomic redemption and double-redemption/race-condition protection
+- [x] Update existing Business/Staff UI only if needed to display the controlled expired message
+- [x] Validate valid, expired, no-expiration, redeemed, wrong-business, unauthorized, and concurrent redemption behavior
 - [ ] Run project validation
 
 ## Acceptance

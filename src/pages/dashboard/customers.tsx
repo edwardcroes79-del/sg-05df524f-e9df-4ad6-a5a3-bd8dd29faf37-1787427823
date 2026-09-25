@@ -216,34 +216,32 @@ export default function CustomersDashboard() {
 
   // Secure One-Click Redemption handler
   const handleRedeemReward = async (reward: any) => {
-    if (!selectedCard || redeemingId) return;
+    if (!selectedCard || redeemingId || !business?.id) return;
 
     try {
       setRedeemingId(reward.id);
 
-      // Double redemption protection check
-      const { data: checkReward, error: checkError } = await supabase
-        .from("rewards")
-        .select("status")
-        .eq("id", reward.id)
-        .single();
+      const { data, error } = await (supabase.rpc as any)("redeem_reward_tx", {
+        p_reward_code: reward.reward_code,
+        p_business_id: business.id
+      });
 
-      if (checkError) throw checkError;
+      if (error) throw error;
 
-      if (checkReward?.status === "redeemed") {
-        throw new Error("This reward has already been redeemed.");
+      const result = data as { success: boolean; message: string; reward_title?: string; reason?: string };
+      const isRewardExpired = result.reason === "reward_expired" || result.message.includes("Reward Expired");
+
+      if (!result.success) {
+        toast({
+          title: isRewardExpired ? "⏰ Reward Expired" : "Redemption Failed",
+          description: isRewardExpired ? "This reward can no longer be redeemed." : result.message,
+          variant: "destructive",
+        });
+
+        await loadHistoryAndRewards(selectedCard);
+        setRewardToRedeem(null);
+        return;
       }
-
-      // Update the real database record
-      const { error: updateError } = await supabase
-        .from("rewards")
-        .update({
-          status: "redeemed",
-          redeemed_at: new Date().toISOString(),
-        })
-        .eq("id", reward.id);
-
-      if (updateError) throw updateError;
 
       toast({
         title: "🎉 Award Redeemed!",
@@ -251,14 +249,13 @@ export default function CustomersDashboard() {
         variant: "default",
       });
 
-      // Refresh both modal details and the parent list metrics in the background (realtime-aligned)
       await loadHistoryAndRewards(selectedCard);
       await fetchBusinessAndCustomers();
       setRewardToRedeem(null);
     } catch (err: any) {
       toast({
-        title: "Redemption Failed",
-        description: err.message || "Failed to complete redemption.",
+        title: err.message?.includes("Reward Expired") ? "⏰ Reward Expired" : "Redemption Failed",
+        description: err.message?.includes("Reward Expired") ? "This reward can no longer be redeemed." : err.message || "Failed to complete redemption.",
         variant: "destructive",
       });
     } finally {

@@ -333,10 +333,14 @@ export default function ScanQR() {
         });
 
         if (tokenError) {
-          // Check for specific server-enforced expiration message
-          if (tokenError.message.includes('expired')) {
+          if (tokenError.message.includes("Reward Expired")) {
+            throw new Error("⏰ Reward Expired. This reward can no longer be redeemed.");
+          }
+
+          if (tokenError.message.includes("QR code has expired")) {
             throw new Error("🔒 QR Code Expired. Ask the customer to generate a new QR.");
           }
+
           throw new Error(tokenError.message || "Invalid or unauthorized reward QR");
         }
 
@@ -364,18 +368,18 @@ export default function ScanQR() {
         
         const { data, error } = await (supabase.rpc as any)("redeem_reward_tx", {
           p_reward_code: rewardCode,
-          p_business_id: business.id,
-          p_staff_user_id: session.user.id
+          p_business_id: business.id
         });
 
         if (error) throw error;
         
-        const result = data as { success: boolean; message: string; reward_title?: string };
+        const result = data as { success: boolean; message: string; reward_title?: string; reason?: string };
+        const isRewardExpired = result.reason === "reward_expired" || result.message.includes("Reward Expired");
         setScanResult(result);
         
         toast({
-          title: result.success ? "✅ Reward Redeemed" : "Redemption Failed",
-          description: result.message,
+          title: result.success ? "✅ Reward Redeemed" : isRewardExpired ? "⏰ Reward Expired" : "Redemption Failed",
+          description: isRewardExpired ? "This reward can no longer be redeemed." : result.message,
           variant: result.success ? "default" : "destructive",
         });
         
@@ -430,13 +434,15 @@ export default function ScanQR() {
         });
       }
     } catch (err: any) {
+      const isRewardExpired = err.message?.includes("Reward Expired");
+
       setScanResult({
         success: false,
         message: err.message || "Failed to process QR code"
       });
       toast({
-        title: err.message?.includes('Expired') ? "QR Code Expired" : "Error",
-        description: err.message || "Failed to process QR code",
+        title: isRewardExpired ? "⏰ Reward Expired" : err.message?.includes("QR Code Expired") ? "QR Code Expired" : "Error",
+        description: isRewardExpired ? "This reward can no longer be redeemed." : err.message || "Failed to process QR code",
         variant: "destructive",
       });
     } finally {
@@ -476,12 +482,13 @@ export default function ScanQR() {
         throw error;
       }
 
-      const result = data as { success: boolean; message: string };
+      const result = data as { success: boolean; message: string; reason?: string };
+      const isRewardExpired = result.reason === "reward_expired" || result.message.includes("Reward Expired");
       setScanResult(result);
       
       toast({
-        title: result.success ? "✅ Reward Redeemed" : "Redemption Failed",
-        description: result.message,
+        title: result.success ? "✅ Reward Redeemed" : isRewardExpired ? "⏰ Reward Expired" : "Redemption Failed",
+        description: isRewardExpired ? "This reward can no longer be redeemed." : result.message,
         variant: result.success ? "default" : "destructive",
       });
 
