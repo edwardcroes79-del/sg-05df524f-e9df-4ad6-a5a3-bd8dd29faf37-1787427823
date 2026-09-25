@@ -719,63 +719,27 @@ export default function AdminDashboard() {
     try {
       setDeleting(true);
 
-      // Verify the current user is Super Admin
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_super_admin, role")
-        .eq("id", user.id)
-        .single();
+      const response = await fetch("/api/admin/delete-customer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ customerId: customerToDelete.id }),
+      });
 
-      if (!profile?.is_super_admin && profile?.role !== 'super_admin') {
-        throw new Error("Permission denied. Only Super Admins can delete customers.");
-      }
+      const result = await response.json();
 
-      // 1. Delete associated stamp transactions
-      await supabase
-        .from("stamp_transactions")
-        .delete()
-        .eq("customer_id", customerToDelete.id);
-
-      // 2. Delete associated rewards (cascade fkey is present but let's be safe)
-      await supabase
-        .from("rewards")
-        .delete()
-        .eq("customer_id", customerToDelete.id);
-
-      // 3. Delete loyalty cards (cascade fkey is present but let's be safe)
-      await supabase
-        .from("customer_loyalty_cards")
-        .delete()
-        .eq("customer_id", customerToDelete.id);
-
-      // 4. Delete payment transactions
-      await supabase
-        .from("payment_transactions")
-        .delete()
-        .eq("customer_id", customerToDelete.id);
-
-      // 5. Delete customer record
-      const { error: customerError } = await supabase
-        .from("customers")
-        .delete()
-        .eq("id", customerToDelete.id);
-
-      if (customerError) throw customerError;
-
-      // 6. Delete user profile (which clears user presence)
-      if (customerToDelete.user_id) {
-        await supabase
-          .from("profiles")
-          .delete()
-          .eq("id", customerToDelete.user_id);
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to delete customer");
       }
 
       toast({
         title: "Customer Deleted",
-        description: `Successfully removed ${customerToDelete.name} and all related loyalty data from the platform.`,
+        description: result.message || `Successfully removed ${customerToDelete.name} and verified backend deletion.`,
       });
 
       setCustomerToDelete(null);
