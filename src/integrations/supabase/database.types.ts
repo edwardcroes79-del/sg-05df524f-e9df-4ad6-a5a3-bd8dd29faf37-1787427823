@@ -348,6 +348,7 @@ export type Database = {
           name: string
           primary_color: string | null
           reward_description: string | null
+          reward_expiration_days: number | null
           reward_icon: string | null
           reward_image: string | null
           reward_title: string
@@ -373,6 +374,7 @@ export type Database = {
           name: string
           primary_color?: string | null
           reward_description?: string | null
+          reward_expiration_days?: number | null
           reward_icon?: string | null
           reward_image?: string | null
           reward_title: string
@@ -398,6 +400,7 @@ export type Database = {
           name?: string
           primary_color?: string | null
           reward_description?: string | null
+          reward_expiration_days?: number | null
           reward_icon?: string | null
           reward_image?: string | null
           reward_title?: string

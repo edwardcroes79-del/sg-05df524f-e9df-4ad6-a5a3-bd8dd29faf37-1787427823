@@ -34,6 +34,14 @@ import {
   AlertDialogTrigger } from
 "@/components/ui/alert-dialog";
 
+const EXPIRATION_PRESETS = ["7", "14", "30", "60", "90"] as const;
+const MAX_REWARD_EXPIRATION_DAYS = 365;
+
+const getExpirationOption = (days: number | null) => {
+  if (!days) return "none";
+  return EXPIRATION_PRESETS.includes(String(days) as typeof EXPIRATION_PRESETS[number]) ? String(days) : "custom";
+};
+
 // 39 High-Definition Premium Design Presets
 const TEMPLATE_PRESETS = [
 // Industry Presets
@@ -106,8 +114,26 @@ export default function EditProgram() {
     reward_title: "",
     reward_description: "",
     card_color: "#F87171",
-    stamp_icon: "Star"
+    stamp_icon: "Star",
+    reward_expiration_option: "none",
+    reward_expiration_custom_days: ""
   });
+
+  const getRewardExpirationDays = () => {
+    if (formData.reward_expiration_option === "none") return null;
+
+    const rawValue = formData.reward_expiration_option === "custom"
+      ? formData.reward_expiration_custom_days
+      : formData.reward_expiration_option;
+
+    const parsedValue = Number(rawValue);
+
+    if (!Number.isInteger(parsedValue) || parsedValue < 1 || parsedValue > MAX_REWARD_EXPIRATION_DAYS) {
+      throw new Error(`Reward expiration must be a whole number between 1 and ${MAX_REWARD_EXPIRATION_DAYS} days.`);
+    }
+
+    return parsedValue;
+  };
 
   const [customization, setCustomization] = useState({
     template_id: "classic",
@@ -167,7 +193,9 @@ export default function EditProgram() {
         reward_title: data.reward_title,
         reward_description: data.reward_description || "",
         card_color: data.card_color || "#F87171",
-        stamp_icon: data.stamp_icon || "Star"
+        stamp_icon: data.stamp_icon || "Star",
+        reward_expiration_option: getExpirationOption(data.reward_expiration_days),
+        reward_expiration_custom_days: getExpirationOption(data.reward_expiration_days) === "custom" ? String(data.reward_expiration_days) : ""
       });
 
       if (data.businesses) {
@@ -387,6 +415,8 @@ export default function EditProgram() {
     e.preventDefault();
     try {
       setSaving(true);
+      const rewardExpirationDays = getRewardExpirationDays();
+
       const { error } = await supabase.
       from("loyalty_programs").
       update({
@@ -395,6 +425,7 @@ export default function EditProgram() {
         stamp_target: parseInt(formData.stamp_target, 10),
         reward_title: formData.reward_title,
         reward_description: formData.reward_description,
+        reward_expiration_days: rewardExpirationDays,
         card_color: customization.primary_color,
         stamp_icon: customization.stamp_icon,
 
@@ -954,6 +985,53 @@ export default function EditProgram() {
                             value={formData.reward_description}
                             onChange={(e) => setFormData({ ...formData, reward_description: e.target.value })} />
                           
+                        </div>
+
+                        <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+                          <div>
+                            <Label htmlFor="reward_expiration_option">Reward Expiration</Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Choose how long newly earned rewards remain valid. Existing rewards are not affected.
+                            </p>
+                          </div>
+                          <select
+                            id="reward_expiration_option"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                            value={formData.reward_expiration_option}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              reward_expiration_option: e.target.value,
+                              reward_expiration_custom_days: e.target.value === "custom" ? formData.reward_expiration_custom_days : ""
+                            })}
+                          >
+                            <option value="none">No expiration</option>
+                            <option value="7">7 days</option>
+                            <option value="14">14 days</option>
+                            <option value="30">30 days</option>
+                            <option value="60">60 days</option>
+                            <option value="90">90 days</option>
+                            <option value="custom">Custom number of days</option>
+                          </select>
+
+                          {formData.reward_expiration_option === "custom" && (
+                            <div className="space-y-2">
+                              <Label htmlFor="reward_expiration_custom_days">Custom expiration days</Label>
+                              <Input
+                                id="reward_expiration_custom_days"
+                                type="number"
+                                min="1"
+                                max={MAX_REWARD_EXPIRATION_DAYS}
+                                step="1"
+                                required
+                                placeholder="Enter 1 to 365 days"
+                                value={formData.reward_expiration_custom_days}
+                                onChange={(e) => setFormData({ ...formData, reward_expiration_custom_days: e.target.value })} />
+                              
+                              <p className="text-xs text-muted-foreground">
+                                Must be a whole number between 1 and {MAX_REWARD_EXPIRATION_DAYS}.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </TabsContent>
