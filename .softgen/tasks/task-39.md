@@ -1,6 +1,6 @@
 ---
 title: Reward Expiration Creation Logic
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [rewards, loyalty-programs, rpc]
@@ -10,7 +10,7 @@ position: 39
 ---
 
 ## Notes
-Implement Phase 3 only for Royalty Stamp reward expiration. Modify the existing reward-generation flow so newly earned rewards receive an `expires_at` value when the loyalty program has `reward_expiration_days` configured. Do not create a second reward-generation system. Do not modify customer reward UI, reward redemption, QR display, auth, billing, storage, or unrelated SaaS functionality. Existing rewards must remain unchanged; settings changes must affect future rewards only.
+Implemented Phase 3 only for Royalty Stamp reward expiration. Modified the existing reward-generation flow so newly earned rewards receive an `expires_at` value when the loyalty program has `reward_expiration_days` configured. Did not create a second reward-generation system. Did not modify customer reward UI, reward redemption, QR display, auth, billing, storage, or unrelated SaaS functionality. Existing rewards remain unchanged; settings changes affect future rewards only.
 
 ## Checklist
 - [x] Inspect the live `issue_stamp_tx` reward creation implementation
@@ -18,7 +18,7 @@ Implement Phase 3 only for Royalty Stamp reward expiration. Modify the existing 
 - [x] Ensure `expires_at` is null when the program setting is null
 - [x] Ensure configured expiration is calculated using trusted database time
 - [x] Preserve duplicate prevention, transaction behavior, and staff/admin shared logic
-- [ ] Verify actual database behavior for null and configured expiration cases without modifying existing rewards
+- [x] Verify actual database behavior for null and configured expiration cases without modifying existing rewards
 - [x] Run project validation
 
 ## Acceptance
