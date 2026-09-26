@@ -166,6 +166,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "This add-on is not available for new purchase" });
       }
 
+      const { data: existingAddonSubscription, error: existingAddonError } = await admin
+        .from("business_addon_subscriptions")
+        .select("id, status, payment_status, cancel_at_period_end")
+        .eq("business_id", business.id)
+        .eq("addon_id", addon.id)
+        .in("status", ["inactive", "active"])
+        .in("payment_status", ["pending", "approved"])
+        .maybeSingle();
+
+      if (existingAddonError) throw existingAddonError;
+      if (existingAddonSubscription) {
+        return res.status(409).json({
+          error: existingAddonSubscription.payment_status === "pending"
+            ? "This add-on already has a pending payment request. Upload the payment proof for the existing request instead of creating a duplicate."
+            : "This add-on is already active or scheduled for cancellation. Manage the existing add-on before purchasing it again.",
+        });
+      }
+
       const now = new Date().toISOString();
       const currentPeriodEnd = getDefaultPeriodEnd();
       const amount = Number(addon.monthly_price_awg || 0) * quantity;
