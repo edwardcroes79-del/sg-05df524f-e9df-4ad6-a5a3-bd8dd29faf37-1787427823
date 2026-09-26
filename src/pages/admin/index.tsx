@@ -1344,7 +1344,7 @@ export default function AdminDashboard() {
               .from("business_addon_subscriptions")
               .update({
                 status: "cancelled",
-                payment_status: "rejected",
+                payment_status: "failed",
                 ends_at: new Date().toISOString(),
                 metadata: {
                   ...asMetadataObject(subscription.metadata),
@@ -1352,6 +1352,7 @@ export default function AdminDashboard() {
                   rejected_payment_id: payment.id,
                   rejected_by: user.id,
                   rejected_at: new Date().toISOString(),
+                  rejection_status: "rejected",
                 },
                 updated_at: new Date().toISOString(),
               })
@@ -1376,7 +1377,7 @@ export default function AdminDashboard() {
             .from("business_addon_subscriptions")
             .update({
               status: "cancelled",
-              payment_status: "rejected",
+              payment_status: "failed",
               ends_at: new Date().toISOString(),
               metadata: {
                 ...asMetadataObject(existingSubscription.metadata),
@@ -1384,6 +1385,7 @@ export default function AdminDashboard() {
                 rejected_payment_id: payment.id,
                 rejected_by: user.id,
                 rejected_at: new Date().toISOString(),
+                rejection_status: "rejected",
               },
               updated_at: new Date().toISOString(),
             })

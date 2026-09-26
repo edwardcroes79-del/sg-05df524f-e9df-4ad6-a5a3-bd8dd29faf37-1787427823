@@ -269,17 +269,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           quantity,
           status: "inactive",
           payment_status: "pending",
-          starts_at: null,
-          current_period_start: null,
           current_period_end: currentPeriodEnd,
           metadata: {
             source: "business_subscription_change_request",
             requested_by: userId,
+            requested_at: now,
             pending_payment: true,
             requested_new_monthly_total: newMonthlyTotal,
+            requested_period_end: currentPeriodEnd,
           },
         })
-        .select("id")
+        .select("id, starts_at, current_period_start")
         .single();
 
       if (subscriptionError) throw subscriptionError;
@@ -322,7 +322,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       });
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        await admin
+          .from("business_addon_subscriptions")
+          .delete()
+          .eq("id", subscription.id)
+          .eq("business_id", business.id)
+          .eq("payment_status", "pending")
+          .eq("status", "inactive");
+
+        throw paymentError;
+      }
     }
 
     if (req.method === "PATCH") {

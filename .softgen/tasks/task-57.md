@@ -10,14 +10,14 @@ position: 57
 ---
 
 ## Notes
-Fix the Customer Capacity Add-on purchase failure where inserting into `business_addon_subscriptions` violates the NOT NULL constraint on `starts_at`. Investigate the actual schema, required columns, existing billing-period logic, add-on purchase API, Super Admin approval activation logic, and effective entitlement calculation before changing code. Do not remove the NOT NULL constraint, do not use client-provided dates, do not activate the add-on at purchase request time, and do not change payment-proof storage. The correct fix must create a complete pending/requested add-on subscription row with valid required fields while preserving activation only through Super Admin approval.
+Fix the Customer Capacity Add-on purchase failure where inserting into `business_addon_subscriptions` violates the NOT NULL constraint on `starts_at`. Investigation confirmed the table requires `starts_at` and `current_period_start`, both with database defaults of `now()`. Effective entitlement logic only counts rows where `status = 'active'`, `payment_status = 'approved'`, `starts_at <= now()`, and not ended, so a row can safely have database-populated period timestamps while remaining non-contributing as `inactive`/`pending`. The purchase API was incorrectly overriding those defaults with explicit `null` values. The fix removes explicit null start dates, stores request metadata, keeps pending add-ons `inactive`/`pending` until Super Admin approval, and cleans up the pending add-on row if payment record creation fails. Rejection handling now uses the table's actual `payment_status` allowed value `failed` while preserving rejection history in metadata.
 
 ## Checklist
-- [ ] Inspect `business_addon_subscriptions` schema, constraints, defaults, and required columns
-- [ ] Inspect existing add-on purchase API insert and Super Admin approval activation logic
-- [ ] Inspect subscription billing-period/start-date conventions used by existing plan billing
-- [ ] Fix pending add-on purchase creation so `starts_at` and other required fields are populated correctly without marking the add-on active
-- [ ] Ensure failed purchase creation does not leave orphan payment/add-on records
+- [x] Inspect `business_addon_subscriptions` schema, constraints, defaults, and required columns
+- [x] Inspect existing add-on purchase API insert and Super Admin approval activation logic
+- [x] Inspect subscription billing-period/start-date conventions used by existing plan billing
+- [x] Fix pending add-on purchase creation so `starts_at` and other required fields are populated correctly without marking the add-on active
+- [x] Ensure failed purchase creation does not leave orphan payment/add-on records
 - [ ] Verify all four customer-capacity add-ons can create pending purchase records without NOT NULL errors
 - [ ] Verify approval activates the add-on at the correct workflow point and capacity increases only after activation
 - [ ] Run project validation and targeted database regression checks
