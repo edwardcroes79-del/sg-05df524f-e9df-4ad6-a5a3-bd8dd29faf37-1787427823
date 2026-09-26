@@ -1,6 +1,6 @@
 ---
 title: Add-on System Audit
-status: in_progress
+status: done
 priority: high
 type: chore
 tags: [billing, subscriptions, add-ons, audit]
@@ -10,16 +10,16 @@ position: 49
 ---
 
 ## Notes
-Phase 1 audit only for a future flexible subscription add-on system. Do not modify production behavior, billing, existing plans, customer limits, subscriptions, or add-on records. Inspect the current flexible plan system, subscription tables, plan limits, feature entitlements, billing/payment architecture, customer/member limit enforcement, upgrade/downgrade and trial logic, Super Admin plan management, and business plan assignment. Produce a recommended architecture where add-ons extend a required base plan to compute effective account entitlements.
+Completed Phase 1 audit only for a future flexible subscription add-on system. No production behavior, billing, existing plans, customer limits, subscriptions, or add-on records were modified. Current architecture uses base business subscription fields on `businesses`, database-driven plan rows in `subscription_plans`, and feature/limit rows in `plan_entitlements`. Current customer/member capacity is enforced at the database level by `enforce_customer_member_limit()`, which reads `max_customers` from the business base plan through `get_business_numeric_limit(...)`. Current billing is manual bank-transfer/admin approval; no active Stripe/product/price ID references were found in app code. Recommended architecture: keep the required base plan, add `subscription_addons` for add-on definitions, add `business_addon_subscriptions` for active business add-ons, and introduce an effective entitlement helper that calculates base plan limits plus active add-on capacity.
 
 ## Checklist
-- [ ] Inspect current subscription, plan, entitlement, and payment tables
-- [ ] Inspect current customer/member limit enforcement
-- [ ] Inspect billing, upgrade/downgrade, trial, and Super Admin plan management flows
-- [ ] Identify hard-coded limits or provider ID assumptions relevant to add-ons
-- [ ] Recommend safe recurring add-on architecture without implementation
-- [ ] Recommend Phase 2 implementation plan
-- [ ] Stop without production changes
+- [x] Inspect current subscription, plan, entitlement, and payment tables
+- [x] Inspect current customer/member limit enforcement
+- [x] Inspect billing, upgrade/downgrade, trial, and Super Admin plan management flows
+- [x] Identify hard-coded limits or provider ID assumptions relevant to add-ons
+- [x] Recommend safe recurring add-on architecture without implementation
+- [x] Recommend Phase 2 implementation plan
+- [x] Stop without production changes
 
 ## Acceptance
 Current architecture is documented with evidence from schema and code inspection.
