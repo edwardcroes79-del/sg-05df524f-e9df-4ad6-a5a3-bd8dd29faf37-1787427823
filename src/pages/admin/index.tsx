@@ -2134,7 +2134,11 @@ export default function AdminDashboard() {
             const addedCapacity = Number(addon?.capacity_amount || 0) * Number(sub.quantity || 1);
             return (
               <span key={sub.id} className="text-xs text-muted-foreground whitespace-nowrap">
-                {sub.cancel_at_period_end && <Clock className="inline w-3 h-3 text-amber-500 mr-1" title="Cancels at period end" />}
+                {sub.cancel_at_period_end && (
+                  <span title="Cancels at period end">
+                    <Clock className="inline w-3 h-3 text-amber-500 mr-1" aria-hidden="true" />
+                  </span>
+                )}
                 +{addedCapacity.toLocaleString()} Customers
               </span>
             );
