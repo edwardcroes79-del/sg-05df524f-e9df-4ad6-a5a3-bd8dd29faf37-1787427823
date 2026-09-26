@@ -47,6 +47,7 @@ export default function BillingPage() {
   const [addonActionId, setAddonActionId] = useState<string | null>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+  const [requestingPlanId, setRequestingPlanId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -154,11 +155,54 @@ export default function BillingPage() {
 
   const handlePlanChange = async (plan: any) => {
     if (!plan || plan.id === business?.subscription_plan) return;
-    
-    toast({
-      title: "Admin approval required",
-      description: "Plan changes are reviewed before activation. Your current entitlements remain unchanged until approval.",
-    });
+
+    try {
+      setRequestingPlanId(plan.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const existingPendingPlanChange = pendingPayments.find((payment) =>
+        payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change"
+      );
+
+      if (existingPendingPlanChange) {
+        toast({
+          title: "Downgrade request pending approval.",
+          description: "Your current entitlements remain active until Super Admin review is complete.",
+        });
+        return;
+      }
+
+      const response = await fetch("/api/business/plan-change", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ plan_id: plan.id }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to request plan change");
+      }
+
+      toast({
+        title: result.request?.metadata?.change_type === "downgrade" ? "Downgrade request submitted" : "Plan change requested",
+        description: "Super Admin has been notified. Your current entitlements remain unchanged until approval.",
+      });
+
+      await fetchData();
+    } catch (err: any) {
+      toast({
+        title: "Plan change request failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRequestingPlanId(null);
+    }
   };
 
   const refreshAddonOverview = async () => {
@@ -738,6 +782,44 @@ export default function BillingPage() {
         {/* Available Plans */}
         <div>
           <h2 className="text-xl font-heading font-semibold mb-4">Choose Your Growth Plan</h2>
+          {pendingPayments.some((payment) => payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change") && (
+            <Card className="mb-6 border-amber-300 bg-amber-50/70">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-900">
+                  <Clock className="h-5 w-5" />
+                  Downgrade Request: Pending Super Admin Approval
+                </CardTitle>
+                <CardDescription className="text-amber-800">
+                  Current entitlements remain active until the requested plan change is approved.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {pendingPayments
+                  .filter((payment) => payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change")
+                  .slice(0, 1)
+                  .map((payment) => (
+                    <div key={payment.id} className="grid gap-3 text-sm sm:grid-cols-3">
+                      <div>
+                        <p className="text-amber-800/80">Current Plan</p>
+                        <p className="font-semibold text-amber-950">
+                          {payment.metadata?.current_plan_name || currentPlan?.name} — AWG {Number(payment.metadata?.current_plan_price_awg || currentPlan?.price_awg || 0).toFixed(2)}/month
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-amber-800/80">Requested Plan</p>
+                        <p className="font-semibold text-amber-950">
+                          {payment.metadata?.requested_plan_name || payment.metadata?.plan_name || payment.plan_id} — AWG {Number(payment.metadata?.requested_plan_price_awg || payment.amount || 0).toFixed(2)}/month
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-amber-800/80">Requested</p>
+                        <p className="font-semibold text-amber-950">{new Date(payment.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+          )}
           <div className="grid md:grid-cols-3 gap-6">
             {plans.map((plan) => {
               const isCurrent = plan.id === business?.subscription_plan;
@@ -808,10 +890,15 @@ export default function BillingPage() {
                           : "bg-primary text-white hover:bg-primary/95 shadow-sm"
                       }`}
                       variant={isCurrent ? "outline" : "default"}
-                      disabled={isCurrent}
+                      disabled={isCurrent || requestingPlanId === plan.id || pendingPayments.some((payment) => payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change")}
                       onClick={() => handlePlanChange(plan)}
                     >
-                      {isCurrent 
+                      {requestingPlanId === plan.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Requesting...
+                        </>
+                      ) : isCurrent 
                         ? "Active Plan" 
                         : (plan.price_awg < (currentPlan?.price_awg || 0)) 
                         ? "Downgrade Plan" 
