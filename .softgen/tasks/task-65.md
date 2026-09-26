@@ -1,6 +1,6 @@
 ---
 title: Add Available Add-ons Announcement
-status: in_progress
+status: done
 priority: medium
 type: feature
 tags: [dashboard, ui, announcements]
@@ -14,10 +14,10 @@ Add a new feature announcement for "Available Add-ons" in the Business Dashboard
 
 ## Checklist
 - [x] Locate the What's New section in `DashboardLayout.tsx`.
-- [ ] Add the Available Add-ons announcement block with the required text and highlights.
-- [ ] Ensure it uses the "NEW" badge and styling matching the existing "Reward Expiration" announcement.
-- [ ] Verify no pricing or actual billing functionality was altered.
-- [ ] Run project validation.
+- [x] Add the Available Add-ons announcement block with the required text and highlights.
+- [x] Ensure it uses the "NEW" badge and styling matching the existing "Reward Expiration" announcement.
+- [x] Verify no pricing or actual billing functionality was altered.
+- [x] Run project validation.
 
 ## Acceptance
 The "Available Add-ons" announcement is visible in the What's New section.
