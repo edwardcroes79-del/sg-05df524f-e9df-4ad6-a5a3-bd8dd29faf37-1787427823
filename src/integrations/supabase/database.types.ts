@@ -75,6 +75,72 @@ export type Database = {
         }
         Relationships: []
       }
+      business_addon_subscriptions: {
+        Row: {
+          addon_id: string
+          business_id: string
+          cancel_at_period_end: boolean
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string
+          ends_at: string | null
+          id: string
+          metadata: Json
+          payment_status: string
+          quantity: number
+          starts_at: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          addon_id: string
+          business_id: string
+          cancel_at_period_end?: boolean
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string
+          ends_at?: string | null
+          id?: string
+          metadata?: Json
+          payment_status?: string
+          quantity?: number
+          starts_at?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          addon_id?: string
+          business_id?: string
+          cancel_at_period_end?: boolean
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string
+          ends_at?: string | null
+          id?: string
+          metadata?: Json
+          payment_status?: string
+          quantity?: number
+          starts_at?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_addon_subscriptions_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_addon_subscriptions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_users: {
         Row: {
           business_id: string | null
@@ -1100,6 +1166,14 @@ export type Database = {
       generate_reward_qr_token: {
         Args: { p_reward_id: string }
         Returns: string
+      }
+      get_business_active_addon_capacity: {
+        Args: { p_business_id: string; p_entitlement_key?: string }
+        Returns: number
+      }
+      get_business_effective_numeric_limit: {
+        Args: { p_business_id: string; p_fallback?: number; p_key: string }
+        Returns: number
       }
       get_business_entitlement_bool: {
         Args: { p_business_id: string; p_fallback?: boolean; p_key: string }

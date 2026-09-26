@@ -1,6 +1,6 @@
 ---
 title: Customer Capacity Add-on Entitlements
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [billing, subscriptions, add-ons, entitlements]
@@ -10,7 +10,7 @@ position: 51
 ---
 
 ## Notes
-Implement Phase 3 for the Add-on System. Connect purchased customer-capacity add-ons to the business effective customer/member limit using the formula: base plan customer limit plus active customer-capacity add-ons equals effective customer limit. Calculation and enforcement must happen server-side/database-side. Do not modify base plan limits, do not delete customers/cards/stamps/rewards when capacity is reduced, do not change billing-provider charging, and do not trust browser-provided limits. If a business is over its effective limit after cancellation, existing data remains intact and only new customer registrations/card joins are blocked with a clear error. Added `business_addon_subscriptions`, RLS, server-side effective-limit helpers, database-level customer limit enforcement using effective capacity, Super Admin assignment/cancel-at-period-end controls, and Business Admin capacity visibility.
+Implemented Phase 3 for the Add-on System. Connected purchased customer-capacity add-ons to the business effective customer/member limit using the formula: base plan customer limit plus active customer-capacity add-ons equals effective customer limit. Calculation and enforcement now happen server-side/database-side through `get_business_effective_numeric_limit(...)` and the updated `enforce_customer_member_limit()` function. Base plan limits were not modified, billing-provider charging was not changed, and browser-provided limits are not trusted. Existing customers, loyalty cards, stamps, and rewards remain intact when add-ons are cancelled or capacity is reduced; only new customer registrations/card joins are blocked once the effective limit is reached. Added `business_addon_subscriptions`, RLS, active add-on capacity helpers, Super Admin assignment/cancel-at-period-end controls, and Business Admin capacity visibility. Targeted database regression verified that multiple active add-ons combine correctly and cancelled add-ons stop contributing without dropping below the base plan. Project validation passed.
 
 ## Checklist
 - [x] Inspect current add-on definition schema, customer limit enforcement function, and relevant UI/API flows
@@ -21,7 +21,7 @@ Implement Phase 3 for the Add-on System. Connect purchased customer-capacity add
 - [x] Show effective customer capacity clearly to Business Admins where limits are displayed
 - [x] Verify multiple active add-ons combine correctly
 - [x] Verify cancelled/ended add-ons stop contributing without deleting customer data
-- [ ] Run project validation and targeted database regression checks
+- [x] Run project validation and targeted database regression checks
 
 ## Acceptance
 Effective customer capacity equals base plan limit plus active customer-capacity add-ons.
