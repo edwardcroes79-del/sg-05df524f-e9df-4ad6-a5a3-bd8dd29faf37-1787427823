@@ -520,6 +520,49 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
 
+                {/* Reward Expiration Announcement (NEW) */}
+                <div 
+                  className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🎁</span>
+                      <h4 className="font-semibold text-foreground">Reward Expiration</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                      NEW
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      Set an expiration date for customer rewards so earned rewards don't stay redeemable forever.
+                    </p>
+                    <p className="text-sm text-muted-foreground italic">
+                      "Give customers enough time to redeem their reward while keeping your loyalty program active and organized."
+                    </p>
+                    
+                    <div className="pt-2 space-y-2">
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">⏰</span>
+                        <span><strong>Set Reward Expiration</strong> - Choose how long a reward remains valid after it is earned.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">🎁</span>
+                        <span><strong>Flexible Options</strong> - Choose from preset expiration periods or set a custom number of days.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">🔒</span>
+                        <span><strong>Automatic Protection</strong> - Expired rewards can no longer be redeemed.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">📅</span>
+                        <span><strong>Clear Expiration Dates</strong> - Customers can see when their reward expires.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Feature 1 */}
                 <div 
                   className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
