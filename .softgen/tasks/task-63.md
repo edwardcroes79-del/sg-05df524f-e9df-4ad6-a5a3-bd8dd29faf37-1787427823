@@ -1,6 +1,6 @@
 ---
 title: Merchants Table JSX Compilation Fix
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [admin, merchants, jsx, billing]
@@ -10,15 +10,15 @@ position: 63
 ---
 
 ## Notes
-Fix the current JSX/compilation error in the Super Admin Merchants & Subscriptions table near the plan assignment select. Investigation confirmed the complete select JSX is structurally valid and the error is not caused by the `disabled` prop itself. The actual root cause is an incorrectly merged plan-assignment update: the table now references `assigningPlanId` and `handlePlanAssignment`, but neither existed in the component. The existing function is named `handleChangePlan`. The fix adds a single `assigningPlanId` state value and a `handlePlanAssignment` wrapper that preserves the existing assignment logic while providing the loading/disabled state. Plan price, active add-ons, add-on total, total subscription, and all merchant actions remain in place.
+Fixed the JSX/compilation error in the Super Admin Merchants & Subscriptions table near the plan assignment select. Investigation confirmed the select JSX was structurally valid and the error was not caused by the `disabled` prop itself. The root cause was an incorrectly merged plan-assignment update: the table referenced `assigningPlanId` and `handlePlanAssignment`, but those were missing from the component. The fix added a single `assigningPlanId` state value and a `handlePlanAssignment` wrapper that preserves the existing `handleChangePlan` logic while providing the loading/disabled state. A leftover unsupported Lucide `title` prop on the add-on cancel indicator was also replaced with a wrapper `title` attribute. Temporary repair files from the prior syntax-repair attempt were removed. Plan price, active add-ons, add-on total, total subscription, and all merchant actions remain in place. Project validation passed with no CSS, linting, type checking, or server errors.
 
 ## Checklist
 - [x] Inspect `assigningPlanId` state and `handlePlanAssignment`
 - [x] Inspect the complete merchants table row JSX around the select
 - [x] Identify the actual root cause before editing
 - [x] Fix the malformed JSX or state issue without removing functionality
-- [ ] Run project validation
-- [ ] Confirm the merchant financial overview remains intact
+- [x] Run project validation
+- [x] Confirm the merchant financial overview remains intact
 
 ## Acceptance
 The project builds without JSX/TypeScript errors.
