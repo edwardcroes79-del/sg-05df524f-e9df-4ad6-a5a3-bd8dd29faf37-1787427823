@@ -10,15 +10,15 @@ position: 68
 ---
 
 ## Notes
-Fix the Super Admin Merchants & Subscriptions Activate workflow where a suspended business remains suspended after clicking Activate. Trace the complete flow: frontend button, handler, API/RPC/database update, authorization/RLS, triggers, refresh, and displayed status. Do not change only the UI badge. Preserve approval/subscription/trial data, plan assignments, entitlements, and existing Suspend behavior. Verify the actual database row changes from suspended to active and that the UI refreshes accordingly.
+Fix the Super Admin Merchants & Subscriptions Activate workflow where a suspended business remains suspended after clicking Activate. Root cause identified in `src/pages/admin/index.tsx`: the row button computed `newStatus` and passed it to `handleToggleBusinessStatus`, but that handler expects the current status and toggles internally. For a suspended business, the button passed `"active"`, then the handler interpreted it as current active status and saved `"suspended"` again. The fix passes `biz.status` directly to the existing handler. This preserves the existing direct Supabase update path, RLS architecture, plan assignment, trial fields, subscription fields, and Suspend behavior.
 
 ## Checklist
-- [ ] Inspect Activate/Suspend button rendering and frontend handler
-- [ ] Inspect any API/RPC/database function involved in business activation
-- [ ] Inspect businesses schema fields for status, subscription, trial, approval, suspension fields
-- [ ] Inspect RLS/policies/triggers that may block or revert activation
-- [ ] Identify root cause before editing
-- [ ] Apply minimal fix using existing merchant status architecture
+- [x] Inspect Activate/Suspend button rendering and frontend handler
+- [x] Inspect any API/RPC/database function involved in business activation
+- [x] Inspect businesses schema fields for status, subscription, trial, approval, suspension fields
+- [x] Inspect RLS/policies/triggers that may block or revert activation
+- [x] Identify root cause before editing
+- [x] Apply minimal fix using existing merchant status architecture
 - [ ] Verify suspended to active database transition
 - [ ] Verify active to suspended and back to active still works
 - [ ] Verify trial/subscription/plan data remains unchanged

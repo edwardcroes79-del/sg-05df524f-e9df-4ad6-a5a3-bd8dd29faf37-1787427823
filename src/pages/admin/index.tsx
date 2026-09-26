@@ -2173,8 +2173,7 @@ export default function AdminDashboard() {
         size="sm"
         className="gap-1 text-xs"
         onClick={() => {
-          const newStatus = biz.status === "active" ? "suspended" : "active";
-          handleToggleBusinessStatus(biz.id, newStatus);
+          handleToggleBusinessStatus(biz.id, biz.status);
         }}
       >
         {biz.status === "active" ? <Ban className="h-3.5 w-3.5 text-amber-500" /> : <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
