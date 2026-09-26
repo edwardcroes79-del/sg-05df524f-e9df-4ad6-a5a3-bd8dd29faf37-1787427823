@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS public.subscription_addons (
 
 ALTER TABLE public.subscription_addons ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public read subscription_addons" ON public.subscription_addons;
 DROP POLICY IF EXISTS "Super admin read subscription_addons" ON public.subscription_addons;
 CREATE POLICY "Super admin read subscription_addons"
 ON public.subscription_addons
@@ -83,3 +84,7 @@ ON CONFLICT (id) DO UPDATE SET
   display_order = EXCLUDED.display_order,
   metadata = EXCLUDED.metadata,
   updated_at = now();
+
+SELECT id, name, addon_type, capacity_amount, monthly_price_awg, status, display_order
+FROM public.subscription_addons
+ORDER BY display_order, capacity_amount;

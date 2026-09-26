@@ -823,6 +823,63 @@ export type Database = {
           },
         ]
       }
+      subscription_addons: {
+        Row: {
+          addon_type: string
+          archived_at: string | null
+          capacity_amount: number
+          created_at: string | null
+          description: string | null
+          display_order: number
+          id: string
+          metadata: Json
+          monthly_price_awg: number
+          name: string
+          provider: string | null
+          provider_price_id: string | null
+          provider_product_id: string | null
+          slug: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          addon_type?: string
+          archived_at?: string | null
+          capacity_amount?: number
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          id: string
+          metadata?: Json
+          monthly_price_awg?: number
+          name: string
+          provider?: string | null
+          provider_price_id?: string | null
+          provider_product_id?: string | null
+          slug: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          addon_type?: string
+          archived_at?: string | null
+          capacity_amount?: number
+          created_at?: string | null
+          description?: string | null
+          display_order?: number
+          id?: string
+          metadata?: Json
+          monthly_price_awg?: number
+          name?: string
+          provider?: string | null
+          provider_price_id?: string | null
+          provider_product_id?: string | null
+          slug?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       subscription_payments: {
         Row: {
           admin_notes: string | null
@@ -1039,6 +1096,7 @@ export type Database = {
         Args: { b_id: string; u_id: string }
         Returns: boolean
       }
+      current_user_is_super_admin: { Args: never; Returns: boolean }
       generate_reward_qr_token: {
         Args: { p_reward_id: string }
         Returns: string
