@@ -1,6 +1,6 @@
 ---
 title: Reward Expiration Timestamp Verification
-status: in_progress
+status: done
 priority: high
 type: chore
 tags: [rewards, expiration, verification]
@@ -10,15 +10,15 @@ position: 44
 ---
 
 ## Notes
-Verify that Reward Expiration uses exact timestamps, not date-only logic. Confirm `rewards.expires_at` stores an exact timestamp, reward creation calculates expiration with trusted database/server time, and redemption compares trusted current database time against `expires_at`. If the current implementation already works this way, make no code changes. If date-only logic exists, correct only expiration calculation/storage/redemption logic.
+Verified that Reward Expiration uses exact timestamps, not date-only logic. `rewards.expires_at` is stored as `timestamp with time zone`. The live `issue_stamp_tx` function calculates `v_reward_earned_at := now()` and then sets `v_reward_expires_at := v_reward_earned_at + make_interval(days => v_reward_expiration_days)`, preserving the exact earned time. The live `redeem_reward_tx` and `get_reward_by_qr_token` functions compare trusted database `now()` against `expires_at`. Customer UI formats the date for display only and does not control redemption validity. No code, database, RLS, reward logic, or redemption behavior changes were needed.
 
 ## Checklist
-- [ ] Inspect live database column type for `rewards.expires_at`
-- [ ] Inspect live reward creation RPC for timestamp calculation
-- [ ] Inspect live redemption RPCs for server-side timestamp comparison
-- [ ] Inspect customer UI only to confirm display does not drive redemption validity
-- [ ] Run validation if any implementation change is needed
-- [ ] Report exact verification result and stop
+- [x] Inspect live database column type for `rewards.expires_at`
+- [x] Inspect live reward creation RPC for timestamp calculation
+- [x] Inspect live redemption RPCs for server-side timestamp comparison
+- [x] Inspect customer UI only to confirm display does not drive redemption validity
+- [x] Run validation if any implementation change is needed
+- [x] Report exact verification result and stop
 
 ## Acceptance
 Reward expiration is verified to use an exact timestamp.
