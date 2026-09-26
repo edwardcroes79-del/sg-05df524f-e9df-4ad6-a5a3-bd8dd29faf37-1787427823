@@ -1,6 +1,6 @@
 ---
 title: Downgrade Approval Notifications
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [billing, subscriptions, notifications, admin-approval]
@@ -10,7 +10,7 @@ position: 60
 ---
 
 ## Notes
-Add a Super Admin notification and review workflow for Business subscription downgrade requests. Reuse the existing Royalty Stamp subscription approval/notification architecture wherever possible. Investigation found there is no general `notifications` table; existing Super Admin operational review already uses `subscription_payments` for pending subscription/payment approvals and `email_logs` only for business registration email delivery. The downgrade notification is therefore represented as a pending `subscription_payments` request with `metadata.kind = "subscription_plan_change"` and `metadata.change_type = "downgrade"`, preserving the existing review queue instead of creating a duplicate notification system. Business Admins can request a downgrade, but the current plan and entitlements remain active until Super Admin approval. Super Admins now see current/requested plan details, pricing, entitlement changes, request time, member/staff counts, and approve/reject actions. Approval/rejection now uses the database function `review_subscription_plan_change`, which verifies `is_super_admin_user(auth.uid())`, records approver/reviewer metadata, resolves the notification status, and applies approved plan changes through the authorized admin workflow without deleting existing customer/card/stamp/reward data. Rejection preserves the current plan, stores rejection notes, marks the notification rejected, and keeps the request in history. Duplicate pending plan-change requests are blocked.
+Added a Super Admin notification and review workflow for Business subscription downgrade requests. Reused the existing Royalty Stamp subscription approval/notification architecture instead of creating a duplicate notification system. Investigation found there is no general `notifications` table; existing Super Admin operational review already uses `subscription_payments` for pending subscription/payment approvals and `email_logs` only for business registration email delivery. Downgrade notifications are represented as pending `subscription_payments` requests with `metadata.kind = "subscription_plan_change"` and `metadata.change_type = "downgrade"`. Business Admins can request a downgrade, but the current plan and entitlements remain active until Super Admin approval. Super Admins see current/requested plan details, pricing, entitlement changes, request time, member/staff counts, and approve/reject actions. Approval/rejection uses the database function `review_subscription_plan_change`, which verifies `is_super_admin_user(auth.uid())`, records approver/reviewer metadata, resolves notification status, and applies approved plan changes through the authorized admin workflow without deleting existing customer/card/stamp/reward data. Rejection preserves the current plan, stores rejection notes, marks the notification rejected, and keeps the request in history. Duplicate pending plan-change requests are blocked. Live regression confirmed downgrade approval updates the plan and request, downgrade preserves customer/card/stamp/reward data, rejection keeps the current plan unchanged, duplicate pending requests are detectable, and the existing upgrade approval path still updates the plan. Project validation passed.
 
 ## Checklist
 - [x] Inspect existing subscription change, upgrade approval, notification, and downgrade request architecture
@@ -19,9 +19,9 @@ Add a Super Admin notification and review workflow for Business subscription dow
 - [x] Update Super Admin review UI to show current/requested plan, prices, entitlements, and approve/reject actions
 - [x] Implement Super Admin approve/reject handling with authorization, approver metadata, timestamps, and history
 - [x] Update Business Billing UI to show pending downgrade request status and prevent duplicate pending requests
-- [ ] Verify downgrade approval changes entitlements safely without deleting existing business data
-- [ ] Verify existing upgrade approval workflow still works
-- [ ] Run project validation and targeted database regression checks
+- [x] Verify downgrade approval changes entitlements safely without deleting existing business data
+- [x] Verify existing upgrade approval workflow still works
+- [x] Run project validation and targeted database regression checks
 
 ## Acceptance
 Business downgrade requests create a clear Super Admin notification and cannot be duplicated while pending.
