@@ -724,6 +724,98 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleUpdatePlanStatus = async (plan: any, nextStatus: "active" | "inactive" | "archived") => {
+    try {
+      setSavingPlan(true);
+
+      const entitlementMap = (plan.entitlements || []).reduce((acc: Record<string, boolean>, entitlement: any) => {
+        if (entitlement.value_type === "boolean") {
+          acc[entitlement.key] = Boolean(entitlement.boolean_value);
+        }
+        return acc;
+      }, {});
+
+      setPlanFormData({
+        id: plan.id,
+        name: plan.name,
+        description: plan.description || "",
+        price_awg: Number(plan.price_awg || 0),
+        annual_price_awg: plan.annual_price_awg === null || plan.annual_price_awg === undefined ? "" : String(plan.annual_price_awg),
+        status: nextStatus,
+        display_order: Number(plan.display_order || 100),
+        badge: plan.badge || "",
+        max_loyalty_programs: plan.max_loyalty_programs,
+        max_customers: plan.max_customers,
+        max_staff: plan.max_staff || 1,
+        is_trial: plan.is_trial || false,
+        trial_days: plan.trial_days || 14,
+        includes_premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
+        entitlements: {
+          premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
+          reward_expiration: Boolean(entitlementMap.reward_expiration ?? true),
+          custom_card_branding: Boolean(entitlementMap.custom_card_branding ?? plan.includes_premium_templates),
+        },
+      });
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/admin/plans", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          id: plan.id,
+          name: plan.name,
+          description: plan.description || "",
+          price_awg: Number(plan.price_awg || 0),
+          annual_price_awg: plan.annual_price_awg,
+          status: nextStatus,
+          display_order: Number(plan.display_order || 100),
+          badge: plan.badge || "",
+          max_loyalty_programs: Number(plan.max_loyalty_programs || 1),
+          max_customers: Number(plan.max_customers || 300),
+          max_staff: Number(plan.max_staff || 1),
+          is_trial: Boolean(plan.is_trial),
+          trial_days: Number(plan.trial_days || 14),
+          includes_premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
+          entitlements: [
+            ...availablePlanEntitlements.map((feature) => ({
+              key: feature.key,
+              value_type: "boolean",
+              boolean_value: Boolean(entitlementMap[feature.key] ?? (feature.key === "premium_templates" ? plan.includes_premium_templates : feature.key === "reward_expiration")),
+            })),
+            { key: "max_loyalty_programs", value_type: "number", number_value: Number(plan.max_loyalty_programs || 1) },
+            { key: "max_customers", value_type: "number", number_value: Number(plan.max_customers || 300) },
+            { key: "max_staff", value_type: "number", number_value: Number(plan.max_staff || 1) },
+          ],
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to update plan status");
+      }
+
+      setPlans(result.plans || []);
+      toast({
+        title: nextStatus === "archived" ? "Plan Archived" : nextStatus === "active" ? "Plan Activated" : "Plan Deactivated",
+        description: `${plan.name} is now ${nextStatus}. Existing assigned businesses are not moved.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Plan status update failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
   const handleApprovePayment = async (payment: any) => {
     if (!adminNotes.trim()) {
       toast({
@@ -1464,121 +1556,223 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="plans">
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8">
               <Card>
-                <CardHeader>
-                  <CardTitle>Plan Configurations</CardTitle>
-                  <CardDescription>Review and modify live subscription tiers and programmatic thresholds.</CardDescription>
+                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <CardTitle>Subscription Plan Management</CardTitle>
+                    <CardDescription>
+                      Create and manage database-driven plans. Archived plans stay valid for assigned businesses but are hidden from new selection.
+                    </CardDescription>
+                  </div>
+                  <Button type="button" onClick={handleCreatePlanClick} className="gap-2 shrink-0">
+                    <PlusCircle className="h-4 w-4" /> Create Plan
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {plans.map((plan) => (
-                    <div key={plan.id} className="p-4 border rounded-lg bg-muted/40 flex justify-between items-center">
-                      <div>
-                        <h4 className="font-heading font-semibold text-foreground flex items-center gap-2">
-                          {plan.name} <span className="text-xs font-mono font-bold text-primary uppercase">({plan.id})</span>
-                        </h4>
-                        <p className="text-sm text-muted-foreground mt-1">Price: AWG {plan.price_awg}/mo</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Max Programs: {plan.max_loyalty_programs === 9999 ? "Unlimited" : plan.max_loyalty_programs} | 
-                          Max Customers: {plan.max_customers === 999999 ? "Unlimited" : plan.max_customers} | 
-                          Max Staff: {plan.max_staff || 1}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          {plan.is_trial && (
-                            <Badge variant="secondary" className="text-xs bg-indigo-100 text-indigo-700">
-                              Free Trial ({plan.trial_days} days)
-                            </Badge>
-                          )}
-                          {!plan.is_active && (
-                            <Badge variant="destructive" className="text-xs">
-                              Disabled
-                            </Badge>
-                          )}
-                          {plan.includes_premium_templates && (
-                            <Badge variant="default" className="text-xs bg-amber-500 hover:bg-amber-600">
-                              Premium Templates
-                            </Badge>
+                  {plans.map((plan) => {
+                    const status = plan.status || (plan.is_active ? "active" : "inactive");
+                    const entitlementMap = (plan.entitlements || []).reduce((acc: Record<string, any>, entitlement: any) => {
+                      acc[entitlement.key] = entitlement;
+                      return acc;
+                    }, {});
+                    const enabledFeatures = availablePlanEntitlements.filter((feature) => Boolean(entitlementMap[feature.key]?.boolean_value));
+
+                    return (
+                      <div key={plan.id} className="p-4 border rounded-lg bg-card flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-heading font-semibold text-foreground">{plan.name}</h4>
+                              <span className="text-xs font-mono font-bold text-primary uppercase">({plan.id})</span>
+                              {plan.badge && <Badge variant="secondary" className="text-xs">{plan.badge}</Badge>}
+                              <Badge
+                                variant={status === "active" ? "default" : status === "archived" ? "outline" : "destructive"}
+                                className={status === "archived" ? "gap-1 border-amber-300 bg-amber-50 text-amber-700" : "gap-1"}
+                              >
+                                {status === "archived" && <Archive className="h-3 w-3" />}
+                                {status.toUpperCase()}
+                              </Badge>
+                            </div>
+                            {plan.description && (
+                              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{plan.description}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground mt-2">
+                              AWG {Number(plan.price_awg || 0).toFixed(2)}/month
+                              {plan.annual_price_awg ? ` · AWG ${Number(plan.annual_price_awg).toFixed(2)}/year` : ""}
+                              {" · "}Assigned businesses: {plan.assigned_business_count || 0}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Programs: {plan.max_loyalty_programs === 9999 ? "Unlimited" : plan.max_loyalty_programs} ·
+                              Customers: {plan.max_customers === 999999 ? "Unlimited" : plan.max_customers} ·
+                              Staff: {plan.max_staff || 1}
+                              {plan.is_trial ? ` · Trial: ${plan.trial_days || 14} days` : ""}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2 sm:justify-end">
+                            <Button variant="outline" size="sm" onClick={() => handleEditPlanClick(plan)}>
+                              <Edit2 className="h-4 w-4 mr-1" /> View / Edit
+                            </Button>
+                            {status !== "active" && (
+                              <Button variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "active")} disabled={savingPlan}>
+                                Activate
+                              </Button>
+                            )}
+                            {status !== "inactive" && status !== "archived" && (
+                              <Button variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "inactive")} disabled={savingPlan}>
+                                Deactivate
+                              </Button>
+                            )}
+                            {status !== "archived" && (
+                              <Button variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "archived")} disabled={savingPlan} className="text-amber-700 border-amber-300 hover:bg-amber-50">
+                                <Archive className="h-4 w-4 mr-1" /> Archive
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {enabledFeatures.length > 0 ? (
+                            enabledFeatures.map((feature) => (
+                              <Badge key={feature.key} variant="secondary" className="text-xs">
+                                {feature.label}
+                              </Badge>
+                            ))
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No optional feature entitlements enabled.</span>
                           )}
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => handleEditPlanClick(plan)}>
-                        <Edit2 className="h-4 w-4 mr-1" /> Edit Limits
-                      </Button>
+                    );
+                  })}
+                  {plans.length === 0 && (
+                    <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                      No subscription plans found.
                     </div>
-                  ))}
+                  )}
                 </CardContent>
               </Card>
 
-              {editingPlan && (
+              {(editingPlan || isCreatingPlan) && (
                 <Card>
                   <form onSubmit={handleSavePlan}>
                     <CardHeader>
-                      <CardTitle>Edit {editingPlan.name} Plan</CardTitle>
-                      <CardDescription>Changes will instantly apply to all merchants subscribed to this tier.</CardDescription>
+                      <CardTitle>{isCreatingPlan ? "Create Plan" : `Edit ${editingPlan?.name} Plan`}</CardTitle>
+                      <CardDescription>
+                        Configure live plan metadata, pricing, limits, trial settings, and existing Royalty Stamp feature entitlements.
+                      </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="planName">Display Name</Label>
-                        <Input
-                          id="planName"
-                          value={planFormData.name}
-                          onChange={(e) => setPlanFormData({ ...planFormData, name: e.target.value })}
-                          required
-                        />
+                    <CardContent className="space-y-5">
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="planName">Plan Name</Label>
+                          <Input
+                            id="planName"
+                            value={planFormData.name}
+                            onChange={(e) => setPlanFormData({ ...planFormData, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="planBadge">Optional Badge</Label>
+                          <Input
+                            id="planBadge"
+                            placeholder="Popular"
+                            value={planFormData.badge}
+                            onChange={(e) => setPlanFormData({ ...planFormData, badge: e.target.value })}
+                          />
+                        </div>
                       </div>
+
                       <div className="space-y-2">
-                        <Label htmlFor="planPrice">Price (AWG)</Label>
-                        <Input
-                          id="planPrice"
-                          type="number"
-                          value={planFormData.price_awg}
-                          onChange={(e) => setPlanFormData({ ...planFormData, price_awg: Number(e.target.value) })}
-                          required
+                        <Label htmlFor="planDescription">Description</Label>
+                        <textarea
+                          id="planDescription"
+                          className="flex min-h-[88px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          value={planFormData.description}
+                          onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
+                          placeholder="Describe who this plan is for."
                         />
                       </div>
 
-                      <div className="flex items-center gap-6 py-2">
-                        <label className="flex items-center gap-2 text-sm">
-                          <input 
-                            type="checkbox" 
-                            checked={planFormData.is_active}
-                            onChange={(e) => setPlanFormData({...planFormData, is_active: e.target.checked})}
+                      <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="planPrice">Monthly Price (AWG)</Label>
+                          <Input
+                            id="planPrice"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={planFormData.price_awg}
+                            onChange={(e) => setPlanFormData({ ...planFormData, price_awg: Number(e.target.value) })}
+                            required
                           />
-                          Active / Enabled
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-indigo-600 font-semibold">
-                          <input 
-                            type="checkbox" 
-                            checked={planFormData.is_trial}
-                            onChange={(e) => setPlanFormData({...planFormData, is_trial: e.target.checked})}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="annualPrice">Annual Price (AWG)</Label>
+                          <Input
+                            id="annualPrice"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Optional"
+                            value={planFormData.annual_price_awg}
+                            onChange={(e) => setPlanFormData({ ...planFormData, annual_price_awg: e.target.value })}
                           />
-                          Is Free Trial
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-amber-600 font-semibold">
-                          <input 
-                            type="checkbox" 
-                            checked={planFormData.includes_premium_templates}
-                            onChange={(e) => setPlanFormData({...planFormData, includes_premium_templates: e.target.checked})}
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="displayOrder">Display Order</Label>
+                          <Input
+                            id="displayOrder"
+                            type="number"
+                            value={planFormData.display_order}
+                            onChange={(e) => setPlanFormData({ ...planFormData, display_order: Number(e.target.value) })}
+                            required
                           />
-                          Premium Templates
-                        </label>
+                        </div>
                       </div>
 
-                      {planFormData.is_trial && (
-                        <div className="space-y-2 bg-indigo-50 p-4 rounded-md border border-indigo-100">
-                          <Label htmlFor="trialDays" className="text-indigo-700">Trial Duration (Days)</Label>
+                      <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="planStatus">Status</Label>
+                          <select
+                            id="planStatus"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                            value={planFormData.status}
+                            onChange={(e) => setPlanFormData({ ...planFormData, status: e.target.value })}
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="archived">Archived</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="trialToggle">Trial Available</Label>
+                          <label className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm">
+                            <input
+                              id="trialToggle"
+                              type="checkbox"
+                              checked={planFormData.is_trial}
+                              onChange={(e) => setPlanFormData({ ...planFormData, is_trial: e.target.checked })}
+                            />
+                            Enable trial
+                          </label>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="trialDays">Trial Duration</Label>
                           <Input
                             id="trialDays"
                             type="number"
                             min="1"
                             value={planFormData.trial_days}
                             onChange={(e) => setPlanFormData({ ...planFormData, trial_days: Number(e.target.value) })}
+                            disabled={!planFormData.is_trial}
                             required={planFormData.is_trial}
                           />
                         </div>
-                      )}
+                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-lg border bg-muted/20 p-4">
                         <div className="space-y-2">
                           <Label htmlFor="planMaxPrograms">Max Loyalty Programs</Label>
                           <Input
@@ -1591,7 +1785,7 @@ export default function AdminDashboard() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="planMaxCustomers">Max Customer Accounts</Label>
+                          <Label htmlFor="planMaxCustomers">Max Members / Customers</Label>
                           <Input
                             id="planMaxCustomers"
                             type="number"
@@ -1602,7 +1796,7 @@ export default function AdminDashboard() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="planMaxStaff">Max Staff Accounts</Label>
+                          <Label htmlFor="planMaxStaff">Max Staff</Label>
                           <Input
                             id="planMaxStaff"
                             type="number"
@@ -1613,13 +1807,44 @@ export default function AdminDashboard() {
                           />
                         </div>
                       </div>
+
+                      <div className="space-y-3 rounded-lg border p-4">
+                        <div>
+                          <h4 className="font-semibold text-foreground">Feature Entitlements</h4>
+                          <p className="text-xs text-muted-foreground">Only existing Royalty Stamp feature flags are configurable here.</p>
+                        </div>
+                        <div className="space-y-3">
+                          {availablePlanEntitlements.map((feature) => (
+                            <label key={feature.key} className="flex items-start gap-3 rounded-md border bg-background p-3 text-sm">
+                              <input
+                                type="checkbox"
+                                className="mt-1"
+                                checked={Boolean(planFormData.entitlements[feature.key as keyof typeof planFormData.entitlements])}
+                                onChange={(e) => setPlanFormData({
+                                  ...planFormData,
+                                  includes_premium_templates: feature.key === "premium_templates" ? e.target.checked : planFormData.includes_premium_templates,
+                                  entitlements: {
+                                    ...planFormData.entitlements,
+                                    [feature.key]: e.target.checked,
+                                  },
+                                })}
+                              />
+                              <span>
+                                <span className="block font-medium text-foreground">{feature.label}</span>
+                                <span className="block text-xs text-muted-foreground">{feature.description}</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                     </CardContent>
-                    <CardFooter className="flex justify-end gap-2">
-                      <Button type="button" variant="outline" onClick={() => setEditingPlan(null)}>
+                    <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <Button type="button" variant="outline" onClick={() => { setEditingPlan(null); setIsCreatingPlan(false); }} disabled={savingPlan}>
                         Cancel
                       </Button>
-                      <Button type="submit" className="gap-2">
-                        <Save className="h-4 w-4" /> Save Configuration
+                      <Button type="submit" className="gap-2" disabled={savingPlan}>
+                        {savingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        {isCreatingPlan ? "Create Plan" : "Save Plan"}
                       </Button>
                     </CardFooter>
                   </form>
