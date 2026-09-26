@@ -396,7 +396,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-4 shrink-0">
             <button onClick={handleOpenWhatsNew} className="relative">
-              <Bell className="h-5 w-5 text-foreground" />
+              <Bell className={`h-5 w-5 text-foreground ${!hasReadWhatsNew ? 'animate-bell-shake' : ''}`} />
               {!hasReadWhatsNew && (
                 <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
               )}
@@ -418,7 +418,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               className="relative flex items-center gap-2 text-muted-foreground hover:text-foreground"
               onClick={handleOpenWhatsNew}
             >
-              <Bell className="h-4 w-4" />
+              <Bell className={`h-4 w-4 ${!hasReadWhatsNew ? 'animate-bell-shake text-primary' : ''}`} />
               <span className="text-sm font-medium">What's New</span>
               {!hasReadWhatsNew && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
