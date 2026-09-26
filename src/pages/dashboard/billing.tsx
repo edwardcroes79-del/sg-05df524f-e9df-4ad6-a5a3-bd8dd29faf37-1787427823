@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Check, Clock, CheckCircle, XCircle, AlertCircle, Loader2, PlusCircle } from "lucide-react";
 
 export default function BillingPage() {
   const router = useRouter();
@@ -19,7 +19,10 @@ export default function BillingPage() {
   const [currentPlan, setCurrentPlan] = useState<any>(null);
   const [effectiveCustomerLimit, setEffectiveCustomerLimit] = useState<number | null>(null);
   const [currentMemberCount, setCurrentMemberCount] = useState(0);
+  const [availableAddons, setAvailableAddons] = useState<any[]>([]);
   const [activeAddonSubscriptions, setActiveAddonSubscriptions] = useState<any[]>([]);
+  const [addonPayments, setAddonPayments] = useState<any[]>([]);
+  const [addonActionId, setAddonActionId] = useState<string | null>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
 
@@ -78,22 +81,23 @@ export default function BillingPage() {
       const uniqueMemberCount = new Set((memberRows || []).map((row: any) => row.customer_id)).size;
       setCurrentMemberCount(uniqueMemberCount);
 
-      const { data: addonRows } = await (supabase as any)
-        .from("business_addon_subscriptions")
-        .select(`
-          *,
-          subscription_addons (
-            id,
-            name,
-            capacity_amount,
-            monthly_price_awg,
-            addon_type
-          )
-        `)
-        .eq("business_id", businessData.id)
-        .eq("status", "active")
-        .eq("payment_status", "approved");
-      setActiveAddonSubscriptions(addonRows || []);
+      const addonResponse = await fetch("/api/business/addons", {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (addonResponse.ok) {
+        const addonResult = await addonResponse.json();
+        setEffectiveCustomerLimit(Number(addonResult.effectiveCustomerLimit ?? effectiveLimit ?? planData?.max_customers ?? 300));
+        setCurrentMemberCount(Number(addonResult.currentMemberCount ?? uniqueMemberCount));
+        setAvailableAddons(addonResult.availableAddons || []);
+        setActiveAddonSubscriptions(addonResult.businessAddons || []);
+        setAddonPayments(addonResult.addonPayments || []);
+      } else {
+        const addonResult = await addonResponse.json().catch(() => ({}));
+        throw new Error(addonResult.error || "Failed to load customer capacity add-ons");
+      }
 
       // Fetch all plans
       const { data: plansData } = await supabase
@@ -126,6 +130,124 @@ export default function BillingPage() {
       title: "Admin approval required",
       description: "Plan changes are reviewed before activation. Your current entitlements remain unchanged until approval.",
     });
+  };
+
+  const refreshAddonOverview = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const response = await fetch("/api/business/addons", {
+      headers: {
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Failed to refresh customer capacity add-ons");
+    }
+
+    setEffectiveCustomerLimit(Number(result.effectiveCustomerLimit ?? effectiveCustomerLimit ?? currentPlan?.max_customers ?? 300));
+    setCurrentMemberCount(Number(result.currentMemberCount ?? currentMemberCount));
+    setAvailableAddons(result.availableAddons || []);
+    setActiveAddonSubscriptions(result.businessAddons || []);
+    setAddonPayments(result.addonPayments || []);
+    return result;
+  };
+
+  const handlePurchaseAddon = async (addon: any) => {
+    try {
+      setAddonActionId(addon.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/business/addons", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          addon_id: addon.id,
+          quantity: 1,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to request add-on purchase");
+      }
+
+      setEffectiveCustomerLimit(Number(result.effectiveCustomerLimit ?? effectiveCustomerLimit ?? currentPlan?.max_customers ?? 300));
+      setCurrentMemberCount(Number(result.currentMemberCount ?? currentMemberCount));
+      setAvailableAddons(result.availableAddons || []);
+      setActiveAddonSubscriptions(result.businessAddons || []);
+      setAddonPayments(result.addonPayments || []);
+
+      toast({
+        title: "Add-on purchase requested",
+        description: "A pending bank-transfer billing record was created. Capacity activates after approval.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Add-on purchase failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setAddonActionId(null);
+    }
+  };
+
+  const handleCancelAddon = async (subscription: any) => {
+    try {
+      setAddonActionId(subscription.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/business/addons", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          subscription_id: subscription.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to schedule add-on cancellation");
+      }
+
+      setEffectiveCustomerLimit(Number(result.effectiveCustomerLimit ?? effectiveCustomerLimit ?? currentPlan?.max_customers ?? 300));
+      setCurrentMemberCount(Number(result.currentMemberCount ?? currentMemberCount));
+      setAvailableAddons(result.availableAddons || []);
+      setActiveAddonSubscriptions(result.businessAddons || []);
+      setAddonPayments(result.addonPayments || []);
+
+      toast({
+        title: "Cancellation scheduled",
+        description: "The add-on remains active until the current billing period ends. Existing customer data remains safe.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Cancellation failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setAddonActionId(null);
+    }
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return "Not available";
+    return new Date(value).toLocaleDateString();
   };
 
   const getStatusIcon = (status: string) => {
@@ -299,6 +421,159 @@ export default function BillingPage() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Customer Capacity Add-ons */}
+        {currentPlan && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PlusCircle className="h-5 w-5 text-primary" />
+                Customer Capacity
+              </CardTitle>
+              <CardDescription>
+                Purchase optional customer-capacity add-ons through the existing bank-transfer billing workflow.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Included in {currentPlan.name}</p>
+                  <p className="text-2xl font-heading font-bold text-foreground mt-2">
+                    {currentPlan.max_customers === 999999 ? "Unlimited" : currentPlan.max_customers.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">base customer capacity</p>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current Usage</p>
+                  <p className="text-2xl font-heading font-bold text-foreground mt-2">
+                    {currentMemberCount.toLocaleString()} / {effectiveCustomerLimit === 999999 ? "Unlimited" : (effectiveCustomerLimit ?? currentPlan.max_customers).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">real registered loyalty members</p>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Effective Capacity</p>
+                  <p className="text-2xl font-heading font-bold text-primary mt-2">
+                    {effectiveCustomerLimit === 999999 ? "Unlimited" : (effectiveCustomerLimit ?? currentPlan.max_customers).toLocaleString()}
+                  </p>
+                  <p className="text-sm text-muted-foreground">base plan plus approved active add-ons</p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-heading font-semibold text-foreground mb-3">Available Add-ons</h3>
+                {availableAddons.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+                    No customer capacity add-ons are currently available.
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-4 gap-4">
+                    {availableAddons.map((addon) => (
+                      <div key={addon.id} className="rounded-lg border bg-card p-4 flex flex-col gap-4">
+                        <div>
+                          <h4 className="font-heading font-bold text-foreground">+{Number(addon.capacity_amount || 0).toLocaleString()} Customers</h4>
+                          <p className="text-sm text-muted-foreground mt-1">{addon.description || addon.name}</p>
+                          <p className="text-xl font-heading font-extrabold text-primary mt-3">
+                            AWG {Number(addon.monthly_price_awg || 0).toFixed(2)}
+                            <span className="text-xs text-muted-foreground font-normal"> / month</span>
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          className="mt-auto"
+                          disabled={addonActionId === addon.id}
+                          onClick={() => handlePurchaseAddon(addon)}
+                        >
+                          {addonActionId === addon.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                          Purchase Add-on
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="font-heading font-semibold text-foreground mb-3">Active & Requested Add-ons</h3>
+                {activeAddonSubscriptions.length === 0 ? (
+                  <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+                    No customer capacity add-ons have been purchased yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {activeAddonSubscriptions.map((subscription) => {
+                      const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
+                      const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
+                      const isApprovedActive = subscription.status === "active" && subscription.payment_status === "approved";
+                      const isPending = subscription.payment_status === "pending";
+
+                      return (
+                        <div key={subscription.id} className="rounded-lg border bg-card p-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-heading font-bold text-foreground">{addon?.name || subscription.addon_id}</h4>
+                              <Badge variant={isApprovedActive ? "default" : isPending ? "secondary" : "outline"}>
+                                {isPending ? "Payment Pending" : subscription.cancel_at_period_end ? "Cancels at period end" : subscription.status}
+                              </Badge>
+                            </div>
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 text-sm">
+                              <div>
+                                <p className="text-muted-foreground">Capacity added</p>
+                                <p className="font-semibold">+{addedCapacity.toLocaleString()} customers</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Monthly cost</p>
+                                <p className="font-semibold">AWG {(Number(addon?.monthly_price_awg || 0) * Number(subscription.quantity || 1)).toFixed(2)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Start date</p>
+                                <p className="font-semibold">{formatDate(subscription.starts_at)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Next billing date</p>
+                                <p className="font-semibold">{formatDate(subscription.current_period_end)}</p>
+                              </div>
+                            </div>
+                          </div>
+                          {isApprovedActive && !subscription.cancel_at_period_end && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                              disabled={addonActionId === subscription.id}
+                              onClick={() => handleCancelAddon(subscription)}
+                            >
+                              {addonActionId === subscription.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                              Cancel at Period End
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {addonPayments.length > 0 && (
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Add-on billing requests</p>
+                  <div className="space-y-2">
+                    {addonPayments.slice(0, 3).map((payment) => (
+                      <div key={payment.id} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+                        <span className="text-muted-foreground">
+                          {payment.metadata?.addon_name || "Customer capacity add-on"} · Reference {payment.payment_reference}
+                        </span>
+                        <Badge variant={getStatusVariant(payment.status)} className="w-max gap-1">
+                          {getStatusIcon(payment.status)}
+                          {payment.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

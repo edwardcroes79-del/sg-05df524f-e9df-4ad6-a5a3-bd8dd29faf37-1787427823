@@ -10,14 +10,14 @@ position: 52
 ---
 
 ## Notes
-Implement Phase 4 for the Add-on System. Business Admins should be able to view available active customer-capacity add-ons, see included/base capacity, current usage, effective capacity, active purchased add-ons, monthly add-on cost, status, start date, next billing date when available, and cancel eligible add-ons through the existing billing architecture. Do not create a separate payment system. Preserve existing plans, subscriptions, free trials, upgrades, downgrades, billing history, and customer limit enforcement. Business Admins can manage only their own business add-ons; staff must not manage billing unless existing permissions explicitly allow it. Do not expose privileged credentials in the browser.
+Implement Phase 4 for the Add-on System. Business Admins should be able to view available active customer-capacity add-ons, see included/base capacity, current usage, effective capacity, active purchased add-ons, monthly add-on cost, status, start date, next billing date when available, and cancel eligible add-ons through the existing billing architecture. Do not create a separate payment system. Preserve existing plans, subscriptions, free trials, upgrades, downgrades, billing history, and customer limit enforcement. Business Admins can manage only their own business add-ons; staff must not manage billing unless existing permissions explicitly allow it. Do not expose privileged credentials in the browser. Added secure Business Owner-only `/api/business/addons` route that lists available add-ons, creates pending bank-transfer `subscription_payments` plus pending `business_addon_subscriptions`, and schedules approved add-on cancellation at period end. Added Business Billing UI for current usage, included/effective capacity, available add-ons, active/requested add-ons, and cancellation.
 
 ## Checklist
-- [ ] Inspect current business billing, payment, and add-on subscription architecture
-- [ ] Add secure Business Admin API to request/purchase and cancel customer-capacity add-ons using existing billing records/workflow
-- [ ] Add Customer Capacity section to Business Billing/Subscription UI with usage, included capacity, effective capacity, and available add-ons
-- [ ] Show active add-ons with capacity, cost, status, start date, next billing date, and cancellation option
-- [ ] Ensure cancellation follows billing-period rules and does not immediately delete/reduce existing customer data
+- [x] Inspect current business billing, payment, and add-on subscription architecture
+- [x] Add secure Business Admin API to request/purchase and cancel customer-capacity add-ons using existing billing records/workflow
+- [x] Add Customer Capacity section to Business Billing/Subscription UI with usage, included capacity, effective capacity, and available add-ons
+- [x] Show active add-ons with capacity, cost, status, start date, next billing date, and cancellation option
+- [x] Ensure cancellation follows billing-period rules and does not immediately delete/reduce existing customer data
 - [ ] Verify business isolation and staff restrictions
 - [ ] Run project validation and targeted database regression checks
 
