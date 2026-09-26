@@ -1261,6 +1261,26 @@ export default function AdminDashboard() {
       const reviewedAt = new Date().toISOString();
       const paymentMetadata = asMetadataObject(payment.metadata);
 
+      if (isPlanChangeRequest) {
+        const { error: reviewError } = await (supabase as any).rpc("review_subscription_plan_change", {
+          p_payment_id: payment.id,
+          p_action: "approved",
+          p_admin_notes: adminNotes,
+        });
+
+        if (reviewError) throw reviewError;
+
+        toast({
+          title: payment.metadata?.change_type === "downgrade" ? "Downgrade Approved" : "Plan Change Approved",
+          description: `${payment.businesses.business_name} is now on the ${payment.metadata?.requested_plan_name || payment.plan_id} plan. Existing customer and loyalty data was preserved.`,
+        });
+
+        setReviewingPayment(null);
+        setAdminNotes("");
+        await fetchAdminData();
+        return;
+      }
+
       // Update payment/request status
       const { error: paymentError } = await supabase
         .from("subscription_payments")
@@ -1401,6 +1421,26 @@ export default function AdminDashboard() {
 
       const rejectedAt = new Date().toISOString();
       const paymentMetadata = asMetadataObject(payment.metadata);
+
+      if (payment.metadata?.kind === "subscription_plan_change") {
+        const { error: reviewError } = await (supabase as any).rpc("review_subscription_plan_change", {
+          p_payment_id: payment.id,
+          p_action: "rejected",
+          p_admin_notes: adminNotes,
+        });
+
+        if (reviewError) throw reviewError;
+
+        toast({
+          title: "Request Rejected",
+          description: "The business has been notified and the current subscription remains unchanged.",
+        });
+
+        setReviewingPayment(null);
+        setAdminNotes("");
+        await fetchAdminData();
+        return;
+      }
 
       const { error } = await supabase
         .from("subscription_payments")
