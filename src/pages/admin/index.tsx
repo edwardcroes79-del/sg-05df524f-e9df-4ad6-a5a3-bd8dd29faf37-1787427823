@@ -2066,11 +2066,30 @@ export default function AdminDashboard() {
                       <TableHead>Created</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Plan</TableHead>
+                      <TableHead>Plan Price</TableHead>
+                      <TableHead>Active Add-ons</TableHead>
+                      <TableHead>Add-on Total</TableHead>
+                      <TableHead>Total Subscription</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {businesses.map((biz) => (
+                    {businesses.map((biz) => {
+                      const bizPlan = plans.find((p) => p.id === biz.subscription_plan);
+                      const planPrice = Number(bizPlan?.price_awg || 0);
+
+                      const activeAddonSubs = businessAddonSubscriptions.filter(
+                        (sub) => sub.business_id === biz.id && sub.status === "active" && sub.payment_status === "approved"
+                      );
+
+                      const addonTotal = activeAddonSubs.reduce((total, sub) => {
+                        const addon = Array.isArray(sub.subscription_addons) ? sub.subscription_addons[0] : sub.subscription_addons;
+                        return total + (Number(addon?.monthly_price_awg || 0) * Number(sub.quantity || 1));
+                      }, 0);
+
+                      const totalSubscription = planPrice + addonTotal;
+
+                      return (
                       <TableRow key={biz.id}>
                         <TableCell className="font-semibold">{biz.business_name}</TableCell>
                         <TableCell>{new Date(biz.created_at).toLocaleDateString()}</TableCell>
@@ -2138,6 +2157,33 @@ export default function AdminDashboard() {
                               )}
                             </div>
                           )}
+                        </TableCell>
+                        <TableCell className="font-semibold text-foreground">
+                          {bizPlan ? `AWG ${planPrice.toFixed(2)}` : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {activeAddonSubs.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                              {activeAddonSubs.map(sub => {
+                                const addon = Array.isArray(sub.subscription_addons) ? sub.subscription_addons[0] : sub.subscription_addons;
+                                const addedCapacity = Number(addon?.capacity_amount || 0) * Number(sub.quantity || 1);
+                                return (
+                                  <span key={sub.id} className="text-xs text-muted-foreground whitespace-nowrap">
+                                    {sub.cancel_at_period_end && <Clock className="inline w-3 h-3 text-amber-500 mr-1" title="Cancels at period end" />}
+                                    +{addedCapacity.toLocaleString()} Customers
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">None</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-foreground">
+                          {activeAddonSubs.length > 0 ? `AWG ${addonTotal.toFixed(2)}` : "-"}
+                        </TableCell>
+                        <TableCell className="font-bold text-primary whitespace-nowrap">
+                          AWG {totalSubscription.toFixed(2)} / month
                         </TableCell>
                         <TableCell className="text-right flex items-center justify-end gap-2">
                           <select
@@ -2249,7 +2295,7 @@ export default function AdminDashboard() {
                     ))}
                     {businesses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
                           No merchants onboarded yet.
                         </TableCell>
                       </TableRow>
