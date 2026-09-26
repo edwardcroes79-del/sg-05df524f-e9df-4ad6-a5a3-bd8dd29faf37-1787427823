@@ -1160,20 +1160,66 @@ export default function AdminDashboard() {
       if (paymentError) throw paymentError;
 
       // Update business subscription plan
-      const { error: businessError } = await supabase
-        .from("businesses")
-        .update({
-          subscription_plan: payment.plan_id,
-          status: "active",
-        })
-        .eq("id", payment.business_id);
+      if (payment.metadata?.kind === "addon_purchase") {
+        const subscriptionId = payment.metadata?.business_addon_subscription_id;
+        if (!subscriptionId) {
+          throw new Error("Missing add-on subscription reference on this payment.");
+        }
 
-      if (businessError) throw businessError;
+        const { data: existingSubscription, error: subscriptionReadError } = await supabase
+          .from("business_addon_subscriptions")
+          .select("metadata")
+          .eq("id", subscriptionId)
+          .eq("business_id", payment.business_id)
+          .maybeSingle();
 
-      toast({
-        title: "Payment Approved",
-        description: `${payment.businesses.business_name} has been upgraded to ${payment.plan_id.toUpperCase()} plan.`,
-      });
+        if (subscriptionReadError) throw subscriptionReadError;
+        if (!existingSubscription) {
+          throw new Error("Pending add-on subscription was not found for this business.");
+        }
+
+        const now = new Date().toISOString();
+        const { error: addonError } = await supabase
+          .from("business_addon_subscriptions")
+          .update({
+            status: "active",
+            payment_status: "approved",
+            starts_at: now,
+            current_period_start: now,
+            metadata: {
+              ...(existingSubscription.metadata || {}),
+              pending_payment: false,
+              approved_payment_id: payment.id,
+              approved_by: user.id,
+              approved_at: now,
+            },
+            updated_at: now,
+          })
+          .eq("id", subscriptionId)
+          .eq("business_id", payment.business_id);
+
+        if (addonError) throw addonError;
+
+        toast({
+          title: "Add-on Payment Approved",
+          description: `${payment.businesses.business_name}'s customer capacity add-on is now active.`,
+        });
+      } else {
+        const { error: businessError } = await supabase
+          .from("businesses")
+          .update({
+            subscription_plan: payment.plan_id,
+            status: "active",
+          })
+          .eq("id", payment.business_id);
+
+        if (businessError) throw businessError;
+
+        toast({
+          title: "Payment Approved",
+          description: `${payment.businesses.business_name} has been upgraded to ${payment.plan_id.toUpperCase()} plan.`,
+        });
+      }
 
       setReviewingPayment(null);
       setAdminNotes("");
@@ -1215,6 +1261,39 @@ export default function AdminDashboard() {
         .eq("id", payment.id);
 
       if (error) throw error;
+
+      if (payment.metadata?.kind === "addon_purchase" && payment.metadata?.business_addon_subscription_id) {
+        const { data: existingSubscription, error: subscriptionReadError } = await supabase
+          .from("business_addon_subscriptions")
+          .select("metadata")
+          .eq("id", payment.metadata.business_addon_subscription_id)
+          .eq("business_id", payment.business_id)
+          .maybeSingle();
+
+        if (subscriptionReadError) throw subscriptionReadError;
+
+        if (existingSubscription) {
+          const { error: addonError } = await supabase
+            .from("business_addon_subscriptions")
+            .update({
+              status: "cancelled",
+              payment_status: "rejected",
+              ends_at: new Date().toISOString(),
+              metadata: {
+                ...(existingSubscription.metadata || {}),
+                pending_payment: false,
+                rejected_payment_id: payment.id,
+                rejected_by: user.id,
+                rejected_at: new Date().toISOString(),
+              },
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", payment.metadata.business_addon_subscription_id)
+            .eq("business_id", payment.business_id);
+
+          if (addonError) throw addonError;
+        }
+      }
 
       toast({
         title: "Payment Rejected",
@@ -1708,7 +1787,7 @@ export default function AdminDashboard() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Business</TableHead>
-                      <TableHead>Plan</TableHead>
+                      <TableHead>Plan / Add-on</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Reference</TableHead>
                       <TableHead>Submitted</TableHead>
@@ -1720,7 +1799,11 @@ export default function AdminDashboard() {
                     {payments.map((payment) => (
                       <TableRow key={payment.id}>
                         <TableCell className="font-semibold">{payment.businesses?.business_name || "Unknown"}</TableCell>
-                        <TableCell className="uppercase font-mono text-xs">{payment.plan_id}</TableCell>
+                        <TableCell className="uppercase font-mono text-xs">
+                          {payment.metadata?.kind === "addon_purchase"
+                            ? payment.metadata?.addon_name || "Customer capacity add-on"
+                            : payment.plan_id}
+                        </TableCell>
                         <TableCell className="font-semibold">AWG {payment.amount.toFixed(2)}</TableCell>
                         <TableCell className="font-mono text-xs">{payment.payment_reference}</TableCell>
                         <TableCell>{new Date(payment.created_at).toLocaleDateString()}</TableCell>
@@ -1788,7 +1871,11 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Plan Upgrade</p>
-                        <p className="font-semibold uppercase">{reviewingPayment.plan_id}</p>
+                        <p className="font-semibold uppercase">
+                          {reviewingPayment.metadata?.kind === "addon_purchase"
+                            ? reviewingPayment.metadata?.addon_name || "Customer capacity add-on"
+                            : reviewingPayment.plan_id}
+                        </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Amount</p>
