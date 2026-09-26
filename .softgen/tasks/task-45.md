@@ -1,6 +1,6 @@
 ---
 title: Customer Reward Countdown
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [rewards, customer-ui, countdown]
@@ -19,13 +19,13 @@ Replace static expiration dates with an active, auto-updating countdown.
 - Expired and "No expiration" states remain supported.
 
 ## Checklist
-- [ ] Inspect existing `src/pages/customer/rewards.tsx` and `src/pages/customer/cards.tsx`.
-- [ ] Implement a lightweight local state/effect for countdown formatting without database polling.
-- [ ] Update `rewards.tsx` to display countdown for active rewards.
-- [ ] Update `cards.tsx` to display countdown in unlocked reward modal/display.
-- [ ] Ensure formatting matches requirements without layout shift or horizontal scroll.
-- [ ] Validate on desktop and mobile viewports.
-- [ ] Run project validation.
+- [x] Inspect existing `src/pages/customer/rewards.tsx` and `src/pages/customer/cards.tsx`.
+- [x] Implement a lightweight local state/effect for countdown formatting without database polling.
+- [x] Update `rewards.tsx` to display countdown for active rewards.
+- [x] Update `cards.tsx` to display countdown in unlocked reward modal/display.
+- [x] Ensure formatting matches requirements without layout shift or horizontal scroll.
+- [x] Validate on desktop and mobile viewports.
+- [x] Run project validation.
 
 ## Acceptance
 Active rewards show an auto-updating countdown based on their `expires_at` timestamp.
