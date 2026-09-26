@@ -2075,225 +2075,110 @@ export default function AdminDashboard() {
                   </TableHeader>
                   <TableBody>
                     {businesses.map((biz) => {
-                      const bizPlan = plans.find((p) => p.id === biz.subscription_plan);
-                      const planPrice = Number(bizPlan?.price_awg || 0);
+  const bizPlan = plans.find((p) => p.id === biz.subscription_plan);
+  const planPrice = Number(bizPlan?.price_awg || 0);
 
-                      const activeAddonSubs = businessAddonSubscriptions.filter(
-                        (sub) => sub.business_id === biz.id && sub.status === "active" && sub.payment_status === "approved"
-                      );
+  const activeAddonSubs = businessAddonSubscriptions.filter(
+    (sub) => sub.business_id === biz.id && sub.status === "active" && sub.payment_status === "approved"
+  );
 
-                      const addonTotal = activeAddonSubs.reduce((total, sub) => {
-                        const addon = Array.isArray(sub.subscription_addons) ? sub.subscription_addons[0] : sub.subscription_addons;
-                        return total + (Number(addon?.monthly_price_awg || 0) * Number(sub.quantity || 1));
-                      }, 0);
+  const addonTotal = activeAddonSubs.reduce((total, sub) => {
+    const addon = Array.isArray(sub.subscription_addons) ? sub.subscription_addons[0] : sub.subscription_addons;
+    return total + (Number(addon?.monthly_price_awg || 0) * Number(sub.quantity || 1));
+  }, 0);
 
-                      const totalSubscription = planPrice + addonTotal;
+  const totalSubscription = planPrice + addonTotal;
 
-                      return (
-                      <TableRow key={biz.id}>
-                        <TableCell className="font-semibold">{biz.business_name}</TableCell>
-                        <TableCell>{new Date(biz.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={biz.status === "active" ? "default" : biz.status === "pending" ? "secondary" : "destructive"}
-                            className={biz.status === "pending" ? "bg-amber-100 text-amber-800 hover:bg-amber-100" : "mb-2"}
-                          >
-                            {biz.status?.toUpperCase()}
-                          </Badge>
-                          
-                          <div className="flex flex-col gap-1.5 mt-2 border-t pt-2">
-                            {/* Detailed Email Tracking via Logs */}
-                            {(() => {
-                              const approvalLog = biz.email_logs?.find((l: any) => l.email_type === 'client_approval');
-                              const adminNotifLog = biz.email_logs?.find((l: any) => l.email_type === 'admin_notification');
-
-                              return (
-                                <>
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Approval Email</span>
-                                    {approvalLog ? (
-                                      approvalLog.status === 'sent' ? (
-                                        <div className="text-[11px] text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle className="h-3 w-3" /> Sent</div>
-                                      ) : approvalLog.status === 'failed' ? (
-                                        <div className="text-[11px] text-destructive flex items-center gap-1 font-medium" title={approvalLog.error_message}><XCircle className="h-3 w-3" /> Failed (Attempt {approvalLog.attempt_count})</div>
-                                      ) : (
-                                        <div className="text-[11px] text-amber-600 flex items-center gap-1 font-medium"><Clock className="h-3 w-3" /> Pending</div>
-                                      )
-                                    ) : biz.status === "active" ? (
-                                      <div className="text-[11px] text-muted-foreground italic">Missing log</div>
-                                    ) : (
-                                      <div className="text-[11px] text-muted-foreground">Not triggered</div>
-                                    )}
-                                  </div>
-
-                                  <div className="flex flex-col gap-0.5 mt-1">
-                                    <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Admin Notif</span>
-                                    {adminNotifLog ? (
-                                      adminNotifLog.status === 'sent' ? (
-                                        <div className="text-[11px] text-emerald-600 flex items-center gap-1 font-medium"><CheckCircle className="h-3 w-3" /> Sent</div>
-                                      ) : adminNotifLog.status === 'failed' ? (
-                                        <div className="text-[11px] text-destructive flex items-center gap-1 font-medium" title={adminNotifLog.error_message}><XCircle className="h-3 w-3" /> Failed (Attempt {adminNotifLog.attempt_count})</div>
-                                      ) : (
-                                        <div className="text-[11px] text-amber-600 flex items-center gap-1 font-medium"><Clock className="h-3 w-3" /> Pending</div>
-                                      )
-                                    ) : (
-                                      <div className="text-[11px] text-muted-foreground italic">Missing log</div>
-                                    )}
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
-                          {biz.trial_end && plans.find(p => p.id === biz.subscription_plan)?.is_trial && (
-                            <div className="text-[10px] mt-1.5 flex flex-col gap-0.5">
-                              <span className="text-muted-foreground">Start: {new Date(biz.trial_start).toLocaleDateString()}</span>
-                              {new Date() > new Date(biz.trial_end) ? (
-                                <span className="text-destructive font-semibold">Expired: {new Date(biz.trial_end).toLocaleDateString()}</span>
-                              ) : (
-                                <span className="text-indigo-600 font-semibold">Ends: {new Date(biz.trial_end).toLocaleDateString()}</span>
-                              )}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-semibold text-foreground">
-                          {bizPlan ? `AWG ${planPrice.toFixed(2)}` : "-"}
-                        </TableCell>
-                        <TableCell>
-                          {activeAddonSubs.length > 0 ? (
-                            <div className="flex flex-col gap-1">
-                              {activeAddonSubs.map(sub => {
-                                const addon = Array.isArray(sub.subscription_addons) ? sub.subscription_addons[0] : sub.subscription_addons;
-                                const addedCapacity = Number(addon?.capacity_amount || 0) * Number(sub.quantity || 1);
-                                return (
-                                  <span key={sub.id} className="text-xs text-muted-foreground whitespace-nowrap">
-                                    {sub.cancel_at_period_end && <Clock className="inline w-3 h-3 text-amber-500 mr-1" title="Cancels at period end" />}
-                                    +{addedCapacity.toLocaleString()} Customers
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic">None</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-foreground">
-                          {activeAddonSubs.length > 0 ? `AWG ${addonTotal.toFixed(2)}` : "-"}
-                        </TableCell>
-                        <TableCell className="font-bold text-primary whitespace-nowrap">
-                          AWG {totalSubscription.toFixed(2)} / month
-                        </TableCell>
-                        <TableCell className="text-right flex items-center justify-end gap-2">
-                          <select
-                            className="bg-background border border-input rounded px-2 py-1 text-xs"
-                            value={biz.subscription_plan || ""}
-                            onChange={(e) => handleChangePlan(biz.id, e.target.value)}
-                          >
-                            <option value="">Select Plan</option>
-                            {plans
-                              .filter((p) => p.status !== "archived" || p.id === biz.subscription_plan)
-                              .map(p => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name}{p.status === "archived" ? " (Archived)" : ""}
-                                </option>
-                              ))}
-                          </select>
-
-                          {biz.status === "pending" && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700"
-                              onClick={() => handleApproveBusiness(biz.id)}
-                              disabled={approving === biz.id}
-                            >
-                              {approving === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                              Approve
-                            </Button>
-                          )}
-
-                          {biz.email_logs?.find((l: any) => l.email_type === 'client_approval')?.status === "failed" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-xs border-destructive/30 hover:bg-destructive/10 text-destructive"
-                              onClick={() => handleRetryEmail(biz.id)}
-                              disabled={retryingEmail === biz.id}
-                            >
-                              {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                              Resend Approval
-                            </Button>
-                          )}
-
-                          {biz.email_logs?.find((l: any) => l.email_type === 'admin_notification')?.status === "failed" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-xs border-destructive/30 hover:bg-destructive/10 text-destructive"
-                              onClick={() => handleRetryAdminNotification(biz.id)}
-                              disabled={retryingAdminEmail === biz.id}
-                            >
-                              {retryingAdminEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                              Resend Notif
-                            </Button>
-                          )}
-
-                          {/* Fallback buttons for legacy rows without logs yet */}
-                          {!biz.email_logs?.length && biz.status === "active" && biz.approval_email_status === "failed" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-xs border-destructive/30 hover:bg-destructive/10 text-destructive"
-                              onClick={() => handleRetryEmail(biz.id)}
-                              disabled={retryingEmail === biz.id}
-                            >
-                              {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                              Resend Approval
-                            </Button>
-                          )}
-                          {!biz.email_logs?.length && biz.admin_notify_status === "failed" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1 text-xs border-destructive/30 hover:bg-destructive/10 text-destructive"
-                              onClick={() => handleRetryAdminNotification(biz.id)}
-                              disabled={retryingAdminEmail === biz.id}
-                            >
-                              {retryingAdminEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                              Resend Notif
-                            </Button>
-                          )}
-
-                          <Button
-                            variant={biz.status === "active" ? "destructive" : "default"}
-                            size="sm"
-                            className="gap-1 text-xs"
-                            onClick={() => handleToggleBusinessStatus(biz.id, biz.status)}
-                          >
-                            {biz.status === "active" ? (
-                              <>
-                                <Ban className="h-3.5 w-3.5" /> Suspend
-                              </>
-                            ) : (
-                              <>
-                                <Power className="h-3.5 w-3.5" /> Activate
-                              </>
-                            )}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="gap-1 text-xs"
-                            onClick={() => setBusinessToDelete(biz)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" /> Delete
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {businesses.length === 0 && (
+  return (
+  <TableRow key={biz.id}>
+    <TableCell className="font-semibold">{biz.business_name}</TableCell>
+    <TableCell>{new Date(biz.created_at).toLocaleDateString()}</TableCell>
+    <TableCell>
+      <Badge 
+        variant={biz.status === "active" ? "default" : biz.status === "pending" ? "secondary" : "destructive"}
+      >
+        {biz.status.toUpperCase()}
+      </Badge>
+    </TableCell>
+    <TableCell>
+      <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
+      {biz.trial_end && plans.find(p => p.id === biz.subscription_plan)?.is_trial && (
+        <div className="text-[10px] mt-1.5 flex flex-col gap-0.5">
+          <span className="text-muted-foreground">Start: {new Date(biz.trial_start).toLocaleDateString()}</span>
+          {new Date() > new Date(biz.trial_end) ? (
+            <span className="text-destructive font-semibold">Expired: {new Date(biz.trial_end).toLocaleDateString()}</span>
+          ) : (
+            <span className="text-indigo-600 font-semibold">Ends: {new Date(biz.trial_end).toLocaleDateString()}</span>
+          )}
+        </div>
+      )}
+    </TableCell>
+    <TableCell className="font-semibold text-foreground">
+      {bizPlan ? `AWG ${planPrice.toFixed(2)}` : "-"}
+    </TableCell>
+    <TableCell>
+      {activeAddonSubs.length > 0 ? (
+        <div className="flex flex-col gap-1">
+          {activeAddonSubs.map(sub => {
+            const addon = Array.isArray(sub.subscription_addons) ? sub.subscription_addons[0] : sub.subscription_addons;
+            const addedCapacity = Number(addon?.capacity_amount || 0) * Number(sub.quantity || 1);
+            return (
+              <span key={sub.id} className="text-xs text-muted-foreground whitespace-nowrap">
+                {sub.cancel_at_period_end && <Clock className="inline w-3 h-3 text-amber-500 mr-1" title="Cancels at period end" />}
+                +{addedCapacity.toLocaleString()} Customers
+              </span>
+            );
+          })}
+        </div>
+      ) : (
+        <span className="text-xs text-muted-foreground italic">None</span>
+      )}
+    </TableCell>
+    <TableCell className="text-foreground">
+      {activeAddonSubs.length > 0 ? `AWG ${addonTotal.toFixed(2)}` : "-"}
+    </TableCell>
+    <TableCell className="font-bold text-primary whitespace-nowrap">
+      AWG {totalSubscription.toFixed(2)} / month
+    </TableCell>
+    <TableCell className="text-right flex items-center justify-end gap-2">
+      <select
+        className="text-xs border rounded px-2 py-1 mr-2 bg-background"
+        value={biz.subscription_plan || ""}
+        onChange={(e) => handlePlanAssignment(biz.id, e.target.value)}
+        disabled={assigningPlanId === biz.id}
+      >
+        <option value="">No Plan</option>
+        {plans.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      <Button
+        variant="outline"
+        size="sm"
+        className="gap-1 text-xs"
+        onClick={() => {
+          const newStatus = biz.status === "active" ? "suspended" : "active";
+          handleToggleBusinessStatus(biz.id, newStatus);
+        }}
+      >
+        {biz.status === "active" ? <Ban className="h-3.5 w-3.5 text-amber-500" /> : <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+        {biz.status === "active" ? "Suspend" : "Activate"}
+      </Button>
+      <Button
+        variant="destructive"
+        size="sm"
+        className="gap-1 text-xs"
+        onClick={() => setBusinessToDelete(biz)}
+      >
+        <Trash2 className="h-3.5 w-3.5" /> Delete
+      </Button>
+    </TableCell>
+  </TableRow>
+  );
+})}
+{businesses.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
                           No merchants onboarded yet.
