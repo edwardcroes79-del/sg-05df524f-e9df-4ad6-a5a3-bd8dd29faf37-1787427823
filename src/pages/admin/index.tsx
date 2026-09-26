@@ -1242,8 +1242,9 @@ export default function AdminDashboard() {
     const isAddonApprovalPayment =
       (payment.metadata?.kind === "subscription_change" && payment.metadata?.change_type === "addon_purchase") ||
       payment.metadata?.kind === "addon_purchase";
+    const isPlanChangeRequest = payment.metadata?.kind === "subscription_plan_change";
 
-    if (payment.provider === "bank_transfer" && !payment.payment_proof_url && !isAddonApprovalPayment) {
+    if (payment.provider === "bank_transfer" && !payment.payment_proof_url && !isAddonApprovalPayment && !isPlanChangeRequest) {
       toast({
         title: "Payment Proof Required",
         description: "Manual bank-transfer subscription payments require uploaded proof before approval.",
@@ -1257,14 +1258,24 @@ export default function AdminDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Update payment status
+      const reviewedAt = new Date().toISOString();
+      const paymentMetadata = asMetadataObject(payment.metadata);
+
+      // Update payment/request status
       const { error: paymentError } = await supabase
         .from("subscription_payments")
         .update({
           status: "approved",
           admin_notes: adminNotes,
           reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
+          reviewed_at: reviewedAt,
+          metadata: {
+            ...paymentMetadata,
+            notification_status: "approved",
+            approved_by: user.id,
+            approved_at: reviewedAt,
+            business_notified_status: "approved",
+          },
         })
         .eq("id", payment.id);
 
@@ -1321,49 +1332,26 @@ export default function AdminDashboard() {
           title: "Subscription Change Approved",
           description: `${payment.businesses.business_name}'s add-on is now part of the active subscription.`,
         });
-      } else if (payment.metadata?.kind === "addon_purchase") {
-        const subscriptionId = payment.metadata?.business_addon_subscription_id;
-        if (!subscriptionId) {
-          throw new Error("Missing add-on subscription reference on this payment.");
+      } else if (isPlanChangeRequest) {
+        const requestedPlanId = String(payment.metadata?.requested_plan_id || payment.plan_id || "");
+        if (!requestedPlanId) {
+          throw new Error("Missing requested plan on this subscription change request.");
         }
 
-        const { data: existingSubscription, error: subscriptionReadError } = await supabase
-          .from("business_addon_subscriptions")
-          .select("metadata")
-          .eq("id", subscriptionId)
-          .eq("business_id", payment.business_id)
-          .maybeSingle();
-
-        if (subscriptionReadError) throw subscriptionReadError;
-        if (!existingSubscription) {
-          throw new Error("Pending add-on subscription was not found for this business.");
-        }
-
-        const now = new Date().toISOString();
-        const { error: addonError } = await supabase
-          .from("business_addon_subscriptions")
+        const { error: businessError } = await supabase
+          .from("businesses")
           .update({
+            subscription_plan: requestedPlanId,
+            subscription_status: "active",
             status: "active",
-            payment_status: "approved",
-            starts_at: now,
-            current_period_start: now,
-            metadata: {
-              ...asMetadataObject(existingSubscription.metadata),
-              pending_payment: false,
-              approved_payment_id: payment.id,
-              approved_by: user.id,
-              approved_at: now,
-            },
-            updated_at: now,
           })
-          .eq("id", subscriptionId)
-          .eq("business_id", payment.business_id);
+          .eq("id", payment.business_id);
 
-        if (addonError) throw addonError;
+        if (businessError) throw businessError;
 
         toast({
-          title: "Add-on Payment Approved",
-          description: `${payment.businesses.business_name}'s customer capacity add-on is now active.`,
+          title: payment.metadata?.change_type === "downgrade" ? "Downgrade Approved" : "Plan Change Approved",
+          description: `${payment.businesses.business_name} is now on the ${payment.metadata?.requested_plan_name || requestedPlanId} plan. Existing customer and loyalty data was preserved.`,
         });
       } else {
         const { error: businessError } = await supabase
@@ -1411,13 +1399,23 @@ export default function AdminDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      const rejectedAt = new Date().toISOString();
+      const paymentMetadata = asMetadataObject(payment.metadata);
+
       const { error } = await supabase
         .from("subscription_payments")
         .update({
           status: "rejected",
           admin_notes: adminNotes,
           reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
+          reviewed_at: rejectedAt,
+          metadata: {
+            ...paymentMetadata,
+            notification_status: "rejected",
+            rejected_by: user.id,
+            rejected_at: rejectedAt,
+            business_notified_status: "rejected",
+          },
         })
         .eq("id", payment.id);
 
@@ -2003,7 +2001,7 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Payment Review Queue</CardTitle>
-                <CardDescription>Review manual subscription payments and direct add-on approval requests.</CardDescription>
+                <CardDescription>Review manual subscription payments, subscription plan-change requests, and direct add-on approval requests.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -2023,7 +2021,9 @@ export default function AdminDashboard() {
                       <TableRow key={payment.id}>
                         <TableCell className="font-semibold">{payment.businesses?.business_name || "Unknown"}</TableCell>
                         <TableCell className="uppercase font-mono text-xs">
-                          {payment.metadata?.kind === "subscription_change"
+                          {payment.metadata?.kind === "subscription_plan_change"
+                            ? payment.metadata?.notification_title || "Subscription Plan Change Request"
+                            : payment.metadata?.kind === "subscription_change"
                             ? "Subscription change"
                             : payment.metadata?.kind === "addon_purchase"
                             ? payment.metadata?.addon_name || "Customer capacity add-on"
@@ -2084,8 +2084,12 @@ export default function AdminDashboard() {
             {reviewingPayment && (
               <Card className="mt-6">
                 <CardHeader>
-                  <CardTitle>Review Payment: {reviewingPayment.businesses?.business_name}</CardTitle>
-                  <CardDescription>Verify payment proof and approve or reject the subscription change.</CardDescription>
+                  <CardTitle>Review {reviewingPayment.metadata?.kind === "subscription_plan_change" ? "Subscription Plan Change" : "Payment"}: {reviewingPayment.businesses?.business_name}</CardTitle>
+                  <CardDescription>
+                    {reviewingPayment.metadata?.kind === "subscription_plan_change"
+                      ? "Review the requested plan change before it becomes effective."
+                      : "Verify payment proof and approve or reject the subscription change."}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
@@ -2097,29 +2101,58 @@ export default function AdminDashboard() {
                       <div>
                         <p className="text-sm text-muted-foreground">Subscription Change</p>
                         <p className="font-semibold">
-                          {reviewingPayment.metadata?.kind === "subscription_change"
+                          {reviewingPayment.metadata?.kind === "subscription_plan_change"
+                            ? `${reviewingPayment.metadata?.current_plan_name || "Current plan"} → ${reviewingPayment.metadata?.requested_plan_name || reviewingPayment.plan_id}`
+                            : reviewingPayment.metadata?.kind === "subscription_change"
                             ? `${reviewingPayment.metadata?.base_plan_name || reviewingPayment.plan_id} + requested add-ons`
                             : reviewingPayment.metadata?.kind === "addon_purchase"
                             ? reviewingPayment.metadata?.addon_name || "Customer capacity add-on"
                             : reviewingPayment.plan_id}
                         </p>
                       </div>
-                      {reviewingPayment.metadata?.kind === "subscription_change" && (
-                        <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
-                          <div className="flex justify-between gap-3 text-sm">
-                            <span className="text-muted-foreground">Base Subscription</span>
-                            <strong>AWG {Number(reviewingPayment.metadata?.base_plan_price_awg || 0).toFixed(2)}/month</strong>
+                      {reviewingPayment.metadata?.kind === "subscription_plan_change" && (
+                        <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={reviewingPayment.metadata?.change_type === "downgrade" ? "secondary" : "default"}>
+                              {reviewingPayment.metadata?.change_type === "downgrade" ? "Downgrade Request" : "Upgrade Request"}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              Requested {reviewingPayment.metadata?.requested_at ? new Date(reviewingPayment.metadata.requested_at).toLocaleString() : new Date(reviewingPayment.created_at).toLocaleString()}
+                            </span>
                           </div>
-                          {Array.isArray(reviewingPayment.metadata?.requested_addons) && reviewingPayment.metadata.requested_addons.map((requestedAddon: any) => (
-                            <div key={requestedAddon.business_addon_subscription_id || requestedAddon.addon_id} className="flex justify-between gap-3 text-sm">
-                              <span className="text-muted-foreground">{requestedAddon.addon_name} × {requestedAddon.quantity || 1}</span>
-                              <strong>AWG {Number(requestedAddon.monthly_total_awg || 0).toFixed(2)}/month</strong>
+                          <div className="grid gap-3 text-sm sm:grid-cols-2">
+                            <div>
+                              <p className="text-muted-foreground">Current Plan</p>
+                              <p className="font-semibold">{reviewingPayment.metadata?.current_plan_name}</p>
+                              <p className="text-xs text-muted-foreground">AWG {Number(reviewingPayment.metadata?.current_plan_price_awg || 0).toFixed(2)}/month</p>
                             </div>
-                          ))}
-                          <div className="border-t pt-2 flex justify-between gap-3 text-sm">
-                            <span className="font-semibold text-foreground">New Monthly Total</span>
-                            <strong className="text-primary">AWG {Number(reviewingPayment.metadata?.new_monthly_total || reviewingPayment.amount || 0).toFixed(2)}/month</strong>
+                            <div>
+                              <p className="text-muted-foreground">Requested Plan</p>
+                              <p className="font-semibold">{reviewingPayment.metadata?.requested_plan_name}</p>
+                              <p className="text-xs text-primary font-semibold">AWG {Number(reviewingPayment.metadata?.requested_plan_price_awg || reviewingPayment.amount || 0).toFixed(2)}/month</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Current Entitlements</p>
+                              <p className="font-semibold">{Number(reviewingPayment.metadata?.current_entitlements?.max_loyalty_programs || 0).toLocaleString()} Loyalty Programs</p>
+                              <p className="text-xs text-muted-foreground">{Number(reviewingPayment.metadata?.current_entitlements?.max_customers || 0).toLocaleString()} Loyalty Members · {Number(reviewingPayment.metadata?.current_entitlements?.max_staff || 0).toLocaleString()} Staff</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Requested Entitlements</p>
+                              <p className="font-semibold">{Number(reviewingPayment.metadata?.requested_entitlements?.max_loyalty_programs || 0).toLocaleString()} Loyalty Programs</p>
+                              <p className="text-xs text-muted-foreground">{Number(reviewingPayment.metadata?.requested_entitlements?.max_customers || 0).toLocaleString()} Loyalty Members · {Number(reviewingPayment.metadata?.requested_entitlements?.max_staff || 0).toLocaleString()} Staff</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Current Member Count</p>
+                              <p className="font-semibold">{Number(reviewingPayment.metadata?.current_member_count || 0).toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Current Staff Count</p>
+                              <p className="font-semibold">{Number(reviewingPayment.metadata?.current_staff_count || 0).toLocaleString()}</p>
+                            </div>
                           </div>
+                          <p className="text-xs text-muted-foreground border-t pt-2">
+                            Existing customers, cards, stamps, and rewards are preserved. If usage is above the new limit, existing data stays safe and new additions follow the existing limit rules.
+                          </p>
                         </div>
                       )}
                       <div>
@@ -2137,7 +2170,13 @@ export default function AdminDashboard() {
                     </div>
 
                     <div>
-                      {reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase" ? (
+                      {reviewingPayment.metadata?.kind === "subscription_plan_change" ? (
+                        <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
+                          <Clock className="h-8 w-8 text-primary mx-auto" />
+                          <p className="font-semibold text-foreground">{reviewingPayment.metadata?.notification_title || "Subscription Plan Change Request"}</p>
+                          <p className="text-sm text-muted-foreground">No payment proof is required. Super Admin approval applies the requested plan change.</p>
+                        </div>
+                      ) : reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase" ? (
                         <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
                           <CheckCircle className="h-8 w-8 text-primary mx-auto" />
                           <p className="font-semibold text-foreground">Customer capacity add-on approval</p>
@@ -2201,17 +2240,19 @@ export default function AdminDashboard() {
                   <Button 
                     variant="destructive"
                     onClick={() => handleRejectPayment(reviewingPayment)}
-                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase")}
+                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase" && reviewingPayment.metadata?.kind !== "subscription_plan_change")}
                   >
                     {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                    Reject Payment
+                    {reviewingPayment.metadata?.kind === "subscription_plan_change" ? "Reject Request" : "Reject Payment"}
                   </Button>
                   <Button 
                     onClick={() => handleApprovePayment(reviewingPayment)}
-                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase")}
+                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase" && reviewingPayment.metadata?.kind !== "subscription_plan_change")}
                   >
                     {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                    Approve & Activate
+                    {reviewingPayment.metadata?.kind === "subscription_plan_change"
+                      ? reviewingPayment.metadata?.change_type === "downgrade" ? "Approve Downgrade" : "Approve Plan Change"
+                      : "Approve & Activate"}
                   </Button>
                 </CardFooter>
               </Card>
