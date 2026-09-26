@@ -317,16 +317,10 @@ export default function BillingPage() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from("payment-proofs")
-        .getPublicUrl(filePath);
-
-      const proofUrl = publicUrlData.publicUrl;
-
       const { error: updateError } = await supabase
         .from("subscription_payments")
         .update({
-          payment_proof_url: proofUrl,
+          payment_proof_url: filePath,
           metadata: {
             ...(payment.metadata || {}),
             proof_uploaded_at: new Date().toISOString(),
@@ -552,6 +546,7 @@ export default function BillingPage() {
                       {activeAddonSubscriptions.map((subscription) => {
                         const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
                         const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
+                        const subscriptionAmount = Number(addon?.monthly_price_awg || 0) * Number(subscription.quantity || 1);
 
                         return (
                           <div key={subscription.id} className="flex items-center justify-between gap-3 text-sm">
