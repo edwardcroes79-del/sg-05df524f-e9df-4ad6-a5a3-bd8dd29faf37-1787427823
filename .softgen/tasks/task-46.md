@@ -1,6 +1,6 @@
 ---
 title: Flexible Plan System Audit
-status: in_progress
+status: done
 priority: high
 type: chore
 tags: [billing, subscriptions, architecture, audit]
@@ -10,16 +10,16 @@ position: 46
 ---
 
 ## Notes
-Audit-only Phase 1 for making the Royalty Stamp subscription plan system flexible and database-driven. Do not change production billing behavior, customer subscriptions, existing plans, pricing, entitlements, payment integrations, Supabase Auth, or RLS. Inspect where plans/prices/limits/statuses are stored, where Starter/Business/Enterprise are hard-coded, how upgrades/downgrades/trials work, and recommend a safe Phase 2 architecture without implementing it.
+Completed audit-only Phase 1 for making the Royalty Stamp subscription plan system flexible and database-driven. No production billing behavior, customer subscriptions, existing plans, pricing, entitlements, payment integrations, Supabase Auth, RLS, or code behavior was changed. Current architecture: plans are stored in `subscription_plans`; businesses store assignment in `businesses.subscription_plan`; plan status/trials use `subscription_status`, `trial_start`, and `trial_end`; limits and limited entitlements are stored as plan columns such as `max_loyalty_programs`, `max_customers`, `max_staff`, `includes_premium_templates`, `is_trial`, and `trial_days`. Hard-coded checks remain in billing, dashboard layout, dashboard overview, onboarding, and program template access for `starter`, `business`, `enterprise`, `pro`, and `trial`. Recommended future architecture: keep current plans intact, add database-driven entitlement records keyed by feature/limit, and migrate enforcement gradually with compatibility fallbacks.
 
 ## Checklist
-- [ ] Inspect database schema for plan/subscription-related tables and business subscription columns
-- [ ] Search for hard-coded plan names, pricing, limits, and feature checks
-- [ ] Inspect billing, admin, business approval, registration, and limit enforcement flows
-- [ ] Identify current subscription structure and entitlement model
-- [ ] Produce recommended database-driven plan/entitlement architecture
-- [ ] Document risks and a Phase 2 implementation plan
-- [ ] Stop without production behavior changes
+- [x] Inspect database schema for plan/subscription-related tables and business subscription columns
+- [x] Search for hard-coded plan names, pricing, limits, and feature checks
+- [x] Inspect billing, admin, business approval, registration, and limit enforcement flows
+- [x] Identify current subscription structure and entitlement model
+- [x] Produce recommended database-driven plan/entitlement architecture
+- [x] Document risks and a Phase 2 implementation plan
+- [x] Stop without production behavior changes
 
 ## Acceptance
 Current architecture and hard-coded references are documented.
