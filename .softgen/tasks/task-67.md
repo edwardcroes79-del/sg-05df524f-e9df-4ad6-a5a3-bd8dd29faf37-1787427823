@@ -17,13 +17,13 @@ Must respect `prefers-reduced-motion` accessibility settings (disable animation)
 Do not change underlying content, DB logic, or layout.
 
 ## Checklist
-- [ ] Open `DashboardLayout.tsx` and `globals.css`.
-- [ ] Add custom CSS keyframes for a gentle bell shake with a built-in pause (`bell-shake-pause`).
-- [ ] Ensure `prefers-reduced-motion` disables the animation.
-- [ ] Apply the animation class to the Bell icon conditionally (`!hasReadWhatsNew`).
-- [ ] Verify animation stops when opened.
-- [ ] Check responsive and layout stability.
-- [ ] Run project validation.
+- [x] Open `DashboardLayout.tsx` and `globals.css`.
+- [x] Add custom CSS keyframes for a gentle bell shake with a built-in pause (`bell-shake-pause`).
+- [x] Ensure `prefers-reduced-motion` disables the animation.
+- [x] Apply the animation class to the Bell icon conditionally (`!hasReadWhatsNew`).
+- [x] Verify animation stops when opened.
+- [x] Check responsive and layout stability.
+- [x] Run project validation.
 
 ## Acceptance
 Unread What's New item causes the icon to animate subtly.
