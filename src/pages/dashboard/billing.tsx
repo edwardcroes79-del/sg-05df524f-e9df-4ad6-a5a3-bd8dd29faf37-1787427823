@@ -10,6 +10,20 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, Clock, CheckCircle, XCircle, AlertCircle, Loader2, PlusCircle } from "lucide-react";
 
+type PaymentRow = {
+  id: string;
+  business_id: string | null;
+  amount: number;
+  currency: string | null;
+  status: string | null;
+  payment_reference: string | null;
+  payment_proof_url: string | null;
+  admin_notes: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  metadata?: Record<string, any> | null;
+};
+
 export default function BillingPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -21,7 +35,8 @@ export default function BillingPage() {
   const [currentMemberCount, setCurrentMemberCount] = useState(0);
   const [availableAddons, setAvailableAddons] = useState<any[]>([]);
   const [activeAddonSubscriptions, setActiveAddonSubscriptions] = useState<any[]>([]);
-  const [addonPayments, setAddonPayments] = useState<any[]>([]);
+  const [addonPayments, setAddonPayments] = useState<PaymentRow[]>([]);
+  const [uploadingProofId, setUploadingProofId] = useState<string | null>(null);
   const [addonActionId, setAddonActionId] = useState<string | null>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
@@ -242,6 +257,90 @@ export default function BillingPage() {
       });
     } finally {
       setAddonActionId(null);
+    }
+  };
+
+  const handleAddonProofUpload = async (payment: PaymentRow, file: File | null) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+      toast({
+        title: "Invalid file type",
+        description: "Upload an image or PDF payment proof.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a payment proof under 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setUploadingProofId(payment.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+      if (!business?.id || payment.business_id !== business.id) {
+        throw new Error("Payment proof can only be uploaded for your own business.");
+      }
+
+      const extension = file.name.split(".").pop()?.toLowerCase() || "bin";
+      const safeReference = (payment.payment_reference || payment.id).replace(/[^a-zA-Z0-9-]/g, "-");
+      const filePath = `${business.id}/${payment.id}-${safeReference}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("payment-proofs")
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from("payment-proofs")
+        .getPublicUrl(filePath);
+
+      const proofUrl = publicUrlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from("subscription_payments")
+        .update({
+          payment_proof_url: proofUrl,
+          metadata: {
+            ...(payment.metadata || {}),
+            proof_uploaded_at: new Date().toISOString(),
+            proof_uploaded_by: session.user.id,
+            proof_storage_path: filePath,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", payment.id)
+        .eq("business_id", business.id)
+        .eq("status", "pending");
+
+      if (updateError) throw updateError;
+
+      toast({
+        title: "Payment proof submitted",
+        description: "Your add-on request is awaiting Super Admin verification.",
+      });
+
+      await refreshAddonOverview();
+      await fetchData();
+    } catch (err: any) {
+      toast({
+        title: "Proof upload failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingProofId(null);
     }
   };
 
@@ -559,18 +658,101 @@ export default function BillingPage() {
               {addonPayments.length > 0 && (
                 <div className="rounded-lg border bg-muted/20 p-4">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Add-on billing requests</p>
-                  <div className="space-y-2">
-                    {addonPayments.slice(0, 3).map((payment) => (
-                      <div key={payment.id} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
-                        <span className="text-muted-foreground">
-                          {payment.metadata?.addon_name || "Customer capacity add-on"} · Reference {payment.payment_reference}
-                        </span>
-                        <Badge variant={getStatusVariant(payment.status)} className="w-max gap-1">
-                          {getStatusIcon(payment.status)}
-                          {payment.status}
-                        </Badge>
-                      </div>
-                    ))}
+                  <div className="space-y-3">
+                    {addonPayments.slice(0, 5).map((payment) => {
+                      const metadata = payment.metadata || {};
+                      const isPending = payment.status === "pending";
+                      const hasProof = Boolean(payment.payment_proof_url);
+
+                      return (
+                        <div key={payment.id} className="rounded-lg border bg-card p-4 text-sm">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-heading font-semibold text-foreground">
+                                  {metadata.addon_name || "Customer capacity add-on"}
+                                </span>
+                                <Badge variant={getStatusVariant(payment.status || "pending")} className="w-max gap-1">
+                                  {getStatusIcon(payment.status || "pending")}
+                                  {payment.status}
+                                </Badge>
+                                {hasProof && (
+                                  <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
+                                    Proof submitted
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                <div>
+                                  <p className="text-muted-foreground">Amount</p>
+                                  <p className="font-semibold">AWG {Number(payment.amount || 0).toFixed(2)} / month</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Payment Reference</p>
+                                  <p className="font-mono font-semibold">{payment.payment_reference}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Capacity</p>
+                                  <p className="font-semibold">+{Number(metadata.added_capacity || 0).toLocaleString()} customers</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground">Submitted</p>
+                                  <p className="font-semibold">{formatDate(payment.created_at)}</p>
+                                </div>
+                              </div>
+                              {payment.admin_notes && (
+                                <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-destructive">
+                                  <p className="font-semibold">Admin notes</p>
+                                  <p>{payment.admin_notes}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="min-w-[240px] rounded-lg border bg-muted/20 p-3">
+                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Manual payment instructions</p>
+                              <p className="mt-2 text-sm text-muted-foreground">
+                                Transfer AWG {Number(payment.amount || 0).toFixed(2)} using reference <strong className="font-mono text-foreground">{payment.payment_reference}</strong>, then upload the bank proof here.
+                              </p>
+                              {payment.payment_proof_url && (
+                                <a
+                                  href={payment.payment_proof_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-3 inline-flex text-sm font-semibold text-primary underline"
+                                >
+                                  View submitted proof
+                                </a>
+                              )}
+                              {isPending && (
+                                <div className="mt-3">
+                                  <input
+                                    id={`addon-proof-${payment.id}`}
+                                    type="file"
+                                    accept="image/*,application/pdf"
+                                    className="hidden"
+                                    onChange={(event) => handleAddonProofUpload(payment, event.target.files?.[0] || null)}
+                                    disabled={uploadingProofId === payment.id}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant={hasProof ? "outline" : "default"}
+                                    className="w-full"
+                                    disabled={uploadingProofId === payment.id}
+                                    onClick={() => document.getElementById(`addon-proof-${payment.id}`)?.click()}
+                                  >
+                                    {uploadingProofId === payment.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                    {hasProof ? "Replace Payment Proof" : "Upload Payment Proof"}
+                                  </Button>
+                                  <p className="mt-2 text-xs text-muted-foreground">
+                                    Status: {hasProof ? "Awaiting Super Admin approval." : "Payment proof required before review can be completed."}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

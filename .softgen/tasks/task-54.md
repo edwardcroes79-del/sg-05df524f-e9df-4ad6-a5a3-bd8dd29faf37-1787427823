@@ -10,13 +10,13 @@ position: 54
 ---
 
 ## Notes
-Fix the Customer Capacity Add-on purchase workflow so Business Admins can complete the same payment verification process used by existing Royalty Stamp billing. Current broken behavior: Business can request an add-on purchase, but no payment proof upload is offered; Super Admin sees a pending payment with "No proof uploaded." Before changing code, inspect the established subscription upgrade payment request, instructions, reference, proof upload, verification, approval, rejection, and activation workflow. Reuse existing payment-proof storage/fields/mechanisms where they exist. Do not create a separate payment architecture unnecessarily. Do not activate add-ons on click; activation must happen only after Super Admin approval. Preserve RLS, business isolation, payment security, Super Admin permissions, and existing normal subscription billing.
+Fix the Customer Capacity Add-on purchase workflow so Business Admins can complete the same payment verification process used by existing Royalty Stamp billing. Current broken behavior: Business can request an add-on purchase, but no payment proof upload is offered; Super Admin sees a pending payment with "No proof uploaded." Inspected the existing billing architecture: `subscription_payments` already stores `payment_reference` and `payment_proof_url`; Super Admin review already displays `payment_proof_url`; architecture notes identify Supabase Storage bucket `payment-proofs` as the existing payment-proof storage pattern. The add-on purchase flow now reuses `subscription_payments.payment_proof_url` and the `payment-proofs` bucket from Business Billing, scoped to the owner business and the exact pending add-on payment record. Activation still only happens from Super Admin approval.
 
 ## Checklist
-- [ ] Inspect existing plan/subscription payment request and proof upload workflow
-- [ ] Identify current payment proof storage field, upload path, and admin review display
-- [ ] Update Business add-on purchase flow to show instructions, amount, reference, proof upload, and pending/rejected status
-- [ ] Associate uploaded proof with the exact business, add-on request, payment reference, amount, and payment record
+- [x] Inspect existing plan/subscription payment request and proof upload workflow
+- [x] Identify current payment proof storage field, upload path, and admin review display
+- [x] Update Business add-on purchase flow to show instructions, amount, reference, proof upload, and pending/rejected status
+- [x] Associate uploaded proof with the exact business, add-on request, payment reference, amount, and payment record
 - [ ] Ensure Super Admin review receives and displays real add-on payment proof
 - [ ] Ensure approval activates the add-on exactly once and rejection preserves history without activation
 - [ ] Verify Business Admin scope, staff restrictions, and cross-business proof isolation
