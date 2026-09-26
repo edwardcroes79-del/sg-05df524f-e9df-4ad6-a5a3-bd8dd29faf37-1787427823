@@ -11,6 +11,75 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
+  const [timeLeft, setTimeLeft] = useState<string>("");
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const expiration = new Date(expiresAt).getTime();
+      const diff = expiration - now;
+
+      if (diff <= 0) {
+        setIsExpired(true);
+        setTimeLeft("");
+        return;
+      }
+
+      setIsExpired(false);
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+
+      if (days > 0) {
+        setTimeLeft(`${days} day${days !== 1 ? 's' : ''} ${hours} hour${hours !== 1 ? 's' : ''}`);
+      } else if (hours > 0) {
+        setTimeLeft(`${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`);
+      } else if (minutes > 0) {
+        setTimeLeft(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+      } else {
+        setTimeLeft(`Less than 1 minute`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 15000); 
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  if (!expiresAt) {
+    return (
+      <div className="font-bold text-foreground flex items-center gap-1.5">
+        <span>♾️</span>
+        <span>No expiration</span>
+      </div>
+    );
+  }
+
+  if (isExpired) {
+    return (
+      <div className="mt-1">
+        <p className="text-sm font-bold text-destructive flex items-center gap-1">
+          ⏰ Reward Expired
+        </p>
+        <p className="text-[10px] text-muted-foreground mt-0.5">
+          This reward can no longer be redeemed.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="font-bold text-amber-600 flex items-center gap-1.5">
+      <span>⏳</span>
+      <span>{timeLeft} remaining</span>
+    </div>
+  );
+};
+
 export default function CustomerRewardsPage() {
   const [loading, setLoading] = useState(true);
   const [rewards, setRewards] = useState<any[]>([]);
@@ -204,11 +273,9 @@ export default function CustomerRewardsPage() {
                         <div className="font-medium text-foreground text-base">
                           {reward.reward_title}
                         </div>
-                        <CardDescription className="text-xs mt-2 space-y-1">
-                          <div className="font-bold text-foreground">
-                            {reward.expires_at ? `Expires: ${new Date(reward.expires_at).toLocaleDateString()}` : "No expiration"}
-                          </div>
-                          <div>Earned on {new Date(reward.earned_at).toLocaleDateString()}</div>
+                        <CardDescription className="text-xs mt-2 space-y-1.5">
+                          <RewardCountdown expiresAt={reward.expires_at} />
+                          <div className="text-muted-foreground">Earned on {new Date(reward.earned_at).toLocaleDateString()}</div>
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-2 flex flex-col items-center justify-center">

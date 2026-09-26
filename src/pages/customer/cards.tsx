@@ -11,6 +11,75 @@ import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
 
+const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
+  const [timeLeft, setTimeLeft] = useState<string>("");
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (!expiresAt) return;
+    
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const expiration = new Date(expiresAt).getTime();
+      const diff = expiration - now;
+
+      if (diff <= 0) {
+        setIsExpired(true);
+        setTimeLeft("");
+        return;
+      }
+
+      setIsExpired(false);
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / 1000 / 60) % 60);
+
+      if (days > 0) {
+        setTimeLeft(`${days} day${days !== 1 ? 's' : ''} ${hours} hour${hours !== 1 ? 's' : ''}`);
+      } else if (hours > 0) {
+        setTimeLeft(`${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`);
+      } else if (minutes > 0) {
+        setTimeLeft(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+      } else {
+        setTimeLeft(`Less than 1 minute`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 15000); 
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  if (!expiresAt) {
+    return (
+      <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 mt-1.5">
+        <span>♾️</span>
+        <span>No expiration</span>
+      </div>
+    );
+  }
+
+  if (isExpired) {
+    return (
+      <div className="mt-1.5">
+        <p className="text-sm font-bold text-destructive flex items-center gap-1">
+          ⏰ Reward Expired
+        </p>
+        <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
+          This reward can no longer be redeemed.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-xs font-bold text-amber-600 flex items-center gap-1.5 mt-1.5">
+      <span>⏳</span>
+      <span>{timeLeft} remaining</span>
+    </div>
+  );
+};
+
 // Safe, browser-native synthesizer. Needs no MP3s, fails silently if blocked.
 const playStampSound = () => {
   try {
@@ -293,12 +362,10 @@ export default function MyCardsPage() {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-primary opacity-90">REWARD UNLOCKED</span>
-                    <h3 className="font-heading font-bold text-lg text-foreground leading-tight">
+                    <h3 className="font-heading font-bold text-lg text-foreground leading-tight mt-0.5">
                       {unlockedReward.reward_title || "Free Reward"}
                     </h3>
-                    <p className="text-xs font-bold text-muted-foreground mt-1">
-                      {unlockedReward.expires_at ? `Expires: ${new Date(unlockedReward.expires_at).toLocaleDateString()}` : "No expiration"}
-                    </p>
+                    <RewardCountdown expiresAt={unlockedReward.expires_at} />
                   </div>
                 </div>
               </div>
