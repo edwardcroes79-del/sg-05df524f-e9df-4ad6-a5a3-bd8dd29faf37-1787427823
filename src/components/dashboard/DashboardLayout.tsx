@@ -468,6 +468,59 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Coming Soon</h3>
               
               <div className="space-y-4">
+                {/* Available Add-ons Announcement (NEW) */}
+                <div 
+                  className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🧩</span>
+                      <h4 className="font-semibold text-foreground">Available Add-ons</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                      NEW
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      Need more room to grow? Add extra customer capacity to your existing plan without changing your current plan.
+                    </p>
+                    <p className="text-sm text-muted-foreground italic">
+                      "Your business is growing? Add more customer capacity when you need it."
+                    </p>
+                    
+                    <div className="pt-2 space-y-2">
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">➕</span>
+                        <span><strong>Add More Customers</strong> - Increase your customer/member capacity when you need it.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">💳</span>
+                        <span><strong>Keep Your Current Plan</strong> - Add capacity without having to switch to a different plan.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">📈</span>
+                        <span><strong>Flexible Growth</strong> - Choose the amount of additional capacity that fits your business.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">⚡</span>
+                        <span><strong>Simple Approval</strong> - Request an add-on and wait for Super Admin approval.</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 mt-2 border-t border-primary/10">
+                      <p className="text-xs font-semibold text-foreground mb-2">Available options:</p>
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">+100 Customers</span>
+                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">+250 Customers</span>
+                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">+500 Customers</span>
+                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">+1,000 Customers</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Reward Expiration Announcement (NEW) */}
                 <div 
                   className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
