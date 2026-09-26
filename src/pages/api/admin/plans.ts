@@ -96,7 +96,7 @@ async function requireSuperAdmin(req: NextApiRequest) {
   return userData.user.id;
 }
 
-async function listPlans(admin: ReturnType<typeof createClient>) {
+async function listPlans(admin: any) {
   const { data: plans, error: planError } = await admin
     .from("subscription_plans")
     .select("*")
