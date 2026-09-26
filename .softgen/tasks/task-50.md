@@ -1,6 +1,6 @@
 ---
 title: Customer Capacity Add-on Management
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [billing, subscriptions, add-ons, admin]
@@ -10,7 +10,7 @@ position: 50
 ---
 
 ## Notes
-Implement Phase 2 for the Add-on System. Create database-driven customer capacity add-on definitions and Super Admin management only. Initial add-ons: +100 customers AWG 5/month, +250 customers AWG 8/month, +500 customers AWG 12/month, +1,000 customers AWG 20/month. Prices, capacity, display order, and status must be editable by Super Admin without code changes. Do not change effective customer limits yet, do not assign add-ons to businesses, do not modify existing plans/subscriptions/billing payments, and do not change customer limit enforcement. Preserve RLS, business isolation, and Super Admin-only permissions. Added `subscription_addons` table with RLS, seeded initial customer-capacity add-on definitions, added secure `/api/admin/addons` route, and added Super Admin add-on management UI.
+Implemented Phase 2 for the Add-on System. Created database-driven customer capacity add-on definitions and Super Admin management only. Initial add-ons were seeded in the database: +100 customers AWG 5/month, +250 customers AWG 8/month, +500 customers AWG 12/month, +1,000 customers AWG 20/month. Prices, capacity, display order, provider metadata, and status are editable by Super Admin without code changes. Effective customer limits were not changed, add-ons were not assigned to businesses, existing plans/subscriptions/billing payments were not modified, and existing customer limit enforcement was not changed. Preserved RLS, business isolation, and Super Admin-only permissions. Added `subscription_addons` table with RLS, seeded initial customer-capacity add-on definitions, added secure `/api/admin/addons` route, and added Super Admin add-on management UI. Project validation passed.
 
 ## Checklist
 - [x] Inspect current schema and existing Super Admin API/UI plan-management pattern
@@ -20,7 +20,7 @@ Implement Phase 2 for the Add-on System. Create database-driven customer capacit
 - [x] Add add-on management UI to the existing Super Admin area
 - [x] Ensure archived add-ons are not positioned for new purchase while preserving historical records
 - [x] Verify non-Super-Admin users cannot manage add-ons
-- [ ] Run project validation
+- [x] Run project validation
 
 ## Acceptance
 Super Admin can create, edit, activate, deactivate, and archive customer capacity add-on definitions.
