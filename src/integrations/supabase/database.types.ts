@@ -1087,6 +1087,33 @@ export type Database = {
         }
         Relationships: []
       }
+      super_admin_notification_reads: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          id: string
+          read_at: string
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          read_at?: string
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: []
+      }
       website_pages: {
         Row: {
           content: string | null
@@ -1233,6 +1260,15 @@ export type Database = {
       redeem_reward_tx: {
         Args: { p_business_id: string; p_reward_code: string }
         Returns: Json
+      }
+      review_subscription_plan_change: {
+        Args: { p_action: string; p_admin_notes?: string; p_payment_id: string }
+        Returns: {
+          business_id: string
+          request_id: string
+          requested_plan_id: string
+          review_status: string
+        }[]
       }
       search_business_customers: {
         Args: { p_business_id: string; p_limit?: number; p_search?: string }

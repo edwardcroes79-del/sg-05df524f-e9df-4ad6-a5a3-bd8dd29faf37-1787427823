@@ -11,12 +11,29 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
 function asMetadataObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+type SuperAdminNotification = {
+  id: string;
+  sourceType: string;
+  sourceId: string;
+  type: string;
+  businessName: string;
+  description: string;
+  createdAt: string;
+  status: "pending" | "approved" | "rejected" | "cancelled" | "resolved";
+  destination: "payments" | "addons" | "merchants";
+  relatedRecord: any;
+};
+
+function notificationKey(sourceType: string, sourceId: string) {
+  return `${sourceType}:${sourceId}`;
 }
 
 export default function AdminDashboard() {
@@ -38,6 +55,9 @@ export default function AdminDashboard() {
     activeTrials: 0,
     expiredTrials: 0,
   });
+  const [notificationReads, setNotificationReads] = useState<Record<string, string>>({});
+  const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const [activeAdminTab, setActiveAdminTab] = useState("merchants");
 
   const handleLogout = async () => {
     try {
@@ -391,6 +411,16 @@ export default function AdminDashboard() {
         .order("created_at", { ascending: false });
       setPayments(paymentsData || []);
 
+      const { data: notificationReadsData } = await (supabase as any)
+        .from("super_admin_notification_reads")
+        .select("source_type, source_id, read_at");
+
+      const readsMap = (notificationReadsData || []).reduce((acc: Record<string, string>, row: any) => {
+        acc[notificationKey(row.source_type, row.source_id)] = row.read_at;
+        return acc;
+      }, {});
+      setNotificationReads(readsMap);
+
       // 4. Fetch Customers
       const { data: customersData } = await supabase
         .from("customers")
@@ -479,6 +509,121 @@ export default function AdminDashboard() {
 
     } catch (err) {
       console.error("Error fetching admin data:", err);
+    }
+  };
+
+  const pendingBusinessRegistrations = businesses.filter((business) => business.status === "pending");
+
+  const superAdminNotifications: SuperAdminNotification[] = [
+    ...businessAddonSubscriptions
+      .filter((subscription) => subscription.status === "inactive" && subscription.payment_status === "pending")
+      .map((subscription) => {
+        const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
+        const business = Array.isArray(subscription.businesses) ? subscription.businesses[0] : subscription.businesses;
+        const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
+
+        return {
+          id: notificationKey("business_addon_subscription", subscription.id),
+          sourceType: "business_addon_subscription",
+          sourceId: String(subscription.id),
+          type: "Add-on Request",
+          businessName: business?.business_name || "Unknown business",
+          description: `requested +${addedCapacity.toLocaleString()} Customers.`,
+          createdAt: subscription.created_at,
+          status: "pending" as const,
+          destination: "addons" as const,
+          relatedRecord: subscription,
+        };
+      }),
+    ...payments
+      .filter((payment) => payment.metadata?.kind === "subscription_plan_change")
+      .map((payment) => {
+        const changeType = payment.metadata?.change_type === "downgrade" ? "Downgrade Request" : "Upgrade Request";
+        const resolvedStatus = payment.status === "approved" ? "approved" : payment.status === "rejected" ? "rejected" : "pending";
+
+        return {
+          id: notificationKey("subscription_payment", payment.id),
+          sourceType: "subscription_payment",
+          sourceId: String(payment.id),
+          type: changeType,
+          businessName: payment.businesses?.business_name || payment.metadata?.business_name || "Unknown business",
+          description: `requested ${payment.metadata?.current_plan_name || "current plan"} → ${payment.metadata?.requested_plan_name || payment.plan_id}.`,
+          createdAt: payment.created_at,
+          status: resolvedStatus as SuperAdminNotification["status"],
+          destination: "payments" as const,
+          relatedRecord: payment,
+        };
+      }),
+    ...pendingBusinessRegistrations.map((business) => ({
+      id: notificationKey("business_registration", business.id),
+      sourceType: "business_registration",
+      sourceId: String(business.id),
+      type: "Business Registration",
+      businessName: business.business_name || "Unknown business",
+      description: "is awaiting approval.",
+      createdAt: business.created_at,
+      status: "pending" as const,
+      destination: "merchants" as const,
+      relatedRecord: business,
+    })),
+  ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+  const unreadNotificationCount = superAdminNotifications.filter((notification) =>
+    notification.status === "pending" && !notificationReads[notification.id]
+  ).length;
+
+  const markNotificationsRead = async (notificationsToRead: SuperAdminNotification[]) => {
+    if (notificationsToRead.length === 0) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const now = new Date().toISOString();
+    const rows = notificationsToRead.map((notification) => ({
+      admin_user_id: user.id,
+      source_type: notification.sourceType,
+      source_id: notification.sourceId,
+      read_at: now,
+    }));
+
+    const { error } = await (supabase as any)
+      .from("super_admin_notification_reads")
+      .upsert(rows, { onConflict: "admin_user_id,source_type,source_id" });
+
+    if (!error) {
+      setNotificationReads((current) => {
+        const next = { ...current };
+        notificationsToRead.forEach((notification) => {
+          next[notification.id] = now;
+        });
+        return next;
+      });
+    }
+  };
+
+  const handleToggleNotificationPanel = async () => {
+    const nextOpen = !notificationPanelOpen;
+    setNotificationPanelOpen(nextOpen);
+
+    if (nextOpen) {
+      await markNotificationsRead(superAdminNotifications.filter((notification) =>
+        notification.status === "pending" && !notificationReads[notification.id]
+      ));
+    }
+  };
+
+  const handleReviewNotification = async (notification: SuperAdminNotification) => {
+    await markNotificationsRead([notification]);
+    setNotificationPanelOpen(false);
+    setActiveAdminTab(notification.destination);
+
+    if (notification.destination === "payments") {
+      setReviewingPayment(notification.relatedRecord);
+      setAdminNotes("");
+    }
+
+    if (notification.destination === "addons") {
+      setReviewingAddonRequestId(null);
     }
   };
 
@@ -1758,6 +1903,84 @@ export default function AdminDashboard() {
             <p className="text-muted-foreground mt-1">Configure subscription plans, monitor businesses, and manage limits.</p>
           </div>
           <div className="flex items-center gap-3">
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="relative"
+                onClick={handleToggleNotificationPanel}
+                aria-label="Open Super Admin notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                    {unreadNotificationCount}
+                  </span>
+                )}
+              </Button>
+
+              {notificationPanelOpen && (
+                <div className="absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border bg-card p-3 shadow-2xl">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <div>
+                      <p className="font-heading font-semibold text-foreground">Notifications</p>
+                      <p className="text-xs text-muted-foreground">{unreadNotificationCount} unread pending action{unreadNotificationCount === 1 ? "" : "s"}</p>
+                    </div>
+                    <Badge variant="secondary">{superAdminNotifications.length}</Badge>
+                  </div>
+                  <div className="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1">
+                    {superAdminNotifications.length === 0 ? (
+                      <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                        No Super Admin notifications yet.
+                      </div>
+                    ) : (
+                      superAdminNotifications.slice(0, 12).map((notification) => {
+                        const isUnread = notification.status === "pending" && !notificationReads[notification.id];
+                        const statusIcon = notification.status === "pending" ? Clock : notification.status === "approved" ? CheckCircle : XCircle;
+                        const StatusIcon = statusIcon;
+
+                        return (
+                          <div
+                            key={notification.id}
+                            className={`rounded-lg border p-3 ${isUnread ? "border-primary/40 bg-primary/5" : "bg-background"}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`mt-0.5 rounded-full p-1.5 ${notification.status === "pending" ? "bg-amber-100 text-amber-700" : notification.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-destructive/10 text-destructive"}`}>
+                                <StatusIcon className="h-4 w-4" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold text-foreground">{notification.type}</p>
+                                  {isUnread && <span className="h-2 w-2 rounded-full bg-destructive" aria-label="Unread" />}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  <span className="font-medium text-foreground">{notification.businessName}</span> {notification.description}
+                                </p>
+                                <p className="mt-1 text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="mt-3 flex items-center justify-between gap-2">
+                              <Badge variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"} className="text-[10px] uppercase">
+                                {notification.status === "pending" ? "Pending Review" : notification.status}
+                              </Badge>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={notification.status === "pending" ? "default" : "outline"}
+                                onClick={() => handleReviewNotification(notification)}
+                              >
+                                Review
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <Link href="/dashboard">
               <Button variant="outline">Back to Merchant Dashboard</Button>
             </Link>
@@ -1807,7 +2030,7 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="merchants" className="space-y-6">
+        <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} className="space-y-6">
           <TabsList className="bg-muted p-1 rounded-lg flex-wrap h-auto">
             <TabsTrigger value="merchants">Merchants & Subscriptions</TabsTrigger>
             <TabsTrigger value="payments">Payment Review</TabsTrigger>
