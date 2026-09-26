@@ -380,33 +380,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-
-        <div className="p-4 border-t border-border space-y-2">
-          <button 
-            onClick={handleOpenWhatsNew}
-            className={`
-              flex items-center justify-between w-full px-3 py-2.5 rounded-md text-sm font-medium transition-colors
-              ${isWhatsNewOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}
-            `}
-          >
-            <div className="flex items-center gap-3">
-              <Bell className="h-5 w-5" />
-              What's New
-            </div>
-            {!hasReadWhatsNew && (
-              <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                3
-              </span>
-            )}
-          </button>
-          <button 
-            onClick={handleLogout}
-            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-          >
-            <LogOut className="h-5 w-5" />
-            Sign Out
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -428,9 +401,37 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
               )}
             </button>
+            <button onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+              <LogOut className="h-5 w-5" />
+            </button>
             <button onClick={() => setIsMobileOpen(true)}>
               <Menu className="h-6 w-6 text-foreground" />
             </button>
+          </div>
+        </header>
+
+        {/* Top Header Desktop */}
+        <header className="hidden lg:flex items-center justify-end p-4 border-b border-border bg-card">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              className="relative flex items-center gap-2 text-muted-foreground hover:text-foreground"
+              onClick={handleOpenWhatsNew}
+            >
+              <Bell className="h-4 w-4" />
+              <span className="text-sm font-medium">What's New</span>
+              {!hasReadWhatsNew && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              className="flex items-center gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm font-medium">Sign Out</span>
+            </Button>
           </div>
         </header>
 
