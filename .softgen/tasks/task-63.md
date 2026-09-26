@@ -10,13 +10,13 @@ position: 63
 ---
 
 ## Notes
-Fix the current JSX/compilation error in the Super Admin Merchants & Subscriptions table near the plan assignment select. Do not remove the `disabled={assigningPlanId === biz.id}` behavior and do not remove `assigningPlanId` functionality. Inspect the complete select element, surrounding JSX, `assigningPlanId` state, `handlePlanAssignment`, plans state, and recent financial overview changes. Preserve plan price, active add-ons, add-on total, total subscription, and all existing merchant actions.
+Fix the current JSX/compilation error in the Super Admin Merchants & Subscriptions table near the plan assignment select. Investigation confirmed the complete select JSX is structurally valid and the error is not caused by the `disabled` prop itself. The actual root cause is an incorrectly merged plan-assignment update: the table now references `assigningPlanId` and `handlePlanAssignment`, but neither existed in the component. The existing function is named `handleChangePlan`. The fix adds a single `assigningPlanId` state value and a `handlePlanAssignment` wrapper that preserves the existing assignment logic while providing the loading/disabled state. Plan price, active add-ons, add-on total, total subscription, and all merchant actions remain in place.
 
 ## Checklist
-- [ ] Inspect `assigningPlanId` state and `handlePlanAssignment`
-- [ ] Inspect the complete merchants table row JSX around the select
-- [ ] Identify the actual root cause before editing
-- [ ] Fix the malformed JSX or state issue without removing functionality
+- [x] Inspect `assigningPlanId` state and `handlePlanAssignment`
+- [x] Inspect the complete merchants table row JSX around the select
+- [x] Identify the actual root cause before editing
+- [x] Fix the malformed JSX or state issue without removing functionality
 - [ ] Run project validation
 - [ ] Confirm the merchant financial overview remains intact
 

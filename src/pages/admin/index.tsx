@@ -154,6 +154,7 @@ export default function AdminDashboard() {
   const [businessToDelete, setBusinessToDelete] = useState<any | null>(null);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
   const [approving, setApproving] = useState<string | null>(null);
+  const [assigningPlanId, setAssigningPlanId] = useState<string | null>(null);
   const [retryingEmail, setRetryingEmail] = useState<string | null>(null);
   const [retryingAdminEmail, setRetryingAdminEmail] = useState<string | null>(null);
 
@@ -802,6 +803,15 @@ export default function AdminDashboard() {
         description: err.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handlePlanAssignment = async (bizId: string, planId: string) => {
+    try {
+      setAssigningPlanId(bizId);
+      await handleChangePlan(bizId, planId);
+    } finally {
+      setAssigningPlanId(null);
     }
   };
 
