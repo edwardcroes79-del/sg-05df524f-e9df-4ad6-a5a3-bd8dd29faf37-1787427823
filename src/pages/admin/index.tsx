@@ -1145,6 +1145,15 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (payment.provider === "bank_transfer" && !payment.payment_proof_url) {
+      toast({
+        title: "Payment Proof Required",
+        description: "Manual bank-transfer subscription payments require uploaded proof before approval.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setProcessing(true);
       const { data: { user } } = await supabase.auth.getUser();
@@ -1164,7 +1173,57 @@ export default function AdminDashboard() {
       if (paymentError) throw paymentError;
 
       // Update business subscription plan
-      if (payment.metadata?.kind === "addon_purchase") {
+      if (payment.metadata?.kind === "subscription_change" && payment.metadata?.change_type === "addon_purchase") {
+        const subscriptionIds = Array.isArray(payment.metadata?.requested_addon_subscription_ids)
+          ? payment.metadata.requested_addon_subscription_ids
+          : [];
+
+        if (subscriptionIds.length === 0) {
+          throw new Error("Missing requested add-on subscription references on this payment.");
+        }
+
+        const { data: existingSubscriptions, error: subscriptionReadError } = await supabase
+          .from("business_addon_subscriptions")
+          .select("id, metadata")
+          .in("id", subscriptionIds)
+          .eq("business_id", payment.business_id);
+
+        if (subscriptionReadError) throw subscriptionReadError;
+        if (!existingSubscriptions || existingSubscriptions.length !== subscriptionIds.length) {
+          throw new Error("One or more pending add-on subscription records were not found for this business.");
+        }
+
+        const now = new Date().toISOString();
+        for (const subscription of existingSubscriptions) {
+          const { error: addonError } = await supabase
+            .from("business_addon_subscriptions")
+            .update({
+              status: "active",
+              payment_status: "approved",
+              starts_at: now,
+              current_period_start: now,
+              metadata: {
+                ...asMetadataObject(subscription.metadata),
+                pending_payment: false,
+                approved_payment_id: payment.id,
+                approved_by: user.id,
+                approved_at: now,
+                active_as_subscription_component: true,
+                approved_subscription_total_awg: payment.metadata?.new_monthly_total || payment.amount,
+              },
+              updated_at: now,
+            })
+            .eq("id", subscription.id)
+            .eq("business_id", payment.business_id);
+
+          if (addonError) throw addonError;
+        }
+
+        toast({
+          title: "Subscription Change Approved",
+          description: `${payment.businesses.business_name}'s add-on is now part of the active subscription.`,
+        });
+      } else if (payment.metadata?.kind === "addon_purchase") {
         const subscriptionId = payment.metadata?.business_addon_subscription_id;
         if (!subscriptionId) {
           throw new Error("Missing add-on subscription reference on this payment.");
@@ -1266,7 +1325,43 @@ export default function AdminDashboard() {
 
       if (error) throw error;
 
-      if (payment.metadata?.kind === "addon_purchase" && payment.metadata?.business_addon_subscription_id) {
+      if (payment.metadata?.kind === "subscription_change" && payment.metadata?.change_type === "addon_purchase") {
+        const subscriptionIds = Array.isArray(payment.metadata?.requested_addon_subscription_ids)
+          ? payment.metadata.requested_addon_subscription_ids
+          : [];
+
+        if (subscriptionIds.length > 0) {
+          const { data: existingSubscriptions, error: subscriptionReadError } = await supabase
+            .from("business_addon_subscriptions")
+            .select("id, metadata")
+            .in("id", subscriptionIds)
+            .eq("business_id", payment.business_id);
+
+          if (subscriptionReadError) throw subscriptionReadError;
+
+          for (const subscription of existingSubscriptions || []) {
+            const { error: addonError } = await supabase
+              .from("business_addon_subscriptions")
+              .update({
+                status: "cancelled",
+                payment_status: "rejected",
+                ends_at: new Date().toISOString(),
+                metadata: {
+                  ...asMetadataObject(subscription.metadata),
+                  pending_payment: false,
+                  rejected_payment_id: payment.id,
+                  rejected_by: user.id,
+                  rejected_at: new Date().toISOString(),
+                },
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", subscription.id)
+              .eq("business_id", payment.business_id);
+
+            if (addonError) throw addonError;
+          }
+        }
+      } else if (payment.metadata?.kind === "addon_purchase" && payment.metadata?.business_addon_subscription_id) {
         const { data: existingSubscription, error: subscriptionReadError } = await supabase
           .from("business_addon_subscriptions")
           .select("metadata")
@@ -1315,6 +1410,30 @@ export default function AdminDashboard() {
       });
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleOpenAdminPaymentProof = async (payment: any) => {
+    if (!payment.payment_proof_url) return;
+
+    try {
+      if (payment.payment_proof_url.startsWith("http")) {
+        window.open(payment.payment_proof_url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from("payment-proofs")
+        .createSignedUrl(payment.payment_proof_url, 120);
+
+      if (error) throw error;
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      toast({
+        title: "Could not open payment proof",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -1804,7 +1923,9 @@ export default function AdminDashboard() {
                       <TableRow key={payment.id}>
                         <TableCell className="font-semibold">{payment.businesses?.business_name || "Unknown"}</TableCell>
                         <TableCell className="uppercase font-mono text-xs">
-                          {payment.metadata?.kind === "addon_purchase"
+                          {payment.metadata?.kind === "subscription_change"
+                            ? "Subscription change"
+                            : payment.metadata?.kind === "addon_purchase"
                             ? payment.metadata?.addon_name || "Customer capacity add-on"
                             : payment.plan_id}
                         </TableCell>
@@ -1864,7 +1985,7 @@ export default function AdminDashboard() {
               <Card className="mt-6">
                 <CardHeader>
                   <CardTitle>Review Payment: {reviewingPayment.businesses?.business_name}</CardTitle>
-                  <CardDescription>Verify payment proof and approve or reject the subscription upgrade.</CardDescription>
+                  <CardDescription>Verify payment proof and approve or reject the subscription change.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
@@ -1874,13 +1995,33 @@ export default function AdminDashboard() {
                         <p className="font-semibold">{reviewingPayment.businesses?.business_name}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Plan Upgrade</p>
-                        <p className="font-semibold uppercase">
-                          {reviewingPayment.metadata?.kind === "addon_purchase"
+                        <p className="text-sm text-muted-foreground">Subscription Change</p>
+                        <p className="font-semibold">
+                          {reviewingPayment.metadata?.kind === "subscription_change"
+                            ? `${reviewingPayment.metadata?.base_plan_name || reviewingPayment.plan_id} + requested add-ons`
+                            : reviewingPayment.metadata?.kind === "addon_purchase"
                             ? reviewingPayment.metadata?.addon_name || "Customer capacity add-on"
                             : reviewingPayment.plan_id}
                         </p>
                       </div>
+                      {reviewingPayment.metadata?.kind === "subscription_change" && (
+                        <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                          <div className="flex justify-between gap-3 text-sm">
+                            <span className="text-muted-foreground">Base Subscription</span>
+                            <strong>AWG {Number(reviewingPayment.metadata?.base_plan_price_awg || 0).toFixed(2)}/month</strong>
+                          </div>
+                          {Array.isArray(reviewingPayment.metadata?.requested_addons) && reviewingPayment.metadata.requested_addons.map((requestedAddon: any) => (
+                            <div key={requestedAddon.business_addon_subscription_id || requestedAddon.addon_id} className="flex justify-between gap-3 text-sm">
+                              <span className="text-muted-foreground">{requestedAddon.addon_name} × {requestedAddon.quantity || 1}</span>
+                              <strong>AWG {Number(requestedAddon.monthly_total_awg || 0).toFixed(2)}/month</strong>
+                            </div>
+                          ))}
+                          <div className="border-t pt-2 flex justify-between gap-3 text-sm">
+                            <span className="font-semibold text-foreground">New Monthly Total</span>
+                            <strong className="text-primary">AWG {Number(reviewingPayment.metadata?.new_monthly_total || reviewingPayment.amount || 0).toFixed(2)}/month</strong>
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <p className="text-sm text-muted-foreground">Amount</p>
                         <p className="font-bold text-xl">AWG {reviewingPayment.amount.toFixed(2)}</p>
@@ -1898,19 +2039,24 @@ export default function AdminDashboard() {
                     <div>
                       <p className="text-sm text-muted-foreground mb-2">Payment Proof</p>
                       {reviewingPayment.payment_proof_url ? (
-                        <a 
-                          href={reviewingPayment.payment_proof_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="block border rounded-lg overflow-hidden hover:border-primary transition-colors"
-                        >
-                          <img 
-                            src={reviewingPayment.payment_proof_url} 
-                            alt="Payment proof" 
-                            className="w-full h-auto"
-                          />
-                          <p className="text-xs text-center py-2 bg-muted text-muted-foreground">Click to view full size</p>
-                        </a>
+                        <div className="border rounded-lg p-6 text-center space-y-3">
+                          <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto" />
+                          <div>
+                            <p className="font-semibold text-foreground">Payment proof uploaded</p>
+                            <p className="text-xs text-muted-foreground break-all">
+                              {reviewingPayment.payment_proof_url.startsWith("http")
+                                ? "Legacy public proof URL"
+                                : reviewingPayment.payment_proof_url}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => handleOpenAdminPaymentProof(reviewingPayment)}
+                          >
+                            View Payment Proof
+                          </Button>
+                        </div>
                       ) : (
                         <div className="border rounded-lg p-8 text-center text-muted-foreground">
                           No proof uploaded
@@ -1945,14 +2091,14 @@ export default function AdminDashboard() {
                   <Button 
                     variant="destructive"
                     onClick={() => handleRejectPayment(reviewingPayment)}
-                    disabled={processing || !adminNotes.trim()}
+                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url)}
                   >
                     {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
                     Reject Payment
                   </Button>
                   <Button 
                     onClick={() => handleApprovePayment(reviewingPayment)}
-                    disabled={processing || !adminNotes.trim()}
+                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url)}
                   >
                     {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                     Approve & Activate

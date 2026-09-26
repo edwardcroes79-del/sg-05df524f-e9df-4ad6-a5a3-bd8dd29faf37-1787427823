@@ -36,6 +36,13 @@ export default function BillingPage() {
   const [availableAddons, setAvailableAddons] = useState<any[]>([]);
   const [activeAddonSubscriptions, setActiveAddonSubscriptions] = useState<any[]>([]);
   const [addonPayments, setAddonPayments] = useState<PaymentRow[]>([]);
+  const [subscriptionTotals, setSubscriptionTotals] = useState({
+    baseMonthlyPrice: 0,
+    activeAddonMonthlyTotal: 0,
+    currentSubscriptionTotal: 0,
+    nextBillingTotal: 0,
+    cancellingAddonMonthlyTotal: 0,
+  });
   const [uploadingProofId, setUploadingProofId] = useState<string | null>(null);
   const [addonActionId, setAddonActionId] = useState<string | null>(null);
   const [plans, setPlans] = useState<any[]>([]);
@@ -109,6 +116,13 @@ export default function BillingPage() {
         setAvailableAddons(addonResult.availableAddons || []);
         setActiveAddonSubscriptions(addonResult.businessAddons || []);
         setAddonPayments(addonResult.addonPayments || []);
+        setSubscriptionTotals(addonResult.subscriptionTotals || {
+          baseMonthlyPrice: Number(planData?.price_awg || 0),
+          activeAddonMonthlyTotal: 0,
+          currentSubscriptionTotal: Number(planData?.price_awg || 0),
+          nextBillingTotal: Number(planData?.price_awg || 0),
+          cancellingAddonMonthlyTotal: 0,
+        });
       } else {
         const addonResult = await addonResponse.json().catch(() => ({}));
         throw new Error(addonResult.error || "Failed to load customer capacity add-ons");
@@ -168,6 +182,7 @@ export default function BillingPage() {
     setAvailableAddons(result.availableAddons || []);
     setActiveAddonSubscriptions(result.businessAddons || []);
     setAddonPayments(result.addonPayments || []);
+    setSubscriptionTotals(result.subscriptionTotals || subscriptionTotals);
     return result;
   };
 
@@ -202,8 +217,8 @@ export default function BillingPage() {
       setAddonPayments(result.addonPayments || []);
 
       toast({
-        title: "Add-on purchase requested",
-        description: "A pending bank-transfer billing record was created. Capacity activates after approval.",
+        title: "Subscription change requested",
+        description: `A pending payment was created for the full new monthly subscription total: AWG ${Number(result.addonPayments?.[0]?.amount || 0).toFixed(2)}.`,
       });
     } catch (err: any) {
       toast({
@@ -327,8 +342,8 @@ export default function BillingPage() {
       if (updateError) throw updateError;
 
       toast({
-        title: "Payment proof submitted",
-        description: "Your add-on request is awaiting Super Admin verification.",
+        title: "Subscription payment proof submitted",
+        description: "Your subscription change is awaiting Super Admin verification.",
       });
 
       await refreshAddonOverview();
@@ -341,6 +356,34 @@ export default function BillingPage() {
       });
     } finally {
       setUploadingProofId(null);
+    }
+  };
+
+  const handleOpenPaymentProof = async (payment: PaymentRow) => {
+    if (!payment.payment_proof_url) return;
+
+    try {
+      if (payment.payment_proof_url.startsWith("http")) {
+        window.open(payment.payment_proof_url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      if (!business?.id || payment.business_id !== business.id) {
+        throw new Error("Payment proof can only be viewed for your own business.");
+      }
+
+      const { data, error } = await supabase.storage
+        .from("payment-proofs")
+        .createSignedUrl(payment.payment_proof_url, 120);
+
+      if (error) throw error;
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      toast({
+        title: "Could not open proof",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -456,8 +499,12 @@ export default function BillingPage() {
               <div className="space-y-2">
                 <h3 className="text-3xl font-heading font-extrabold text-foreground">{currentPlan.name}</h3>
                 <p className="text-3xl font-heading font-extrabold text-primary">
-                  AWG {currentPlan.price_awg.toFixed(2)}
-                  <span className="text-sm text-muted-foreground font-normal"> / month plus Caribbean tax rules</span>
+                  AWG {subscriptionTotals.currentSubscriptionTotal > 0 ? subscriptionTotals.currentSubscriptionTotal.toFixed(2) : currentPlan.price_awg.toFixed(2)}
+                  <span className="text-sm text-muted-foreground font-normal"> / month total subscription</span>
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Base plan: AWG {Number(currentPlan.price_awg || 0).toFixed(2)} / month
+                  {subscriptionTotals.activeAddonMonthlyTotal > 0 ? ` · Active add-ons: AWG ${subscriptionTotals.activeAddonMonthlyTotal.toFixed(2)} / month` : ""}
                 </p>
                 <div className="pt-4 grid sm:grid-cols-2 gap-2 border-t border-dashed mt-4">
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -512,11 +559,16 @@ export default function BillingPage() {
                               {addon?.name || subscription.addon_id} × {subscription.quantity}
                               {subscription.cancel_at_period_end ? " · cancels at period end" : ""}
                             </span>
-                            <strong className="text-foreground">+{addedCapacity.toLocaleString()} members</strong>
+                            <strong className="text-foreground">+{addedCapacity.toLocaleString()} members · AWG {subscriptionAmount.toFixed(2)}/month</strong>
                           </div>
                         );
                       })}
                     </div>
+                    {subscriptionTotals.cancellingAddonMonthlyTotal > 0 && (
+                      <p className="mt-3 text-xs text-amber-700">
+                        Next billing after scheduled cancellations: AWG {subscriptionTotals.nextBillingTotal.toFixed(2)} / month.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -533,7 +585,7 @@ export default function BillingPage() {
                 Customer Capacity
               </CardTitle>
               <CardDescription>
-                Purchase optional customer-capacity add-ons through the existing bank-transfer billing workflow.
+                Add customer capacity to your existing subscription. Your monthly total is calculated from your base plan plus active approved add-ons.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -553,11 +605,11 @@ export default function BillingPage() {
                   <p className="text-sm text-muted-foreground">real registered loyalty members</p>
                 </div>
                 <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Effective Capacity</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subscription Total</p>
                   <p className="text-2xl font-heading font-bold text-primary mt-2">
-                    {effectiveCustomerLimit === 999999 ? "Unlimited" : (effectiveCustomerLimit ?? currentPlan.max_customers).toLocaleString()}
+                    AWG {(subscriptionTotals.currentSubscriptionTotal || Number(currentPlan.price_awg || 0)).toFixed(2)}
                   </p>
-                  <p className="text-sm text-muted-foreground">base plan plus approved active add-ons</p>
+                  <p className="text-sm text-muted-foreground">current monthly subscription amount</p>
                 </div>
               </div>
 
@@ -614,7 +666,7 @@ export default function BillingPage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <h4 className="font-heading font-bold text-foreground">{addon?.name || subscription.addon_id}</h4>
                               <Badge variant={isApprovedActive ? "default" : isPending ? "secondary" : "outline"}>
-                                {isPending ? "Payment Pending" : subscription.cancel_at_period_end ? "Cancels at period end" : subscription.status}
+                                {isPending ? "Subscription Change Pending" : subscription.cancel_at_period_end ? "Cancellation scheduled" : subscription.status}
                               </Badge>
                             </div>
                             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 text-sm">
@@ -648,6 +700,11 @@ export default function BillingPage() {
                               Cancel at Period End
                             </Button>
                           )}
+                          {subscription.cancel_at_period_end && (
+                            <p className="mt-2 text-xs text-amber-700">
+                              Capacity remains available until {formatDate(subscription.current_period_end)}. Next billing total excludes this add-on.
+                            </p>
+                          )}
                         </div>
                       );
                     })}
@@ -657,7 +714,7 @@ export default function BillingPage() {
 
               {addonPayments.length > 0 && (
                 <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Add-on billing requests</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pending subscription changes</p>
                   <div className="space-y-3">
                     {addonPayments.slice(0, 5).map((payment) => {
                       const metadata = payment.metadata || {};
@@ -670,7 +727,7 @@ export default function BillingPage() {
                             <div className="space-y-2">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-heading font-semibold text-foreground">
-                                  {metadata.addon_name || "Customer capacity add-on"}
+                                  {metadata.base_plan_name || metadata.plan_name || currentPlan.name} subscription change
                                 </span>
                                 <Badge variant={getStatusVariant(payment.status || "pending")} className="w-max gap-1">
                                   {getStatusIcon(payment.status || "pending")}
@@ -684,7 +741,7 @@ export default function BillingPage() {
                               </div>
                               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div>
-                                  <p className="text-muted-foreground">Amount</p>
+                                  <p className="text-muted-foreground">Total payment due</p>
                                   <p className="font-semibold">AWG {Number(payment.amount || 0).toFixed(2)} / month</p>
                                 </div>
                                 <div>
@@ -692,18 +749,25 @@ export default function BillingPage() {
                                   <p className="font-mono font-semibold">{payment.payment_reference}</p>
                                 </div>
                                 <div>
-                                  <p className="text-muted-foreground">Capacity</p>
-                                  <p className="font-semibold">+{Number(metadata.added_capacity || 0).toLocaleString()} customers</p>
+                                  <p className="text-muted-foreground">New monthly total</p>
+                                  <p className="font-semibold">AWG {Number(metadata.new_monthly_total || payment.amount || 0).toFixed(2)}</p>
                                 </div>
                                 <div>
                                   <p className="text-muted-foreground">Submitted</p>
                                   <p className="font-semibold">{formatDate(payment.created_at)}</p>
                                 </div>
                               </div>
-                              {payment.admin_notes && (
-                                <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-destructive">
-                                  <p className="font-semibold">Admin notes</p>
-                                  <p>{payment.admin_notes}</p>
+                              {Array.isArray(metadata.requested_addons) && metadata.requested_addons.length > 0 && (
+                                <div className="rounded-md border bg-muted/20 p-3">
+                                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Requested add-ons included in this subscription payment</p>
+                                  <div className="space-y-1">
+                                    {metadata.requested_addons.map((requestedAddon: any) => (
+                                      <div key={requestedAddon.business_addon_subscription_id || requestedAddon.addon_id} className="flex items-center justify-between gap-3">
+                                        <span>{requestedAddon.addon_name} × {requestedAddon.quantity || 1}</span>
+                                        <strong>AWG {Number(requestedAddon.monthly_total_awg || 0).toFixed(2)} / month</strong>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               )}
                             </div>
@@ -711,17 +775,17 @@ export default function BillingPage() {
                             <div className="min-w-[240px] rounded-lg border bg-muted/20 p-3">
                               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Manual payment instructions</p>
                               <p className="mt-2 text-sm text-muted-foreground">
-                                Transfer AWG {Number(payment.amount || 0).toFixed(2)} using reference <strong className="font-mono text-foreground">{payment.payment_reference}</strong>, then upload the bank proof here.
+                                Transfer the full subscription amount AWG {Number(payment.amount || 0).toFixed(2)} using reference <strong className="font-mono text-foreground">{payment.payment_reference}</strong>, then upload one bank proof for the complete subscription payment.
                               </p>
                               {payment.payment_proof_url && (
-                                <a
-                                  href={payment.payment_proof_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="mt-3 inline-flex text-sm font-semibold text-primary underline"
+                                <Button
+                                  type="button"
+                                  variant="link"
+                                  className="mt-3 h-auto p-0 text-sm font-semibold text-primary underline"
+                                  onClick={() => handleOpenPaymentProof(payment)}
                                 >
                                   View submitted proof
-                                </a>
+                                </Button>
                               )}
                               {isPending && (
                                 <div className="mt-3">
@@ -741,10 +805,10 @@ export default function BillingPage() {
                                     onClick={() => document.getElementById(`addon-proof-${payment.id}`)?.click()}
                                   >
                                     {uploadingProofId === payment.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                    {hasProof ? "Replace Payment Proof" : "Upload Payment Proof"}
+                                    {hasProof ? "Replace Subscription Proof" : "Upload Subscription Proof"}
                                   </Button>
                                   <p className="mt-2 text-xs text-muted-foreground">
-                                    Status: {hasProof ? "Awaiting Super Admin approval." : "Payment proof required before review can be completed."}
+                                    Status: {hasProof ? "Awaiting Super Admin approval." : "Payment proof required for the full subscription total before review can be completed."}
                                   </p>
                                 </div>
                               )}

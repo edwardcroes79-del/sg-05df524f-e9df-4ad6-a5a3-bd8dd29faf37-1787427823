@@ -24,7 +24,29 @@ function getDefaultPeriodEnd() {
 
 function buildPaymentReference() {
   const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `RS-ADDON-${Date.now()}-${suffix}`;
+  return `RS-SUB-${Date.now()}-${suffix}`;
+}
+
+function isContributionActive(subscription: any) {
+  if (subscription.status !== "active" || subscription.payment_status !== "approved") return false;
+  if (!subscription.current_period_end) return true;
+  return new Date(subscription.current_period_end).getTime() > Date.now();
+}
+
+function addonRow(subscription: any) {
+  return Array.isArray(subscription.subscription_addons)
+    ? subscription.subscription_addons[0]
+    : subscription.subscription_addons;
+}
+
+function subscriptionAmount(subscription: any) {
+  const addon = addonRow(subscription);
+  return Number(addon?.monthly_price_awg || 0) * Number(subscription.quantity || 1);
+}
+
+function subscriptionCapacity(subscription: any) {
+  const addon = addonRow(subscription);
+  return Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
 }
 
 async function requireBusinessOwner(req: NextApiRequest) {
@@ -113,7 +135,17 @@ async function getOverview(admin: any, business: any) {
   ]);
 
   const uniqueMemberCount = new Set((memberRows || []).map((row: any) => row.customer_id)).size;
-  const addonPayments = (payments || []).filter((payment: any) => payment.metadata?.kind === "addon_purchase");
+  const activeAddonSubscriptions = (businessAddons || []).filter(isContributionActive);
+  const activeAddonMonthlyTotal = activeAddonSubscriptions.reduce((total: number, subscription: any) => total + subscriptionAmount(subscription), 0);
+  const cancellingAddonMonthlyTotal = activeAddonSubscriptions
+    .filter((subscription: any) => Boolean(subscription.cancel_at_period_end))
+    .reduce((total: number, subscription: any) => total + subscriptionAmount(subscription), 0);
+  const baseMonthlyPrice = Number(plan?.price_awg || 0);
+  const currentSubscriptionTotal = baseMonthlyPrice + activeAddonMonthlyTotal;
+  const nextBillingTotal = currentSubscriptionTotal - cancellingAddonMonthlyTotal;
+  const subscriptionPayments = (payments || []).filter((payment: any) =>
+    payment.metadata?.kind === "subscription_change" || payment.metadata?.kind === "addon_purchase"
+  );
 
   return {
     business,
@@ -122,7 +154,14 @@ async function getOverview(admin: any, business: any) {
     currentMemberCount: uniqueMemberCount,
     availableAddons: availableAddons || [],
     businessAddons: businessAddons || [],
-    addonPayments,
+    addonPayments: subscriptionPayments,
+    subscriptionTotals: {
+      baseMonthlyPrice,
+      activeAddonMonthlyTotal,
+      currentSubscriptionTotal,
+      nextBillingTotal,
+      cancellingAddonMonthlyTotal,
+    },
   };
 }
 
@@ -179,15 +218,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (existingAddonSubscription) {
         return res.status(409).json({
           error: existingAddonSubscription.payment_status === "pending"
-            ? "This add-on already has a pending payment request. Upload the payment proof for the existing request instead of creating a duplicate."
+            ? "This add-on already has a pending subscription-change payment. Complete the existing subscription payment instead of creating a duplicate."
             : "This add-on is already active or scheduled for cancellation. Manage the existing add-on before purchasing it again.",
         });
       }
 
+      const [{ data: plan }, { data: activeAddons }] = await Promise.all([
+        admin
+          .from("subscription_plans")
+          .select("*")
+          .eq("id", business.subscription_plan || "starter")
+          .maybeSingle(),
+        admin
+          .from("business_addon_subscriptions")
+          .select(`
+            *,
+            subscription_addons (
+              id,
+              name,
+              description,
+              addon_type,
+              capacity_amount,
+              monthly_price_awg,
+              status
+            )
+          `)
+          .eq("business_id", business.id),
+      ]);
+
+      if (!plan) {
+        return res.status(400).json({ error: "Current subscription plan was not found" });
+      }
+
+      const currentActiveAddons = (activeAddons || []).filter(isContributionActive);
+      const baseMonthlyPrice = Number(plan.price_awg || 0);
+      const currentAddonMonthlyTotal = currentActiveAddons.reduce((total: number, subscription: any) => total + subscriptionAmount(subscription), 0);
+      const requestedAddonMonthlyTotal = Number(addon.monthly_price_awg || 0) * quantity;
+      const currentMonthlyTotal = baseMonthlyPrice + currentAddonMonthlyTotal;
+      const newMonthlyTotal = currentMonthlyTotal + requestedAddonMonthlyTotal;
+      const addedCapacity = Number(addon.capacity_amount || 0) * quantity;
+
       const now = new Date().toISOString();
       const currentPeriodEnd = getDefaultPeriodEnd();
-      const amount = Number(addon.monthly_price_awg || 0) * quantity;
-      const addedCapacity = Number(addon.capacity_amount || 0) * quantity;
 
       const { data: subscription, error: subscriptionError } = await admin
         .from("business_addon_subscriptions")
@@ -197,13 +269,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           quantity,
           status: "inactive",
           payment_status: "pending",
-          starts_at: now,
-          current_period_start: now,
+          starts_at: null,
+          current_period_start: null,
           current_period_end: currentPeriodEnd,
           metadata: {
-            source: "business_purchase_request",
+            source: "business_subscription_change_request",
             requested_by: userId,
             pending_payment: true,
+            requested_new_monthly_total: newMonthlyTotal,
           },
         })
         .select("id")
@@ -216,22 +289,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         business_id: business.id,
         provider: "bank_transfer",
         external_transaction_id: null,
-        amount,
+        amount: newMonthlyTotal,
         currency: "AWG",
         status: "pending",
         paid_at: null,
-        plan_id: null,
+        plan_id: business.subscription_plan || plan.id,
         payment_reference: paymentReference,
         metadata: {
-          kind: "addon_purchase",
-          addon_id: addon.id,
-          addon_name: addon.name,
-          business_addon_subscription_id: subscription.id,
-          quantity,
-          capacity_amount: addon.capacity_amount,
-          added_capacity: addedCapacity,
-          monthly_price_awg: addon.monthly_price_awg,
+          kind: "subscription_change",
+          change_type: "addon_purchase",
+          base_plan_id: plan.id,
+          base_plan_name: plan.name,
+          base_plan_price_awg: baseMonthlyPrice,
+          current_addon_monthly_total: currentAddonMonthlyTotal,
+          current_monthly_total: currentMonthlyTotal,
+          new_monthly_total: newMonthlyTotal,
+          requested_addons: [
+            {
+              addon_id: addon.id,
+              addon_name: addon.name,
+              business_addon_subscription_id: subscription.id,
+              quantity,
+              capacity_amount: addon.capacity_amount,
+              added_capacity: addedCapacity,
+              monthly_price_awg: addon.monthly_price_awg,
+              monthly_total_awg: requestedAddonMonthlyTotal,
+            },
+          ],
+          requested_addon_subscription_ids: [subscription.id],
           requested_by: userId,
+          created_as_total_subscription_payment: true,
         },
       });
 
