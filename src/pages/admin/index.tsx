@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
@@ -51,18 +51,38 @@ export default function AdminDashboard() {
   };
 
   // Edit states
-  const [editingPlan, setEditingPlan] = useState<any | null>(null);
-  const [planFormData, setPlanFormData] = useState({
+  const availablePlanEntitlements = [
+    { key: "premium_templates", label: "Premium Templates", description: "Allow premium loyalty card templates." },
+    { key: "reward_expiration", label: "Reward Expiration", description: "Allow businesses to set reward expiration periods." },
+    { key: "custom_card_branding", label: "Custom Card Branding", description: "Allow branded card customization." },
+  ];
+
+  const emptyPlanFormData = {
+    id: "",
     name: "",
+    description: "",
     price_awg: 0,
-    max_loyalty_programs: 0,
-    max_customers: 0,
+    annual_price_awg: "",
+    status: "active",
+    display_order: 100,
+    badge: "",
+    max_loyalty_programs: 1,
+    max_customers: 300,
     max_staff: 1,
-    is_active: true,
     is_trial: false,
     trial_days: 14,
     includes_premium_templates: false,
-  });
+    entitlements: {
+      premium_templates: false,
+      reward_expiration: true,
+      custom_card_branding: false,
+    },
+  };
+
+  const [editingPlan, setEditingPlan] = useState<any | null>(null);
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [planFormData, setPlanFormData] = useState(emptyPlanFormData);
 
   // Payment review states
   const [reviewingPayment, setReviewingPayment] = useState<any | null>(null);
@@ -240,12 +260,27 @@ export default function AdminDashboard() {
 
   const fetchAdminData = async () => {
     try {
-      // 1. Fetch Subscription Plans
-      const { data: plansData } = await supabase
-        .from("subscription_plans")
-        .select("id, name, price_awg, max_loyalty_programs, max_customers, max_staff, is_active, is_trial, trial_days, includes_premium_templates")
-        .order("price_awg", { ascending: true });
-      setPlans(plansData || []);
+      // 1. Fetch Subscription Plans through the secure Super Admin API so metadata and entitlements stay database-driven.
+      let plansData: any[] = [];
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        const plansResponse = await fetch("/api/admin/plans", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (plansResponse.ok) {
+          const plansResult = await plansResponse.json();
+          plansData = plansResult.plans || [];
+        } else {
+          const plansResult = await plansResponse.json().catch(() => ({}));
+          throw new Error(plansResult.error || "Failed to load subscription plans");
+        }
+      }
+
+      setPlans(plansData);
 
       // 2. Fetch Businesses
       const { data: bizData } = await supabase
@@ -551,61 +586,141 @@ export default function AdminDashboard() {
   };
 
   const handleEditPlanClick = (plan: any) => {
+    const entitlementMap = (plan.entitlements || []).reduce((acc: Record<string, boolean>, entitlement: any) => {
+      if (entitlement.value_type === "boolean") {
+        acc[entitlement.key] = Boolean(entitlement.boolean_value);
+      }
+      return acc;
+    }, {});
+
     setEditingPlan(plan);
+    setIsCreatingPlan(false);
     setPlanFormData({
+      id: plan.id,
       name: plan.name,
-      price_awg: Number(plan.price_awg),
+      description: plan.description || "",
+      price_awg: Number(plan.price_awg || 0),
+      annual_price_awg: plan.annual_price_awg === null || plan.annual_price_awg === undefined ? "" : String(plan.annual_price_awg),
+      status: plan.status || (plan.is_active ? "active" : "inactive"),
+      display_order: Number(plan.display_order || 100),
+      badge: plan.badge || "",
       max_loyalty_programs: plan.max_loyalty_programs,
       max_customers: plan.max_customers,
       max_staff: plan.max_staff || 1,
-      is_active: plan.is_active ?? true,
       is_trial: plan.is_trial || false,
       trial_days: plan.trial_days || 14,
-      includes_premium_templates: plan.includes_premium_templates || false,
+      includes_premium_templates: plan.includes_premium_templates || Boolean(entitlementMap.premium_templates),
+      entitlements: {
+        premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
+        reward_expiration: Boolean(entitlementMap.reward_expiration ?? true),
+        custom_card_branding: Boolean(entitlementMap.custom_card_branding ?? plan.includes_premium_templates),
+      },
     });
+  };
+
+  const handleCreatePlanClick = () => {
+    setEditingPlan(null);
+    setIsCreatingPlan(true);
+    setPlanFormData(emptyPlanFormData);
+  };
+
+  const savePlanThroughApi = async (method: "POST" | "PATCH") => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const entitlements = [
+      ...availablePlanEntitlements.map((feature) => ({
+        key: feature.key,
+        value_type: "boolean",
+        boolean_value: Boolean(planFormData.entitlements[feature.key as keyof typeof planFormData.entitlements]),
+      })),
+      {
+        key: "max_loyalty_programs",
+        value_type: "number",
+        number_value: Number(planFormData.max_loyalty_programs),
+      },
+      {
+        key: "max_customers",
+        value_type: "number",
+        number_value: Number(planFormData.max_customers),
+      },
+      {
+        key: "max_staff",
+        value_type: "number",
+        number_value: Number(planFormData.max_staff),
+      },
+    ];
+
+    const response = await fetch("/api/admin/plans", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        id: method === "PATCH" ? planFormData.id : planFormData.id || undefined,
+        name: planFormData.name,
+        description: planFormData.description,
+        price_awg: Number(planFormData.price_awg),
+        annual_price_awg: planFormData.annual_price_awg === "" ? null : Number(planFormData.annual_price_awg),
+        status: planFormData.status,
+        display_order: Number(planFormData.display_order),
+        badge: planFormData.badge,
+        max_loyalty_programs: Number(planFormData.max_loyalty_programs),
+        max_customers: Number(planFormData.max_customers),
+        max_staff: Number(planFormData.max_staff),
+        is_trial: planFormData.is_trial,
+        trial_days: Number(planFormData.trial_days),
+        includes_premium_templates: Boolean(planFormData.entitlements.premium_templates),
+        entitlements,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Failed to save plan");
+    }
+
+    setPlans(result.plans || []);
   };
 
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingPlan) return;
 
-    // Validate that it's not negative
+    if (!editingPlan && !isCreatingPlan) return;
+
     if (planFormData.max_staff < 0) {
       toast({ title: "Invalid Limit", description: "Staff limit cannot be negative.", variant: "destructive" });
       return;
     }
 
-    try {
-      const { error } = await supabase
-        .from("subscription_plans")
-        .update({
-          name: planFormData.name,
-          price_awg: planFormData.price_awg,
-          max_loyalty_programs: planFormData.max_loyalty_programs,
-          max_customers: planFormData.max_customers,
-          max_staff: planFormData.max_staff,
-          is_active: planFormData.is_active,
-          is_trial: planFormData.is_trial,
-          trial_days: planFormData.trial_days,
-          includes_premium_templates: planFormData.includes_premium_templates,
-        })
-        .eq("id", editingPlan.id);
+    if (!planFormData.name.trim()) {
+      toast({ title: "Plan name required", description: "Enter a plan name before saving.", variant: "destructive" });
+      return;
+    }
 
-      if (error) throw error;
+    try {
+      setSavingPlan(true);
+      await savePlanThroughApi(isCreatingPlan ? "POST" : "PATCH");
 
       toast({
-        title: "Plan Updated",
-        description: `Successfully updated limits for ${planFormData.name} plan.`,
+        title: isCreatingPlan ? "Plan Created" : "Plan Updated",
+        description: `${planFormData.name} has been saved with database-driven limits and features.`,
       });
 
       setEditingPlan(null);
+      setIsCreatingPlan(false);
+      setPlanFormData(emptyPlanFormData);
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Error updating plan limits",
+        title: "Error saving plan",
         description: err.message,
         variant: "destructive",
       });
+    } finally {
+      setSavingPlan(false);
     }
   };
 
@@ -1060,9 +1175,13 @@ export default function AdminDashboard() {
                             onChange={(e) => handleChangePlan(biz.id, e.target.value)}
                           >
                             <option value="">Select Plan</option>
-                            {plans.map(p => (
-                              <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
+                            {plans
+                              .filter((p) => p.status !== "archived" || p.id === biz.subscription_plan)
+                              .map(p => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}{p.status === "archived" ? " (Archived)" : ""}
+                                </option>
+                              ))}
                           </select>
 
                           {biz.status === "pending" && (
