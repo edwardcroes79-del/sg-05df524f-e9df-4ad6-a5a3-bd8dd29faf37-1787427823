@@ -22,11 +22,6 @@ function getDefaultPeriodEnd() {
   return date.toISOString();
 }
 
-function buildPaymentReference() {
-  const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `RS-SUB-${Date.now()}-${suffix}`;
-}
-
 function isContributionActive(subscription: any) {
   if (subscription.status !== "active" || subscription.payment_status !== "approved") return false;
   if (!subscription.current_period_end) return true;
@@ -144,7 +139,7 @@ async function getOverview(admin: any, business: any) {
   const currentSubscriptionTotal = baseMonthlyPrice + activeAddonMonthlyTotal;
   const nextBillingTotal = currentSubscriptionTotal - cancellingAddonMonthlyTotal;
   const subscriptionPayments = (payments || []).filter((payment: any) =>
-    payment.metadata?.kind === "subscription_change" || payment.metadata?.kind === "addon_purchase"
+    payment.metadata?.kind !== "subscription_change" && payment.metadata?.kind !== "addon_purchase"
   );
 
   return {
@@ -218,7 +213,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (existingAddonSubscription) {
         return res.status(409).json({
           error: existingAddonSubscription.payment_status === "pending"
-            ? "This add-on already has a pending subscription-change payment. Complete the existing subscription payment instead of creating a duplicate."
+            ? "This add-on already has a pending approval request. Wait for Super Admin approval instead of creating a duplicate."
             : "This add-on is already active or scheduled for cancellation. Manage the existing add-on before purchasing it again.",
         });
       }
@@ -261,6 +256,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const now = new Date().toISOString();
       const currentPeriodEnd = getDefaultPeriodEnd();
 
+      const { data: effectiveLimitBefore } = await admin.rpc("get_business_effective_numeric_limit", {
+        p_business_id: business.id,
+        p_key: "max_customers",
+        p_fallback: Number(plan.max_customers || 300),
+      });
+      const currentCustomerLimit = Number(effectiveLimitBefore ?? plan.max_customers ?? 300);
+
       const { data: subscription, error: subscriptionError } = await admin
         .from("business_addon_subscriptions")
         .insert({
@@ -271,11 +273,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           payment_status: "pending",
           current_period_end: currentPeriodEnd,
           metadata: {
-            source: "business_subscription_change_request",
+            source: "business_addon_approval_request",
             requested_by: userId,
             requested_at: now,
-            pending_payment: true,
+            pending_approval: true,
+            base_plan_id: plan.id,
+            base_plan_name: plan.name,
+            base_plan_price_awg: baseMonthlyPrice,
+            current_addon_monthly_total: currentAddonMonthlyTotal,
+            current_monthly_total: currentMonthlyTotal,
             requested_new_monthly_total: newMonthlyTotal,
+            current_customer_limit: currentCustomerLimit,
+            requested_new_customer_limit: currentCustomerLimit + addedCapacity,
+            addon_name: addon.name,
+            capacity_amount: addon.capacity_amount,
+            added_capacity: addedCapacity,
+            monthly_price_awg: addon.monthly_price_awg,
+            monthly_total_awg: requestedAddonMonthlyTotal,
             requested_period_end: currentPeriodEnd,
           },
         })
@@ -283,56 +297,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .single();
 
       if (subscriptionError) throw subscriptionError;
-
-      const paymentReference = buildPaymentReference();
-      const { error: paymentError } = await admin.from("subscription_payments").insert({
-        business_id: business.id,
-        provider: "bank_transfer",
-        external_transaction_id: null,
-        amount: newMonthlyTotal,
-        currency: "AWG",
-        status: "pending",
-        paid_at: null,
-        plan_id: business.subscription_plan || plan.id,
-        payment_reference: paymentReference,
-        metadata: {
-          kind: "subscription_change",
-          change_type: "addon_purchase",
-          base_plan_id: plan.id,
-          base_plan_name: plan.name,
-          base_plan_price_awg: baseMonthlyPrice,
-          current_addon_monthly_total: currentAddonMonthlyTotal,
-          current_monthly_total: currentMonthlyTotal,
-          new_monthly_total: newMonthlyTotal,
-          requested_addons: [
-            {
-              addon_id: addon.id,
-              addon_name: addon.name,
-              business_addon_subscription_id: subscription.id,
-              quantity,
-              capacity_amount: addon.capacity_amount,
-              added_capacity: addedCapacity,
-              monthly_price_awg: addon.monthly_price_awg,
-              monthly_total_awg: requestedAddonMonthlyTotal,
-            },
-          ],
-          requested_addon_subscription_ids: [subscription.id],
-          requested_by: userId,
-          created_as_total_subscription_payment: true,
-        },
-      });
-
-      if (paymentError) {
-        await admin
-          .from("business_addon_subscriptions")
-          .delete()
-          .eq("id", subscription.id)
-          .eq("business_id", business.id)
-          .eq("payment_status", "pending")
-          .eq("status", "inactive");
-
-        throw paymentError;
-      }
     }
 
     if (req.method === "PATCH") {

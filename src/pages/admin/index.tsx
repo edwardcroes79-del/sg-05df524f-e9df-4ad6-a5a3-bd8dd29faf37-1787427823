@@ -118,6 +118,7 @@ export default function AdminDashboard() {
   });
   const [assigningBusinessAddon, setAssigningBusinessAddon] = useState(false);
   const [cancellingBusinessAddonId, setCancellingBusinessAddonId] = useState<string | null>(null);
+  const [reviewingAddonRequestId, setReviewingAddonRequestId] = useState<string | null>(null);
 
   // Payment review states
   const [reviewingPayment, setReviewingPayment] = useState<any | null>(null);
@@ -1135,17 +1136,108 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleApprovePayment = async (payment: any) => {
-    if (!adminNotes.trim()) {
+  const handleApproveAddonRequest = async (subscription: any) => {
+    try {
+      setReviewingAddonRequestId(subscription.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const now = new Date().toISOString();
+      const metadata = asMetadataObject(subscription.metadata);
+
+      const { error } = await supabase
+        .from("business_addon_subscriptions")
+        .update({
+          status: "active",
+          payment_status: "approved",
+          starts_at: now,
+          current_period_start: now,
+          metadata: {
+            ...metadata,
+            pending_approval: false,
+            approved_by: user.id,
+            approved_at: now,
+            active_as_subscription_component: true,
+            approved_subscription_total_awg: metadata.requested_new_monthly_total,
+          },
+          updated_at: now,
+        })
+        .eq("id", subscription.id)
+        .eq("business_id", subscription.business_id)
+        .eq("status", "inactive")
+        .eq("payment_status", "pending");
+
+      if (error) throw error;
+
       toast({
-        title: "Admin Notes Required",
-        description: "Please add review notes before approving.",
+        title: "Add-on Approved",
+        description: "The customer capacity add-on is now active and included in the business subscription total.",
+      });
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Add-on approval failed",
+        description: err.message,
         variant: "destructive",
       });
-      return;
+    } finally {
+      setReviewingAddonRequestId(null);
     }
+  };
 
-    if (payment.provider === "bank_transfer" && !payment.payment_proof_url) {
+  const handleRejectAddonRequest = async (subscription: any) => {
+    try {
+      setReviewingAddonRequestId(subscription.id);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const now = new Date().toISOString();
+      const metadata = asMetadataObject(subscription.metadata);
+
+      const { error } = await supabase
+        .from("business_addon_subscriptions")
+        .update({
+          status: "cancelled",
+          payment_status: "failed",
+          ends_at: now,
+          metadata: {
+            ...metadata,
+            pending_approval: false,
+            rejected_by: user.id,
+            rejected_at: now,
+            rejection_status: "rejected",
+          },
+          updated_at: now,
+        })
+        .eq("id", subscription.id)
+        .eq("business_id", subscription.business_id)
+        .eq("status", "inactive")
+        .eq("payment_status", "pending");
+
+      if (error) throw error;
+
+      toast({
+        title: "Add-on Rejected",
+        description: "The request was preserved in history and no capacity was added.",
+      });
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Add-on rejection failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setReviewingAddonRequestId(null);
+    }
+  };
+
+  const handleApprovePayment = async (payment: any) => {
+    const isAddonApprovalPayment =
+      (payment.metadata?.kind === "subscription_change" && payment.metadata?.change_type === "addon_purchase") ||
+      payment.metadata?.kind === "addon_purchase";
+
+    if (payment.provider === "bank_transfer" && !payment.payment_proof_url && !isAddonApprovalPayment) {
       toast({
         title: "Payment Proof Required",
         description: "Manual bank-transfer subscription payments require uploaded proof before approval.",
@@ -1905,7 +1997,7 @@ export default function AdminDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Payment Review Queue</CardTitle>
-                <CardDescription>Review bank transfer payment proofs and approve/reject subscription upgrades.</CardDescription>
+                <CardDescription>Review manual subscription payments and direct add-on approval requests.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -2039,30 +2131,40 @@ export default function AdminDashboard() {
                     </div>
 
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">Payment Proof</p>
-                      {reviewingPayment.payment_proof_url ? (
-                        <div className="border rounded-lg p-6 text-center space-y-3">
-                          <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto" />
-                          <div>
-                            <p className="font-semibold text-foreground">Payment proof uploaded</p>
-                            <p className="text-xs text-muted-foreground break-all">
-                              {reviewingPayment.payment_proof_url.startsWith("http")
-                                ? "Legacy public proof URL"
-                                : reviewingPayment.payment_proof_url}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => handleOpenAdminPaymentProof(reviewingPayment)}
-                          >
-                            View Payment Proof
-                          </Button>
+                      {reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase" ? (
+                        <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
+                          <CheckCircle className="h-8 w-8 text-primary mx-auto" />
+                          <p className="font-semibold text-foreground">Customer capacity add-on approval</p>
+                          <p className="text-sm text-muted-foreground">No payment proof is required for customer-capacity add-on approval.</p>
                         </div>
                       ) : (
-                        <div className="border rounded-lg p-8 text-center text-muted-foreground">
-                          No proof uploaded
-                        </div>
+                        <>
+                          <p className="text-sm text-muted-foreground mb-2">Payment Proof</p>
+                          {reviewingPayment.payment_proof_url ? (
+                            <div className="border rounded-lg p-6 text-center space-y-3">
+                              <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto" />
+                              <div>
+                                <p className="font-semibold text-foreground">Payment proof uploaded</p>
+                                <p className="text-xs text-muted-foreground break-all">
+                                  {reviewingPayment.payment_proof_url.startsWith("http")
+                                    ? "Legacy public proof URL"
+                                    : reviewingPayment.payment_proof_url}
+                                </p>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => handleOpenAdminPaymentProof(reviewingPayment)}
+                              >
+                                View Payment Proof
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="border rounded-lg p-8 text-center text-muted-foreground">
+                              No proof uploaded
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -2093,14 +2195,14 @@ export default function AdminDashboard() {
                   <Button 
                     variant="destructive"
                     onClick={() => handleRejectPayment(reviewingPayment)}
-                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url)}
+                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase")}
                   >
                     {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
                     Reject Payment
                   </Button>
                   <Button 
                     onClick={() => handleApprovePayment(reviewingPayment)}
-                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url)}
+                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase")}
                   >
                     {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                     Approve & Activate
@@ -2714,14 +2816,25 @@ export default function AdminDashboard() {
                         const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
                         const business = Array.isArray(subscription.businesses) ? subscription.businesses[0] : subscription.businesses;
                         const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
+                        const metadata = asMetadataObject(subscription.metadata);
+                        const planId = String(metadata.base_plan_id || business?.subscription_plan || "");
+                        const plan = plans.find((item) => item.id === planId);
+                        const basePrice = Number(metadata.base_plan_price_awg ?? plan?.price_awg ?? 0);
+                        const currentMonthlyTotal = Number(metadata.current_monthly_total ?? basePrice);
+                        const addonMonthlyTotal = Number(metadata.monthly_total_awg ?? (Number(addon?.monthly_price_awg || 0) * Number(subscription.quantity || 1)));
+                        const newMonthlyTotal = Number(metadata.requested_new_monthly_total ?? (currentMonthlyTotal + addonMonthlyTotal));
+                        const currentCustomerLimit = Number(metadata.current_customer_limit ?? plan?.max_customers ?? 0);
+                        const requestedCustomerLimit = Number(metadata.requested_new_customer_limit ?? (currentCustomerLimit + addedCapacity));
+                        const isPendingApproval = subscription.status === "inactive" && subscription.payment_status === "pending";
+                        const isRejected = subscription.status === "cancelled" && subscription.payment_status === "failed";
 
                         return (
                           <div key={subscription.id} className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <h4 className="font-semibold text-foreground">{business?.business_name || "Unknown business"}</h4>
-                                <Badge variant={subscription.status === "active" ? "default" : "secondary"}>
-                                  {subscription.status.toUpperCase()}
+                                <Badge variant={subscription.status === "active" ? "default" : isRejected ? "destructive" : "secondary"}>
+                                  {isPendingApproval ? "PENDING APPROVAL" : isRejected ? "REJECTED" : subscription.status.toUpperCase()}
                                 </Badge>
                                 {subscription.cancel_at_period_end && (
                                   <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
@@ -2732,10 +2845,52 @@ export default function AdminDashboard() {
                               <p className="text-sm text-muted-foreground mt-1">
                                 {addon?.name || subscription.addon_id} × {subscription.quantity} = +{addedCapacity.toLocaleString()} customer capacity
                               </p>
+                              {isPendingApproval && (
+                                <div className="mt-3 grid gap-2 rounded-md border bg-muted/20 p-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                                  <div>
+                                    <p className="text-muted-foreground">Current subscription</p>
+                                    <p className="font-semibold text-foreground">AWG {currentMonthlyTotal.toFixed(2)}/month</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">Requested add-on</p>
+                                    <p className="font-semibold text-foreground">AWG {addonMonthlyTotal.toFixed(2)}/month</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">New total</p>
+                                    <p className="font-semibold text-primary">AWG {newMonthlyTotal.toFixed(2)}/month</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-muted-foreground">Customer capacity</p>
+                                    <p className="font-semibold text-foreground">{currentCustomerLimit.toLocaleString()} → {requestedCustomerLimit.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                              )}
                               <p className="text-xs text-muted-foreground mt-1">
                                 Period end: {subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleString() : "Not set"}
                               </p>
                             </div>
+                            {isPendingApproval && (
+                              <div className="flex flex-wrap gap-2 sm:justify-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleRejectAddonRequest(subscription)}
+                                  disabled={reviewingAddonRequestId === subscription.id}
+                                >
+                                  {reviewingAddonRequestId === subscription.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <XCircle className="h-4 w-4 mr-1" />}
+                                  Reject
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleApproveAddonRequest(subscription)}
+                                  disabled={reviewingAddonRequestId === subscription.id}
+                                >
+                                  {reviewingAddonRequestId === subscription.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle className="h-4 w-4 mr-1" />}
+                                  Approve Add-on
+                                </Button>
+                              </div>
+                            )}
                             {subscription.status === "active" && !subscription.cancel_at_period_end && (
                               <Button
                                 variant="outline"

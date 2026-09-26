@@ -654,14 +654,15 @@ export default function BillingPage() {
                       const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
                       const isApprovedActive = subscription.status === "active" && subscription.payment_status === "approved";
                       const isPending = subscription.payment_status === "pending";
+                      const isRejected = subscription.payment_status === "failed" || subscription.status === "cancelled";
 
                       return (
                         <div key={subscription.id} className="rounded-lg border bg-card p-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
                               <h4 className="font-heading font-bold text-foreground">{addon?.name || subscription.addon_id}</h4>
-                              <Badge variant={isApprovedActive ? "default" : isPending ? "secondary" : "outline"}>
-                                {isPending ? "Subscription Change Pending" : subscription.cancel_at_period_end ? "Cancellation scheduled" : subscription.status}
+                              <Badge variant={isApprovedActive ? "default" : isPending ? "secondary" : isRejected ? "destructive" : "outline"}>
+                                {isPending ? "Pending Approval" : isRejected ? "Rejected" : subscription.cancel_at_period_end ? "Cancellation scheduled" : subscription.status}
                               </Badge>
                             </div>
                             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 text-sm">
@@ -674,7 +675,7 @@ export default function BillingPage() {
                                 <p className="font-semibold">AWG {(Number(addon?.monthly_price_awg || 0) * Number(subscription.quantity || 1)).toFixed(2)}</p>
                               </div>
                               <div>
-                                <p className="text-muted-foreground">Start date</p>
+                                <p className="text-muted-foreground">{isPending ? "Requested date" : "Start date"}</p>
                                 <p className="font-semibold">{formatDate(subscription.starts_at)}</p>
                               </div>
                               <div>
@@ -700,6 +701,11 @@ export default function BillingPage() {
                               Capacity remains available until {formatDate(subscription.current_period_end)}. Next billing total excludes this add-on.
                             </p>
                           )}
+                          {isPending && (
+                            <p className="text-sm text-muted-foreground lg:max-w-xs">
+                              Your add-on request is waiting for Super Admin approval. Capacity and subscription total update only after approval.
+                            </p>
+                          )}
                         </div>
                       );
                     })}
@@ -709,109 +715,19 @@ export default function BillingPage() {
 
               {addonPayments.length > 0 && (
                 <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pending subscription changes</p>
-                  <div className="space-y-3">
-                    {addonPayments.slice(0, 5).map((payment) => {
-                      const metadata = payment.metadata || {};
-                      const isPending = payment.status === "pending";
-                      const hasProof = Boolean(payment.payment_proof_url);
-
-                      return (
-                        <div key={payment.id} className="rounded-lg border bg-card p-4 text-sm">
-                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                            <div className="space-y-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="font-heading font-semibold text-foreground">
-                                  {metadata.base_plan_name || metadata.plan_name || currentPlan.name} subscription change
-                                </span>
-                                <Badge variant={getStatusVariant(payment.status || "pending")} className="w-max gap-1">
-                                  {getStatusIcon(payment.status || "pending")}
-                                  {payment.status}
-                                </Badge>
-                                {hasProof && (
-                                  <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
-                                    Proof submitted
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                <div>
-                                  <p className="text-muted-foreground">Total payment due</p>
-                                  <p className="font-semibold">AWG {Number(payment.amount || 0).toFixed(2)} / month</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Payment Reference</p>
-                                  <p className="font-mono font-semibold">{payment.payment_reference}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">New monthly total</p>
-                                  <p className="font-semibold">AWG {Number(metadata.new_monthly_total || payment.amount || 0).toFixed(2)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-muted-foreground">Submitted</p>
-                                  <p className="font-semibold">{formatDate(payment.created_at)}</p>
-                                </div>
-                              </div>
-                              {Array.isArray(metadata.requested_addons) && metadata.requested_addons.length > 0 && (
-                                <div className="rounded-md border bg-muted/20 p-3">
-                                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Requested add-ons included in this subscription payment</p>
-                                  <div className="space-y-1">
-                                    {metadata.requested_addons.map((requestedAddon: any) => (
-                                      <div key={requestedAddon.business_addon_subscription_id || requestedAddon.addon_id} className="flex items-center justify-between gap-3">
-                                        <span>{requestedAddon.addon_name} × {requestedAddon.quantity || 1}</span>
-                                        <strong>AWG {Number(requestedAddon.monthly_total_awg || 0).toFixed(2)} / month</strong>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="min-w-[240px] rounded-lg border bg-muted/20 p-3">
-                              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Manual payment instructions</p>
-                              <p className="mt-2 text-sm text-muted-foreground">
-                                Transfer the full subscription amount AWG {Number(payment.amount || 0).toFixed(2)} using reference <strong className="font-mono text-foreground">{payment.payment_reference}</strong>, then upload one bank proof for the complete subscription payment.
-                              </p>
-                              {payment.payment_proof_url && (
-                                <Button
-                                  type="button"
-                                  variant="link"
-                                  className="mt-3 h-auto p-0 text-sm font-semibold text-primary underline"
-                                  onClick={() => handleOpenPaymentProof(payment)}
-                                >
-                                  View submitted proof
-                                </Button>
-                              )}
-                              {isPending && (
-                                <div className="mt-3">
-                                  <input
-                                    id={`addon-proof-${payment.id}`}
-                                    type="file"
-                                    accept="image/*,application/pdf"
-                                    className="hidden"
-                                    onChange={(event) => handleAddonProofUpload(payment, event.target.files?.[0] || null)}
-                                    disabled={uploadingProofId === payment.id}
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant={hasProof ? "outline" : "default"}
-                                    className="w-full"
-                                    disabled={uploadingProofId === payment.id}
-                                    onClick={() => document.getElementById(`addon-proof-${payment.id}`)?.click()}
-                                  >
-                                    {uploadingProofId === payment.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                                    {hasProof ? "Replace Subscription Proof" : "Upload Subscription Proof"}
-                                  </Button>
-                                  <p className="mt-2 text-xs text-muted-foreground">
-                                    Status: {hasProof ? "Awaiting Super Admin approval." : "Payment proof required for the full subscription total before review can be completed."}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Other subscription payment history</p>
+                  <div className="space-y-2">
+                    {addonPayments.slice(0, 5).map((payment) => (
+                      <div key={payment.id} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
+                        <span className="text-muted-foreground">
+                          Reference {payment.payment_reference || payment.id} · AWG {Number(payment.amount || 0).toFixed(2)}
+                        </span>
+                        <Badge variant={getStatusVariant(payment.status || "pending")} className="w-max gap-1">
+                          {getStatusIcon(payment.status || "pending")}
+                          {payment.status}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

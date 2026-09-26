@@ -10,14 +10,14 @@ position: 58
 ---
 
 ## Notes
-Simplify the Customer Capacity Add-on purchase process. Business Admins should request an add-on and see Pending Approval, with no add-on payment-proof upload or document step. Super Admins should approve or reject directly. Approval activates the add-on, sets the actual activation timestamp, records approver metadata, updates effective capacity through the existing entitlement logic, and updates the subscription total as base plan price plus active approved add-on prices. Rejection must preserve request history, keep the add-on inactive, and not change capacity or subscription totals. Do not delete or break payment-proof functionality used by other payment flows. Do not create a new payment system or separate billing architecture.
+Simplify the Customer Capacity Add-on purchase process. Business Admins should request an add-on and see Pending Approval, with no add-on payment-proof upload or document step. Super Admins should approve or reject directly. Approval activates the add-on, sets the actual activation timestamp, records approver metadata, updates effective capacity through the existing entitlement logic, and updates the subscription total as base plan price plus active approved add-on prices. Rejection must preserve request history, keep the add-on inactive, and not change capacity or subscription totals. Do not delete or break payment-proof functionality used by other payment flows. Do not create a new payment system or separate billing architecture. Current implementation now creates direct `business_addon_subscriptions` pending approval records instead of add-on subscription payment records; Business Billing shows pending/active/rejected add-on states without proof upload; Super Admin Add-ons view can directly approve or reject pending customer-capacity add-on requests.
 
 ## Checklist
-- [ ] Inspect current add-on request API, business billing UI, Super Admin review UI, and database lifecycle fields
-- [ ] Remove payment-proof upload requirement from Customer Capacity Add-on business UI only
-- [ ] Update add-on request creation to represent Pending Approval without requiring proof upload
-- [ ] Update Super Admin UI to show add-on approval requests with current/new subscription total and capacity change
-- [ ] Update Super Admin approval/rejection logic so only Super Admin activates or rejects add-ons
+- [x] Inspect current add-on request API, business billing UI, Super Admin review UI, and database lifecycle fields
+- [x] Remove payment-proof upload requirement from Customer Capacity Add-on business UI only
+- [x] Update add-on request creation to represent Pending Approval without requiring proof upload
+- [x] Update Super Admin UI to show add-on approval requests with current/new subscription total and capacity change
+- [x] Update Super Admin approval/rejection logic so only Super Admin activates or rejects add-ons
 - [ ] Verify `starts_at` is populated correctly for pending and active add-on lifecycle states
 - [ ] Verify capacity and subscription total change only after approval
 - [ ] Run project validation and targeted database regression checks
