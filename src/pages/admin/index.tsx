@@ -1144,6 +1144,7 @@ export default function AdminDashboard() {
 
       const now = new Date().toISOString();
       const metadata = asMetadataObject(subscription.metadata);
+      const approvedSubscriptionTotal = Number(metadata.requested_new_monthly_total || 0);
 
       const { error } = await supabase
         .from("business_addon_subscriptions")
@@ -1158,7 +1159,7 @@ export default function AdminDashboard() {
             approved_by: user.id,
             approved_at: now,
             active_as_subscription_component: true,
-            approved_subscription_total_awg: metadata.requested_new_monthly_total,
+            approved_subscription_total_awg: approvedSubscriptionTotal,
           },
           updated_at: now,
         })
