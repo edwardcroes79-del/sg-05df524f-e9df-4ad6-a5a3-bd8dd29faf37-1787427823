@@ -10,13 +10,13 @@ position: 47
 ---
 
 ## Notes
-Implement Phase 2 for the Flexible Plan System. Add database-driven subscription plan management to the existing Super Admin area without changing existing business subscriptions, existing billing payments, or prices for Starter, Business, and Enterprise. Preserve existing plans exactly. Super Admin must be able to create, view, edit, activate, deactivate, and archive plans; configure plan limits; and configure only feature entitlements that actually exist in Royalty Stamp. Archived plans must remain valid for already-assigned businesses but unavailable for new selection. Only Super Admin may manage plans. Do not expose privileged credentials in browser code and do not disable RLS.
+Implement Phase 2 for the Flexible Plan System. Add database-driven subscription plan management to the existing Super Admin area without changing existing business subscriptions, existing billing payments, or prices for Starter, Business, and Enterprise. Preserve existing plans exactly. Super Admin must be able to create, view, edit, activate, deactivate, and archive plans; configure plan limits; and configure only feature entitlements that actually exist in Royalty Stamp. Archived plans must remain valid for already-assigned businesses but unavailable for new selection. Only Super Admin may manage plans. Do not expose privileged credentials in browser code and do not disable RLS. Database foundation added: flexible plan metadata columns and `plan_entitlements` table with RLS. Existing plans were updated in place only for compatibility metadata/backfill and current requested prices were preserved by name. Secure `/api/admin/plans` route added for Super Admin-only create/update/status/entitlement management.
 
 ## Checklist
-- [ ] Inspect live subscription plan schema, RLS, and current Super Admin billing UI
-- [ ] Add compatible database fields/tables for flexible plan status, display metadata, and feature entitlements without duplicating existing plans
-- [ ] Preserve and backfill Starter, Business, and Enterprise with current prices and limits
-- [ ] Add secure Super Admin-only API routes for plan create, update, status changes, and entitlement configuration
+- [x] Inspect live subscription plan schema, RLS, and current Super Admin billing UI
+- [x] Add compatible database fields/tables for flexible plan status, display metadata, and feature entitlements without duplicating existing plans
+- [x] Preserve and backfill Starter, Business, and Enterprise with current prices and limits
+- [x] Add secure Super Admin-only API routes for plan create, update, status changes, and entitlement configuration
 - [ ] Add plan management UI to the existing Super Admin area using real database data
 - [ ] Ensure archived plans cannot be newly selected while existing assigned businesses keep working
 - [ ] Verify non-Super-Admin users cannot manage plans

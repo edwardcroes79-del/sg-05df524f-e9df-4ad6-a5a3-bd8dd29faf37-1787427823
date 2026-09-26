@@ -481,6 +481,50 @@ export type Database = {
           },
         ]
       }
+      plan_entitlements: {
+        Row: {
+          boolean_value: boolean | null
+          created_at: string | null
+          id: string
+          key: string
+          number_value: number | null
+          plan_id: string
+          text_value: string | null
+          updated_at: string | null
+          value_type: string
+        }
+        Insert: {
+          boolean_value?: boolean | null
+          created_at?: string | null
+          id?: string
+          key: string
+          number_value?: number | null
+          plan_id: string
+          text_value?: string | null
+          updated_at?: string | null
+          value_type?: string
+        }
+        Update: {
+          boolean_value?: boolean | null
+          created_at?: string | null
+          id?: string
+          key?: string
+          number_value?: number | null
+          plan_id?: string
+          text_value?: string | null
+          updated_at?: string | null
+          value_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_entitlements_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_bank_accounts: {
         Row: {
           account_holder: string
@@ -856,7 +900,12 @@ export type Database = {
       }
       subscription_plans: {
         Row: {
+          annual_price_awg: number | null
+          archived_at: string | null
+          badge: string | null
           created_at: string | null
+          description: string | null
+          display_order: number | null
           features: string[]
           id: string
           includes_premium_templates: boolean | null
@@ -867,10 +916,17 @@ export type Database = {
           max_staff: number
           name: string
           price_awg: number
+          status: string | null
           trial_days: number | null
+          updated_at: string | null
         }
         Insert: {
+          annual_price_awg?: number | null
+          archived_at?: string | null
+          badge?: string | null
           created_at?: string | null
+          description?: string | null
+          display_order?: number | null
           features?: string[]
           id: string
           includes_premium_templates?: boolean | null
@@ -881,10 +937,17 @@ export type Database = {
           max_staff?: number
           name: string
           price_awg?: number
+          status?: string | null
           trial_days?: number | null
+          updated_at?: string | null
         }
         Update: {
+          annual_price_awg?: number | null
+          archived_at?: string | null
+          badge?: string | null
           created_at?: string | null
+          description?: string | null
+          display_order?: number | null
           features?: string[]
           id?: string
           includes_premium_templates?: boolean | null
@@ -895,7 +958,9 @@ export type Database = {
           max_staff?: number
           name?: string
           price_awg?: number
+          status?: string | null
           trial_days?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
