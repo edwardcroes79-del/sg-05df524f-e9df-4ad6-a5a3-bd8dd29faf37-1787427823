@@ -15,6 +15,10 @@ import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban,
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
+function asMetadataObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -1187,7 +1191,7 @@ export default function AdminDashboard() {
             starts_at: now,
             current_period_start: now,
             metadata: {
-              ...(existingSubscription.metadata || {}),
+              ...asMetadataObject(existingSubscription.metadata),
               pending_payment: false,
               approved_payment_id: payment.id,
               approved_by: user.id,
@@ -1280,7 +1284,7 @@ export default function AdminDashboard() {
               payment_status: "rejected",
               ends_at: new Date().toISOString(),
               metadata: {
-                ...(existingSubscription.metadata || {}),
+                ...asMetadataObject(existingSubscription.metadata),
                 pending_payment: false,
                 rejected_payment_id: payment.id,
                 rejected_by: user.id,
