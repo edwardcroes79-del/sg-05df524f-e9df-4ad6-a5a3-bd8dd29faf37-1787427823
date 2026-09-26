@@ -10,16 +10,16 @@ position: 50
 ---
 
 ## Notes
-Implement Phase 2 for the Add-on System. Create database-driven customer capacity add-on definitions and Super Admin management only. Initial add-ons: +100 customers AWG 5/month, +250 customers AWG 8/month, +500 customers AWG 12/month, +1,000 customers AWG 20/month. Prices, capacity, display order, and status must be editable by Super Admin without code changes. Do not change effective customer limits yet, do not assign add-ons to businesses, do not modify existing plans/subscriptions/billing payments, and do not change customer limit enforcement. Preserve RLS, business isolation, and Super Admin-only permissions.
+Implement Phase 2 for the Add-on System. Create database-driven customer capacity add-on definitions and Super Admin management only. Initial add-ons: +100 customers AWG 5/month, +250 customers AWG 8/month, +500 customers AWG 12/month, +1,000 customers AWG 20/month. Prices, capacity, display order, and status must be editable by Super Admin without code changes. Do not change effective customer limits yet, do not assign add-ons to businesses, do not modify existing plans/subscriptions/billing payments, and do not change customer limit enforcement. Preserve RLS, business isolation, and Super Admin-only permissions. Added `subscription_addons` table with RLS, seeded initial customer-capacity add-on definitions, added secure `/api/admin/addons` route, and added Super Admin add-on management UI.
 
 ## Checklist
-- [ ] Inspect current schema and existing Super Admin API/UI plan-management pattern
-- [ ] Add database table for configurable subscription add-on definitions without touching effective limits
-- [ ] Seed initial customer capacity add-ons without hard-coding application prices
-- [ ] Add secure Super Admin-only API for add-on create/edit/status management
-- [ ] Add add-on management UI to the existing Super Admin area
-- [ ] Ensure archived add-ons are not positioned for new purchase while preserving historical records
-- [ ] Verify non-Super-Admin users cannot manage add-ons
+- [x] Inspect current schema and existing Super Admin API/UI plan-management pattern
+- [x] Add database table for configurable subscription add-on definitions without touching effective limits
+- [x] Seed initial customer capacity add-ons without hard-coding application prices
+- [x] Add secure Super Admin-only API for add-on create/edit/status management
+- [x] Add add-on management UI to the existing Super Admin area
+- [x] Ensure archived add-ons are not positioned for new purchase while preserving historical records
+- [x] Verify non-Super-Admin users cannot manage add-ons
 - [ ] Run project validation
 
 ## Acceptance

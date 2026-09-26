@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
+  const [addons, setAddons] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [globalStats, setGlobalStats] = useState({
@@ -83,6 +84,26 @@ export default function AdminDashboard() {
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [planFormData, setPlanFormData] = useState(emptyPlanFormData);
+
+  const emptyAddonFormData = {
+    id: "",
+    name: "",
+    slug: "",
+    description: "",
+    addon_type: "customer_capacity",
+    capacity_amount: 100,
+    monthly_price_awg: 0,
+    status: "active",
+    display_order: 100,
+    provider: "",
+    provider_product_id: "",
+    provider_price_id: "",
+  };
+
+  const [editingAddon, setEditingAddon] = useState<any | null>(null);
+  const [isCreatingAddon, setIsCreatingAddon] = useState(false);
+  const [savingAddon, setSavingAddon] = useState(false);
+  const [addonFormData, setAddonFormData] = useState(emptyAddonFormData);
 
   // Payment review states
   const [reviewingPayment, setReviewingPayment] = useState<any | null>(null);
@@ -281,6 +302,25 @@ export default function AdminDashboard() {
       }
 
       setPlans(plansData);
+
+      let addonsData: any[] = [];
+      if (session) {
+        const addonsResponse = await fetch("/api/admin/addons", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (addonsResponse.ok) {
+          const addonsResult = await addonsResponse.json();
+          addonsData = addonsResult.addons || [];
+        } else {
+          const addonsResult = await addonsResponse.json().catch(() => ({}));
+          throw new Error(addonsResult.error || "Failed to load subscription add-ons");
+        }
+      }
+
+      setAddons(addonsData);
 
       // 2. Fetch Businesses
       const { data: bizData } = await supabase
@@ -816,6 +856,155 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleEditAddonClick = (addon: any) => {
+    setEditingAddon(addon);
+    setIsCreatingAddon(false);
+    setAddonFormData({
+      id: addon.id,
+      name: addon.name,
+      slug: addon.slug || "",
+      description: addon.description || "",
+      addon_type: addon.addon_type || "customer_capacity",
+      capacity_amount: Number(addon.capacity_amount || 100),
+      monthly_price_awg: Number(addon.monthly_price_awg || 0),
+      status: addon.status || "active",
+      display_order: Number(addon.display_order || 100),
+      provider: addon.provider || "",
+      provider_product_id: addon.provider_product_id || "",
+      provider_price_id: addon.provider_price_id || "",
+    });
+  };
+
+  const handleCreateAddonClick = () => {
+    setEditingAddon(null);
+    setIsCreatingAddon(true);
+    setAddonFormData(emptyAddonFormData);
+  };
+
+  const saveAddonThroughApi = async (method: "POST" | "PATCH") => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const response = await fetch("/api/admin/addons", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        id: method === "PATCH" ? addonFormData.id : addonFormData.id || undefined,
+        name: addonFormData.name,
+        slug: addonFormData.slug || undefined,
+        description: addonFormData.description,
+        addon_type: addonFormData.addon_type,
+        capacity_amount: Number(addonFormData.capacity_amount),
+        monthly_price_awg: Number(addonFormData.monthly_price_awg),
+        status: addonFormData.status,
+        display_order: Number(addonFormData.display_order),
+        provider: addonFormData.provider,
+        provider_product_id: addonFormData.provider_product_id,
+        provider_price_id: addonFormData.provider_price_id,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Failed to save add-on");
+    }
+
+    setAddons(result.addons || []);
+  };
+
+  const handleSaveAddon = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editingAddon && !isCreatingAddon) return;
+
+    if (!addonFormData.name.trim()) {
+      toast({ title: "Add-on name required", description: "Enter an add-on name before saving.", variant: "destructive" });
+      return;
+    }
+
+    if (Number(addonFormData.capacity_amount) < 1) {
+      toast({ title: "Invalid capacity", description: "Customer capacity must be at least 1.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setSavingAddon(true);
+      await saveAddonThroughApi(isCreatingAddon ? "POST" : "PATCH");
+
+      toast({
+        title: isCreatingAddon ? "Add-on Created" : "Add-on Updated",
+        description: `${addonFormData.name} has been saved. Effective customer limits were not changed in this phase.`,
+      });
+
+      setEditingAddon(null);
+      setIsCreatingAddon(false);
+      setAddonFormData(emptyAddonFormData);
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Error saving add-on",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingAddon(false);
+    }
+  };
+
+  const handleUpdateAddonStatus = async (addon: any, nextStatus: "active" | "inactive" | "archived") => {
+    try {
+      setSavingAddon(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/admin/addons", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          id: addon.id,
+          name: addon.name,
+          slug: addon.slug,
+          description: addon.description || "",
+          addon_type: addon.addon_type || "customer_capacity",
+          capacity_amount: Number(addon.capacity_amount || 100),
+          monthly_price_awg: Number(addon.monthly_price_awg || 0),
+          status: nextStatus,
+          display_order: Number(addon.display_order || 100),
+          provider: addon.provider || "",
+          provider_product_id: addon.provider_product_id || "",
+          provider_price_id: addon.provider_price_id || "",
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to update add-on status");
+      }
+
+      setAddons(result.addons || []);
+      toast({
+        title: nextStatus === "archived" ? "Add-on Archived" : nextStatus === "active" ? "Add-on Activated" : "Add-on Deactivated",
+        description: `${addon.name} is now ${nextStatus}. Existing future subscriptions will remain non-destructive.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Add-on status update failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingAddon(false);
+    }
+  };
+
   const handleApprovePayment = async (payment: any) => {
     if (!adminNotes.trim()) {
       toast({
@@ -1157,6 +1346,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="merchants">Merchants & Subscriptions</TabsTrigger>
             <TabsTrigger value="payments">Payment Review</TabsTrigger>
             <TabsTrigger value="plans">Subscription Plans & Limits</TabsTrigger>
+            <TabsTrigger value="addons">Customer Capacity Add-ons</TabsTrigger>
             <TabsTrigger value="customers">Customers</TabsTrigger>
             <TabsTrigger value="payment_settings">Payment Settings</TabsTrigger>
             <TabsTrigger value="website">Website Settings</TabsTrigger>
@@ -1845,6 +2035,233 @@ export default function AdminDashboard() {
                       <Button type="submit" className="gap-2" disabled={savingPlan}>
                         {savingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                         {isCreatingPlan ? "Create Plan" : "Save Plan"}
+                      </Button>
+                    </CardFooter>
+                  </form>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="addons">
+            <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8">
+              <Card>
+                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <CardTitle>Customer Capacity Add-ons</CardTitle>
+                    <CardDescription>
+                      Manage configurable add-on definitions only. These do not increase business limits until add-on subscriptions are implemented in the next phase.
+                    </CardDescription>
+                  </div>
+                  <Button type="button" onClick={handleCreateAddonClick} className="gap-2 shrink-0">
+                    <PlusCircle className="h-4 w-4" /> Create Add-on
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {addons.map((addon) => {
+                    const status = addon.status || "active";
+
+                    return (
+                      <div key={addon.id} className="p-4 border rounded-lg bg-card flex flex-col gap-4">
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-heading font-semibold text-foreground">{addon.name}</h4>
+                              <span className="text-xs font-mono font-bold text-primary uppercase">({addon.id})</span>
+                              <Badge
+                                variant={status === "active" ? "default" : status === "archived" ? "outline" : "destructive"}
+                                className={status === "archived" ? "gap-1 border-amber-300 bg-amber-50 text-amber-700" : "gap-1"}
+                              >
+                                {status === "archived" && <Archive className="h-3 w-3" />}
+                                {status.toUpperCase()}
+                              </Badge>
+                            </div>
+                            {addon.description && (
+                              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{addon.description}</p>
+                            )}
+                            <p className="text-sm text-muted-foreground mt-2">
+                              +{Number(addon.capacity_amount || 0).toLocaleString()} customers · AWG {Number(addon.monthly_price_awg || 0).toFixed(2)}/month
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Type: {addon.addon_type} · Display order: {addon.display_order}
+                              {addon.provider ? ` · Provider: ${addon.provider}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2 sm:justify-end">
+                            <Button variant="outline" size="sm" onClick={() => handleEditAddonClick(addon)}>
+                              <Edit2 className="h-4 w-4 mr-1" /> View / Edit
+                            </Button>
+                            {status !== "active" && (
+                              <Button variant="outline" size="sm" onClick={() => handleUpdateAddonStatus(addon, "active")} disabled={savingAddon}>
+                                Activate
+                              </Button>
+                            )}
+                            {status !== "inactive" && status !== "archived" && (
+                              <Button variant="outline" size="sm" onClick={() => handleUpdateAddonStatus(addon, "inactive")} disabled={savingAddon}>
+                                Deactivate
+                              </Button>
+                            )}
+                            {status !== "archived" && (
+                              <Button variant="outline" size="sm" onClick={() => handleUpdateAddonStatus(addon, "archived")} disabled={savingAddon} className="text-amber-700 border-amber-300 hover:bg-amber-50">
+                                <Archive className="h-4 w-4 mr-1" /> Archive
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {addons.length === 0 && (
+                    <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                      No add-on definitions found.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {(editingAddon || isCreatingAddon) && (
+                <Card>
+                  <form onSubmit={handleSaveAddon}>
+                    <CardHeader>
+                      <CardTitle>{isCreatingAddon ? "Create Add-on" : `Edit ${editingAddon?.name} Add-on`}</CardTitle>
+                      <CardDescription>
+                        Configure customer capacity add-on metadata and pricing. Prices are stored in the database, not hard-coded in the app.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="addonName">Add-on Name</Label>
+                          <Input
+                            id="addonName"
+                            value={addonFormData.name}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="addonType">Add-on Type</Label>
+                          <select
+                            id="addonType"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                            value={addonFormData.addon_type}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, addon_type: e.target.value })}
+                          >
+                            <option value="customer_capacity">Customer Capacity</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="addonDescription">Description</Label>
+                        <textarea
+                          id="addonDescription"
+                          className="flex min-h-[88px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          value={addonFormData.description}
+                          onChange={(e) => setAddonFormData({ ...addonFormData, description: e.target.value })}
+                          placeholder="Describe what this add-on gives the business."
+                        />
+                      </div>
+
+                      <div className="grid sm:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="addonCapacity">Customer Capacity</Label>
+                          <Input
+                            id="addonCapacity"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={addonFormData.capacity_amount}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, capacity_amount: Number(e.target.value) })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="addonPrice">Monthly Price (AWG)</Label>
+                          <Input
+                            id="addonPrice"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={addonFormData.monthly_price_awg}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, monthly_price_awg: Number(e.target.value) })}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="addonOrder">Display Order</Label>
+                          <Input
+                            id="addonOrder"
+                            type="number"
+                            value={addonFormData.display_order}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, display_order: Number(e.target.value) })}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="addonStatus">Status</Label>
+                          <select
+                            id="addonStatus"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                            value={addonFormData.status}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, status: e.target.value })}
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="archived">Archived</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="addonSlug">Slug</Label>
+                          <Input
+                            id="addonSlug"
+                            placeholder="Auto-generated if blank"
+                            value={addonFormData.slug}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, slug: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid sm:grid-cols-3 gap-4 rounded-lg border bg-muted/20 p-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="addonProvider">Provider</Label>
+                          <Input
+                            id="addonProvider"
+                            placeholder="Optional"
+                            value={addonFormData.provider}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, provider: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="addonProductId">Provider Product ID</Label>
+                          <Input
+                            id="addonProductId"
+                            placeholder="Optional"
+                            value={addonFormData.provider_product_id}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, provider_product_id: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="addonPriceId">Provider Price ID</Label>
+                          <Input
+                            id="addonPriceId"
+                            placeholder="Optional"
+                            value={addonFormData.provider_price_id}
+                            onChange={(e) => setAddonFormData({ ...addonFormData, provider_price_id: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <Button type="button" variant="outline" onClick={() => { setEditingAddon(null); setIsCreatingAddon(false); }} disabled={savingAddon}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="gap-2" disabled={savingAddon}>
+                        {savingAddon ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        {isCreatingAddon ? "Create Add-on" : "Save Add-on"}
                       </Button>
                     </CardFooter>
                   </form>
