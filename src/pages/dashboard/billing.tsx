@@ -64,7 +64,9 @@ export default function BillingPage() {
       const { data: plansData } = await supabase
         .from("subscription_plans")
         .select("*")
-        .order("price_awg", { ascending: true });
+        .eq("status", "active")
+        .eq("is_active", true)
+        .order("display_order", { ascending: true });
       setPlans(plansData || []);
 
       // Fetch pending payments
@@ -176,25 +178,17 @@ export default function BillingPage() {
         {/* Current Plan */}
         {currentPlan && (
           <Card className="border-primary/20 bg-primary/[0.02] shadow-sm relative overflow-hidden">
-            {currentPlan.id === "business" && (
+            {currentPlan.badge && (
               <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl">
-                Pro Member
-              </div>
-            )}
-            {currentPlan.id === "pro" && (
-              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-bl font-serif">
-                ★ VIP Enterprise
+                {currentPlan.badge}
               </div>
             )}
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-xl font-heading font-bold">
                   Active Subscription Plan
-                  {currentPlan.id === "business" && (
-                    <Badge className="bg-primary hover:bg-primary text-white text-[10px] font-bold uppercase tracking-wider">Business</Badge>
-                  )}
-                  {currentPlan.id === "pro" && (
-                    <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold uppercase tracking-wider font-serif">★ Enterprise</Badge>
+                  {currentPlan.badge && (
+                    <Badge className="bg-primary hover:bg-primary text-white text-[10px] font-bold uppercase tracking-wider">{currentPlan.badge}</Badge>
                   )}
                 </CardTitle>
                 <Badge variant="default" className="gap-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold">
@@ -246,8 +240,7 @@ export default function BillingPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {plans.map((plan) => {
               const isCurrent = plan.id === business?.subscription_plan;
-              const isBusiness = plan.id === "business";
-              const isEnterprise = plan.id === "pro";
+              const isHighlighted = Boolean(plan.badge);
 
               return (
                 <Card 
@@ -255,28 +248,20 @@ export default function BillingPage() {
                   className={`flex flex-col relative transition-all duration-300 overflow-hidden ${
                     isCurrent 
                       ? "border-primary ring-2 ring-primary/20 shadow-md scale-[1.02] z-10 bg-primary/[0.01]" 
-                      : isEnterprise
-                      ? "border-amber-500/30 hover:border-amber-500 bg-amber-500/[0.01] shadow-sm hover:shadow-md"
-                      : isBusiness
+                      : isHighlighted
                       ? "border-primary/20 hover:border-primary bg-primary/[0.005] shadow-sm hover:shadow-md"
                       : "border-border bg-background shadow-sm hover:border-muted-foreground/30"
                   }`}
                 >
-                  {isBusiness && (
+                  {plan.badge && (
                     <span className="absolute top-0 right-0 bg-primary text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase">
-                      Most Popular ⭐
-                    </span>
-                  )}
-                  {isEnterprise && (
-                    <span className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-bold tracking-widest px-3 py-1 rounded-bl uppercase font-serif">
-                      ★ Exclusive
+                      {plan.badge}
                     </span>
                   )}
                   <CardHeader className="pb-4 pt-6">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xl font-heading font-extrabold">{plan.name}</CardTitle>
-                      {isBusiness && <Badge variant="outline" className="border-primary text-primary bg-primary/5 font-bold">PRO</Badge>}
-                      {isEnterprise && <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-500/5 font-serif font-bold">★ VIP</Badge>}
+                      {plan.badge && <Badge variant="outline" className="border-primary text-primary bg-primary/5 font-bold">{plan.badge}</Badge>}
                     </div>
                     <CardDescription className="pt-2">
                       <span className="text-3xl font-heading font-extrabold text-foreground">
@@ -319,8 +304,6 @@ export default function BillingPage() {
                       className={`w-full font-bold h-10 ${
                         isCurrent 
                           ? "bg-muted text-muted-foreground border-border hover:bg-muted cursor-default" 
-                          : isEnterprise
-                          ? "bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
                           : "bg-primary text-white hover:bg-primary/95 shadow-sm"
                       }`}
                       variant={isCurrent ? "outline" : "default"}

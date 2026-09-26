@@ -104,7 +104,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq("id", business.subscription_plan)
       .single();
 
-    const maxStaff = plan?.max_staff || 1;
+    const { data: staffLimitEntitlement } = await supabaseAdmin
+      .from("plan_entitlements")
+      .select("number_value")
+      .eq("plan_id", business.subscription_plan)
+      .eq("key", "max_staff")
+      .eq("value_type", "number")
+      .maybeSingle();
+
+    const maxStaff = Number(staffLimitEntitlement?.number_value ?? plan?.max_staff ?? 1);
 
     // Get current active staff count
     const { count: activeStaffCount, error: countError } = await supabaseAdmin

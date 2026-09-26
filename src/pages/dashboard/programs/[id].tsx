@@ -104,6 +104,7 @@ export default function EditProgram() {
 
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>("starter");
   const [hasPremiumTemplates, setHasPremiumTemplates] = useState<boolean>(false);
+  const [canUseRewardExpiration, setCanUseRewardExpiration] = useState(true);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState<boolean>(false);
   const [lockedTemplateName, setLockedTemplateName] = useState<string>("");
 
@@ -210,7 +211,17 @@ export default function EditProgram() {
         eq("id", currentPlan).
         maybeSingle();
 
-        setHasPremiumTemplates(planData?.includes_premium_templates || ["business", "enterprise"].includes(currentPlan));
+        const { data: entitlements } = await (supabase as any).
+        from("plan_entitlements").
+        select("key, value_type, boolean_value").
+        eq("plan_id", currentPlan).
+        in("key", ["premium_templates", "reward_expiration"]);
+
+        const premiumTemplateEntitlement = entitlements?.find((entitlement: any) => entitlement.key === "premium_templates" && entitlement.value_type === "boolean");
+        const rewardExpirationEntitlement = entitlements?.find((entitlement: any) => entitlement.key === "reward_expiration" && entitlement.value_type === "boolean");
+
+        setHasPremiumTemplates(Boolean(premiumTemplateEntitlement?.boolean_value ?? planData?.includes_premium_templates ?? false));
+        setCanUseRewardExpiration(Boolean(rewardExpirationEntitlement?.boolean_value ?? true));
       }
 
       setBusinessId(data.business_id);
@@ -415,7 +426,7 @@ export default function EditProgram() {
     e.preventDefault();
     try {
       setSaving(true);
-      const rewardExpirationDays = getRewardExpirationDays();
+      const rewardExpirationDays = canUseRewardExpiration ? getRewardExpirationDays() : null;
 
       const { error } = await supabase.
       from("loyalty_programs").
@@ -991,45 +1002,55 @@ export default function EditProgram() {
                           <div>
                             <Label htmlFor="reward_expiration_option">Reward Expiration</Label>
                             <p className="text-xs text-muted-foreground mt-1">
-                              Choose how long newly earned rewards remain valid. Existing rewards are not affected.
+                              {canUseRewardExpiration
+                                ? "Choose how long newly earned rewards remain valid. Existing rewards are not affected."
+                                : "Reward expiration is not enabled for your current subscription plan."}
                             </p>
                           </div>
-                          <select
-                            id="reward_expiration_option"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                            value={formData.reward_expiration_option}
-                            onChange={(e) => setFormData({
-                              ...formData,
-                              reward_expiration_option: e.target.value,
-                              reward_expiration_custom_days: e.target.value === "custom" ? formData.reward_expiration_custom_days : ""
-                            })}
-                          >
-                            <option value="none">No expiration</option>
-                            <option value="7">7 days</option>
-                            <option value="14">14 days</option>
-                            <option value="30">30 days</option>
-                            <option value="60">60 days</option>
-                            <option value="90">90 days</option>
-                            <option value="custom">Custom number of days</option>
-                          </select>
+                          {canUseRewardExpiration ? (
+                            <>
+                              <select
+                                id="reward_expiration_option"
+                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                                value={formData.reward_expiration_option}
+                                onChange={(e) => setFormData({
+                                  ...formData,
+                                  reward_expiration_option: e.target.value,
+                                  reward_expiration_custom_days: e.target.value === "custom" ? formData.reward_expiration_custom_days : ""
+                                })}
+                              >
+                                <option value="none">No expiration</option>
+                                <option value="7">7 days</option>
+                                <option value="14">14 days</option>
+                                <option value="30">30 days</option>
+                                <option value="60">60 days</option>
+                                <option value="90">90 days</option>
+                                <option value="custom">Custom number of days</option>
+                              </select>
 
-                          {formData.reward_expiration_option === "custom" && (
-                            <div className="space-y-2">
-                              <Label htmlFor="reward_expiration_custom_days">Custom expiration days</Label>
-                              <Input
-                                id="reward_expiration_custom_days"
-                                type="number"
-                                min="1"
-                                max={MAX_REWARD_EXPIRATION_DAYS}
-                                step="1"
-                                required
-                                placeholder="Enter 1 to 365 days"
-                                value={formData.reward_expiration_custom_days}
-                                onChange={(e) => setFormData({ ...formData, reward_expiration_custom_days: e.target.value })} />
-                              
-                              <p className="text-xs text-muted-foreground">
-                                Must be a whole number between 1 and {MAX_REWARD_EXPIRATION_DAYS}.
-                              </p>
+                              {formData.reward_expiration_option === "custom" && (
+                                <div className="space-y-2">
+                                  <Label htmlFor="reward_expiration_custom_days">Custom expiration days</Label>
+                                  <Input
+                                    id="reward_expiration_custom_days"
+                                    type="number"
+                                    min="1"
+                                    max={MAX_REWARD_EXPIRATION_DAYS}
+                                    step="1"
+                                    required
+                                    placeholder="Enter 1 to 365 days"
+                                    value={formData.reward_expiration_custom_days}
+                                    onChange={(e) => setFormData({ ...formData, reward_expiration_custom_days: e.target.value })} />
+                                  
+                                  <p className="text-xs text-muted-foreground">
+                                    Must be a whole number between 1 and {MAX_REWARD_EXPIRATION_DAYS}.
+                                  </p>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="rounded-md border border-dashed bg-background p-3 text-sm text-muted-foreground">
+                              Upgrade to a plan with Reward Expiration enabled to set expiration periods.
                             </div>
                           )}
                         </div>
@@ -1057,7 +1078,7 @@ export default function EditProgram() {
               <Sparkles className="w-5 h-5" /> Premium Template
             </DialogTitle>
             <DialogDescription className="text-sm pt-2">
-              The <strong className="text-foreground">{lockedTemplateName}</strong> template is available with <strong>Business</strong> and <strong>Enterprise</strong> plans. Upgrade now to unlock all 39 design templates and custom branding rules.
+              The <strong className="text-foreground">{lockedTemplateName}</strong> template is available with plans that include Premium Templates. Upgrade now to unlock all 39 design templates and custom branding rules.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">

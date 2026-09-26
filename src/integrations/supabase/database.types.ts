@@ -1043,6 +1043,22 @@ export type Database = {
         Args: { p_reward_id: string }
         Returns: string
       }
+      get_business_entitlement_bool: {
+        Args: { p_business_id: string; p_fallback?: boolean; p_key: string }
+        Returns: boolean
+      }
+      get_business_numeric_limit: {
+        Args: { p_business_id: string; p_fallback?: number; p_key: string }
+        Returns: number
+      }
+      get_plan_entitlement_bool: {
+        Args: { p_fallback?: boolean; p_key: string; p_plan_id: string }
+        Returns: boolean
+      }
+      get_plan_entitlement_number: {
+        Args: { p_fallback?: number; p_key: string; p_plan_id: string }
+        Returns: number
+      }
       get_reward_by_qr_token: {
         Args: { p_business_id: string; p_token: string }
         Returns: Json

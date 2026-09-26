@@ -56,8 +56,19 @@ export default function StaffPage() {
           .select("*")
           .eq("id", biz.subscription_plan || "free")
           .single();
+
+        const { data: staffLimitEntitlement } = await (supabase as any)
+          .from("plan_entitlements")
+          .select("number_value")
+          .eq("plan_id", biz.subscription_plan || "free")
+          .eq("key", "max_staff")
+          .eq("value_type", "number")
+          .maybeSingle();
         
-        setPlan(planData);
+        setPlan({
+          ...planData,
+          max_staff: Number(staffLimitEntitlement?.number_value ?? planData?.max_staff ?? 1),
+        });
 
         // Fetch staff members for this business
         const { data: businessUsers } = await supabase
