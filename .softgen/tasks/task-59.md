@@ -12,13 +12,15 @@ position: 59
 ## Notes
 Make subscription plan feature descriptions fully database-driven. Custom plans created by Super Admins must display a complete list of feature descriptions instead of just numeric limits or truncated lists. Super Admins must be able to add, edit, remove, and reorder these feature strings. Existing plans (Starter, Business, Enterprise) must keep their descriptions working via the new data structure. Do not hard-code feature lists or maximum limits in the UI.
 
+I've added the `features` string array to the API payload, updated the `admin/index.tsx` UI to allow adding, editing, and deleting these strings dynamically, and updated the frontend `index.tsx` so that it directly pulls active plans from the database rather than from `homeConfig.ts`. It intelligently merges numeric capabilities alongside the configurable database feature descriptions. A SQL query ran to backfill existing features for the default plans to retain stability.
+
 ## Checklist
-- [ ] Inspect `subscription_plans` schema to see if a `features` jsonb column exists
-- [ ] Inspect pricing cards in `index.tsx`, `onboarding.tsx`, and `dashboard/billing.tsx` to find hardcoded descriptions
-- [ ] Inspect `admin/index.tsx` and `api/admin/plans.ts` for plan creation/editing
-- [ ] Update Super Admin plan management UI to support dynamic feature array editing (add, edit, remove, reorder)
-- [ ] Migrate existing hardcoded plan features into the database/default list
-- [ ] Update all plan display cards to render the dynamic feature descriptions from the database
+- [x] Inspect `subscription_plans` schema to see if a `features` jsonb column exists
+- [x] Inspect pricing cards in `index.tsx`, `onboarding.tsx`, and `dashboard/billing.tsx` to find hardcoded descriptions
+- [x] Inspect `admin/index.tsx` and `api/admin/plans.ts` for plan creation/editing
+- [x] Update Super Admin plan management UI to support dynamic feature array editing (add, edit, remove, reorder)
+- [x] Migrate existing hardcoded plan features into the database/default list
+- [x] Update all plan display cards to render the dynamic feature descriptions from the database
 - [ ] Create a temporary Mega Plan with 8+ features to verify
 - [ ] Run check_for_errors and clean up
 

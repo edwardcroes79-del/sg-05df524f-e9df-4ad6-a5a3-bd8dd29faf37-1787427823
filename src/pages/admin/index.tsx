@@ -78,6 +78,7 @@ export default function AdminDashboard() {
     is_trial: false,
     trial_days: 14,
     includes_premium_templates: false,
+    features: [] as string[],
     entitlements: {
       premium_templates: false,
       reward_expiration: true,
@@ -684,6 +685,7 @@ export default function AdminDashboard() {
       is_trial: plan.is_trial || false,
       trial_days: plan.trial_days || 14,
       includes_premium_templates: plan.includes_premium_templates || Boolean(entitlementMap.premium_templates),
+      features: Array.isArray(plan.features) ? plan.features : [],
       entitlements: {
         premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
         reward_expiration: Boolean(entitlementMap.reward_expiration ?? true),
@@ -746,6 +748,7 @@ export default function AdminDashboard() {
         is_trial: planFormData.is_trial,
         trial_days: Number(planFormData.trial_days),
         includes_premium_templates: Boolean(planFormData.entitlements.premium_templates),
+        features: planFormData.features,
         entitlements,
       }),
     });
@@ -824,6 +827,7 @@ export default function AdminDashboard() {
         is_trial: plan.is_trial || false,
         trial_days: plan.trial_days || 14,
         includes_premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
+        features: Array.isArray(plan.features) ? plan.features : [],
         entitlements: {
           premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
           reward_expiration: Boolean(entitlementMap.reward_expiration ?? true),
@@ -855,6 +859,7 @@ export default function AdminDashboard() {
           is_trial: Boolean(plan.is_trial),
           trial_days: Number(plan.trial_days || 14),
           includes_premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
+          features: Array.isArray(plan.features) ? plan.features : [],
           entitlements: [
             ...availablePlanEntitlements.map((feature) => ({
               key: feature.key,
@@ -2463,6 +2468,53 @@ export default function AdminDashboard() {
                             onChange={(e) => setPlanFormData({ ...planFormData, max_staff: Number(e.target.value) })}
                             required
                           />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 rounded-lg border p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-foreground">Feature Descriptions</h4>
+                            <p className="text-xs text-muted-foreground">List items shown on the pricing card.</p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPlanFormData({ ...planFormData, features: [...planFormData.features, ""] })}
+                          >
+                            <PlusCircle className="h-4 w-4 mr-1" /> Add Feature
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          {planFormData.features.map((feature, idx) => (
+                            <div key={idx} className="flex items-center gap-2">
+                              <Input
+                                value={feature}
+                                onChange={(e) => {
+                                  const newFeatures = [...planFormData.features];
+                                  newFeatures[idx] = e.target.value;
+                                  setPlanFormData({ ...planFormData, features: newFeatures });
+                                }}
+                                placeholder="e.g. Priority Support"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="shrink-0 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                onClick={() => {
+                                  const newFeatures = planFormData.features.filter((_, i) => i !== idx);
+                                  setPlanFormData({ ...planFormData, features: newFeatures });
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          {planFormData.features.length === 0 && (
+                            <p className="text-sm text-muted-foreground italic">No custom features added.</p>
+                          )}
                         </div>
                       </div>
 

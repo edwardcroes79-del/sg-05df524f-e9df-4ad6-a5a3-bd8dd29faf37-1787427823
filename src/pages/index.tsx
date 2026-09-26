@@ -34,6 +34,7 @@ export default function Home() {
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [dbPlans, setDbPlans] = useState<any[]>([]);
   
   // Explicitly type the footer state to allow the optional database-driven copyrightText
   const [footer, setFooter] = useState<{
@@ -72,7 +73,26 @@ export default function Home() {
         console.error("Error loading dynamic footer:", err);
       }
     }
+
+    async function loadPlans() {
+      try {
+        const { data, error } = await supabase
+          .from("subscription_plans")
+          .select("*")
+          .eq("status", "active")
+          .eq("is_active", true)
+          .order("display_order", { ascending: true });
+        
+        if (data && !error) {
+          setDbPlans(data);
+        }
+      } catch (err) {
+        console.error("Error loading dynamic plans:", err);
+      }
+    }
+
     loadFooter();
+    loadPlans();
   }, [defaultFooter]);
 
   useEffect(() => {
@@ -685,27 +705,38 @@ export default function Home() {
             </div>
             
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {pricing.plans.map((plan, i) => (
+              {(dbPlans.length > 0 ? dbPlans : pricing.plans).map((plan, i) => {
+                const isDbPlan = dbPlans.length > 0;
+                const isPopular = isDbPlan ? (plan.badge?.toLowerCase() === 'popular' || plan.badge?.toLowerCase() === 'most popular') : plan.isPopular;
+                const features = isDbPlan ? [
+                  `${plan.max_loyalty_programs === 9999 ? "Unlimited" : plan.max_loyalty_programs} Loyalty Programs`,
+                  `${plan.max_customers === 999999 ? "Unlimited" : plan.max_customers.toLocaleString()} Loyalty Members`,
+                  `${plan.max_staff || 1} Staff Accounts`,
+                  plan.includes_premium_templates ? "Premium Design Presets" : null,
+                  ...(Array.isArray(plan.features) ? plan.features : [])
+                ].filter(Boolean) : plan.features;
+
+                return (
                 <Card key={i} className={cn(
                   "border-border/50 shadow-xl flex flex-col relative rounded-3xl overflow-hidden transition-transform hover:-translate-y-1 bg-card", 
-                  plan.isPopular ? "border-primary shadow-2xl shadow-primary/10 scale-105 md:-translate-y-4" : ""
+                  isPopular ? "border-primary shadow-2xl shadow-primary/10 scale-105 md:-translate-y-4" : ""
                 )}>
-                  {plan.isPopular && (
+                  {isPopular && (
                     <div className="bg-primary text-primary-foreground py-2 text-center text-sm font-bold uppercase tracking-wider">
-                      Most Popular
+                      {isDbPlan ? (plan.badge || "Most Popular") : "Most Popular"}
                     </div>
                   )}
                   <CardHeader className="p-8 pb-6">
                     <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
                     <CardDescription className="text-base mt-2">{plan.description}</CardDescription>
                     <div className="mt-6 font-heading flex items-baseline gap-2">
-                      <span className="text-5xl font-extrabold">{plan.price}</span>
-                      {plan.period && <span className="text-lg text-muted-foreground font-medium">{plan.period}</span>}
+                      <span className="text-5xl font-extrabold">{isDbPlan ? `AWG ${Number(plan.price_awg).toFixed(2)}` : plan.price}</span>
+                      <span className="text-lg text-muted-foreground font-medium">/ month</span>
                     </div>
                   </CardHeader>
                   <CardContent className="flex-1 p-8 pt-0">
                     <ul className="space-y-4">
-                      {plan.features.map((item, idx) => (
+                      {features.map((item: string, idx: number) => (
                         <li key={idx} className="flex items-start text-base font-medium text-foreground">
                           <CheckCircle2 className="w-5 h-5 text-primary mr-3 flex-shrink-0 mt-0.5" /> 
                           <span>{item}</span>
@@ -714,26 +745,17 @@ export default function Home() {
                     </ul>
                   </CardContent>
                   <CardFooter className="p-8 pt-0">
-                    {plan.ctaHref ? (
-                      <a href={plan.ctaHref} className="w-full">
-                        <Button 
-                          size="lg"
-                          className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
-                        >
-                          {plan.ctaText}
-                        </Button>
-                      </a>
-                    ) : (
+                    <Link href={isDbPlan ? "/auth/register" : (plan.ctaHref || "/auth/register")} className="w-full">
                       <Button 
                         size="lg"
-                        className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
+                        className={cn("w-full text-lg font-bold rounded-full h-14", isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
                       >
-                        {plan.ctaText}
+                        {isDbPlan ? "Start Free Trial" : plan.ctaText}
                       </Button>
-                    )}
+                    </Link>
                   </CardFooter>
                 </Card>
-              ))}
+              )})}
             </div>
           </div>
         </section>

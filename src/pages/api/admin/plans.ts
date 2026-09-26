@@ -27,6 +27,7 @@ type PlanInput = {
   trial_days?: number;
   includes_premium_templates?: boolean;
   entitlements?: EntitlementInput[];
+  features?: string[];
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -164,6 +165,7 @@ function buildPlanPayload(body: PlanInput, currentId?: string) {
     trial_days: Math.max(1, Math.trunc(toNumber(body.trial_days, 14))),
     includes_premium_templates: Boolean(body.includes_premium_templates),
     is_active: status === "active",
+    features: Array.isArray(body.features) ? body.features.filter(f => typeof f === 'string' && f.trim() !== '') : [],
     archived_at: status === "archived" ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
   };
