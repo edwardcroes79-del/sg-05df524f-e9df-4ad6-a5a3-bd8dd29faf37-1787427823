@@ -17,6 +17,9 @@ export default function BillingPage() {
   const [isStaff, setIsStaff] = useState(false);
   const [business, setBusiness] = useState<any>(null);
   const [currentPlan, setCurrentPlan] = useState<any>(null);
+  const [effectiveCustomerLimit, setEffectiveCustomerLimit] = useState<number | null>(null);
+  const [currentMemberCount, setCurrentMemberCount] = useState(0);
+  const [activeAddonSubscriptions, setActiveAddonSubscriptions] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [pendingPayments, setPendingPayments] = useState<any[]>([]);
 
@@ -59,6 +62,38 @@ export default function BillingPage() {
         .eq("id", businessData.subscription_plan || "starter")
         .single();
       setCurrentPlan(planData);
+
+      const { data: effectiveLimit } = await (supabase.rpc as any)("get_business_effective_numeric_limit", {
+        p_business_id: businessData.id,
+        p_key: "max_customers",
+        p_fallback: planData?.max_customers ?? 300,
+      });
+      setEffectiveCustomerLimit(Number(effectiveLimit ?? planData?.max_customers ?? 300));
+
+      const { data: memberRows } = await supabase
+        .from("customer_loyalty_cards")
+        .select("customer_id")
+        .eq("business_id", businessData.id)
+        .not("customer_id", "is", null);
+      const uniqueMemberCount = new Set((memberRows || []).map((row: any) => row.customer_id)).size;
+      setCurrentMemberCount(uniqueMemberCount);
+
+      const { data: addonRows } = await (supabase as any)
+        .from("business_addon_subscriptions")
+        .select(`
+          *,
+          subscription_addons (
+            id,
+            name,
+            capacity_amount,
+            monthly_price_awg,
+            addon_type
+          )
+        `)
+        .eq("business_id", businessData.id)
+        .eq("status", "active")
+        .eq("payment_status", "approved");
+      setActiveAddonSubscriptions(addonRows || []);
 
       // Fetch all plans
       const { data: plansData } = await supabase
@@ -212,6 +247,14 @@ export default function BillingPage() {
                     <Check className="h-4 w-4 text-emerald-500 shrink-0" />
                     <span>Up to <strong>{currentPlan.max_customers === 999999 ? "Unlimited" : currentPlan.max_customers.toLocaleString()}</strong> Loyalty Members</span>
                   </p>
+                  {effectiveCustomerLimit !== null && effectiveCustomerLimit !== Number(currentPlan.max_customers) && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Check className="h-4 w-4 text-emerald-500 shrink-0" />
+                      <span>
+                        Effective capacity with add-ons: <strong>{effectiveCustomerLimit >= 999999 ? "Unlimited" : effectiveCustomerLimit.toLocaleString()}</strong> Loyalty Members
+                      </span>
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Check className="h-4 w-4 text-emerald-500 shrink-0" />
                     <span>Up to <strong>{currentPlan.max_staff || 1}</strong> authorized merchant staff accounts</span>
@@ -229,6 +272,32 @@ export default function BillingPage() {
                     </p>
                   ))}
                 </div>
+                {effectiveCustomerLimit !== null && currentMemberCount >= effectiveCustomerLimit && effectiveCustomerLimit < 999999 && (
+                  <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                    Your account is at or above its current customer capacity. Existing customers, cards, stamps, and rewards remain safe, but new customer registrations are blocked until capacity is increased.
+                  </div>
+                )}
+                {activeAddonSubscriptions.length > 0 && (
+                  <div className="mt-4 rounded-lg border bg-muted/20 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Active customer capacity add-ons</p>
+                    <div className="space-y-2">
+                      {activeAddonSubscriptions.map((subscription) => {
+                        const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
+                        const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
+
+                        return (
+                          <div key={subscription.id} className="flex items-center justify-between gap-3 text-sm">
+                            <span className="text-muted-foreground">
+                              {addon?.name || subscription.addon_id} × {subscription.quantity}
+                              {subscription.cancel_at_period_end ? " · cancels at period end" : ""}
+                            </span>
+                            <strong className="text-foreground">+{addedCapacity.toLocaleString()} members</strong>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

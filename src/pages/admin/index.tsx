@@ -23,6 +23,7 @@ export default function AdminDashboard() {
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [addons, setAddons] = useState<any[]>([]);
+  const [businessAddonSubscriptions, setBusinessAddonSubscriptions] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [globalStats, setGlobalStats] = useState({
@@ -104,6 +105,15 @@ export default function AdminDashboard() {
   const [isCreatingAddon, setIsCreatingAddon] = useState(false);
   const [savingAddon, setSavingAddon] = useState(false);
   const [addonFormData, setAddonFormData] = useState(emptyAddonFormData);
+
+  const [businessAddonFormData, setBusinessAddonFormData] = useState({
+    business_id: "",
+    addon_id: "",
+    quantity: 1,
+    current_period_end: "",
+  });
+  const [assigningBusinessAddon, setAssigningBusinessAddon] = useState(false);
+  const [cancellingBusinessAddonId, setCancellingBusinessAddonId] = useState<string | null>(null);
 
   // Payment review states
   const [reviewingPayment, setReviewingPayment] = useState<any | null>(null);
@@ -321,6 +331,25 @@ export default function AdminDashboard() {
       }
 
       setAddons(addonsData);
+
+      let businessAddonsData: any[] = [];
+      if (session) {
+        const businessAddonsResponse = await fetch("/api/admin/business-addons", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (businessAddonsResponse.ok) {
+          const businessAddonsResult = await businessAddonsResponse.json();
+          businessAddonsData = businessAddonsResult.businessAddons || [];
+        } else {
+          const businessAddonsResult = await businessAddonsResponse.json().catch(() => ({}));
+          throw new Error(businessAddonsResult.error || "Failed to load business add-on subscriptions");
+        }
+      }
+
+      setBusinessAddonSubscriptions(businessAddonsData);
 
       // 2. Fetch Businesses
       const { data: bizData } = await supabase
@@ -1002,6 +1031,103 @@ export default function AdminDashboard() {
       });
     } finally {
       setSavingAddon(false);
+    }
+  };
+
+  const handleAssignBusinessAddon = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!businessAddonFormData.business_id || !businessAddonFormData.addon_id) {
+      toast({
+        title: "Missing selection",
+        description: "Select both a business and a customer capacity add-on.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setAssigningBusinessAddon(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/admin/business-addons", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          business_id: businessAddonFormData.business_id,
+          addon_id: businessAddonFormData.addon_id,
+          quantity: Number(businessAddonFormData.quantity),
+          current_period_end: businessAddonFormData.current_period_end || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to assign add-on");
+      }
+
+      setBusinessAddonSubscriptions(result.businessAddons || []);
+      setBusinessAddonFormData({ business_id: "", addon_id: "", quantity: 1, current_period_end: "" });
+      toast({
+        title: "Add-on Assigned",
+        description: "The business customer capacity entitlement now includes this active add-on.",
+      });
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Add-on assignment failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setAssigningBusinessAddon(false);
+    }
+  };
+
+  const handleCancelBusinessAddon = async (subscription: any) => {
+    try {
+      setCancellingBusinessAddonId(subscription.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/admin/business-addons", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          id: subscription.id,
+          action: "cancel_at_period_end",
+          current_period_end: subscription.current_period_end || null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to cancel add-on");
+      }
+
+      setBusinessAddonSubscriptions(result.businessAddons || []);
+      toast({
+        title: "Add-on Cancellation Scheduled",
+        description: "Existing customer data remains intact. Capacity is reduced after the current period ends.",
+      });
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Cancellation failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setCancellingBusinessAddonId(null);
     }
   };
 
@@ -2050,7 +2176,7 @@ export default function AdminDashboard() {
                   <div>
                     <CardTitle>Customer Capacity Add-ons</CardTitle>
                     <CardDescription>
-                      Manage configurable add-on definitions only. These do not increase business limits until add-on subscriptions are implemented in the next phase.
+                      Manage configurable add-on definitions and assign purchased customer capacity add-ons to businesses.
                     </CardDescription>
                   </div>
                   <Button type="button" onClick={handleCreateAddonClick} className="gap-2 shrink-0">
@@ -2267,6 +2393,129 @@ export default function AdminDashboard() {
                   </form>
                 </Card>
               )}
+              
+              <Card className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Business Customer Capacity Add-ons</CardTitle>
+                  <CardDescription>
+                    Assign purchased add-ons to businesses. Active approved add-ons increase effective customer capacity server-side until the period ends or the subscription is cancelled.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <form onSubmit={handleAssignBusinessAddon} className="grid md:grid-cols-5 gap-3 rounded-lg border bg-muted/20 p-4">
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="businessAddonBusiness">Business</Label>
+                      <select
+                        id="businessAddonBusiness"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                        value={businessAddonFormData.business_id}
+                        onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, business_id: e.target.value })}
+                        required
+                      >
+                        <option value="">Select business</option>
+                        {businesses.map((business) => (
+                          <option key={business.id} value={business.id}>{business.business_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="businessAddonAddon">Customer Capacity Add-on</Label>
+                      <select
+                        id="businessAddonAddon"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                        value={businessAddonFormData.addon_id}
+                        onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, addon_id: e.target.value })}
+                        required
+                      >
+                        <option value="">Select add-on</option>
+                        {addons
+                          .filter((addon) => addon.status === "active" && addon.addon_type === "customer_capacity")
+                          .map((addon) => (
+                            <option key={addon.id} value={addon.id}>
+                              {addon.name} (+{Number(addon.capacity_amount || 0).toLocaleString()})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="businessAddonQuantity">Quantity</Label>
+                      <Input
+                        id="businessAddonQuantity"
+                        type="number"
+                        min="1"
+                        value={businessAddonFormData.quantity}
+                        onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, quantity: Number(e.target.value) })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="businessAddonPeriodEnd">Current Period End</Label>
+                      <Input
+                        id="businessAddonPeriodEnd"
+                        type="datetime-local"
+                        value={businessAddonFormData.current_period_end}
+                        onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, current_period_end: e.target.value })}
+                      />
+                    </div>
+                    <div className="md:col-span-3 flex items-end">
+                      <Button type="submit" disabled={assigningBusinessAddon} className="gap-2">
+                        {assigningBusinessAddon ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
+                        Assign Add-on
+                      </Button>
+                    </div>
+                  </form>
+
+                  <div className="space-y-3">
+                    {businessAddonSubscriptions.length === 0 ? (
+                      <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+                        No business add-on subscriptions assigned yet.
+                      </div>
+                    ) : (
+                      businessAddonSubscriptions.map((subscription) => {
+                        const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
+                        const business = Array.isArray(subscription.businesses) ? subscription.businesses[0] : subscription.businesses;
+                        const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
+
+                        return (
+                          <div key={subscription.id} className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h4 className="font-semibold text-foreground">{business?.business_name || "Unknown business"}</h4>
+                                <Badge variant={subscription.status === "active" ? "default" : "secondary"}>
+                                  {subscription.status.toUpperCase()}
+                                </Badge>
+                                {subscription.cancel_at_period_end && (
+                                  <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
+                                    Cancels at period end
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {addon?.name || subscription.addon_id} × {subscription.quantity} = +{addedCapacity.toLocaleString()} customer capacity
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Period end: {subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleString() : "Not set"}
+                              </p>
+                            </div>
+                            {subscription.status === "active" && !subscription.cancel_at_period_end && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                                onClick={() => handleCancelBusinessAddon(subscription)}
+                                disabled={cancellingBusinessAddonId === subscription.id}
+                              >
+                                {cancellingBusinessAddonId === subscription.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                                Cancel at Period End
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

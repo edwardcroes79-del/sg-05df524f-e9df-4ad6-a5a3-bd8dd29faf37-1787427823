@@ -57,6 +57,8 @@ export default function CustomersDashboard() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState<any>(null);
+  const [effectiveCustomerLimit, setEffectiveCustomerLimit] = useState<number | null>(null);
+  const [currentMemberCount, setCurrentMemberCount] = useState(0);
   const [cards, setCards] = useState<CustomerLoyaltyCard[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -124,6 +126,20 @@ export default function CustomersDashboard() {
       }
       
       setBusiness({ id: resolvedBusinessId });
+
+      const { data: effectiveLimit } = await (supabase.rpc as any)("get_business_effective_numeric_limit", {
+        p_business_id: resolvedBusinessId,
+        p_key: "max_customers",
+        p_fallback: 300,
+      });
+      setEffectiveCustomerLimit(Number(effectiveLimit ?? 300));
+
+      const { data: memberRows } = await supabase
+        .from("customer_loyalty_cards")
+        .select("customer_id")
+        .eq("business_id", resolvedBusinessId)
+        .not("customer_id", "is", null);
+      setCurrentMemberCount(new Set((memberRows || []).map((row: any) => row.customer_id)).size);
 
       // 2. Fetch customers associated via loyalty cards with pagination
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -288,6 +304,22 @@ export default function CustomersDashboard() {
             </div>
             <h1 className="text-3xl font-heading font-bold text-foreground">Registered Customers</h1>
             <p className="text-muted-foreground">Monitor loyal customers, stamp progress, and issued rewards.</p>
+            {effectiveCustomerLimit !== null && (
+              <div className={`mt-3 inline-flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                currentMemberCount >= effectiveCustomerLimit && effectiveCustomerLimit < 999999
+                  ? "border-amber-300 bg-amber-50 text-amber-800"
+                  : "border-border bg-card text-muted-foreground"
+              }`}>
+                <span className="font-semibold text-foreground">
+                  {currentMemberCount.toLocaleString()} / {effectiveCustomerLimit >= 999999 ? "Unlimited" : effectiveCustomerLimit.toLocaleString()} members
+                </span>
+                <span>
+                  {currentMemberCount >= effectiveCustomerLimit && effectiveCustomerLimit < 999999
+                    ? "Capacity reached. Existing customer data remains safe, but new joins are blocked until capacity is increased."
+                    : "Effective customer capacity includes active add-ons."}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
