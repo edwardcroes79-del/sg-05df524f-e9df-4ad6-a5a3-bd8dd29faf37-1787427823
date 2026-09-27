@@ -16,6 +16,8 @@ export default function CustomerDashboardPage() {
   const [stats, setGlobalStats] = useState({
     totalCards: 0,
     availableRewards: 0,
+    expiredRewards: 0,
+    totalRewardsEarned: 0,
     totalStamps: 0,
   });
 
@@ -56,7 +58,15 @@ export default function CustomerDashboardPage() {
             duration: 7000,
             className: "bg-green-500 text-white border-none shadow-lg",
           });
-          setGlobalStats(prev => ({ ...prev, availableRewards: prev.availableRewards + 1 }));
+          fetchDashboardSummary();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'rewards', filter: `customer_id=eq.${customer.id}` },
+        (payload) => {
+          console.log("🔥 DASHBOARD REALTIME EVENT: rewards UPDATE", payload);
+          fetchDashboardSummary();
         }
       )
       .subscribe((status, err) => {
@@ -85,17 +95,27 @@ export default function CustomerDashboardPage() {
         // Fetch counts and stats
         const [
           { count: cardCount, data: cards },
-          { count: rewardsCount }
+          { data: rewardsData }
         ] = await Promise.all([
           supabase.from("customer_loyalty_cards").select("current_stamps", { count: "exact" }).eq("customer_id", customerData.id),
-          supabase.from("rewards").select("*", { count: "exact", head: true }).eq("customer_id", customerData.id).eq("status", "available")
+          supabase.from("rewards").select("id, status, expires_at").eq("customer_id", customerData.id)
         ]);
 
+        const now = new Date();
+        const customerRewards = rewardsData || [];
+        const availableRewards = customerRewards.filter((reward) => (
+          reward.status === "available" && (!reward.expires_at || new Date(reward.expires_at) > now)
+        )).length;
+        const expiredRewards = customerRewards.filter((reward) => (
+          reward.status === "expired" || (reward.status === "available" && reward.expires_at && new Date(reward.expires_at) <= now)
+        )).length;
         const totalStampsEarned = cards?.reduce((sum, item) => sum + (item.current_stamps || 0), 0) || 0;
 
         setGlobalStats({
           totalCards: cardCount || 0,
-          availableRewards: rewardsCount || 0,
+          availableRewards,
+          expiredRewards,
+          totalRewardsEarned: customerRewards.length,
           totalStamps: totalStampsEarned,
         });
       }
@@ -173,7 +193,12 @@ export default function CustomerDashboardPage() {
           <Link href="/customer/rewards">
             <div className="bg-card hover:bg-muted/10 border border-border/50 p-4 rounded-xl text-center shadow-sm cursor-pointer transition-colors">
               <p className="text-2xl sm:text-3xl font-bold text-primary">{stats.availableRewards}</p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">Rewards</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">Available Rewards</p>
+              <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+                <span>{stats.expiredRewards} Expired</span>
+                <span aria-hidden="true">•</span>
+                <span>{stats.totalRewardsEarned} Total Earned</span>
+              </div>
             </div>
           </Link>
           <Link href="/customer/activity">
