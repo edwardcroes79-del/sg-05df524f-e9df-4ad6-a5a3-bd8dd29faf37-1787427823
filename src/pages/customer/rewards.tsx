@@ -394,21 +394,9 @@ export default function CustomerRewardsPage() {
                                 {reward.businesses?.business_name}
                               </p>
                               <h4 className="font-medium text-foreground">{reward.reward_title}</h4>
-                              
-                              {false ? (
-                                <div className="mt-2">
-                                  <p className="text-sm font-bold text-destructive flex items-center gap-1">
-                                    ⏰ Reward Expired
-                                  </p>
-                                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                                    This reward is no longer available for redemption.
-                                  </p>
-                                </div>
-                              ) : (
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  Code: <span className="font-mono font-semibold">{reward.reward_code}</span>
-                                </p>
-                              )}
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Code: <span className="font-mono font-semibold">{reward.reward_code}</span>
+                              </p>
                             </div>
                           </div>
                           <div className="text-left sm:text-right shrink-0">
