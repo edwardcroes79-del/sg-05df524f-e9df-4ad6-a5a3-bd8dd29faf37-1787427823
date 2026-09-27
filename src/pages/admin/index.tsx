@@ -2087,6 +2087,10 @@ export default function AdminDashboard() {
                     {businesses.map((biz) => {
   const bizPlan = plans.find((p) => p.id === biz.subscription_plan);
   const planPrice = Number(bizPlan?.price_awg || 0);
+  const emailLogs = Array.isArray(biz.email_logs) ? biz.email_logs : [];
+  const approvalEmailLog = emailLogs.find((log: any) => log.email_type === "client_approval");
+  const approvalEmailStatus = approvalEmailLog?.status || biz.approval_email_status || (biz.status === "pending" ? "pending" : "pending");
+  const approvalEmailError = approvalEmailLog?.error_message || biz.approval_email_error;
 
   const activeAddonSubs = businessAddonSubscriptions.filter(
     (sub) => sub.business_id === biz.id && sub.status === "active" && sub.payment_status === "approved"
@@ -2109,6 +2113,18 @@ export default function AdminDashboard() {
       >
         {biz.status.toUpperCase()}
       </Badge>
+      <div className="mt-2 flex flex-col gap-1">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Approval Email
+        </span>
+        <Badge
+          variant={approvalEmailStatus === "sent" ? "default" : approvalEmailStatus === "failed" ? "destructive" : "secondary"}
+          className="w-fit text-[10px] uppercase"
+          title={approvalEmailError || undefined}
+        >
+          {approvalEmailStatus || "pending"}
+        </Badge>
+      </div>
     </TableCell>
     <TableCell>
       <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
@@ -2155,30 +2171,42 @@ export default function AdminDashboard() {
       AWG {totalSubscription.toFixed(2)} / month
     </TableCell>
     <TableCell className="text-right flex items-center justify-end gap-2">
-      <select
-        className="text-xs border rounded px-2 py-1 mr-2 bg-background"
-        value={biz.subscription_plan || ""}
-        onChange={(e) => handlePlanAssignment(biz.id, e.target.value)}
-        disabled={assigningPlanId === biz.id}
-      >
-        <option value="">No Plan</option>
-        {plans.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
-      <Button
-        variant="outline"
-        size="sm"
-        className="gap-1 text-xs"
-        onClick={() => {
-          handleToggleBusinessStatus(biz.id, biz.status);
-        }}
-      >
-        {biz.status === "active" ? <Ban className="h-3.5 w-3.5 text-amber-500" /> : <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
-        {biz.status === "active" ? "Suspend" : "Activate"}
-      </Button>
+      {biz.status === "pending" ? (
+        <Button
+          variant="default"
+          size="sm"
+          className="gap-1 text-xs"
+          onClick={() => handleApproveBusiness(biz.id)}
+          disabled={approving === biz.id}
+        >
+          {approving === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+          Approve
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 text-xs"
+          onClick={() => {
+            handleToggleBusinessStatus(biz.id, biz.status);
+          }}
+        >
+          {biz.status === "active" ? <Ban className="h-3.5 w-3.5 text-amber-500" /> : <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
+          {biz.status === "active" ? "Suspend" : "Activate"}
+        </Button>
+      )}
+      {biz.status !== "pending" && approvalEmailStatus !== "sent" && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1 text-xs"
+          onClick={() => handleRetryEmail(biz.id)}
+          disabled={retryingEmail === biz.id}
+        >
+          {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+          Resend Approval Email
+        </Button>
+      )}
       <Button
         variant="destructive"
         size="sm"
