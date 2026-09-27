@@ -154,13 +154,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Strictly enforce production URL to prevent softgen.dev, localhost, or legacy domains in emails
       const dashboardUrl = "https://royaltystamp.com/dashboard";
-      let finalOrigin = origin || process.env.NEXT_PUBLIC_SITE_URL || "";
-      if (finalOrigin.includes("softgen.dev") || finalOrigin.includes("localhost")) {
-        finalOrigin = "https://royaltystamp.com";
-      }
-      if (finalOrigin) {
-        dashboardUrl = `${finalOrigin}/dashboard`;
-      }
 
       const senderName = process.env.MAIL_FROM_NAME || "Royalty Stamp";
       const senderEmail = process.env.MAIL_FROM_ADDRESS || "mail@royaltystamp.com";
