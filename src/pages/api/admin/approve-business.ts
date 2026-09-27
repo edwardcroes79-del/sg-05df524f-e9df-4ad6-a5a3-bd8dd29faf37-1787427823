@@ -38,20 +38,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "Forbidden: Super Admin access required" });
     }
 
-    const { businessId, retryEmail, origin } = req.body;
+    const { businessId, retryEmail } = req.body;
     if (!businessId) {
       return res.status(400).json({ error: "Business ID is required" });
     }
 
+    const isRetryEmail = Boolean(retryEmail);
+
     // 1. Fetch current business data
     const { data: business, error: fetchError } = await supabase
       .from("businesses")
-      .select("id, business_name, email, owner_id, status, approval_email_status")
+      .select("id, business_name, email, owner_id, status, approval_email_status, subscription_plan, subscription_status, trial_start, trial_end")
       .eq("id", businessId)
       .single();
 
     if (fetchError || !business) {
       return res.status(404).json({ error: "Business not found" });
+    }
+
+    if (!isRetryEmail && business.status !== "pending") {
+      return res.status(409).json({
+        error: business.status === "suspended"
+          ? "This business is suspended, not pending approval. Use Activate to restore an already-approved business."
+          : "Only pending businesses can be approved through the approval workflow.",
+      });
     }
 
     // 2. Fetch email address upfront. Prefer the registered business email, then fall back to the auth owner email.
@@ -82,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (existingLog) {
         existingEmailAlreadySent = existingEmailAlreadySent || existingLog.status === "sent";
 
-        if (existingLog.status === "sent" && !retryEmail) {
+        if (existingLog.status === "sent" && !isRetryEmail) {
           return res.status(200).json({ success: true, emailSent: true, message: "Email already sent" });
         }
 
@@ -107,16 +117,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.error("Failed to setup email log", logErr);
     }
 
-    if (business.status === "active" && existingEmailAlreadySent && !retryEmail) {
+    if (business.status === "active" && existingEmailAlreadySent && !isRetryEmail) {
       return res.status(200).json({ success: true, emailSent: true, message: "Business is already active and approval email was already sent" });
     }
 
     // 4. Perform database update securely. Do not reset trial, plan, or subscription fields.
-    if (business.status !== "active") {
+    if (!isRetryEmail) {
       const { error: updateError } = await supabase
         .from("businesses")
-        .update({ status: "active" })
-        .eq("id", businessId);
+        .update({
+          status: "active",
+          approved_at: new Date().toISOString(),
+          approved_by: user.id,
+          approval_email_status: "pending",
+          approval_email_error: null
+        })
+        .eq("id", businessId)
+        .eq("status", "pending");
 
       if (updateError) throw updateError;
     }

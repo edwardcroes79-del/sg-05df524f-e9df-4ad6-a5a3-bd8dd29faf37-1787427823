@@ -183,6 +183,8 @@ export type Database = {
           admin_notify_status: string | null
           approval_email_error: string | null
           approval_email_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           business_name: string
           cover_image: string | null
           created_at: string | null
@@ -210,6 +212,8 @@ export type Database = {
           admin_notify_status?: string | null
           approval_email_error?: string | null
           approval_email_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           business_name: string
           cover_image?: string | null
           created_at?: string | null
@@ -237,6 +241,8 @@ export type Database = {
           admin_notify_status?: string | null
           approval_email_error?: string | null
           approval_email_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           business_name?: string
           cover_image?: string | null
           created_at?: string | null
