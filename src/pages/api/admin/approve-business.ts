@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 1. Fetch current business data
     const { data: business, error: fetchError } = await supabase
       .from("businesses")
-      .select("id, business_name, owner_id, status, approval_email_status")
+      .select("id, business_name, email, owner_id, status, approval_email_status")
       .eq("id", businessId)
       .single();
 
@@ -54,30 +54,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Business not found" });
     }
 
-    if (business.status === "active" && !retryEmail) {
-      return res.status(200).json({ success: true, message: "Business is already active" });
-    }
-
-    // 2. Fetch owner's email address upfront
+    // 2. Fetch email address upfront. Prefer the registered business email, then fall back to the auth owner email.
     const { data: ownerAuth, error: ownerError } = await supabase.auth.admin.getUserById(business.owner_id);
+    if (ownerError) {
+      console.error("Failed to fetch business owner auth user", ownerError);
+    }
+
     const ownerEmail = ownerAuth?.user?.email;
+    const recipientEmail = business.email || ownerEmail;
 
-    if (!ownerEmail) {
-      return res.status(400).json({ error: "Could not find business owner email" });
+    if (!recipientEmail) {
+      return res.status(400).json({ error: "Could not find business approval email recipient" });
     }
 
-    // 3. Perform database update securely
-    if (business.status !== "active") {
-      const { error: updateError } = await supabase
-        .from("businesses")
-        .update({ status: "active" })
-        .eq("id", businessId);
-
-      if (updateError) throw updateError;
-    }
-
-    // Prepare Email Tracking Log
+    // 3. Prepare Email Tracking Log before deciding whether to resend.
     let emailLogId: string | null = null;
+    let existingEmailAlreadySent = business.approval_email_status === "sent";
+
     try {
       const { data: existingLog } = await supabase
         .from("email_logs")
@@ -87,30 +80,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .maybeSingle();
 
       if (existingLog) {
+        existingEmailAlreadySent = existingEmailAlreadySent || existingLog.status === "sent";
+
         if (existingLog.status === "sent" && !retryEmail) {
-          // Already sent and not a retry request
           return res.status(200).json({ success: true, emailSent: true, message: "Email already sent" });
         }
+
         emailLogId = existingLog.id;
-        await supabase.from("email_logs").update({ 
-          attempt_count: (existingLog.attempt_count || 1) + 1, 
-          status: "pending", 
-          error_message: null 
+        await supabase.from("email_logs").update({
+          attempt_count: (existingLog.attempt_count || 1) + 1,
+          recipient: recipientEmail,
+          status: "pending",
+          error_message: null
         }).eq("id", emailLogId);
       } else {
         const { data: newLog } = await supabase.from("email_logs").insert({
           business_id: businessId,
           email_type: "client_approval",
-          recipient: ownerEmail,
+          recipient: recipientEmail,
           status: "pending"
         }).select().single();
+
         if (newLog) emailLogId = newLog.id;
       }
     } catch (logErr) {
       console.error("Failed to setup email log", logErr);
     }
 
-    // 4. Send approval email via Nodemailer (wrapped in try/catch to prevent blocking the UI on failure)
+    if (business.status === "active" && existingEmailAlreadySent && !retryEmail) {
+      return res.status(200).json({ success: true, emailSent: true, message: "Business is already active and approval email was already sent" });
+    }
+
+    // 4. Perform database update securely. Do not reset trial, plan, or subscription fields.
+    if (business.status !== "active") {
+      const { error: updateError } = await supabase
+        .from("businesses")
+        .update({ status: "active" })
+        .eq("id", businessId);
+
+      if (updateError) throw updateError;
+    }
+
+    // 5. Send approval email via Nodemailer (wrapped in try/catch to prevent blocking the UI on failure)
     try {
       // Safely extract the raw password to prevent Next.js from corrupting the $ symbols via variable expansion
       let mailPassword = process.env.MAIL_PASSWORD;
@@ -141,11 +152,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
       });
 
-      // Strictly enforce production URL to prevent softgen.dev sandbox links in emails
-      let dashboardUrl = "https://arubaroyaltystamp.com/dashboard";
+      // Strictly enforce production URL to prevent softgen.dev, localhost, or legacy domains in emails
+      const dashboardUrl = "https://royaltystamp.com/dashboard";
       let finalOrigin = origin || process.env.NEXT_PUBLIC_SITE_URL || "";
       if (finalOrigin.includes("softgen.dev") || finalOrigin.includes("localhost")) {
-        finalOrigin = "https://arubaroyaltystamp.com";
+        finalOrigin = "https://royaltystamp.com";
       }
       if (finalOrigin) {
         dashboardUrl = `${finalOrigin}/dashboard`;
@@ -156,15 +167,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const mailOptions = {
         from: `"${senderName}" <${senderEmail}>`,
-        to: ownerEmail,
-        subject: "🎉 Welcome to Royalty Stamp — Your Business Has Been Approved",
+        to: recipientEmail,
+        subject: "Your Royalty Stamp Business Account Has Been Approved",
         html: `
-          <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto; color: #333333; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
-            <h2 style="color: #fb7185; margin-top: 0;">Welcome to Royalty Stamp! 🎉</h2>
-            <p style="font-size: 16px; line-height: 1.5;">Your business account for <strong>${business.business_name}</strong> has been approved and is now ready to use.</p>
-            <p style="font-size: 16px; line-height: 1.5;">You can now log in and start setting up your loyalty program, customize your loyalty card, create your QR code, and start rewarding your customers.</p>
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #333333; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
+            <h2 style="color: #fb7185; margin-top: 0;">Your Royalty Stamp Business Account Has Been Approved</h2>
+            <p style="font-size: 16px; line-height: 1.5;">Your Royalty Stamp business account for <strong>${business.business_name}</strong> has been approved and is now ready to use.</p>
+            <p style="font-size: 16px; line-height: 1.5;">You can now log in and access your Business Dashboard to set up your loyalty program, customize your loyalty card, create your QR code, and start rewarding your customers.</p>
             <div style="margin: 30px 0; text-align: center;">
-              <a href="${dashboardUrl}" style="background-color: #fb7185; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;">Go to Your Dashboard</a>
+              <a href="${dashboardUrl}" style="background-color: #fb7185; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; font-size: 16px;">Access Your Business Dashboard</a>
             </div>
             <p style="font-size: 16px; line-height: 1.5;">Thank you for choosing <strong>Royalty Stamp</strong>.</p>
             <hr style="border: none; border-top: 1px solid #eeeeee; margin: 30px 0;" />

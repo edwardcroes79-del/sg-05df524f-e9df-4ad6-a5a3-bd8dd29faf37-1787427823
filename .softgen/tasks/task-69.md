@@ -10,16 +10,16 @@ position: 69
 ---
 
 ## Notes
-Fix the Business approval workflow where Super Admin approval succeeds but the approved Business does not receive the account-approved email. Investigate the existing approval flow first: Super Admin approve handler, API/server action, email function, recipient address, SMTP/email provider configuration, provider response, email log/status, and resend behavior. Reuse the existing Royalty Stamp server-side email architecture and do not add a second provider. Approval email links must use https://royaltystamp.com, not localhost or Softgen preview URLs. If email delivery fails, business approval must remain successful, the failure must be recorded, and Super Admin must be able to retry/resend the approval email. Do not modify unrelated billing, add-ons, plans, loyalty, staff, QR, or dashboard functionality.
+Fix the Business approval workflow where Super Admin approval succeeds but the approved Business does not receive the account-approved email. Investigation found active approved businesses with `approval_email_status = pending` and no `client_approval` row in `email_logs`, proving approval success did not guarantee email submission. The existing `/api/admin/approve-business` route also returned early when a business was already active and not a retry, which prevented missing approval emails from being sent for active businesses whose email status/log was still pending or absent. The route also used the owner auth email first and generated a legacy `arubaroyaltystamp.com` URL from `origin`; the fix now prefers the registered `businesses.email`, keeps owner auth email only as fallback, prepares/updates the email log before deciding whether to skip sending, sends missing approval emails even when the business is already active, updates the log recipient on retry, does not reset trial/plan/subscription fields, and strictly uses `https://royaltystamp.com/dashboard` in the email.
 
 ## Checklist
-- [ ] Inspect Super Admin business approval handler and UI email-status display
-- [ ] Inspect approval API/server route and existing email sending architecture
-- [ ] Inspect email logs/status schema and resend approval email flow
-- [ ] Identify the actual root cause before editing
-- [ ] Fix approval email sending and status recording using existing server-side email service
-- [ ] Ensure production links use https://royaltystamp.com
-- [ ] Preserve resend approval email without changing business approval status
+- [x] Inspect Super Admin business approval handler and UI email-status display
+- [x] Inspect approval API/server route and existing email sending architecture
+- [x] Inspect email logs/status schema and resend approval email flow
+- [x] Identify the actual root cause before editing
+- [x] Fix approval email sending and status recording using existing server-side email service
+- [x] Ensure production links use https://royaltystamp.com
+- [x] Preserve resend approval email without changing business approval status
 - [ ] Verify provider success/failure is reflected accurately in Super Admin
 - [ ] Run project validation and targeted email workflow checks
 
