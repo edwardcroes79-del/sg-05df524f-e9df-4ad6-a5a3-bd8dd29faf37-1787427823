@@ -2181,6 +2181,9 @@ export default function AdminDashboard() {
                       <TableHead>Contract Dates</TableHead>
                       <TableHead>Contract Status</TableHead>
                       <TableHead>Plan Price</TableHead>
+                      <TableHead>Active Add-ons</TableHead>
+                      <TableHead>Add-on Total</TableHead>
+                      <TableHead>Total Subscription</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2227,6 +2230,45 @@ export default function AdminDashboard() {
         >
           {approvalEmailStatus || "pending"}
         </Badge>
+      </div>
+    </TableCell>
+    <TableCell>
+      <div className="space-y-2">
+        <select
+          className="h-9 w-full min-w-[150px] rounded-md border border-input bg-background px-3 py-1 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+          value={biz.subscription_plan || ""}
+          onChange={(event) => handlePlanAssignment(biz.id, event.target.value)}
+          disabled={assigningPlanId === biz.id}
+          aria-label={`Assign subscription plan for ${biz.business_name}`}
+        >
+          <option value="" disabled>
+            Select plan
+          </option>
+          {plans
+            .filter((plan) => (plan.status || (plan.is_active ? "active" : "inactive")) === "active" || plan.id === biz.subscription_plan)
+            .map((plan) => (
+              <option key={plan.id} value={plan.id}>
+                {plan.name}
+              </option>
+            ))}
+        </select>
+        {assigningPlanId === biz.id && (
+          <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Updating plan...
+          </div>
+        )}
+        <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
+        {biz.trial_end && plans.find(p => p.id === biz.subscription_plan)?.is_trial && (
+          <div className="text-[10px] mt-1.5 flex flex-col gap-0.5">
+            <span className="text-muted-foreground">Start: {new Date(biz.trial_start).toLocaleDateString()}</span>
+            {new Date() > new Date(biz.trial_end) ? (
+              <span className="text-destructive font-semibold">Expired: {new Date(biz.trial_end).toLocaleDateString()}</span>
+            ) : (
+              <span className="text-indigo-600 font-semibold">Ends: {new Date(biz.trial_end).toLocaleDateString()}</span>
+            )}
+          </div>
+        )}
       </div>
     </TableCell>
     <TableCell>
