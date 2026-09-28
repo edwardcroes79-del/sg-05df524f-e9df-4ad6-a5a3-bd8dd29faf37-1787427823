@@ -1,6 +1,6 @@
 ---
 title: Contract Expiration Reminder Automation
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [contracts, reminders, notifications, email]
@@ -10,19 +10,19 @@ position: 76
 ---
 
 ## Notes
-Build Phase 4 contract reminders using the existing Phase 1–3 contract system. Send reminders 30, 14, 7, and 1 day before expiration, plus one notification on expiration. Notify Business Admin and Super Admin through the existing notification/email architecture. Do not create a duplicate email/notification system. Track each reminder once per contract period so repeated scheduled processing does not create duplicate reminders. If a contract is renewed, reminders must follow the new contract end date and old-period reminders must stop. Use server-side scheduled processing, actual stored contract dates, and existing system timezone. Do not change billing, plans, add-ons, contract access logic, RLS, business isolation, or permissions.
+Built Phase 4 contract expiration reminders using the existing Phase 1–3 contract system. Added `contract_reminders` tracking to record each reminder once per business, contract end date, reminder type, and recipient type. Added a server-side scheduled processor at `/api/admin/process-contract-reminders` and a Vercel cron entry to run it daily. The processor uses actual stored contract end dates in the project timezone, refreshes expired contract statuses through the existing contract expiration function, sends reminders 30, 14, 7, and 1 day before expiration plus one expiration notification, and reuses existing Nodemailer SMTP, `email_logs`, and `audit_logs` architecture instead of creating a separate email system. Business Admin and Super Admin recipients are notified. Duplicate prevention is enforced with a unique database constraint and reservation insert, so repeated scheduled runs do not resend the same reminder for the same contract period. Renewed contracts naturally use the new stored `contract_end_date`; old-period reminders remain historical and are not reused for the renewed period. Billing, plans, add-ons, contract access enforcement, RLS, business isolation, and permissions were preserved. Targeted regression checks covered all reminder intervals, duplicate prevention, renewal/new-period behavior, expiration notification once, and project validation passed.
 
 ## Checklist
-- [ ] Inspect existing notification, email, contract, and scheduled-job architecture
-- [ ] Add reminder tracking for each business contract period and reminder type
-- [ ] Add server-side reminder processor for 30, 14, 7, 1 day, and expiration reminders
-- [ ] Notify Business Admin using existing notification/email architecture
-- [ ] Notify Super Admin using existing notification/email architecture
-- [ ] Prevent duplicate reminders when the processor runs repeatedly
-- [ ] Ensure renewed contracts use the new contract end date and old-period reminders stop
-- [ ] Preserve existing contract access, billing, plans, add-ons, auth, RLS, and business isolation
-- [ ] Test all reminder intervals, renewal behavior, duplicate prevention, and expiration notification
-- [ ] Run project validation
+- [x] Inspect existing notification, email, contract, and scheduled-job architecture
+- [x] Add reminder tracking for each business contract period and reminder type
+- [x] Add server-side reminder processor for 30, 14, 7, 1 day, and expiration reminders
+- [x] Notify Business Admin using existing notification/email architecture
+- [x] Notify Super Admin using existing notification/email architecture
+- [x] Prevent duplicate reminders when the processor runs repeatedly
+- [x] Ensure renewed contracts use the new contract end date and old-period reminders stop
+- [x] Preserve existing contract access, billing, plans, add-ons, auth, RLS, and business isolation
+- [x] Test all reminder intervals, renewal behavior, duplicate prevention, and expiration notification
+- [x] Run project validation
 
 ## Acceptance
 Contract reminders are sent once per interval per contract period through existing notification/email systems.
