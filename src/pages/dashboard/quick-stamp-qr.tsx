@@ -315,6 +315,10 @@ export default function QuickStampQrPage() {
                 <p className="font-semibold text-foreground">Shared stamp transaction logic</p>
                 <p>The customer scan flow calls the same transactional stamp engine used by staff issuing, including rate limits and reward creation.</p>
               </div>
+              <div className="rounded-xl border bg-muted/20 p-4">
+                <p className="font-semibold text-foreground">Repeat-scan protection</p>
+                <p>Quick Stamp QR also checks recent transaction history before issuing, so refreshed tokens cannot be used for unlimited rapid self-stamping.</p>
+              </div>
             </CardContent>
           </Card>
         </div>
