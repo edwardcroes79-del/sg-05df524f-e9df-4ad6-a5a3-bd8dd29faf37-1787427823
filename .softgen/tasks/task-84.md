@@ -10,17 +10,17 @@ position: 84
 ---
 
 ## Notes
-Debug why Quick Issue Stamp is still not visible for tested business accounts. Trace the complete feature chain: add-on definition, add-on status/approval, business entitlement/access check, feature-access helper, navigation visibility, route, Quick Issue Stamp page, and existing 60-second QR/token implementation. Do not simply add another menu item. If the backend exists but UI entitlement check is wrong, connect the existing implementation. Do not rebuild QR/token/stamp systems and do not modify Issue Stamp, Redeem Reward, billing, plans, RLS, authentication, or existing stamp logic.
+Root cause found: the Quick Issue Stamp submenu was gated in `src/components/dashboard/DashboardLayout.tsx` by a client-side join from `business_addon_subscriptions` to `subscription_addons`. The live database entitlement helper `business_has_active_quick_stamp_qr(p_business_id)` already checks active subscription status, approved payment status, current period, active add-on status, and the accepted Quick Stamp slug/type/id using SECURITY DEFINER access. The dashboard navigation was updated to use that existing helper instead of rebuilding the QR/token/stamp system or adding a duplicate menu item. Direct-route QR generation remains protected by the existing server-side token RPC/add-on gates.
 
 ## Checklist
 - [x] Inspect existing Quick Stamp QR page, token RPC usage, add-on gating, and dashboard navigation
-- [ ] Verify add-on definition, slug/key, active/approval fields, and available metadata
-- [ ] Verify business add-on entitlement rows and status values used by real business accounts
-- [ ] Inspect feature-access helper and navigation condition for mismatched slug/status/field logic
-- [ ] Inspect route/page registration and direct-route add-on gate
-- [ ] Apply the smallest fix to connect existing implementation if backend exists
+- [x] Verify add-on definition, slug/key, active/approval fields, and available metadata
+- [x] Verify business add-on entitlement rows and status values used by real business accounts
+- [x] Inspect feature-access helper and navigation condition for mismatched slug/status/field logic
+- [x] Inspect route/page registration and direct-route add-on gate
+- [x] Apply the smallest fix to connect existing implementation if backend exists
 - [ ] Validate active add-on menu visibility, inactive add-on hiding, route access, QR generation, and project checks
-- [ ] Report root cause and changed files
+- [x] Report root cause and changed files
 
 ## Acceptance
 Business users with the active Quick Issue Stamp add-on see Quick Issue Stamp under Stamps & Rewards.

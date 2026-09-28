@@ -176,37 +176,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         resolvedBusiness.access_state === "contract_expired" || isContractExpiredForDashboard(resolvedBusiness)
       );
 
-      const { data: quickStampAddon } = await (supabase as any)
-        .from("business_addon_subscriptions")
-        .select(`
-          id,
-          current_period_end,
-          subscription_addons (
-            id,
-            slug,
-            addon_type,
-            status
-          )
-        `)
-        .eq("business_id", resolvedBusiness.id)
-        .eq("status", "active")
-        .eq("payment_status", "approved");
+      const { data: hasQuickStampAddon, error: quickStampAccessError } = await (supabase as any)
+        .rpc("business_has_active_quick_stamp_qr", {
+          p_business_id: resolvedBusiness.id,
+        });
 
-      const hasQuickStampAddon = (quickStampAddon || []).some((subscription: any) => {
-        const addon = Array.isArray(subscription.subscription_addons)
-          ? subscription.subscription_addons[0]
-          : subscription.subscription_addons;
+      if (quickStampAccessError) {
+        console.error("Quick Issue Stamp access error:", quickStampAccessError);
+      }
 
-        const periodIsActive = !subscription.current_period_end || new Date(subscription.current_period_end).getTime() > Date.now();
-
-        return periodIsActive && addon?.status === "active" && (
-          addon?.id === "quick_stamp_qr" ||
-          addon?.slug === "quick-stamp-qr" ||
-          addon?.addon_type === "quick_stamp_qr"
-        );
-      });
-
-      setQuickStampQrEnabled(hasQuickStampAddon);
+      setQuickStampQrEnabled(Boolean(hasQuickStampAddon));
 
       // Fetch Plan data to check for trial status
       const { data: planData } = await supabase
