@@ -77,6 +77,20 @@ export default function CustomerAuth() {
             }
           }
         }
+
+        const quickStampMatch = decodedUrl.match(/\/quick-stamp\/([^/?#]+)/);
+        if (quickStampMatch && quickStampMatch[1]) {
+          const { data: quickStampContext } = await (supabase as any).rpc("get_quick_stamp_qr_context", {
+            p_token: quickStampMatch[1],
+          });
+
+          if (quickStampContext?.success) {
+            setBusinessName(quickStampContext.business_name || "");
+            setProgramName(quickStampContext.program_name || "");
+            setLogoUrl(quickStampContext.business_logo || "");
+            setAccentColor(quickStampContext.business_primary_color || "");
+          }
+        }
       } catch (err) {
         console.error("Error fetching auth business context:", err);
       } finally {

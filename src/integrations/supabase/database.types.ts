@@ -791,6 +791,7 @@ export type Database = {
           business_id: string
           created_at: string
           expires_at: string
+          loyalty_program_id: string | null
           staff_user_id: string
           token: string
           used_at: string | null
@@ -799,6 +800,7 @@ export type Database = {
           business_id: string
           created_at?: string
           expires_at?: string
+          loyalty_program_id?: string | null
           staff_user_id: string
           token?: string
           used_at?: string | null
@@ -807,6 +809,7 @@ export type Database = {
           business_id?: string
           created_at?: string
           expires_at?: string
+          loyalty_program_id?: string | null
           staff_user_id?: string
           token?: string
           used_at?: string | null
@@ -817,6 +820,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_stamp_qr_tokens_loyalty_program_id_fkey"
+            columns: ["loyalty_program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
             referencedColumns: ["id"]
           },
         ]
@@ -1310,10 +1320,12 @@ export type Database = {
         Returns: boolean
       }
       current_user_is_super_admin: { Args: never; Returns: boolean }
-      generate_quick_stamp_qr_token: {
-        Args: { p_business_id: string }
-        Returns: Json
-      }
+      generate_quick_stamp_qr_token:
+        | { Args: { p_business_id: string }; Returns: Json }
+        | {
+            Args: { p_business_id: string; p_loyalty_program_id?: string }
+            Returns: Json
+          }
       generate_reward_qr_token: {
         Args: { p_reward_id: string }
         Returns: string
@@ -1356,6 +1368,7 @@ export type Database = {
         Args: { p_fallback?: number; p_key: string; p_plan_id: string }
         Returns: number
       }
+      get_quick_stamp_qr_context: { Args: { p_token: string }; Returns: Json }
       get_reward_by_qr_token: {
         Args: { p_business_id: string; p_token: string }
         Returns: Json
@@ -1383,6 +1396,16 @@ export type Database = {
         }
         Returns: Json
       }
+      issue_stamp_core_tx: {
+        Args: {
+          p_business_id: string
+          p_customer_id: string
+          p_loyalty_program_id: string
+          p_staff_user_id: string
+          p_verification_method?: string
+        }
+        Returns: Json
+      }
       issue_stamp_tx: {
         Args: {
           p_business_id: string
@@ -1391,6 +1414,7 @@ export type Database = {
         }
         Returns: Json
       }
+      quick_stamp_qr_issue_stamp: { Args: { p_token: string }; Returns: Json }
       redeem_reward: {
         Args: { p_business_id: string; p_reward_code: string }
         Returns: Json
