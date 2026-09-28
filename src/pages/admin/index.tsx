@@ -65,6 +65,28 @@ function getContractStatusBadgeVariant(status?: string | null) {
   return "default";
 }
 
+function formatContractDisplayDate(dateValue?: string | null) {
+  if (!dateValue) return "unknown date";
+  return new Date(`${dateValue}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getContractReminderTitle(reminderType: string) {
+  if (reminderType === "expiration") return "Contract Expired";
+
+  const days = reminderType.replace("_days", "").replace("_day", "");
+  return `Contract Expiring in ${days} Day${days === "1" ? "" : "s"}`;
+}
+
+function getContractReminderDaysText(reminderType: string) {
+  if (reminderType === "expiration") return "0 days remaining";
+  if (reminderType === "1_day") return "1 day remaining";
+  return `${reminderType.replace("_days", "")} days remaining`;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -74,6 +96,7 @@ export default function AdminDashboard() {
   const [plans, setPlans] = useState<any[]>([]);
   const [addons, setAddons] = useState<any[]>([]);
   const [businessAddonSubscriptions, setBusinessAddonSubscriptions] = useState<any[]>([]);
+  const [contractReminders, setContractReminders] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [globalStats, setGlobalStats] = useState({
@@ -459,6 +482,31 @@ export default function AdminDashboard() {
       }, {});
       setNotificationReads(readsMap);
 
+      const { data: contractReminderData } = await (supabase as any)
+        .from("contract_reminders")
+        .select(`
+          id,
+          business_id,
+          contract_end_date,
+          reminder_type,
+          recipient_type,
+          status,
+          sent_at,
+          created_at,
+          businesses (
+            id,
+            business_name,
+            subscription_plan,
+            contract_term_months,
+            contract_end_date
+          )
+        `)
+        .eq("recipient_type", "super_admin")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      setContractReminders(contractReminderData || []);
+
       // 4. Fetch Customers
       const { data: customersData } = await supabase
         .from("customers")
@@ -552,7 +600,37 @@ export default function AdminDashboard() {
 
   const pendingBusinessRegistrations = businesses.filter((business) => business.status === "pending");
 
+  const contractReminderNotifications = contractReminders
+    .filter((reminder) => {
+      const business = Array.isArray(reminder.businesses) ? reminder.businesses[0] : reminder.businesses;
+      return business?.contract_end_date === reminder.contract_end_date;
+    })
+    .map((reminder) => {
+      const business = Array.isArray(reminder.businesses) ? reminder.businesses[0] : reminder.businesses;
+      const plan = plans.find((item) => item.id === business?.subscription_plan);
+      const planName = plan?.name || business?.subscription_plan || "No plan assigned";
+      const termText = business?.contract_term_months ? `${business.contract_term_months}-month contract` : "contract term unassigned";
+      const expirationDate = formatContractDisplayDate(reminder.contract_end_date);
+      const isExpired = reminder.reminder_type === "expiration";
+
+      return {
+        id: notificationKey("contract_reminder", String(reminder.id)),
+        sourceType: "contract_reminder",
+        sourceId: String(reminder.id),
+        type: getContractReminderTitle(reminder.reminder_type),
+        businessName: business?.business_name || "Unknown business",
+        description: isExpired
+          ? `${planName} — ${termText} — contract expired ${expirationDate}.`
+          : `${planName} — ${termText} — expires ${expirationDate} (${getContractReminderDaysText(reminder.reminder_type)}).`,
+        createdAt: reminder.sent_at || reminder.created_at,
+        status: "pending" as const,
+        destination: "merchants" as const,
+        relatedRecord: reminder,
+      };
+    });
+
   const superAdminNotifications: SuperAdminNotification[] = [
+    ...contractReminderNotifications,
     ...businessAddonSubscriptions
       .filter((subscription) => subscription.status === "inactive" && subscription.payment_status === "pending")
       .map((subscription) => {
@@ -2146,7 +2224,7 @@ export default function AdminDashboard() {
                             </div>
                             <div className="mt-3 flex items-center justify-between gap-2">
                               <Badge variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"} className="text-[10px] uppercase">
-                                {notification.status === "pending" ? "Pending Review" : notification.status}
+                                {notification.sourceType === "contract_reminder" ? "Action Required" : notification.status === "pending" ? "Pending Review" : notification.status}
                               </Badge>
                               <Button
                                 type="button"
