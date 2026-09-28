@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { QuickStampFullScreen } from "@/components/dashboard/QuickStampFullScreen";
 
 type QuickStampToken = {
   token: string;
@@ -47,6 +48,7 @@ export default function QuickStampQrPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const selectedProgram = programs.find((program) => program.id === selectedProgramId) || null;
 
@@ -194,12 +196,24 @@ export default function QuickStampQrPage() {
 
   const progressValue = tokenData?.ttlSeconds ? (secondsRemaining / tokenData.ttlSeconds) * 100 : 0;
   const countdownLabel = formatCountdown(secondsRemaining);
+  const canDisplayQr = Boolean(qrImageUrl && tokenData && !errorMessage);
 
   return (
     <DashboardLayout>
       <Head>
         <title>Quick Stamp QR | Aruba Royalty Stamp</title>
       </Head>
+
+      {isFullScreen && canDisplayQr ? (
+        <QuickStampFullScreen
+          qrImageUrl={qrImageUrl}
+          countdownLabel={countdownLabel}
+          progressValue={progressValue}
+          businessName="Quick Stamp QR"
+          programName={selectedProgram?.name || "Active loyalty program"}
+          onExit={() => setIsFullScreen(false)}
+        />
+      ) : null}
 
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -294,6 +308,15 @@ export default function QuickStampQrPage() {
                       <p className="mt-1 font-mono text-4xl font-extrabold tracking-tight text-primary">{countdownLabel}</p>
                     </div>
                     <Progress value={progressValue} />
+                    <Button
+                      type="button"
+                      className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                      onClick={() => setIsFullScreen(true)}
+                      disabled={!canDisplayQr}
+                    >
+                      <Zap className="h-4 w-4" />
+                      Display Full Screen
+                    </Button>
                     <p className="text-sm font-medium text-foreground">Scan to receive your loyalty stamp</p>
                     <p className="break-all rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground">
                       {qrUrl}

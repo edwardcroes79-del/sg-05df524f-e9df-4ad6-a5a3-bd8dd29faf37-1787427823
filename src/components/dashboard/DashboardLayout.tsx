@@ -241,8 +241,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Stamps & Rewards", href: "/dashboard/scan", icon: ScanLine },
-    ...(quickStampQrEnabled ? [{ name: "Quick Stamp QR", href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
+    {
+      name: "Stamps & Rewards",
+      href: "/dashboard/scan",
+      icon: ScanLine,
+      children: [
+        { name: "Issue Stamp", href: "/dashboard/scan", icon: ScanLine },
+        { name: "Redeem Reward", href: "/dashboard/scan", icon: Gift },
+        ...(quickStampQrEnabled ? [{ name: "Quick Stamp QR", href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
+      ],
+    },
     { name: "Loyalty Programs", href: "/dashboard/programs", icon: Gift },
     { name: "Customers", href: "/dashboard/customers", icon: Users },
     { name: "QR Codes", href: "/dashboard/qr", icon: QrCode },
@@ -418,6 +426,49 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = router.pathname === item.href || router.pathname.startsWith(`${item.href}/`);
+            const children = "children" in item ? item.children : undefined;
+
+            if (children?.length) {
+              const isGroupActive = isActive || children.some((child) => router.pathname === child.href || router.pathname.startsWith(`${child.href}/`));
+
+              return (
+                <div key={item.name} className="space-y-1">
+                  <Link href={item.href}>
+                    <span className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
+                      ${isGroupActive 
+                        ? "bg-primary/10 text-primary" 
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"}
+                    `}>
+                      <Icon className="h-5 w-5" />
+                      {item.name}
+                    </span>
+                  </Link>
+
+                  <div className="ml-4 space-y-1 border-l border-border pl-3">
+                    {children.map((child) => {
+                      const ChildIcon = child.icon;
+                      const isChildActive = router.pathname === child.href || router.pathname.startsWith(`${child.href}/`);
+
+                      return (
+                        <Link key={child.name} href={child.href}>
+                          <span className={`
+                            flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors
+                            ${isChildActive 
+                              ? "bg-primary/10 text-primary" 
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"}
+                          `}>
+                            <ChildIcon className="h-4 w-4" />
+                            {child.name}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <Link key={item.name} href={item.href}>
                 <span className={`
