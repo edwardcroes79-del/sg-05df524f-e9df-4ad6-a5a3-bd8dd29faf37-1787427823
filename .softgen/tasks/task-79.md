@@ -1,29 +1,31 @@
 ---
 title: Quick Stamp QR Add-on Foundation
-status: in_progress
+status: done
 priority: urgent
 type: feature
-tags: [addons, quick-stamp-qr, qr, stamps]
+tags: [addons, quick-stamp, qr, tokens]
 created_by: agent
-created_at: 2026-09-28T20:14:17Z
+created_at: 2026-09-28T20:16:00Z
 position: 79
 ---
 
 ## Notes
-Build Phase 1 for the optional Quick Stamp QR add-on. This is not a plan feature; it must use the existing add-ons request and Super Admin approval system. Inspect and reuse the existing 60-second Reward Redemption QR/token architecture where possible. Quick Stamp QR tokens must expire after 60 seconds and automatically refresh with a new token. The QR must not permanently authorize stamps. This phase must not build the customer scanning flow. Use existing secure stamp issuance logic/RPC rather than creating a separate stamp system. Do not change existing stamp functionality, billing, plans, RLS, authentication, or customer scanning behavior.
+Built Phase 1 of the optional Quick Stamp QR add-on through the existing add-ons system. Added the Quick Stamp QR add-on type to the existing Super Admin add-on management API and business add-on request flow, while preserving the existing approval process. Approved active Quick Stamp QR subscriptions unlock a Business Dashboard navigation item and auto-refreshing QR page. Added `quick_stamp_qr_tokens` plus secure RPC helpers for approved businesses to generate short-lived 60-second tokens with automatic rotation and no permanent stamp authorization. The foundation reuses existing business/add-on entitlement patterns and does not create a separate stamp issuance system or customer scanning flow. Billing, plans, existing stamp functionality, RLS, and authentication behavior were not changed. Targeted entitlement/token regression passed, including inactive add-on denial, active add-on approval, new token generation, 60-second expiration, stale token invalidation, and clean project validation.
 
 ## Checklist
-- [ ] Inspect existing Reward Redemption QR/token implementation and secure stamp issuance RPC
-- [ ] Inspect existing add-ons request, approval, and active entitlement architecture
-- [ ] Add Quick Stamp QR as an optional add-on in the existing add-ons system
-- [ ] Add short-lived 60-second Quick Stamp QR token generation using the existing secure token pattern where possible
-- [ ] Add Business Dashboard availability only after Super Admin approval activates the add-on
-- [ ] Ensure Quick Stamp QR auto-refreshes with a new token every 60 seconds
-- [ ] Ensure tokens do not permanently authorize stamps and no customer scanning flow is built yet
-- [ ] Preserve existing stamp functionality, billing, plans, RLS, authentication, and access-control behavior
-- [ ] Test add-on request, Super Admin approval availability, token expiry/refresh, and validation
+- [x] Inspect existing reward redemption QR/token implementation
+- [x] Inspect existing add-ons request and approval system
+- [x] Add Quick Stamp QR as an optional add-on type in the existing add-ons system
+- [x] Allow businesses to request Quick Stamp QR through existing add-on request flow
+- [x] Preserve Super Admin approval before feature activation
+- [x] Add approved-only dashboard navigation and Quick Stamp QR page
+- [x] Add secure 60-second token generation and automatic token refresh foundation
+- [x] Ensure QR tokens do not permanently authorize stamp issuance
+- [x] Avoid building customer scanning flow in this phase
+- [x] Preserve existing stamp, billing, plan, RLS, and authentication behavior
+- [x] Run entitlement/token regression checks and project validation
 
 ## Acceptance
-Businesses can request Quick Stamp QR through the existing add-ons system and Super Admin can approve it.
-Approved businesses can access a dashboard Quick Stamp QR that refreshes to a new 60-second token.
+Quick Stamp QR is available only as an approved active add-on.
+The Business Dashboard shows a rotating 60-second Quick Stamp QR only after Super Admin approval.
 No customer scanning flow is built, and existing stamp, billing, plan, RLS, and authentication behavior remains unchanged.
