@@ -41,6 +41,7 @@ function formatCountdown(totalSeconds: number) {
 export default function QuickStampQrPage() {
   const { toast } = useToast();
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState("Royalty Stamp");
   const [programs, setPrograms] = useState<LoyaltyProgramOption[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [tokenData, setTokenData] = useState<QuickStampToken | null>(null);
@@ -66,7 +67,7 @@ export default function QuickStampQrPage() {
     if (!programId) {
       setTokenData(null);
       setSecondsRemaining(0);
-      setErrorMessage("Select an active loyalty program to generate a Quick Stamp QR.");
+      setErrorMessage("Select an active loyalty program to generate a Quick Issue Stamp QR.");
       setLoading(false);
       return;
     }
@@ -82,7 +83,7 @@ export default function QuickStampQrPage() {
 
       if (error) throw error;
       if (!data?.success) {
-        throw new Error(data?.message || "Quick Stamp QR token could not be generated");
+        throw new Error(data?.message || "Quick Issue Stamp token could not be generated");
       }
 
       setTokenData({
@@ -94,7 +95,7 @@ export default function QuickStampQrPage() {
       });
       setSecondsRemaining(getSecondsRemaining(data.expires_at));
     } catch (err: any) {
-      setErrorMessage(err.message || "Quick Stamp QR is unavailable");
+      setErrorMessage(err.message || "Quick Issue Stamp is unavailable");
       setTokenData(null);
     } finally {
       setRefreshing(false);
@@ -143,10 +144,11 @@ export default function QuickStampQrPage() {
       const firstProgram = activePrograms[0];
 
       setBusinessId(resolvedBusiness.id);
+      setBusinessName(resolvedBusiness.business_name || "Royalty Stamp");
       setPrograms(activePrograms);
 
       if (!firstProgram) {
-        setErrorMessage("Create and activate a loyalty program before using Quick Stamp QR.");
+        setErrorMessage("Create and activate a loyalty program before using Quick Issue Stamp QR.");
         setLoading(false);
         return;
       }
@@ -189,7 +191,7 @@ export default function QuickStampQrPage() {
     if (!businessId || !selectedProgramId) return;
     await refreshToken(businessId, selectedProgramId);
     toast({
-      title: "Quick Stamp QR refreshed",
+      title: "Quick Issue Stamp refreshed",
       description: "A new 60-second QR is now active. The previous QR is no longer valid.",
     });
   };
@@ -201,7 +203,7 @@ export default function QuickStampQrPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Quick Stamp QR | Aruba Royalty Stamp</title>
+        <title>Quick Issue Stamp | Aruba Royalty Stamp</title>
       </Head>
 
       {isFullScreen && canDisplayQr ? (
@@ -209,7 +211,7 @@ export default function QuickStampQrPage() {
           qrImageUrl={qrImageUrl}
           countdownLabel={countdownLabel}
           progressValue={progressValue}
-          businessName="Quick Stamp QR"
+          businessName={businessName}
           programName={selectedProgram?.name || "Active loyalty program"}
           onExit={() => setIsFullScreen(false)}
         />
@@ -222,9 +224,9 @@ export default function QuickStampQrPage() {
               <Zap className="h-3.5 w-3.5" />
               Optional Add-on
             </Badge>
-            <h1 className="font-heading text-3xl font-bold text-foreground">Quick Stamp QR</h1>
+            <h1 className="font-heading text-3xl font-bold text-foreground">Quick Issue Stamp</h1>
             <p className="mt-1 max-w-2xl text-muted-foreground">
-              Customers can scan this QR to receive their loyalty stamp.
+              Show this QR to customers. Customers scan to receive their loyalty stamp.
             </p>
           </div>
 
@@ -247,10 +249,10 @@ export default function QuickStampQrPage() {
             <CardHeader className="border-b bg-primary/[0.03]">
               <CardTitle className="flex items-center gap-2">
                 <QrCode className="h-5 w-5 text-primary" />
-                Rotating Quick Stamp QR
+                Rotating Quick Issue Stamp QR
               </CardTitle>
               <CardDescription>
-                Show this screen at your counter. The current QR is valid for 60 seconds and then automatically refreshes.
+                Show this QR to customers. The current QR is valid for 60 seconds and then automatically refreshes.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 p-6">
@@ -288,14 +290,14 @@ export default function QuickStampQrPage() {
               ) : errorMessage ? (
                 <div className="rounded-2xl border border-dashed p-8 text-center">
                   <AlertTriangle className="mx-auto h-10 w-10 text-amber-600" />
-                  <h2 className="mt-4 font-heading text-xl font-bold text-foreground">Quick Stamp QR unavailable</h2>
+                  <h2 className="mt-4 font-heading text-xl font-bold text-foreground">Quick Issue Stamp unavailable</h2>
                   <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-5">
                   <div className="w-full rounded-[2rem] border border-primary/20 bg-white p-4 shadow-xl shadow-primary/10 sm:w-fit sm:p-6">
                     {qrImageUrl ? (
-                      <img src={qrImageUrl} alt="Quick Stamp QR token" className="mx-auto aspect-square h-80 w-80 rounded-3xl sm:h-[26rem] sm:w-[26rem] lg:h-[28rem] lg:w-[28rem]" />
+                      <img src={qrImageUrl} alt="Quick Issue Stamp QR token" className="mx-auto aspect-square h-80 w-80 rounded-3xl sm:h-[26rem] sm:w-[26rem] lg:h-[28rem] lg:w-[28rem]" />
                     ) : null}
                   </div>
 
@@ -317,7 +319,7 @@ export default function QuickStampQrPage() {
                       <Zap className="h-4 w-4" />
                       Display Full Screen
                     </Button>
-                    <p className="text-sm font-medium text-foreground">Scan to receive your loyalty stamp</p>
+                    <p className="text-sm font-medium text-foreground">Customers scan to receive their loyalty stamp.</p>
                     <p className="break-all rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground">
                       {qrUrl}
                     </p>
@@ -337,7 +339,7 @@ export default function QuickStampQrPage() {
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div className="rounded-xl border bg-muted/20 p-4">
                 <p className="font-semibold text-foreground">Approved add-on required</p>
-                <p>Token generation and scan redemption are denied unless Quick Stamp QR is active for this business.</p>
+                <p>Token generation and scan redemption are denied unless the Quick Issue Stamp add-on is active for this business.</p>
               </div>
               <div className="rounded-xl border bg-muted/20 p-4">
                 <p className="font-semibold text-foreground">Program membership required</p>
@@ -349,7 +351,7 @@ export default function QuickStampQrPage() {
               </div>
               <div className="rounded-xl border bg-muted/20 p-4">
                 <p className="font-semibold text-foreground">Repeat-scan protection</p>
-                <p>Quick Stamp QR also checks recent transaction history before issuing, so refreshed tokens cannot be used for unlimited rapid self-stamping.</p>
+                <p>Quick Issue Stamp also checks recent transaction history before issuing, so refreshed tokens cannot be used for unlimited rapid self-stamping.</p>
               </div>
             </CardContent>
           </Card>

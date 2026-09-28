@@ -33,11 +33,11 @@ export function QuickStampFullScreen({
           <div className="space-y-3">
             <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-bold text-primary">
               <Zap className="h-4 w-4" />
-              Quick Stamp QR
+              Quick Issue Stamp
             </div>
             <div>
               <h1 className="font-heading text-4xl font-black tracking-tight text-foreground sm:text-6xl">
-                Scan to receive your loyalty stamp
+                Customers scan to receive their loyalty stamp.
               </h1>
               <p className="mt-3 text-base font-medium text-muted-foreground sm:text-xl">
                 {businessName} · {programName}
@@ -48,7 +48,7 @@ export function QuickStampFullScreen({
           <div className="mx-auto w-fit rounded-[2.5rem] border border-primary/25 bg-white p-4 shadow-2xl shadow-primary/15 sm:p-8">
             <img
               src={qrImageUrl}
-              alt="Quick Stamp QR full-screen token"
+              alt="Quick Issue Stamp full-screen token"
               className="aspect-square h-[78vw] max-h-[34rem] min-h-72 w-[78vw] min-w-72 max-w-[34rem] rounded-[2rem]"
             />
           </div>

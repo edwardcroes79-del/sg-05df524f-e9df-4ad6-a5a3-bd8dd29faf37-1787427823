@@ -248,9 +248,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       children: [
         { name: "Issue Stamp", href: "/dashboard/scan", icon: ScanLine },
         { name: "Redeem Reward", href: "/dashboard/scan", icon: Gift },
-        ...(quickStampQrEnabled ? [{ name: "Quick Stamp QR", href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
       ],
     },
+    ...(quickStampQrEnabled ? [{ name: "Quick Issue Stamp", href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
     { name: "Loyalty Programs", href: "/dashboard/programs", icon: Gift },
     { name: "Customers", href: "/dashboard/customers", icon: Users },
     { name: "QR Codes", href: "/dashboard/qr", icon: QrCode },
