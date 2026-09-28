@@ -1,6 +1,6 @@
 ---
 title: Quick Issue Stamp Dashboard Access
-status: done
+status: in_progress
 priority: high
 type: bug
 tags: [quick-issue-stamp, dashboard, qr, add-on]
@@ -10,16 +10,17 @@ position: 84
 ---
 
 ## Notes
-Corrected the Business Dashboard navigation so Quick Issue Stamp appears as a third separate item under the existing Stamps & Rewards menu, after Issue Stamp and Redeem Reward, only when the active add-on is enabled. Reused the existing Quick Issue Stamp page/token/customer scan implementation from previous phases. Did not rebuild QR, token, stamp, billing, RLS, authentication, or redemption systems. Direct-route token generation remains unavailable when the add-on is inactive through the existing server-side add-on gates. Project validation passed with no CSS, lint, TypeScript, or server errors.
+Debug why Quick Issue Stamp is still not visible for tested business accounts. Trace the complete feature chain: add-on definition, add-on status/approval, business entitlement/access check, feature-access helper, navigation visibility, route, Quick Issue Stamp page, and existing 60-second QR/token implementation. Do not simply add another menu item. If the backend exists but UI entitlement check is wrong, connect the existing implementation. Do not rebuild QR/token/stamp systems and do not modify Issue Stamp, Redeem Reward, billing, plans, RLS, authentication, or existing stamp logic.
 
 ## Checklist
 - [x] Inspect existing Quick Stamp QR page, token RPC usage, add-on gating, and dashboard navigation
-- [x] Move Quick Issue Stamp into the Stamps & Rewards submenu as a separate third item
-- [x] Ensure the submenu item only appears when the Quick Issue Stamp add-on is active
-- [x] Ensure the submenu item opens the existing Quick Issue Stamp implementation
-- [x] Verify inactive add-on hides the menu item and direct route remains unavailable
-- [x] Confirm existing page still supports active program selection, 60-second QR, countdown, Refresh QR, and Display Full Screen
-- [x] Run project validation
+- [ ] Verify add-on definition, slug/key, active/approval fields, and available metadata
+- [ ] Verify business add-on entitlement rows and status values used by real business accounts
+- [ ] Inspect feature-access helper and navigation condition for mismatched slug/status/field logic
+- [ ] Inspect route/page registration and direct-route add-on gate
+- [ ] Apply the smallest fix to connect existing implementation if backend exists
+- [ ] Validate active add-on menu visibility, inactive add-on hiding, route access, QR generation, and project checks
+- [ ] Report root cause and changed files
 
 ## Acceptance
 Business users with the active Quick Issue Stamp add-on see Quick Issue Stamp under Stamps & Rewards.
