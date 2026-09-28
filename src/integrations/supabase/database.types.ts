@@ -281,6 +281,66 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_reminders: {
+        Row: {
+          business_id: string
+          contract_end_date: string
+          created_at: string
+          email_log_id: string | null
+          error_message: string | null
+          id: string
+          recipient_email: string
+          recipient_type: string
+          reminder_type: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          contract_end_date: string
+          created_at?: string
+          email_log_id?: string | null
+          error_message?: string | null
+          id?: string
+          recipient_email: string
+          recipient_type: string
+          reminder_type: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          contract_end_date?: string
+          created_at?: string
+          email_log_id?: string | null
+          error_message?: string | null
+          id?: string
+          recipient_email?: string
+          recipient_type?: string
+          reminder_type?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_reminders_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_reminders_email_log_id_fkey"
+            columns: ["email_log_id"]
+            isOneToOne: false
+            referencedRelation: "email_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_loyalty_cards: {
         Row: {
           business_id: string | null
@@ -1219,6 +1279,20 @@ export type Database = {
         Args: { p_business_id: string; p_entitlement_key?: string }
         Returns: number
       }
+      get_business_dashboard_access_status: {
+        Args: { p_user_id?: string }
+        Returns: {
+          access_state: string
+          business_name: string
+          contract_end_date: string
+          contract_status: string
+          id: string
+          owner_id: string
+          status: string
+          subscription_plan: string
+          trial_end: string
+        }[]
+      }
       get_business_effective_numeric_limit: {
         Args: { p_business_id: string; p_fallback?: number; p_key: string }
         Returns: number
@@ -1245,6 +1319,10 @@ export type Database = {
       }
       is_active_staff_of: {
         Args: { p_business_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_business_contract_accessible: {
+        Args: { p_business_id: string }
         Returns: boolean
       }
       is_business_operator:
@@ -1282,6 +1360,7 @@ export type Database = {
         Args: { p_business_id: string; p_reward_code: string }
         Returns: Json
       }
+      refresh_expired_business_contracts: { Args: never; Returns: number }
       review_subscription_plan_change: {
         Args: { p_action: string; p_admin_notes?: string; p_payment_id: string }
         Returns: {
