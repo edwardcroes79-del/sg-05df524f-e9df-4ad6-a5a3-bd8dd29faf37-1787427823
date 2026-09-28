@@ -170,6 +170,7 @@ export default function AdminDashboard() {
   const [cancellingBusinessAddonId, setCancellingBusinessAddonId] = useState<string | null>(null);
   const [reviewingAddonRequestId, setReviewingAddonRequestId] = useState<string | null>(null);
   const [assigningContractId, setAssigningContractId] = useState<string | null>(null);
+  const [renewingContractId, setRenewingContractId] = useState<string | null>(null);
   const [contractDrafts, setContractDrafts] = useState<Record<string, { term: string; startDate: string }>>({});
 
   // Payment review states
@@ -913,6 +914,78 @@ export default function AdminDashboard() {
       });
     } finally {
       setAssigningContractId(null);
+    }
+  };
+
+  const handleRenewContract = async (biz: any, termMonths: 6 | 12) => {
+    if (!biz?.id) return;
+
+    const today = formatDateForInput(new Date());
+    const previousEndDate = biz.contract_end_date || null;
+    const renewFromExistingEnd = Boolean(previousEndDate && previousEndDate >= today);
+    const baseDate = renewFromExistingEnd ? previousEndDate : today;
+    const newEndDate = addCalendarMonths(baseDate, termMonths);
+    const nextRenewalDate = addCalendarMonths(newEndDate, -1);
+    const newStartDate = renewFromExistingEnd ? (biz.contract_start_date || today) : today;
+
+    try {
+      setRenewingContractId(`${biz.id}:${termMonths}`);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { error: businessError } = await (supabase as any)
+        .from("businesses")
+        .update({
+          contract_term_months: termMonths,
+          contract_start_date: newStartDate,
+          contract_end_date: newEndDate,
+          renewal_date: nextRenewalDate,
+          contract_status: "active",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", biz.id);
+
+      if (businessError) throw businessError;
+
+      const { error: auditError } = await (supabase as any)
+        .from("audit_logs")
+        .insert({
+          admin_user_id: user.id,
+          action: "contract_renewed",
+          target_type: "business",
+          target_id: biz.id,
+          metadata: {
+            business_name: biz.business_name,
+            previous_end_date: previousEndDate,
+            renewal_date: today,
+            renewal_term_months: termMonths,
+            renewal_base_date: baseDate,
+            renewal_mode: renewFromExistingEnd ? "early_extension" : "post_expiration_restart",
+            new_start_date: newStartDate,
+            new_end_date: newEndDate,
+            next_renewal_date: nextRenewalDate,
+            preserved_business_status: biz.status,
+            preserved_subscription_plan: biz.subscription_plan,
+          },
+        });
+
+      if (auditError) throw auditError;
+
+      toast({
+        title: "Contract Renewed",
+        description: `${biz.business_name} now has an active ${termMonths}-month contract ending ${new Date(`${newEndDate}T00:00:00`).toLocaleDateString()}.`,
+      });
+
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Contract renewal failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRenewingContractId(null);
     }
   };
 
@@ -2309,6 +2382,32 @@ export default function AdminDashboard() {
           {assigningContractId === biz.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
           Save Contract
         </Button>
+        {biz.contract_end_date && (
+          <div className="grid grid-cols-2 gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1 text-[11px]"
+              onClick={() => handleRenewContract(biz, 6)}
+              disabled={renewingContractId === `${biz.id}:6` || renewingContractId === `${biz.id}:12`}
+            >
+              {renewingContractId === `${biz.id}:6` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
+              Renew 6
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 gap-1 text-[11px]"
+              onClick={() => handleRenewContract(biz, 12)}
+              disabled={renewingContractId === `${biz.id}:6` || renewingContractId === `${biz.id}:12`}
+            >
+              {renewingContractId === `${biz.id}:12` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
+              Renew 12
+            </Button>
+          </div>
+        )}
         <div className="text-[11px] text-muted-foreground">
           Current: {biz.contract_term_months ? `${biz.contract_term_months} months` : "Unassigned"}
         </div>
