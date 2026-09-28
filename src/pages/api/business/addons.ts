@@ -28,6 +28,16 @@ function isContributionActive(subscription: any) {
   return new Date(subscription.current_period_end).getTime() > Date.now();
 }
 
+function isContractExpired(business: any) {
+  if (!business?.contract_end_date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const contractEnd = new Date(`${business.contract_end_date}T00:00:00`);
+  return business.contract_status === "expired" || contractEnd <= today;
+}
+
 function addonRow(subscription: any) {
   return Array.isArray(subscription.subscription_addons)
     ? subscription.subscription_addons[0]
@@ -77,6 +87,10 @@ async function requireBusinessOwner(req: NextApiRequest) {
   if (businessError) throw businessError;
   if (!business) {
     throw new Error("Business Owner access required");
+  }
+
+  if (isContractExpired(business)) {
+    throw new Error("Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew.");
   }
 
   return { admin, userId: userData.user.id, business };

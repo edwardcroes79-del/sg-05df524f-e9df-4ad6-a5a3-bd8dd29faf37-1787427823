@@ -7,6 +7,16 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function isContractExpired(business: any) {
+  if (!business?.contract_end_date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const contractEnd = new Date(`${business.contract_end_date}T00:00:00`);
+  return business.contract_status === "expired" || contractEnd <= today;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -35,12 +45,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // STRICT SECURITY: Verify the requester is the owner or active staff of THIS business
     const { data: business } = await supabaseAdmin
       .from("businesses")
-      .select("owner_id")
+      .select("owner_id, contract_end_date, contract_status")
       .eq("id", businessId)
       .single();
 
     if (!business) {
       return res.status(404).json({ error: "Business not found" });
+    }
+
+    if (isContractExpired(business)) {
+      return res.status(403).json({ error: "Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew." });
     }
 
     let isAuthorized = false;

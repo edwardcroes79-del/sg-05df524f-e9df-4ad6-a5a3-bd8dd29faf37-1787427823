@@ -6,6 +6,16 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function isContractExpired(business: any) {
+  if (!business?.contract_end_date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const contractEnd = new Date(`${business.contract_end_date}T00:00:00`);
+  return business.contract_status === "expired" || contractEnd <= today;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -45,12 +55,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check if the requesting user is the owner of the business
     const { data: business, error: businessError } = await supabaseAdmin
       .from("businesses")
-      .select("id, owner_id")
+      .select("id, owner_id, contract_end_date, contract_status")
       .eq("id", staffRecord.business_id)
       .single();
 
     if (businessError || !business || business.owner_id !== user.id) {
       return res.status(403).json({ error: "Forbidden: You are not the owner of this business" });
+    }
+
+    if (isContractExpired(business)) {
+      return res.status(403).json({ error: "Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew." });
     }
 
     // Cannot remove the owner through this endpoint

@@ -7,6 +7,16 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+function isContractExpired(business: any) {
+  if (!business?.contract_end_date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const contractEnd = new Date(`${business.contract_end_date}T00:00:00`);
+  return business.contract_status === "expired" || contractEnd <= today;
+}
+
 async function enforceApiRateLimit(rateKey: string, action: string, maxAttempts: number, windowSeconds: number): Promise<boolean> {
   const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString();
 
@@ -89,12 +99,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Check if the user is the owner of the business
     const { data: business, error: businessError } = await supabaseAdmin
       .from("businesses")
-      .select("id, owner_id, subscription_plan")
+      .select("id, owner_id, subscription_plan, contract_end_date, contract_status")
       .eq("id", businessId)
       .single();
 
     if (businessError || !business || business.owner_id !== user.id) {
       return res.status(403).json({ error: "Forbidden: You are not the owner of this business" });
+    }
+
+    if (isContractExpired(business)) {
+      return res.status(403).json({ error: "Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew." });
     }
 
     // Get the plan's staff limit

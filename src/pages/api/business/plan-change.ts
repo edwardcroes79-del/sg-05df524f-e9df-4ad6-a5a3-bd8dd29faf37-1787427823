@@ -9,6 +9,16 @@ function buildReference() {
   return `PLAN-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 }
 
+function isContractExpired(business: any) {
+  if (!business?.contract_end_date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const contractEnd = new Date(`${business.contract_end_date}T00:00:00`);
+  return business.contract_status === "expired" || contractEnd <= today;
+}
+
 async function getAuthenticatedUser(req: NextApiRequest) {
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     throw new Error("Supabase server configuration is incomplete");
@@ -43,13 +53,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === "GET") {
       const { data: business, error: businessError } = await admin
         .from("businesses")
-        .select("id")
+        .select("id, contract_end_date, contract_status")
         .eq("owner_id", user.id)
         .maybeSingle();
 
       if (businessError) throw businessError;
       if (!business) {
         return res.status(404).json({ error: "Business not found" });
+      }
+      if (isContractExpired(business)) {
+        return res.status(403).json({ error: "Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew." });
       }
 
       const { data: requests, error: requestError } = await admin
@@ -77,13 +90,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: business, error: businessError } = await admin
       .from("businesses")
-      .select("id, business_name, subscription_plan, subscription_status, owner_id")
+      .select("id, business_name, subscription_plan, subscription_status, owner_id, contract_end_date, contract_status")
       .eq("owner_id", user.id)
       .maybeSingle();
 
     if (businessError) throw businessError;
     if (!business) {
       return res.status(404).json({ error: "Business not found" });
+    }
+    if (isContractExpired(business)) {
+      return res.status(403).json({ error: "Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew." });
     }
 
     if (requestedPlanId === business.subscription_plan) {
