@@ -23,6 +23,16 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 
+function isContractExpiredForDashboard(businessRecord: any) {
+  if (!businessRecord?.contract_end_date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const contractEnd = new Date(`${businessRecord.contract_end_date}T00:00:00`);
+  return businessRecord.contract_status === "expired" || contractEnd <= today;
+}
+
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -32,6 +42,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [hasNoBusiness, setHasNoBusiness] = useState(false);
+  const [isExpiredContract, setIsExpiredContract] = useState(false);
   
   // Trial states
   const [isExpiredTrial, setIsExpiredTrial] = useState(false);
@@ -143,28 +154,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const { data: businessData, error: ownerError } = await supabase
-        .from("businesses")
-        .select("id, owner_id, business_name, status, subscription_plan, trial_end")
-        .eq("owner_id", session.user.id)
-        .maybeSingle();
+      const { data: workspaceRows, error: workspaceError } = await (supabase as any)
+        .rpc("get_business_dashboard_access_status");
 
-      let resolvedBusiness = businessData;
-
-      if (!resolvedBusiness) {
-        const { data: staffMembership, error: staffError } = await supabase
-          .from("business_users")
-          .select("role, status, businesses(id, owner_id, business_name, status, subscription_plan, trial_end)")
-          .eq("user_id", session.user.id)
-          .eq("status", "active")
-          .limit(1)
-          .maybeSingle();
-
-        if (staffMembership?.businesses) {
-          const staffBusiness = staffMembership.businesses;
-          resolvedBusiness = Array.isArray(staffBusiness) ? staffBusiness[0] : staffBusiness;
-        }
+      if (workspaceError) {
+        console.error("Dashboard access status error:", workspaceError);
       }
+
+      const resolvedBusiness = Array.isArray(workspaceRows) ? workspaceRows[0] : workspaceRows;
 
       if (!resolvedBusiness) {
         setHasNoBusiness(true);
@@ -173,6 +170,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       }
 
       setBusiness(resolvedBusiness);
+      setIsExpiredContract(
+        resolvedBusiness.access_state === "contract_expired" || isContractExpiredForDashboard(resolvedBusiness)
+      );
 
       // Fetch Plan data to check for trial status
       const { data: planData } = await supabase
@@ -247,6 +247,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             Sign Out
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  // Handle Expired Contract Blocking
+  if (isExpiredContract) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="p-4 bg-destructive/10 rounded-full text-destructive">
+          <ShieldAlert className="h-16 w-16" />
+        </div>
+        <div className="max-w-md space-y-3">
+          <h1 className="text-3xl font-heading font-bold text-foreground">Contract Expired</h1>
+          <p className="text-muted-foreground">
+            Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew.
+          </p>
+        </div>
+        <Button onClick={handleLogout} variant="outline">Sign Out</Button>
       </div>
     );
   }
