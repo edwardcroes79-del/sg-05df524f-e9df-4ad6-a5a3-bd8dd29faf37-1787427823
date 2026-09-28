@@ -30,6 +30,13 @@ function getSecondsRemaining(expiresAt: string | null) {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000));
 }
 
+function formatCountdown(totalSeconds: number) {
+  const safeSeconds = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safeSeconds / 60).toString().padStart(2, "0");
+  const seconds = (safeSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
 export default function QuickStampQrPage() {
   const { toast } = useToast();
   const [businessId, setBusinessId] = useState<string | null>(null);
@@ -50,7 +57,7 @@ export default function QuickStampQrPage() {
 
   const qrImageUrl = useMemo(() => {
     if (!qrUrl) return "";
-    return `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=12&data=${encodeURIComponent(qrUrl)}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=520x520&margin=14&data=${encodeURIComponent(qrUrl)}`;
   }, [qrUrl]);
 
   const refreshToken = useCallback(async (resolvedBusinessId: string, programId: string) => {
@@ -181,11 +188,12 @@ export default function QuickStampQrPage() {
     await refreshToken(businessId, selectedProgramId);
     toast({
       title: "Quick Stamp QR refreshed",
-      description: "A new 60-second token has been generated.",
+      description: "A new 60-second QR is now active. The previous QR is no longer valid.",
     });
   };
 
   const progressValue = tokenData?.ttlSeconds ? (secondsRemaining / tokenData.ttlSeconds) * 100 : 0;
+  const countdownLabel = formatCountdown(secondsRemaining);
 
   return (
     <DashboardLayout>
@@ -202,13 +210,13 @@ export default function QuickStampQrPage() {
             </Badge>
             <h1 className="font-heading text-3xl font-bold text-foreground">Quick Stamp QR</h1>
             <p className="mt-1 max-w-2xl text-muted-foreground">
-              Display a secure 60-second QR for a selected active loyalty program. Each customer confirmation consumes the token once.
+              Customers can scan this QR to receive their loyalty stamp.
             </p>
           </div>
 
           <Button type="button" variant="outline" className="gap-2" onClick={handleManualRefresh} disabled={!businessId || !selectedProgramId || refreshing}>
             {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Refresh Token
+            Refresh QR
           </Button>
         </div>
 
@@ -228,7 +236,7 @@ export default function QuickStampQrPage() {
                 Rotating Quick Stamp QR
               </CardTitle>
               <CardDescription>
-                The QR route contains a one-time short-lived token tied to the selected loyalty program.
+                Show this screen at your counter. The current QR is valid for 60 seconds and then automatically refreshes.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 p-6">
@@ -260,7 +268,7 @@ export default function QuickStampQrPage() {
                 <div className="flex min-h-[360px] items-center justify-center">
                   <div className="flex flex-col items-center gap-3 text-muted-foreground">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    Generating secure token...
+                    Generating secure QR...
                   </div>
                 </div>
               ) : errorMessage ? (
@@ -271,21 +279,22 @@ export default function QuickStampQrPage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-5">
-                  <div className="rounded-3xl border bg-white p-4 shadow-sm">
+                  <div className="w-full rounded-[2rem] border border-primary/20 bg-white p-4 shadow-xl shadow-primary/10 sm:w-fit sm:p-6">
                     {qrImageUrl ? (
-                      <img src={qrImageUrl} alt="Quick Stamp QR token" className="h-72 w-72 rounded-2xl" />
+                      <img src={qrImageUrl} alt="Quick Stamp QR token" className="mx-auto aspect-square h-80 w-80 rounded-3xl sm:h-[26rem] sm:w-[26rem] lg:h-[28rem] lg:w-[28rem]" />
                     ) : null}
                   </div>
 
-                  <div className="w-full max-w-md space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 font-medium text-foreground">
+                  <div className="w-full max-w-lg space-y-4 text-center">
+                    <div className="rounded-2xl border bg-primary/5 px-5 py-4">
+                      <p className="flex items-center justify-center gap-2 text-sm font-semibold text-foreground">
                         <Timer className="h-4 w-4 text-primary" />
-                        Token expires in
-                      </span>
-                      <span className="font-mono text-lg font-bold text-primary">{secondsRemaining}s</span>
+                        Expires in
+                      </p>
+                      <p className="mt-1 font-mono text-4xl font-extrabold tracking-tight text-primary">{countdownLabel}</p>
                     </div>
                     <Progress value={progressValue} />
+                    <p className="text-sm font-medium text-foreground">Scan to receive your loyalty stamp</p>
                     <p className="break-all rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground">
                       {qrUrl}
                     </p>
