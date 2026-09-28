@@ -1,6 +1,6 @@
 ---
 title: Business Dashboard Contract Information
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [contracts, business-dashboard, read-only]
@@ -10,18 +10,18 @@ position: 78
 ---
 
 ## Notes
-Add a responsive, read-only Contract Information section to the existing Business Admin Dashboard using the existing Phase 1–4 contract fields. Business users may view only their own contract status, term, start date, end date, and days remaining. Do not add Super Admin controls, modification actions, duplicate contract data, or changes to contract logic, renewal logic, billing, plans, add-ons, authentication, RLS, or access-control behavior. Use actual stored database values and existing dashboard styling.
+Added a responsive, read-only Contract Information section to the existing Business Admin Dashboard using the existing Phase 1–4 contract fields. Business users can view their own contract status, term, start date, end date, and days remaining. The dashboard shows active, expiring, expired, and unassigned states, including a 14-day warning message and the requested expired-contract renewal contact copy. No Super Admin controls, edit actions, duplicate contract data, or changes to contract logic, renewal logic, billing, plans, add-ons, authentication, RLS, or access-control behavior were added. Uses actual stored database values and existing dashboard styling. Targeted checks covered active, expiring, expired, and unassigned display states, and project validation passed.
 
 ## Checklist
-- [ ] Inspect Business Admin Dashboard data loading and existing contract field availability
-- [ ] Add read-only contract summary using actual contract_status, contract_term_months, contract_start_date, contract_end_date, and renewal data where available
-- [ ] Display active, expiring, expired, and unassigned states with clear copy
-- [ ] Show warning when contract is approaching expiration, including 14-day messaging
-- [ ] Ensure expired contract copy matches the requested renewal contact message
-- [ ] Keep all contract fields non-editable for business users
-- [ ] Make the section responsive across desktop, tablet, and mobile
-- [ ] Test active, expiring, expired, and unassigned contract display states
-- [ ] Run project validation
+- [x] Inspect Business Admin Dashboard data loading and existing contract field availability
+- [x] Add read-only contract summary using actual contract_status, contract_term_months, contract_start_date, contract_end_date, and renewal data where available
+- [x] Display active, expiring, expired, and unassigned states with clear copy
+- [x] Show warning when contract is approaching expiration, including 14-day messaging
+- [x] Ensure expired contract copy matches the requested renewal contact message
+- [x] Keep all contract fields non-editable for business users
+- [x] Make the section responsive across desktop, tablet, and mobile
+- [x] Test active, expiring, expired, and unassigned contract display states
+- [x] Run project validation
 
 ## Acceptance
 Business Admin Dashboard shows a responsive read-only Contract Information section from stored contract data.
