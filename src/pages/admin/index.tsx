@@ -36,6 +36,35 @@ function notificationKey(sourceType: string, sourceId: string) {
   return `${sourceType}:${sourceId}`;
 }
 
+function formatDateForInput(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addCalendarMonths(dateValue: string, months: number) {
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const targetMonthIndex = month - 1 + months;
+  const targetYear = year + Math.floor(targetMonthIndex / 12);
+  const normalizedMonthIndex = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDayOfTargetMonth = new Date(targetYear, normalizedMonthIndex + 1, 0).getDate();
+  const clampedDay = Math.min(day, lastDayOfTargetMonth);
+  return formatDateForInput(new Date(Date.UTC(targetYear, normalizedMonthIndex, clampedDay)));
+}
+
+function getEffectiveContractStatus(contractStatus?: string | null, contractEndDate?: string | null, renewalDate?: string | null) {
+  if (!contractEndDate) return null;
+
+  const today = formatDateForInput(new Date());
+  if (contractEndDate < today) return "expired";
+  if (renewalDate && renewalDate <= today) return "expiring";
+  return contractStatus || "active";
+}
+
+function getContractStatusBadgeVariant(status?: string | null) {
+  if (status === "expired") return "destructive";
+  if (status === "expiring") return "secondary";
+  return "default";
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -140,6 +169,8 @@ export default function AdminDashboard() {
   const [assigningBusinessAddon, setAssigningBusinessAddon] = useState(false);
   const [cancellingBusinessAddonId, setCancellingBusinessAddonId] = useState<string | null>(null);
   const [reviewingAddonRequestId, setReviewingAddonRequestId] = useState<string | null>(null);
+  const [assigningContractId, setAssigningContractId] = useState<string | null>(null);
+  const [contractDrafts, setContractDrafts] = useState<Record<string, { term: string; startDate: string }>>({});
 
   // Payment review states
   const [reviewingPayment, setReviewingPayment] = useState<any | null>(null);
@@ -391,6 +422,11 @@ export default function AdminDashboard() {
           owner_id,
           trial_start,
           trial_end,
+          contract_term_months,
+          contract_start_date,
+          contract_end_date,
+          contract_status,
+          renewal_date,
           approval_email_status,
           approval_email_error,
           admin_notify_status,
@@ -812,6 +848,71 @@ export default function AdminDashboard() {
       await handleChangePlan(bizId, planId);
     } finally {
       setAssigningPlanId(null);
+    }
+  };
+
+  const handleAssignContract = async (bizId: string) => {
+    const draft = contractDrafts[bizId];
+
+    if (!draft?.term || !draft?.startDate) {
+      toast({
+        title: "Contract details required",
+        description: "Select a 6 or 12 month term and a contract start date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const termMonths = Number(draft.term);
+    if (![6, 12].includes(termMonths)) {
+      toast({
+        title: "Invalid contract term",
+        description: "Contract term must be 6 or 12 months.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const contractEndDate = addCalendarMonths(draft.startDate, termMonths);
+    const renewalDate = addCalendarMonths(contractEndDate, -1);
+    const contractStatus = getEffectiveContractStatus("active", contractEndDate, renewalDate) || "active";
+
+    try {
+      setAssigningContractId(bizId);
+
+      const { error } = await (supabase as any)
+        .from("businesses")
+        .update({
+          contract_term_months: termMonths,
+          contract_start_date: draft.startDate,
+          contract_end_date: contractEndDate,
+          renewal_date: renewalDate,
+          contract_status: contractStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", bizId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Contract Assigned",
+        description: `Saved a ${termMonths}-month contract ending ${new Date(`${contractEndDate}T00:00:00`).toLocaleDateString()}.`,
+      });
+
+      setContractDrafts((current) => {
+        const next = { ...current };
+        delete next[bizId];
+        return next;
+      });
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Contract assignment failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setAssigningContractId(null);
     }
   };
 
@@ -2076,10 +2177,10 @@ export default function AdminDashboard() {
                       <TableHead>Created</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Plan</TableHead>
+                      <TableHead>Contract Term</TableHead>
+                      <TableHead>Contract Dates</TableHead>
+                      <TableHead>Contract Status</TableHead>
                       <TableHead>Plan Price</TableHead>
-                      <TableHead>Active Add-ons</TableHead>
-                      <TableHead>Add-on Total</TableHead>
-                      <TableHead>Total Subscription</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -2091,6 +2192,8 @@ export default function AdminDashboard() {
   const approvalEmailLog = emailLogs.find((log: any) => log.email_type === "client_approval");
   const approvalEmailStatus = approvalEmailLog?.status || biz.approval_email_status || (biz.status === "pending" ? "pending" : "pending");
   const approvalEmailError = approvalEmailLog?.error_message || biz.approval_email_error;
+  const contractDraft = contractDrafts[biz.id] || { term: "", startDate: "" };
+  const effectiveContractStatus = getEffectiveContractStatus(biz.contract_status, biz.contract_end_date, biz.renewal_date);
 
   const activeAddonSubs = businessAddonSubscriptions.filter(
     (sub) => sub.business_id === biz.id && sub.status === "active" && sub.payment_status === "approved"
@@ -2127,43 +2230,69 @@ export default function AdminDashboard() {
       </div>
     </TableCell>
     <TableCell>
-      <div className="space-y-2">
+      <div className="space-y-2 min-w-[150px]">
         <select
-          className="h-9 w-full min-w-[150px] rounded-md border border-input bg-background px-3 py-1 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-          value={biz.subscription_plan || ""}
-          onChange={(event) => handlePlanAssignment(biz.id, event.target.value)}
-          disabled={assigningPlanId === biz.id}
-          aria-label={`Assign subscription plan for ${biz.business_name}`}
+          className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+          value={contractDraft.term}
+          onChange={(event) => setContractDrafts((current) => ({
+            ...current,
+            [biz.id]: { ...contractDraft, term: event.target.value },
+          }))}
+          disabled={assigningContractId === biz.id}
+          aria-label={`Assign contract term for ${biz.business_name}`}
         >
-          <option value="" disabled>
-            Select plan
-          </option>
-          {plans
-            .filter((plan) => (plan.status || (plan.is_active ? "active" : "inactive")) === "active" || plan.id === biz.subscription_plan)
-            .map((plan) => (
-              <option key={plan.id} value={plan.id}>
-                {plan.name}
-              </option>
-            ))}
+          <option value="">Assign term</option>
+          <option value="6">6 months</option>
+          <option value="12">12 months</option>
         </select>
-        {assigningPlanId === biz.id && (
-          <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Updating plan...
-          </div>
-        )}
-        <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
-        {biz.trial_end && plans.find(p => p.id === biz.subscription_plan)?.is_trial && (
-          <div className="text-[10px] mt-1.5 flex flex-col gap-0.5">
-            <span className="text-muted-foreground">Start: {new Date(biz.trial_start).toLocaleDateString()}</span>
-            {new Date() > new Date(biz.trial_end) ? (
-              <span className="text-destructive font-semibold">Expired: {new Date(biz.trial_end).toLocaleDateString()}</span>
-            ) : (
-              <span className="text-indigo-600 font-semibold">Ends: {new Date(biz.trial_end).toLocaleDateString()}</span>
-            )}
-          </div>
-        )}
+        <Input
+          type="date"
+          className="h-9 text-xs"
+          value={contractDraft.startDate}
+          onChange={(event) => setContractDrafts((current) => ({
+            ...current,
+            [biz.id]: { ...contractDraft, startDate: event.target.value },
+          }))}
+          disabled={assigningContractId === biz.id}
+          aria-label={`Contract start date for ${biz.business_name}`}
+        />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-8 w-full gap-1 text-xs"
+          onClick={() => handleAssignContract(biz.id)}
+          disabled={assigningContractId === biz.id || !contractDraft.term || !contractDraft.startDate}
+        >
+          {assigningContractId === biz.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          Save Contract
+        </Button>
+        <div className="text-[11px] text-muted-foreground">
+          Current: {biz.contract_term_months ? `${biz.contract_term_months} months` : "Unassigned"}
+        </div>
       </div>
+    </TableCell>
+    <TableCell>
+      {biz.contract_start_date && biz.contract_end_date ? (
+        <div className="space-y-1 text-xs">
+          <div><span className="text-muted-foreground">Start:</span> {new Date(`${biz.contract_start_date}T00:00:00`).toLocaleDateString()}</div>
+          <div><span className="text-muted-foreground">End:</span> {new Date(`${biz.contract_end_date}T00:00:00`).toLocaleDateString()}</div>
+          <div><span className="text-muted-foreground">Renewal:</span> {biz.renewal_date ? new Date(`${biz.renewal_date}T00:00:00`).toLocaleDateString() : "Not set"}</div>
+        </div>
+      ) : (
+        <span className="text-xs text-muted-foreground italic">No contract assigned</span>
+      )}
+    </TableCell>
+    <TableCell>
+      {effectiveContractStatus ? (
+        <Badge variant={getContractStatusBadgeVariant(effectiveContractStatus)} className="text-[10px] uppercase">
+          {effectiveContractStatus}
+        </Badge>
+      ) : (
+        <Badge variant="outline" className="text-[10px] uppercase">
+          Unassigned
+        </Badge>
+      )}
     </TableCell>
     <TableCell className="font-semibold text-foreground">
       {bizPlan ? `AWG ${planPrice.toFixed(2)}` : "-"}
@@ -2247,7 +2376,7 @@ export default function AdminDashboard() {
 })}
 {businesses.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={9} className="text-center py-6 text-muted-foreground">
+                        <TableCell colSpan={12} className="text-center py-6 text-muted-foreground">
                           No merchants onboarded yet.
                         </TableCell>
                       </TableRow>

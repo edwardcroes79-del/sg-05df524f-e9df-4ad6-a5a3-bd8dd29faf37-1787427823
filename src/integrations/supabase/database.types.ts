@@ -186,6 +186,10 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           business_name: string
+          contract_end_date: string | null
+          contract_start_date: string | null
+          contract_status: string | null
+          contract_term_months: number | null
           cover_image: string | null
           created_at: string | null
           description: string | null
@@ -195,6 +199,7 @@ export type Database = {
           owner_id: string
           phone: string | null
           primary_color: string | null
+          renewal_date: string | null
           secondary_color: string | null
           slug: string
           social_links: Json | null
@@ -215,6 +220,10 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           business_name: string
+          contract_end_date?: string | null
+          contract_start_date?: string | null
+          contract_status?: string | null
+          contract_term_months?: number | null
           cover_image?: string | null
           created_at?: string | null
           description?: string | null
@@ -224,6 +233,7 @@ export type Database = {
           owner_id: string
           phone?: string | null
           primary_color?: string | null
+          renewal_date?: string | null
           secondary_color?: string | null
           slug: string
           social_links?: Json | null
@@ -244,6 +254,10 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           business_name?: string
+          contract_end_date?: string | null
+          contract_start_date?: string | null
+          contract_status?: string | null
+          contract_term_months?: number | null
           cover_image?: string | null
           created_at?: string | null
           description?: string | null
@@ -253,6 +267,7 @@ export type Database = {
           owner_id?: string
           phone?: string | null
           primary_color?: string | null
+          renewal_date?: string | null
           secondary_color?: string | null
           slug?: string
           social_links?: Json | null
