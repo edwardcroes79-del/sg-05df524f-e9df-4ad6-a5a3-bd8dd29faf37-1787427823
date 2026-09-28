@@ -40,6 +40,10 @@ function normalizeStatus(value: unknown): AddonStatus {
   return value === "inactive" || value === "archived" ? value : "active";
 }
 
+function normalizeAddonType(value: unknown) {
+  return value === "quick_stamp_qr" ? "quick_stamp_qr" : "customer_capacity";
+}
+
 async function requireSuperAdmin(req: NextApiRequest) {
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     throw new Error("Supabase server configuration is incomplete");
@@ -92,14 +96,10 @@ function buildAddonPayload(body: AddonInput, currentId?: string) {
     throw new Error("Add-on name is required");
   }
 
-  const addonType = body.addon_type?.trim() || "customer_capacity";
-  if (addonType !== "customer_capacity") {
-    throw new Error("Only customer_capacity add-ons are supported in this phase");
-  }
-
+  const addonType = normalizeAddonType(body.addon_type);
   const status = normalizeStatus(body.status);
-  const capacityAmount = Math.max(1, Math.trunc(toNumber(body.capacity_amount, 100)));
-  const slug = body.slug?.trim() || slugify(`${addonType}-${capacityAmount}`);
+  const capacityAmount = addonType === "quick_stamp_qr" ? 1 : Math.max(1, Math.trunc(toNumber(body.capacity_amount, 100)));
+  const slug = body.slug?.trim() || slugify(addonType === "quick_stamp_qr" ? "quick-stamp-qr" : `${addonType}-${capacityAmount}`);
   const id = currentId || body.id?.trim() || slug.replace(/-/g, "_");
 
   if (!id || !slug) {
@@ -119,7 +119,7 @@ function buildAddonPayload(body: AddonInput, currentId?: string) {
     provider: body.provider?.trim() || null,
     provider_product_id: body.provider_product_id?.trim() || null,
     provider_price_id: body.provider_price_id?.trim() || null,
-    metadata: { entitlement_key: "max_customers" },
+    metadata: { entitlement_key: addonType === "quick_stamp_qr" ? "quick_stamp_qr" : "max_customers" },
     archived_at: status === "archived" ? new Date().toISOString() : null,
     updated_at: new Date().toISOString(),
   };

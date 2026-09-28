@@ -38,6 +38,14 @@ function isContractExpired(business: any) {
   return business.contract_status === "expired" || contractEnd <= today;
 }
 
+function isQuickStampAddon(addon: any) {
+  return addon?.id === "quick_stamp_qr" || addon?.slug === "quick-stamp-qr" || addon?.addon_type === "quick_stamp_qr";
+}
+
+function isCustomerCapacityAddon(addon: any) {
+  return addon?.addon_type === "customer_capacity";
+}
+
 function addonRow(subscription: any) {
   return Array.isArray(subscription.subscription_addons)
     ? subscription.subscription_addons[0]
@@ -116,7 +124,7 @@ async function getOverview(admin: any, business: any) {
     admin
       .from("subscription_addons")
       .select("*")
-      .eq("addon_type", "customer_capacity")
+      .in("addon_type", ["customer_capacity", "quick_stamp_qr"])
       .eq("status", "active")
       .order("display_order", { ascending: true })
       .order("capacity_amount", { ascending: true }),
@@ -195,7 +203,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: "Add-on is required" });
       }
 
-      const quantity = toPositiveInteger(body.quantity, 1);
+      const quantity = isQuickStampAddon({ id: body.addon_id }) ? 1 : toPositiveInteger(body.quantity, 1);
 
       const { data: addon, error: addonError } = await admin
         .from("subscription_addons")
@@ -207,12 +215,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!addon) {
         return res.status(404).json({ error: "Add-on not found" });
       }
-      if (addon.addon_type !== "customer_capacity") {
-        return res.status(400).json({ error: "Only customer capacity add-ons are available for business purchase in this phase" });
+      if (!isCustomerCapacityAddon(addon) && !isQuickStampAddon(addon)) {
+        return res.status(400).json({ error: "This add-on type is not available for business purchase in this phase" });
       }
       if (addon.status !== "active") {
         return res.status(400).json({ error: "This add-on is not available for new purchase" });
       }
+
+      const requestedQuantity = isQuickStampAddon(addon) ? 1 : quantity;
 
       const { data: existingAddonSubscription, error: existingAddonError } = await admin
         .from("business_addon_subscriptions")
@@ -282,7 +292,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .insert({
           business_id: business.id,
           addon_id: addon.id,
-          quantity,
+          quantity: requestedQuantity,
           status: "inactive",
           payment_status: "pending",
           current_period_end: currentPeriodEnd,
@@ -298,10 +308,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             current_monthly_total: currentMonthlyTotal,
             requested_new_monthly_total: newMonthlyTotal,
             current_customer_limit: currentCustomerLimit,
-            requested_new_customer_limit: currentCustomerLimit + addedCapacity,
+            requested_new_customer_limit: isCustomerCapacityAddon(addon) ? currentCustomerLimit + addedCapacity : currentCustomerLimit,
             addon_name: addon.name,
+            addon_type: addon.addon_type,
+            entitlement_key: isQuickStampAddon(addon) ? "quick_stamp_qr" : "max_customers",
             capacity_amount: addon.capacity_amount,
-            added_capacity: addedCapacity,
+            added_capacity: isCustomerCapacityAddon(addon) ? addedCapacity : 0,
             monthly_price_awg: addon.monthly_price_awg,
             monthly_total_awg: requestedAddonMonthlyTotal,
             requested_period_end: currentPeriodEnd,

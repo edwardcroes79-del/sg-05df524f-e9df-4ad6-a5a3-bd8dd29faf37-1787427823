@@ -786,6 +786,41 @@ export type Database = {
           },
         ]
       }
+      quick_stamp_qr_tokens: {
+        Row: {
+          business_id: string
+          created_at: string
+          expires_at: string
+          staff_user_id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          expires_at?: string
+          staff_user_id: string
+          token?: string
+          used_at?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          expires_at?: string
+          staff_user_id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quick_stamp_qr_tokens_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_qr_tokens: {
         Row: {
           business_id: string
@@ -1239,6 +1274,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      business_has_active_quick_stamp_qr: {
+        Args: { p_business_id: string }
+        Returns: boolean
+      }
       can_access_business: {
         Args: { p_business_id: string; p_user_id?: string }
         Returns: boolean
@@ -1271,6 +1310,10 @@ export type Database = {
         Returns: boolean
       }
       current_user_is_super_admin: { Args: never; Returns: boolean }
+      generate_quick_stamp_qr_token: {
+        Args: { p_business_id: string }
+        Returns: Json
+      }
       generate_reward_qr_token: {
         Args: { p_reward_id: string }
         Returns: string

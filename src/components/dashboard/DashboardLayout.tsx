@@ -17,7 +17,8 @@ import {
   ScanLine,
   ShieldAlert,
   CreditCard,
-  Bell
+  Bell,
+  Zap
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -43,6 +44,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [hasNoBusiness, setHasNoBusiness] = useState(false);
   const [isExpiredContract, setIsExpiredContract] = useState(false);
+  const [quickStampQrEnabled, setQuickStampQrEnabled] = useState(false);
   
   // Trial states
   const [isExpiredTrial, setIsExpiredTrial] = useState(false);
@@ -174,6 +176,38 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         resolvedBusiness.access_state === "contract_expired" || isContractExpiredForDashboard(resolvedBusiness)
       );
 
+      const { data: quickStampAddon } = await (supabase as any)
+        .from("business_addon_subscriptions")
+        .select(`
+          id,
+          current_period_end,
+          subscription_addons (
+            id,
+            slug,
+            addon_type,
+            status
+          )
+        `)
+        .eq("business_id", resolvedBusiness.id)
+        .eq("status", "active")
+        .eq("payment_status", "approved");
+
+      const hasQuickStampAddon = (quickStampAddon || []).some((subscription: any) => {
+        const addon = Array.isArray(subscription.subscription_addons)
+          ? subscription.subscription_addons[0]
+          : subscription.subscription_addons;
+
+        const periodIsActive = !subscription.current_period_end || new Date(subscription.current_period_end).getTime() > Date.now();
+
+        return periodIsActive && addon?.status === "active" && (
+          addon?.id === "quick_stamp_qr" ||
+          addon?.slug === "quick-stamp-qr" ||
+          addon?.addon_type === "quick_stamp_qr"
+        );
+      });
+
+      setQuickStampQrEnabled(hasQuickStampAddon);
+
       // Fetch Plan data to check for trial status
       const { data: planData } = await supabase
         .from("subscription_plans")
@@ -208,6 +242,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
     { name: "Stamps & Rewards", href: "/dashboard/scan", icon: ScanLine },
+    ...(quickStampQrEnabled ? [{ name: "Quick Stamp QR", href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
     { name: "Loyalty Programs", href: "/dashboard/programs", icon: Gift },
     { name: "Customers", href: "/dashboard/customers", icon: Users },
     { name: "QR Codes", href: "/dashboard/qr", icon: QrCode },
