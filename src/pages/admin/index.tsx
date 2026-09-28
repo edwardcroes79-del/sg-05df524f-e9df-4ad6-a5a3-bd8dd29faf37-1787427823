@@ -87,6 +87,15 @@ function getContractReminderDaysText(reminderType: string) {
   return `${reminderType.replace("_days", "")} days remaining`;
 }
 
+function isQuickStampAddon(addon: any) {
+  return addon?.id === "quick_stamp_qr" || addon?.slug === "quick-stamp-qr" || addon?.addon_type === "quick_stamp_qr";
+}
+
+function getAddonDisplayMetric(addon: any, quantity = 1) {
+  if (isQuickStampAddon(addon)) return "Quick Stamp QR access";
+  return `+${(Number(addon?.capacity_amount || 0) * Number(quantity || 1)).toLocaleString()} customer capacity`;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -644,7 +653,9 @@ export default function AdminDashboard() {
           sourceId: String(subscription.id),
           type: "Add-on Request",
           businessName: business?.business_name || "Unknown business",
-          description: `requested +${addedCapacity.toLocaleString()} Customers.`,
+          description: isQuickStampAddon(addon)
+            ? "requested Quick Stamp QR access."
+            : `requested +${addedCapacity.toLocaleString()} Customers.`,
           createdAt: subscription.created_at,
           status: "pending" as const,
           destination: "addons" as const,
@@ -2529,7 +2540,9 @@ export default function AdminDashboard() {
                     <Clock className="inline w-3 h-3 text-amber-500 mr-1" aria-hidden="true" />
                   </span>
                 )}
-                +{addedCapacity.toLocaleString()} Customers
+                {isQuickStampAddon(addon)
+                  ? "Quick Stamp QR access"
+                  : `+${addedCapacity.toLocaleString()} Customers`}
               </span>
             );
           })}
@@ -3250,7 +3263,10 @@ export default function AdminDashboard() {
                               <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{addon.description}</p>
                             )}
                             <p className="text-sm text-muted-foreground mt-2">
-                              +{Number(addon.capacity_amount || 0).toLocaleString()} customers · AWG {Number(addon.monthly_price_awg || 0).toFixed(2)}/month
+                              {isQuickStampAddon(addon)
+                                ? "Quick Stamp QR feature access"
+                                : `+${Number(addon.capacity_amount || 0).toLocaleString()} customers`}
+                              {" · "}AWG {Number(addon.monthly_price_awg || 0).toFixed(2)}/month
                             </p>
                             <p className="text-xs text-muted-foreground mt-1">
                               Type: {addon.addon_type} · Display order: {addon.display_order}
@@ -3318,6 +3334,7 @@ export default function AdminDashboard() {
                             onChange={(e) => setAddonFormData({ ...addonFormData, addon_type: e.target.value })}
                           >
                             <option value="customer_capacity">Customer Capacity</option>
+                            <option value="quick_stamp_qr">Quick Stamp QR</option>
                           </select>
                         </div>
                       </div>
@@ -3440,9 +3457,9 @@ export default function AdminDashboard() {
               
               <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle>Business Customer Capacity Add-ons</CardTitle>
+                  <CardTitle>Business Add-ons</CardTitle>
                   <CardDescription>
-                    Assign purchased add-ons to businesses. Active approved add-ons increase effective customer capacity server-side until the period ends or the subscription is cancelled.
+                    Assign purchased add-ons to businesses. Active approved customer-capacity add-ons increase effective customer capacity server-side; Quick Stamp QR unlocks the rotating token page when active.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -3463,7 +3480,7 @@ export default function AdminDashboard() {
                       </select>
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="businessAddonAddon">Customer Capacity Add-on</Label>
+                      <Label htmlFor="businessAddonAddon">Add-on</Label>
                       <select
                         id="businessAddonAddon"
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
@@ -3546,7 +3563,7 @@ export default function AdminDashboard() {
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground mt-1">
-                                {addon?.name || subscription.addon_id} × {subscription.quantity} = +{addedCapacity.toLocaleString()} customer capacity
+                                {addon?.name || subscription.addon_id} × {subscription.quantity} = {getAddonDisplayMetric(addon, subscription.quantity)}
                               </p>
                               {isPendingApproval && (
                                 <div className="mt-3 grid gap-2 rounded-md border bg-muted/20 p-3 text-xs sm:grid-cols-2 lg:grid-cols-4">

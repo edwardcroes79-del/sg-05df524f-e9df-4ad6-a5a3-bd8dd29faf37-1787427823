@@ -456,6 +456,23 @@ export default function BillingPage() {
     }
   };
 
+  const isQuickStampAddon = (addon: any) =>
+    addon?.id === "quick_stamp_qr" || addon?.slug === "quick-stamp-qr" || addon?.addon_type === "quick_stamp_qr";
+
+  const getAddonTitle = (addon: any) =>
+    isQuickStampAddon(addon) ? "⚡ Quick Stamp QR" : `+${Number(addon?.capacity_amount || 0).toLocaleString()} Customers`;
+
+  const getAddonDescription = (addon: any) =>
+    isQuickStampAddon(addon)
+      ? (addon?.description || "Unlock a secure 60-second rotating QR for future quick stamp issuance.")
+      : (addon?.description || addon?.name);
+
+  const getAddonMetric = (addon: any, subscription?: any) => {
+    if (isQuickStampAddon(addon)) return "Quick Stamp QR access";
+    const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription?.quantity || 1);
+    return `+${addedCapacity.toLocaleString()} members`;
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -595,10 +612,11 @@ export default function BillingPage() {
                         return (
                           <div key={subscription.id} className="flex items-center justify-between gap-3 text-sm">
                             <span className="text-muted-foreground">
-                              {addon?.name || subscription.addon_id} × {subscription.quantity}
+                              {addon?.name || subscription.addon_id}
+                              {!isQuickStampAddon(addon) ? ` × ${subscription.quantity}` : ""}
                               {subscription.cancel_at_period_end ? " · cancels at period end" : ""}
                             </span>
-                            <strong className="text-foreground">+{addedCapacity.toLocaleString()} members · AWG {subscriptionAmount.toFixed(2)}/month</strong>
+                            <strong className="text-foreground">{getAddonMetric(addon, subscription)} · AWG {subscriptionAmount.toFixed(2)}/month</strong>
                           </div>
                         );
                       })}
@@ -621,10 +639,10 @@ export default function BillingPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PlusCircle className="h-5 w-5 text-primary" />
-                Customer Capacity
+                Optional Add-ons
               </CardTitle>
               <CardDescription>
-                Add customer capacity to your existing subscription. Your monthly total is calculated from your base plan plus active approved add-ons.
+                Request optional add-ons for your existing subscription. Super Admin approval is required before an add-on becomes active.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -656,15 +674,15 @@ export default function BillingPage() {
                 <h3 className="font-heading font-semibold text-foreground mb-3">Available Add-ons</h3>
                 {availableAddons.length === 0 ? (
                   <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-                    No customer capacity add-ons are currently available.
+                    No add-ons are currently available.
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-4 gap-4">
                     {availableAddons.map((addon) => (
                       <div key={addon.id} className="rounded-lg border bg-card p-4 flex flex-col gap-4">
                         <div>
-                          <h4 className="font-heading font-bold text-foreground">+{Number(addon.capacity_amount || 0).toLocaleString()} Customers</h4>
-                          <p className="text-sm text-muted-foreground mt-1">{addon.description || addon.name}</p>
+                          <h4 className="font-heading font-bold text-foreground">{getAddonTitle(addon)}</h4>
+                          <p className="text-sm text-muted-foreground mt-1">{getAddonDescription(addon)}</p>
                           <p className="text-xl font-heading font-extrabold text-primary mt-3">
                             AWG {Number(addon.monthly_price_awg || 0).toFixed(2)}
                             <span className="text-xs text-muted-foreground font-normal"> / month</span>
@@ -677,7 +695,7 @@ export default function BillingPage() {
                           onClick={() => handlePurchaseAddon(addon)}
                         >
                           {addonActionId === addon.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                          Purchase Add-on
+                          Request Add-on
                         </Button>
                       </div>
                     ))}
@@ -689,7 +707,7 @@ export default function BillingPage() {
                 <h3 className="font-heading font-semibold text-foreground mb-3">Active & Requested Add-ons</h3>
                 {activeAddonSubscriptions.length === 0 ? (
                   <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-                    No customer capacity add-ons have been purchased yet.
+                    No add-ons have been requested yet.
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -711,8 +729,8 @@ export default function BillingPage() {
                             </div>
                             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 text-sm">
                               <div>
-                                <p className="text-muted-foreground">Capacity added</p>
-                                <p className="font-semibold">+{addedCapacity.toLocaleString()} customers</p>
+                                <p className="text-muted-foreground">{isQuickStampAddon(addon) ? "Feature access" : "Capacity added"}</p>
+                                <p className="font-semibold">{getAddonMetric(addon, subscription)}</p>
                               </div>
                               <div>
                                 <p className="text-muted-foreground">Monthly cost</p>
