@@ -1,6 +1,6 @@
 ---
 title: Quick Stamp QR Menu Access
-status: in_progress
+status: done
 priority: high
 type: bug
 tags: [quick-stamp, dashboard, navigation]
@@ -10,16 +10,16 @@ position: 83
 ---
 
 ## Notes
-Fix Business Dashboard access to the existing Quick Stamp QR page. Quick Stamp QR must appear under the existing Stamps & Rewards navigation alongside Issue Stamp and Redeem Reward only when the business has the active Quick Stamp QR add-on. Opening it must route to the existing Quick Stamp QR UI/token system, including active loyalty program selection, QR code, 60-second countdown, automatic refresh, Refresh QR, and Display Full Screen. If the add-on is inactive, direct-route access must be prevented securely. Do not modify stamp RPC, QR security, redemption QR, billing, plans, RLS, or authentication.
+Fixed Business Dashboard access to the existing Quick Stamp QR page. Quick Stamp QR now appears under the existing Stamps & Rewards navigation alongside Issue Stamp and Redeem Reward only when the business has the active Quick Stamp QR add-on. Opening it routes to the existing Quick Stamp QR UI/token system with active loyalty program selection, QR code, 60-second countdown, automatic refresh, Refresh QR, and Display Full Screen. If the add-on is inactive, the menu entry is hidden and direct-route token generation remains blocked by the existing add-on/RPC gate with an unavailable state instead of an operational QR. Stamp RPC, QR security, redemption QR, billing, plans, RLS, and authentication were not changed. Project validation passed with no CSS, lint, TypeScript, or server errors.
 
 ## Checklist
-- [ ] Inspect dashboard navigation and current Stamps & Rewards menu structure
-- [ ] Inspect existing Quick Stamp QR route and add-on gating
-- [ ] Add Quick Stamp QR menu item under Stamps & Rewards only for active add-on businesses
-- [ ] Ensure the menu item routes to the existing Quick Stamp QR UI/token system
-- [ ] Ensure multiple active loyalty programs can be selected from the existing page
-- [ ] Ensure inactive add-on direct-route access is blocked or shows a secure unavailable state
-- [ ] Validate menu visibility, route access, active/inactive add-on behavior, QR generation, and project checks
+- [x] Inspect dashboard navigation and current Stamps & Rewards menu structure
+- [x] Inspect existing Quick Stamp QR route and add-on gating
+- [x] Add Quick Stamp QR menu item under Stamps & Rewards only for active add-on businesses
+- [x] Ensure the menu item routes to the existing Quick Stamp QR UI/token system
+- [x] Ensure multiple active loyalty programs can be selected from the existing page
+- [x] Ensure inactive add-on direct-route access is blocked or shows a secure unavailable state
+- [x] Validate menu visibility, route access, active/inactive add-on behavior, QR generation, and project checks
 
 ## Acceptance
 Business users with the active Quick Stamp QR add-on can access Quick Stamp QR from Stamps & Rewards.
