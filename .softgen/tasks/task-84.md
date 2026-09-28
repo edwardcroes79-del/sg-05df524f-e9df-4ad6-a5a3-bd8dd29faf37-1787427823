@@ -14,11 +14,11 @@ Correct the Business Dashboard navigation so Quick Issue Stamp appears as a thir
 
 ## Checklist
 - [x] Inspect existing Quick Stamp QR page, token RPC usage, add-on gating, and dashboard navigation
-- [ ] Move Quick Issue Stamp into the Stamps & Rewards submenu as a separate third item
-- [ ] Ensure the submenu item only appears when the Quick Issue Stamp add-on is active
-- [ ] Ensure the submenu item opens the existing Quick Issue Stamp implementation
-- [ ] Verify inactive add-on hides the menu item and direct route remains unavailable
-- [ ] Confirm existing page still supports active program selection, 60-second QR, countdown, Refresh QR, and Display Full Screen
+- [x] Move Quick Issue Stamp into the Stamps & Rewards submenu as a separate third item
+- [x] Ensure the submenu item only appears when the Quick Issue Stamp add-on is active
+- [x] Ensure the submenu item opens the existing Quick Issue Stamp implementation
+- [x] Verify inactive add-on hides the menu item and direct route remains unavailable
+- [x] Confirm existing page still supports active program selection, 60-second QR, countdown, Refresh QR, and Display Full Screen
 - [ ] Run project validation
 
 ## Acceptance
