@@ -4,9 +4,10 @@ import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CreditCard, Stamp, Gift, Activity, Plus, Search, Loader2, Check, Sparkles, X } from "lucide-react";
+import { Users, CreditCard, Stamp, Gift, Activity, Plus, Loader2, Check, Sparkles, FileText, CalendarDays, Clock, AlertTriangle, ShieldCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +33,87 @@ interface CustomerLoyaltyCard {
   } | null;
 }
 
+interface ContractInfo {
+  contract_status: string | null;
+  contract_term_months: number | null;
+  contract_start_date: string | null;
+  contract_end_date: string | null;
+  renewal_date: string | null;
+}
+
+function formatContractDate(dateValue: string | null) {
+  if (!dateValue) return "Not assigned";
+
+  return new Date(`${dateValue}T00:00:00`).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getDateOnly(value: Date) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function getDaysRemaining(endDate: string | null) {
+  if (!endDate) return null;
+
+  const today = getDateOnly(new Date());
+  const contractEnd = getDateOnly(new Date(`${endDate}T00:00:00`));
+  const difference = contractEnd.getTime() - today.getTime();
+
+  return Math.max(0, Math.ceil(difference / (1000 * 60 * 60 * 24)));
+}
+
+function getEffectiveContractState(contractInfo: ContractInfo | null) {
+  if (!contractInfo?.contract_end_date) return "unassigned";
+
+  const today = getDateOnly(new Date());
+  const contractEnd = getDateOnly(new Date(`${contractInfo.contract_end_date}T00:00:00`));
+  const daysRemaining = getDaysRemaining(contractInfo.contract_end_date);
+
+  if (contractInfo.contract_status === "expired" || contractEnd <= today) return "expired";
+  if (contractInfo.contract_status === "expiring" || (daysRemaining !== null && daysRemaining <= 30)) return "expiring";
+
+  return "active";
+}
+
+function getContractStatusDisplay(contractInfo: ContractInfo | null) {
+  const state = getEffectiveContractState(contractInfo);
+
+  if (state === "expired") {
+    return {
+      label: "Expired",
+      icon: "🔴",
+      className: "bg-destructive/10 text-destructive border-destructive/20",
+    };
+  }
+
+  if (state === "expiring") {
+    return {
+      label: "Expiring",
+      icon: "🟠",
+      className: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+    };
+  }
+
+  if (state === "active") {
+    return {
+      label: "Active",
+      icon: "🟢",
+      className: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+    };
+  }
+
+  return {
+    label: "Not Assigned",
+    icon: "⚪",
+    className: "bg-muted text-muted-foreground border-border",
+  };
+}
+
 export default function DashboardOverview() {
   const router = useRouter();
   const { toast } = useToast();
@@ -45,6 +127,7 @@ export default function DashboardOverview() {
     rewardsRedeemed: 0,
   });
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [contractInfo, setContractInfo] = useState<ContractInfo | null>(null);
 
   // Upgrade Success State
   const [upgradeSuccessPlan, setUpgradeSuccessPlan] = useState<string | null>(null);
@@ -104,17 +187,24 @@ export default function DashboardOverview() {
         resolvedBusinessId = membership.business_id;
         const { data: bData } = await supabase
           .from("businesses")
-          .select("subscription_plan, trial_end")
+          .select("subscription_plan, trial_end, contract_status, contract_term_months, contract_start_date, contract_end_date, renewal_date")
           .eq("id", resolvedBusinessId)
           .single();
         if (bData) {
           subscriptionPlan = bData.subscription_plan;
           trialEnd = bData.trial_end;
+          setContractInfo({
+            contract_status: bData.contract_status,
+            contract_term_months: bData.contract_term_months,
+            contract_start_date: bData.contract_start_date,
+            contract_end_date: bData.contract_end_date,
+            renewal_date: bData.renewal_date,
+          });
         }
       } else {
         const { data: ownedBusiness } = await supabase
           .from("businesses")
-          .select("id, subscription_plan, trial_end")
+          .select("id, subscription_plan, trial_end, contract_status, contract_term_months, contract_start_date, contract_end_date, renewal_date")
           .eq("owner_id", session.user.id)
           .limit(1)
           .maybeSingle();
@@ -123,6 +213,13 @@ export default function DashboardOverview() {
           resolvedBusinessId = ownedBusiness.id;
           subscriptionPlan = ownedBusiness.subscription_plan;
           trialEnd = ownedBusiness.trial_end;
+          setContractInfo({
+            contract_status: ownedBusiness.contract_status,
+            contract_term_months: ownedBusiness.contract_term_months,
+            contract_start_date: ownedBusiness.contract_start_date,
+            contract_end_date: ownedBusiness.contract_end_date,
+            renewal_date: ownedBusiness.renewal_date,
+          });
         }
       }
 
@@ -240,6 +337,11 @@ export default function DashboardOverview() {
     { title: "Rewards Redeemed", value: stats.rewardsRedeemed, icon: Activity, color: "text-emerald-500" },
   ];
 
+  const contractState = getEffectiveContractState(contractInfo);
+  const contractStatusDisplay = getContractStatusDisplay(contractInfo);
+  const contractDaysRemaining = getDaysRemaining(contractInfo?.contract_end_date || null);
+  const isContractApproachingExpiration = contractState === "expiring" && contractDaysRemaining !== null && contractDaysRemaining <= 14 && contractDaysRemaining > 0;
+
   return (
     <DashboardLayout>
       <Head>
@@ -282,6 +384,148 @@ export default function DashboardOverview() {
             </Button>
           </div>
         )}
+
+        <Card className="overflow-hidden border-border/70 shadow-sm">
+          <CardHeader className="border-b border-border/60 bg-muted/20">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <FileText className="h-5 w-5 text-primary" />
+                Contract Information
+              </CardTitle>
+              {loading ? (
+                <Skeleton className="h-7 w-28 rounded-full" />
+              ) : (
+                <Badge variant="outline" className={`w-fit gap-1.5 px-3 py-1 font-semibold ${contractStatusDisplay.className}`}>
+                  <span aria-hidden="true">{contractStatusDisplay.icon}</span>
+                  {contractStatusDisplay.label}
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 sm:p-6">
+            {loading ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div key={index} className="rounded-xl border border-border/70 bg-card p-4">
+                    <Skeleton className="mb-3 h-4 w-20" />
+                    <Skeleton className="h-6 w-28" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {contractState === "expired" && (
+                  <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                        <AlertTriangle className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-heading text-lg font-bold text-destructive">🔴 Contract Expired</h3>
+                        <p className="text-sm text-foreground">
+                          Your contract expired on {formatContractDate(contractInfo?.contract_end_date || null)}.
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Please contact Royalty Stamp to renew your service.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isContractApproachingExpiration && (
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-amber-700">
+                        <AlertTriangle className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-lg font-bold text-amber-800">
+                          🟠 Contract expires in {contractDaysRemaining} {contractDaysRemaining === 1 ? "day" : "days"}.
+                        </h3>
+                        <p className="text-sm text-amber-900/80">
+                          Please contact Royalty Stamp before {formatContractDate(contractInfo?.contract_end_date || null)} to avoid service interruption.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {contractState === "unassigned" && (
+                  <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-lg font-bold text-foreground">Contract not assigned yet</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Royalty Stamp has not assigned a contract period to this business yet.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                  <div className="rounded-xl border border-border/70 bg-card p-4">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <ShieldCheck className="h-4 w-4" />
+                      Contract Status
+                    </div>
+                    <p className="text-lg font-bold text-foreground">
+                      {contractStatusDisplay.icon} {contractStatusDisplay.label}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-card p-4">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      Contract Term
+                    </div>
+                    <p className="text-lg font-bold text-foreground">
+                      {contractInfo?.contract_term_months ? `${contractInfo.contract_term_months} Months` : "Not assigned"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-card p-4">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <CalendarDays className="h-4 w-4" />
+                      Start Date
+                    </div>
+                    <p className="text-base font-semibold text-foreground">
+                      {formatContractDate(contractInfo?.contract_start_date || null)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-card p-4">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <CalendarDays className="h-4 w-4" />
+                      End Date
+                    </div>
+                    <p className="text-base font-semibold text-foreground">
+                      {formatContractDate(contractInfo?.contract_end_date || null)}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-card p-4">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Activity className="h-4 w-4" />
+                      Days Remaining
+                    </div>
+                    <p className="text-lg font-bold text-foreground">
+                      {contractDaysRemaining === null ? "Not assigned" : contractDaysRemaining}
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Contract information is read-only. Please contact Royalty Stamp if any contract details need to be updated.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
