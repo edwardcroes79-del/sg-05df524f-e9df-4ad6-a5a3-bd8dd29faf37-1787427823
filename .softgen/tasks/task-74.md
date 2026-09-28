@@ -1,30 +1,29 @@
 ---
 title: Business Contract Expiration Enforcement
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [contracts, expiration, access-control, dashboard]
 created_by: agent
-created_at: 2026-09-28T11:20:58Z
+created_at: 2026-09-28T11:22:48Z
 position: 74
 ---
 
 ## Notes
-Implement Phase 2 contract expiration using the Phase 1 contract fields. When the current date/time reaches the assigned contract end date/time, the contract must become expired. Expired businesses and their staff must lose access to the Business Admin Panel through server-side enforcement, not only hidden UI. Super Admin must retain full management access. Contract expiration must remain separate from manual suspended business status and must not delete or modify customers, stamps, rewards, loyalty programs, QR codes, branding, images, history, subscriptions, plans, billing, add-ons, RLS, or unrelated authentication. Existing businesses without assigned contracts must remain accessible according to their existing status and must not suddenly expire.
+Built Phase 2 contract expiration enforcement using the Phase 1 contract fields. Added database-side expiration refresh/access helpers, blocked expired-contract Business Admin and Staff dashboard access through server-backed access status checks, and added explicit expired-contract guards to service-role-backed Business/Staff API routes so direct URLs/API calls cannot bypass the lockout. Expired contracts remain separate from manually suspended businesses. Super Admin management access remains available. No customers, stamps, rewards, loyalty programs, QR codes, branding, images, history, subscriptions, plans, billing, add-ons, unrelated auth architecture, or RLS architecture were deleted or reset. Existing businesses without assigned contracts remain unexpired.
 
 ## Checklist
-- [ ] Inspect existing dashboard/business/staff authorization and API access paths
-- [ ] Inspect Phase 1 contract fields and status semantics
-- [ ] Add server-side contract expiration helper/RPC or database enforcement that updates assigned expired contracts only
-- [ ] Enforce expired-contract access denial for Business Owner and Staff dashboard/API access
-- [ ] Show expired-contract message to Business Admin/Staff
-- [ ] Preserve Super Admin management access to expired businesses
-- [ ] Keep manual suspended status separate from contract expired status
-- [ ] Verify businesses without assigned contracts do not expire
-- [ ] Test active, expired, suspended, Business Admin, and Staff access
-- [ ] Run project validation
+- [x] Inspect dashboard access and Business/Staff authorization paths
+- [x] Add automatic expired contract status refresh using stored contract end dates
+- [x] Enforce expired-contract denial through database access helpers
+- [x] Show Business Admin and Staff the required expired-contract message
+- [x] Preserve Super Admin access to expired-contract businesses
+- [x] Keep expired contracts separate from manually suspended businesses
+- [x] Prevent direct service-role-backed Business/Staff API bypass
+- [x] Verify active, expired, suspended, Business Admin, Staff, Super Admin, and unassigned-contract cases
+- [x] Run project validation
 
 ## Acceptance
-Assigned contracts become expired when their end date/time has passed.
-Expired-contract businesses and staff cannot access Business Admin Panel routes or APIs.
+Expired-contract Business Admin and Staff users cannot access the Business Admin Panel or protected business/staff APIs.
+The expired-contract message says: "Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew."
 Super Admin can still manage expired-contract businesses, and unassigned businesses are not expired automatically.
