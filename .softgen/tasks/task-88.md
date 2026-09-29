@@ -13,12 +13,12 @@ position: 88
 Add a customer-facing PWA installation experience to the Customer Dashboard. Show "📱 Add Royalty Stamp to Home Screen" with "Get faster access to your loyalty cards." Use native PWA install prompt for supported Android browsers, and clear instructions (Share -> Add to Home Screen -> Add) for iOS Safari. Prevent showing again if installed or dismissed. Use existing PWA config (`/public/PWA_logo.png`). Do not modify auth or loyalty functionality.
 
 ## Checklist
-- [ ] Create `PWAInstallPrompt` component
-- [ ] Detect native PWA `beforeinstallprompt` (Android/Desktop)
-- [ ] Detect iOS Safari for manual instructions
-- [ ] Implement local storage dismissal tracking and standalone mode detection
-- [ ] Add the prompt to `CustomerLayout.tsx`
-- [ ] Verify styling and responsive behavior
+- [x] Create `PWAInstallPrompt` component
+- [x] Detect native PWA `beforeinstallprompt` (Android/Desktop)
+- [x] Detect iOS Safari for manual instructions
+- [x] Implement local storage dismissal tracking and standalone mode detection
+- [x] Add the prompt to `CustomerLayout.tsx`
+- [x] Verify styling and responsive behavior
 - [ ] Test project for errors
 
 ## Acceptance

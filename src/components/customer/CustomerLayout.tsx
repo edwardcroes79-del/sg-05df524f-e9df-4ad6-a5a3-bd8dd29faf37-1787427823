@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
+import { PWAInstallPrompt } from "./PWAInstallPrompt";
 
 interface CustomerLayoutProps {
   children: React.ReactNode;
@@ -166,6 +167,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
 
         {/* Dynamic Page Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full">
+          <PWAInstallPrompt />
           {children}
         </main>
       </div>
