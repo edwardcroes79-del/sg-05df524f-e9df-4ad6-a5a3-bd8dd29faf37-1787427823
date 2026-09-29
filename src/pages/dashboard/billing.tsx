@@ -260,9 +260,15 @@ export default function BillingPage() {
       setActiveAddonSubscriptions(result.businessAddons || []);
       setAddonPayments(result.addonPayments || []);
 
+      const requestedNewMonthlyTotal = Number(
+        result.requestedNewMonthlyTotal ??
+        result.requestedAddonSubscription?.metadata?.requested_new_monthly_total ??
+        0
+      );
+
       toast({
         title: "Subscription change requested",
-        description: `A pending payment was created for the full new monthly subscription total: AWG ${Number(result.addonPayments?.[0]?.amount || 0).toFixed(2)}.`,
+        description: `A pending payment was created for the full new monthly subscription total: AWG ${requestedNewMonthlyTotal.toFixed(2)}.`,
       });
     } catch (err: any) {
       toast({

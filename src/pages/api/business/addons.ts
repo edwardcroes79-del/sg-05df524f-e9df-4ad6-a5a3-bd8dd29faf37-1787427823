@@ -185,6 +185,7 @@ async function getOverview(admin: any, business: any) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { admin, userId, business } = await requireBusinessOwner(req);
+    let requestedAddonSubscription: any = null;
 
     if (req.method === "GET") {
       const overview = await getOverview(admin, business);
@@ -319,10 +320,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             requested_period_end: currentPeriodEnd,
           },
         })
-        .select("id, starts_at, current_period_start")
+        .select("id, starts_at, current_period_start, metadata")
         .single();
 
       if (subscriptionError) throw subscriptionError;
+      requestedAddonSubscription = subscription;
     }
 
     if (req.method === "PATCH") {
@@ -372,7 +374,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const overview = await getOverview(admin, business);
-    return res.status(200).json({ success: true, ...overview });
+    return res.status(200).json({
+      success: true,
+      ...overview,
+      requestedAddonSubscription,
+      requestedNewMonthlyTotal: requestedAddonSubscription?.metadata?.requested_new_monthly_total ?? null,
+    });
   } catch (err: any) {
     const message = err.message || "Failed to manage customer capacity add-ons";
     const status = message.includes("access") || message.includes("authenticated") ? 403 : 500;
