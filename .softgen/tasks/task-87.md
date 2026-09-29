@@ -22,12 +22,12 @@ Domain: https://royaltystamp.com (implicit base)
 Do not change authentication, customer data, loyalty logic, or business dashboard.
 
 ## Checklist
-- [ ] Inspect existing PWA/manifest/service-worker config
-- [ ] Create/Update public/manifest.json
-- [ ] Create/Update public/sw.js (Service Worker)
-- [ ] Register Service Worker in _app.tsx
-- [ ] Add manifest and meta tags in _document.tsx
-- [ ] Verify PWA_logo.png usage as app icon
+- [x] Inspect existing PWA/manifest/service-worker config
+- [x] Create/Update public/manifest.json
+- [x] Create/Update public/sw.js (Service Worker)
+- [x] Register Service Worker in _app.tsx
+- [x] Add manifest and meta tags in _document.tsx
+- [x] Verify PWA_logo.png usage as app icon
 - [ ] Run project validation checks
 
 ## Acceptance

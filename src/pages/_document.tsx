@@ -6,6 +6,9 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#F43F5E" />
+        <link rel="apple-touch-icon" href="/PWA_logo.png" />
         <SEOElements />
         {/*
           CRITICAL: DO NOT REMOVE THIS SCRIPT
