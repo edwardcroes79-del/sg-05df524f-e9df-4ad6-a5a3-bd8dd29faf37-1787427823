@@ -549,8 +549,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
           <div className="space-y-8">
             <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Coming Soon</h3>
-              
               <div className="space-y-4">
                 {/* Quick Issue Stamp Announcement (NEW) */}
                 <div 
