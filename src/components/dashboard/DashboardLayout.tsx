@@ -552,6 +552,46 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Coming Soon</h3>
               
               <div className="space-y-4">
+                {/* Quick Issue Stamp Announcement (NEW) */}
+                <div 
+                  className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">⚡</span>
+                      <h4 className="font-semibold text-foreground">Quick Issue Stamp</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                      NEW
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      Let customers scan your business QR code and receive their loyalty stamp themselves — perfect for busy periods.
+                    </p>
+                    
+                    <div className="pt-2 space-y-2">
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">📱</span>
+                        <span><strong>Business Displays QR</strong> - Show the Quick Issue Stamp QR at your counter.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">📷</span>
+                        <span><strong>Customer Scans</strong> - Customers scan the QR with their phone and confirm to receive their stamp.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">⏱️</span>
+                        <span><strong>High Security</strong> - The QR refreshes automatically every 60 seconds.</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="text-primary mt-0.5">🧩</span>
+                        <span><strong>Optional Add-on</strong> - Available now as a secure subscription add-on.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Available Add-ons Announcement (NEW) */}
                 <div 
                   className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
