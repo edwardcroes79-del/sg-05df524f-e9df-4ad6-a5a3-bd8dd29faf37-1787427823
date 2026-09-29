@@ -1,6 +1,6 @@
 ---
 title: Phase 1 - Customer PWA Foundation
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [pwa, customer, architecture]
@@ -28,7 +28,7 @@ Do not change authentication, customer data, loyalty logic, or business dashboar
 - [x] Register Service Worker in _app.tsx
 - [x] Add manifest and meta tags in _document.tsx
 - [x] Verify PWA_logo.png usage as app icon
-- [ ] Run project validation checks
+- [x] Run project validation checks
 
 ## Acceptance
 The customer dashboard is a properly installable PWA with Royalty Stamp branding.
