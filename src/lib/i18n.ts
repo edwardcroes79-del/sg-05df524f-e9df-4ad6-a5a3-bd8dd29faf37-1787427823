@@ -212,6 +212,7 @@ export const translations = {
     "dashboard.quickStamp.workspaceNotFound": "Business workspace was not found.",
     "dashboard.quickStamp.activateProgramError": "Create and activate a loyalty program before using Quick Issue Stamp QR.",
     "dashboard.quickStamp.defaultProgram": "Active loyalty program",
+    "dashboard.quickStamp.qrAlt": "Quick Issue Stamp QR token",
 
     "auth.login.seoTitle": "Login - Aruba Royalty Stamp",
     "auth.login.seoDescription": "Log in to manage your digital loyalty programs.",
@@ -442,6 +443,7 @@ export const translations = {
     "dashboard.quickStamp.workspaceNotFound": "No se encontró el espacio de trabajo del negocio.",
     "dashboard.quickStamp.activateProgramError": "Crea y activa un programa de fidelidad antes de usar el QR de Sello rápido.",
     "dashboard.quickStamp.defaultProgram": "Programa de fidelidad activo",
+    "dashboard.quickStamp.qrAlt": "Token QR de Sello rápido",
 
     "auth.login.seoTitle": "Iniciar sesión - Aruba Royalty Stamp",
     "auth.login.seoDescription": "Inicia sesión para gestionar tus programas digitales de fidelidad.",

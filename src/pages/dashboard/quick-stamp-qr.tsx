@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { QuickStampFullScreen } from "@/components/dashboard/QuickStampFullScreen";
+import { useI18n } from "@/contexts/I18nProvider";
 
 type QuickStampToken = {
   token: string;
@@ -40,6 +41,7 @@ function formatCountdown(totalSeconds: number) {
 
 export default function QuickStampQrPage() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("Royalty Stamp");
   const [programs, setPrograms] = useState<LoyaltyProgramOption[]>([]);
@@ -67,7 +69,7 @@ export default function QuickStampQrPage() {
     if (!programId) {
       setTokenData(null);
       setSecondsRemaining(0);
-      setErrorMessage("Select an active loyalty program to generate a Quick Issue Stamp QR.");
+      setErrorMessage(t("dashboard.quickStamp.selectProgramError"));
       setLoading(false);
       return;
     }
@@ -83,7 +85,7 @@ export default function QuickStampQrPage() {
 
       if (error) throw error;
       if (!data?.success) {
-        throw new Error(data?.message || "Quick Issue Stamp token could not be generated");
+        throw new Error(data?.message || t("dashboard.quickStamp.tokenError"));
       }
 
       setTokenData({
@@ -95,7 +97,7 @@ export default function QuickStampQrPage() {
       });
       setSecondsRemaining(getSecondsRemaining(data.expires_at));
     } catch (err: any) {
-      setErrorMessage(err.message || "Quick Issue Stamp is unavailable");
+      setErrorMessage(err.message || t("dashboard.quickStamp.unavailableError"));
       setTokenData(null);
     } finally {
       setRefreshing(false);
@@ -120,7 +122,7 @@ export default function QuickStampQrPage() {
       const resolvedBusiness = Array.isArray(workspaceRows) ? workspaceRows[0] : workspaceRows;
 
       if (!resolvedBusiness?.id) {
-        setErrorMessage("Business workspace was not found.");
+        setErrorMessage(t("dashboard.quickStamp.workspaceNotFound"));
         setLoading(false);
         return;
       }
@@ -148,7 +150,7 @@ export default function QuickStampQrPage() {
       setPrograms(activePrograms);
 
       if (!firstProgram) {
-        setErrorMessage("Create and activate a loyalty program before using Quick Issue Stamp QR.");
+        setErrorMessage(t("dashboard.quickStamp.activateProgramError"));
         setLoading(false);
         return;
       }
@@ -191,8 +193,8 @@ export default function QuickStampQrPage() {
     if (!businessId || !selectedProgramId) return;
     await refreshToken(businessId, selectedProgramId);
     toast({
-      title: "Quick Issue Stamp refreshed",
-      description: "A new 60-second QR is now active. The previous QR is no longer valid.",
+      title: t("dashboard.quickStamp.refreshedTitle"),
+      description: t("dashboard.quickStamp.refreshedDescription"),
     });
   };
 
@@ -203,7 +205,7 @@ export default function QuickStampQrPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Quick Issue Stamp | Aruba Royalty Stamp</title>
+        <title>{t("dashboard.quickStamp.seoTitle")}</title>
       </Head>
 
       {isFullScreen && canDisplayQr ? (
@@ -212,7 +214,7 @@ export default function QuickStampQrPage() {
           countdownLabel={countdownLabel}
           progressValue={progressValue}
           businessName={businessName}
-          programName={selectedProgram?.name || "Active loyalty program"}
+          programName={selectedProgram?.name || t("dashboard.quickStamp.defaultProgram")}
           onExit={() => setIsFullScreen(false)}
         />
       ) : null}
@@ -222,25 +224,25 @@ export default function QuickStampQrPage() {
           <div>
             <Badge variant="outline" className="mb-3 w-fit gap-1 border-primary/30 bg-primary/5 text-primary">
               <Zap className="h-3.5 w-3.5" />
-              Optional Add-on
+              {t("dashboard.quickStamp.addonBadge")}
             </Badge>
-            <h1 className="font-heading text-3xl font-bold text-foreground">Quick Issue Stamp</h1>
+            <h1 className="font-heading text-3xl font-bold text-foreground">{t("dashboard.quickStamp.title")}</h1>
             <p className="mt-1 max-w-2xl text-muted-foreground">
-              Show this QR to customers. Customers scan to receive their loyalty stamp.
+              {t("dashboard.quickStamp.description")}
             </p>
           </div>
 
           <Button type="button" variant="outline" className="gap-2" onClick={handleManualRefresh} disabled={!businessId || !selectedProgramId || refreshing}>
             {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Refresh QR
+            {t("dashboard.quickStamp.refreshQr")}
           </Button>
         </div>
 
         <Alert className="border-primary/20 bg-primary/5 text-foreground">
           <ShieldCheck className="h-4 w-4 text-primary" />
-          <AlertTitle>Customer flow enabled</AlertTitle>
+          <AlertTitle>{t("dashboard.quickStamp.customerFlowTitle")}</AlertTitle>
           <AlertDescription>
-            Customers who scan this QR must be logged in, belong to the selected loyalty program, and confirm before one real stamp is issued.
+            {t("dashboard.quickStamp.customerFlowDescription")}
           </AlertDescription>
         </Alert>
 
@@ -249,16 +251,16 @@ export default function QuickStampQrPage() {
             <CardHeader className="border-b bg-primary/[0.03]">
               <CardTitle className="flex items-center gap-2">
                 <QrCode className="h-5 w-5 text-primary" />
-                Rotating Quick Issue Stamp QR
+                {t("dashboard.quickStamp.cardTitle")}
               </CardTitle>
               <CardDescription>
-                Show this QR to customers. The current QR is valid for 60 seconds and then automatically refreshes.
+                {t("dashboard.quickStamp.cardDescription")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 p-6">
               <div className="space-y-2">
                 <label htmlFor="quickStampProgram" className="text-sm font-semibold text-foreground">
-                  Loyalty Program
+                  {t("dashboard.quickStamp.programLabel")}
                 </label>
                 <select
                   id="quickStampProgram"
@@ -269,13 +271,13 @@ export default function QuickStampQrPage() {
                 >
                   {programs.map((program) => (
                     <option key={program.id} value={program.id}>
-                      {program.name} · {program.stamp_target} stamps
+                      {t("dashboard.quickStamp.programOption", { programName: program.name, stampTarget: program.stamp_target })}
                     </option>
                   ))}
                 </select>
                 {selectedProgram ? (
                   <p className="text-xs text-muted-foreground">
-                    Customers will receive 1 stamp toward {selectedProgram.reward_title}.
+                    {t("dashboard.quickStamp.programHelp", { rewardTitle: selectedProgram.reward_title })}
                   </p>
                 ) : null}
               </div>
@@ -284,20 +286,20 @@ export default function QuickStampQrPage() {
                 <div className="flex min-h-[360px] items-center justify-center">
                   <div className="flex flex-col items-center gap-3 text-muted-foreground">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    Generating secure QR...
+                    {t("dashboard.quickStamp.generating")}
                   </div>
                 </div>
               ) : errorMessage ? (
                 <div className="rounded-2xl border border-dashed p-8 text-center">
                   <AlertTriangle className="mx-auto h-10 w-10 text-amber-600" />
-                  <h2 className="mt-4 font-heading text-xl font-bold text-foreground">Quick Issue Stamp unavailable</h2>
+                  <h2 className="mt-4 font-heading text-xl font-bold text-foreground">{t("dashboard.quickStamp.unavailableTitle")}</h2>
                   <p className="mt-2 text-sm text-muted-foreground">{errorMessage}</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-5">
                   <div className="w-full rounded-[2rem] border border-primary/20 bg-white p-4 shadow-xl shadow-primary/10 sm:w-fit sm:p-6">
                     {qrImageUrl ? (
-                      <img src={qrImageUrl} alt="Quick Issue Stamp QR token" className="mx-auto aspect-square h-80 w-80 rounded-3xl sm:h-[26rem] sm:w-[26rem] lg:h-[28rem] lg:w-[28rem]" />
+                      <img src={qrImageUrl} alt={t("dashboard.quickStamp.qrAlt")} className="mx-auto aspect-square h-80 w-80 rounded-3xl sm:h-[26rem] sm:w-[26rem] lg:h-[28rem] lg:w-[28rem]" />
                     ) : null}
                   </div>
 
@@ -305,7 +307,7 @@ export default function QuickStampQrPage() {
                     <div className="rounded-2xl border bg-primary/5 px-5 py-4">
                       <p className="flex items-center justify-center gap-2 text-sm font-semibold text-foreground">
                         <Timer className="h-4 w-4 text-primary" />
-                        Expires in
+                        {t("dashboard.quickStamp.expiresIn")}
                       </p>
                       <p className="mt-1 font-mono text-4xl font-extrabold tracking-tight text-primary">{countdownLabel}</p>
                     </div>
@@ -317,9 +319,9 @@ export default function QuickStampQrPage() {
                       disabled={!canDisplayQr}
                     >
                       <Zap className="h-4 w-4" />
-                      Display Full Screen
+                      {t("dashboard.quickStamp.displayFullScreen")}
                     </Button>
-                    <p className="text-sm font-medium text-foreground">Customers scan to receive their loyalty stamp.</p>
+                    <p className="text-sm font-medium text-foreground">{t("dashboard.quickStamp.scanHelp")}</p>
                     <p className="break-all rounded-lg bg-muted p-3 font-mono text-xs text-muted-foreground">
                       {qrUrl}
                     </p>
@@ -331,27 +333,27 @@ export default function QuickStampQrPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Validation Rules</CardTitle>
+              <CardTitle>{t("dashboard.quickStamp.validationTitle")}</CardTitle>
               <CardDescription>
-                The scan flow validates every requirement server-side before issuing a stamp.
+                {t("dashboard.quickStamp.validationDescription")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div className="rounded-xl border bg-muted/20 p-4">
-                <p className="font-semibold text-foreground">Approved add-on required</p>
-                <p>Token generation and scan redemption are denied unless the Quick Issue Stamp add-on is active for this business.</p>
+                <p className="font-semibold text-foreground">{t("dashboard.quickStamp.validationAddonTitle")}</p>
+                <p>{t("dashboard.quickStamp.validationAddonDescription")}</p>
               </div>
               <div className="rounded-xl border bg-muted/20 p-4">
-                <p className="font-semibold text-foreground">Program membership required</p>
-                <p>The customer must already have an active loyalty card for the selected program before a stamp is issued.</p>
+                <p className="font-semibold text-foreground">{t("dashboard.quickStamp.validationMembershipTitle")}</p>
+                <p>{t("dashboard.quickStamp.validationMembershipDescription")}</p>
               </div>
               <div className="rounded-xl border bg-muted/20 p-4">
-                <p className="font-semibold text-foreground">Shared stamp transaction logic</p>
-                <p>The customer scan flow calls the same transactional stamp engine used by staff issuing, including rate limits and reward creation.</p>
+                <p className="font-semibold text-foreground">{t("dashboard.quickStamp.validationTransactionTitle")}</p>
+                <p>{t("dashboard.quickStamp.validationTransactionDescription")}</p>
               </div>
               <div className="rounded-xl border bg-muted/20 p-4">
-                <p className="font-semibold text-foreground">Repeat-scan protection</p>
-                <p>Quick Issue Stamp also checks recent transaction history before issuing, so refreshed tokens cannot be used for unlimited rapid self-stamping.</p>
+                <p className="font-semibold text-foreground">{t("dashboard.quickStamp.validationRepeatTitle")}</p>
+                <p>{t("dashboard.quickStamp.validationRepeatDescription")}</p>
               </div>
             </CardContent>
           </Card>

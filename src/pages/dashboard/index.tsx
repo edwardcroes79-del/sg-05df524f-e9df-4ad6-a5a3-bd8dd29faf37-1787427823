@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/contexts/I18nProvider";
 
 interface CustomerProfile {
   id: string;
@@ -41,10 +42,10 @@ interface ContractInfo {
   renewal_date: string | null;
 }
 
-function formatContractDate(dateValue: string | null) {
-  if (!dateValue) return "Not assigned";
+function formatContractDate(dateValue: string | null, fallback: string, locale: string) {
+  if (!dateValue) return fallback;
 
-  return new Date(`${dateValue}T00:00:00`).toLocaleDateString("en-US", {
+  return new Date(`${dateValue}T00:00:00`).toLocaleDateString(locale, {
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -80,12 +81,12 @@ function getEffectiveContractState(contractInfo: ContractInfo | null) {
   return "active";
 }
 
-function getContractStatusDisplay(contractInfo: ContractInfo | null) {
+function getContractStatusDisplay(contractInfo: ContractInfo | null, t: ReturnType<typeof useI18n>["t"]) {
   const state = getEffectiveContractState(contractInfo);
 
   if (state === "expired") {
     return {
-      label: "Expired",
+      label: t("dashboard.contract.expiredLabel"),
       icon: "🔴",
       className: "bg-destructive/10 text-destructive border-destructive/20",
     };
@@ -93,7 +94,7 @@ function getContractStatusDisplay(contractInfo: ContractInfo | null) {
 
   if (state === "expiring") {
     return {
-      label: "Expiring",
+      label: t("dashboard.contract.expiringLabel"),
       icon: "🟠",
       className: "bg-amber-500/10 text-amber-700 border-amber-500/20",
     };
@@ -101,14 +102,14 @@ function getContractStatusDisplay(contractInfo: ContractInfo | null) {
 
   if (state === "active") {
     return {
-      label: "Active",
+      label: t("dashboard.contract.activeLabel"),
       icon: "🟢",
       className: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
     };
   }
 
   return {
-    label: "Not Assigned",
+    label: t("dashboard.contract.notAssignedLabel"),
     icon: "⚪",
     className: "bg-muted text-muted-foreground border-border",
   };
@@ -117,6 +118,8 @@ function getContractStatusDisplay(contractInfo: ContractInfo | null) {
 export default function DashboardOverview() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t, language } = useI18n();
+  const locale = language === "es" ? "es-ES" : "en-US";
   const [loading, setLoading] = useState(true);
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [stats, setStats] = useState({
@@ -248,7 +251,7 @@ export default function DashboardOverview() {
               setTrialDetails({
                 isTrial: true,
                 daysLeft: days,
-                endDate: endDate.toLocaleDateString()
+                endDate: endDate.toLocaleDateString(locale)
               });
             }
           }
@@ -268,7 +271,7 @@ export default function DashboardOverview() {
           setTrialDetails({
             isTrial: true,
             daysLeft: days,
-            endDate: endDate.toLocaleDateString()
+            endDate: endDate.toLocaleDateString(locale)
           });
         }
       }
@@ -330,30 +333,31 @@ export default function DashboardOverview() {
   };
 
   const statCards = [
-    { title: "Total Customers", value: stats.customers, icon: Users, color: "text-blue-500" },
-    { title: "Active Cards", value: stats.activeCards, icon: CreditCard, color: "text-indigo-500" },
-    { title: "Stamps Issued", value: stats.stampsIssued, icon: Stamp, color: "text-primary" },
-    { title: "Rewards Earned", value: stats.rewardsEarned, icon: Gift, color: "text-amber-500" },
-    { title: "Rewards Redeemed", value: stats.rewardsRedeemed, icon: Activity, color: "text-emerald-500" },
+    { title: t("dashboard.overview.totalCustomers"), value: stats.customers, icon: Users, color: "text-blue-500" },
+    { title: t("dashboard.overview.activeCards"), value: stats.activeCards, icon: CreditCard, color: "text-indigo-500" },
+    { title: t("dashboard.overview.stampsIssued"), value: stats.stampsIssued, icon: Stamp, color: "text-primary" },
+    { title: t("dashboard.overview.rewardsEarned"), value: stats.rewardsEarned, icon: Gift, color: "text-amber-500" },
+    { title: t("dashboard.overview.rewardsRedeemed"), value: stats.rewardsRedeemed, icon: Activity, color: "text-emerald-500" },
   ];
 
   const contractState = getEffectiveContractState(contractInfo);
-  const contractStatusDisplay = getContractStatusDisplay(contractInfo);
+  const contractStatusDisplay = getContractStatusDisplay(contractInfo, t);
   const contractDaysRemaining = getDaysRemaining(contractInfo?.contract_end_date || null);
   const isContractApproachingExpiration = contractState === "expiring" && contractDaysRemaining !== null && contractDaysRemaining <= 14 && contractDaysRemaining > 0;
+  const contractDateFallback = t("dashboard.contract.notAssigned");
 
   return (
     <DashboardLayout>
       <Head>
-        <title>Dashboard | Aruba Royalty Stamp</title>
+        <title>{t("dashboard.overview.seoTitle")}</title>
       </Head>
 
       <div className="space-y-8">
         {/* Top Header Section */}
         <div className="flex flex-col sm:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
           <div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">Dashboard Overview</h1>
-            <p className="text-muted-foreground mt-1">Real-time metrics for your loyalty programs.</p>
+            <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.overview.title")}</h1>
+            <p className="text-muted-foreground mt-1">{t("dashboard.overview.description")}</p>
           </div>
           <div>
             <Button 
@@ -361,7 +365,7 @@ export default function DashboardOverview() {
               size="lg" 
               className="w-full sm:w-auto font-bold gap-2 text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 transition-all duration-150 transform active:scale-[0.98]"
             >
-              <Plus className="h-5 w-5" /> Issue Stamp
+              <Plus className="h-5 w-5" /> {t("dashboard.overview.issueStamp")}
             </Button>
           </div>
         </div>
@@ -370,17 +374,17 @@ export default function DashboardOverview() {
           <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
             <div className="space-y-1">
               <h3 className="text-lg font-bold text-indigo-900 flex items-center gap-2">
-                <Gift className="h-5 w-5 text-indigo-600" /> Free 14-Day Trial
+                <Gift className="h-5 w-5 text-indigo-600" /> {t("dashboard.overview.trialTitle")}
               </h3>
               <p className="text-indigo-700/80 text-sm">
-                You have <strong>{trialDetails.daysLeft} days remaining</strong>. Your trial will automatically expire on {trialDetails.endDate}.
+                {t("dashboard.overview.trialDescription", { days: trialDetails.daysLeft, date: trialDetails.endDate || "" })}
               </p>
             </div>
             <Button 
               onClick={() => window.location.href = "/dashboard/billing"}
               className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-semibold"
             >
-              Upgrade Plan
+              {t("dashboard.overview.upgradePlan")}
             </Button>
           </div>
         )}
@@ -390,7 +394,7 @@ export default function DashboardOverview() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <CardTitle className="flex items-center gap-2 text-xl">
                 <FileText className="h-5 w-5 text-primary" />
-                Contract Information
+                {t("dashboard.contract.title")}
               </CardTitle>
               {loading ? (
                 <Skeleton className="h-7 w-28 rounded-full" />
@@ -421,12 +425,12 @@ export default function DashboardOverview() {
                         <AlertTriangle className="h-5 w-5" />
                       </div>
                       <div className="space-y-1">
-                        <h3 className="font-heading text-lg font-bold text-destructive">🔴 Contract Expired</h3>
+                        <h3 className="font-heading text-lg font-bold text-destructive">{t("dashboard.contract.expiredTitle")}</h3>
                         <p className="text-sm text-foreground">
-                          Your contract expired on {formatContractDate(contractInfo?.contract_end_date || null)}.
+                          {t("dashboard.contract.expiredDescription", { date: formatContractDate(contractInfo?.contract_end_date || null, contractDateFallback, locale) })}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Please contact Royalty Stamp to renew your service.
+                          {t("dashboard.contract.renewService")}
                         </p>
                       </div>
                     </div>
@@ -441,10 +445,13 @@ export default function DashboardOverview() {
                       </div>
                       <div>
                         <h3 className="font-heading text-lg font-bold text-amber-800">
-                          🟠 Contract expires in {contractDaysRemaining} {contractDaysRemaining === 1 ? "day" : "days"}.
+                          🟠 Contract expires in {t("dashboard.contract.expiresIn", {
+                            days: contractDaysRemaining,
+                            unit: contractDaysRemaining === 1 ? t("dashboard.contract.day") : t("dashboard.contract.days"),
+                          })}
                         </h3>
                         <p className="text-sm text-amber-900/80">
-                          Please contact Royalty Stamp before {formatContractDate(contractInfo?.contract_end_date || null)} to avoid service interruption.
+                          {t("dashboard.contract.avoidInterruption", { date: formatContractDate(contractInfo?.contract_end_date || null, contractDateFallback, locale) })}
                         </p>
                       </div>
                     </div>
@@ -458,9 +465,9 @@ export default function DashboardOverview() {
                         <FileText className="h-5 w-5" />
                       </div>
                       <div>
-                        <h3 className="font-heading text-lg font-bold text-foreground">Contract not assigned yet</h3>
+                        <h3 className="font-heading text-lg font-bold text-foreground">{t("dashboard.contract.notAssignedTitle")}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Royalty Stamp has not assigned a contract period to this business yet.
+                          {t("dashboard.contract.notAssignedDescription")}
                         </p>
                       </div>
                     </div>
@@ -471,7 +478,7 @@ export default function DashboardOverview() {
                   <div className="rounded-xl border border-border/70 bg-card p-4">
                     <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <ShieldCheck className="h-4 w-4" />
-                      Contract Status
+                      {t("dashboard.contract.status")}
                     </div>
                     <p className="text-lg font-bold text-foreground">
                       {contractStatusDisplay.icon} {contractStatusDisplay.label}
@@ -481,46 +488,46 @@ export default function DashboardOverview() {
                   <div className="rounded-xl border border-border/70 bg-card p-4">
                     <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      Contract Term
+                      {t("dashboard.contract.term")}
                     </div>
                     <p className="text-lg font-bold text-foreground">
-                      {contractInfo?.contract_term_months ? `${contractInfo.contract_term_months} Months` : "Not assigned"}
+                      {contractInfo?.contract_term_months ? t("dashboard.contract.months", { months: contractInfo.contract_term_months }) : contractDateFallback}
                     </p>
                   </div>
 
                   <div className="rounded-xl border border-border/70 bg-card p-4">
                     <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <CalendarDays className="h-4 w-4" />
-                      Start Date
+                      {t("dashboard.contract.startDate")}
                     </div>
                     <p className="text-base font-semibold text-foreground">
-                      {formatContractDate(contractInfo?.contract_start_date || null)}
+                      {formatContractDate(contractInfo?.contract_start_date || null, contractDateFallback, locale)}
                     </p>
                   </div>
 
                   <div className="rounded-xl border border-border/70 bg-card p-4">
                     <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <CalendarDays className="h-4 w-4" />
-                      End Date
+                      {t("dashboard.contract.endDate")}
                     </div>
                     <p className="text-base font-semibold text-foreground">
-                      {formatContractDate(contractInfo?.contract_end_date || null)}
+                      {formatContractDate(contractInfo?.contract_end_date || null, contractDateFallback, locale)}
                     </p>
                   </div>
 
                   <div className="rounded-xl border border-border/70 bg-card p-4">
                     <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <Activity className="h-4 w-4" />
-                      Days Remaining
+                      {t("dashboard.contract.daysRemaining")}
                     </div>
                     <p className="text-lg font-bold text-foreground">
-                      {contractDaysRemaining === null ? "Not assigned" : contractDaysRemaining}
+                      {contractDaysRemaining === null ? contractDateFallback : contractDaysRemaining}
                     </p>
                   </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Contract information is read-only. Please contact Royalty Stamp if any contract details need to be updated.
+                  {t("dashboard.contract.readOnly")}
                 </p>
               </div>
             )}
@@ -564,7 +571,7 @@ export default function DashboardOverview() {
         {/* Recent Activity */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle>{t("dashboard.overview.recentActivity")}</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -574,8 +581,8 @@ export default function DashboardOverview() {
               </div>
             ) : recentActivity.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p>No activity yet.</p>
-                <p className="text-sm mt-1">Start issuing stamps or scanning QR codes to begin!</p>
+                <p>{t("dashboard.overview.noActivity")}</p>
+                <p className="text-sm mt-1">{t("dashboard.overview.noActivityDescription")}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -587,7 +594,7 @@ export default function DashboardOverview() {
                       </div>
                       <div>
                         <p className="font-medium text-foreground">
-                          Stamp Issued to {activity.customer_loyalty_cards?.customer?.name || "Customer"}
+                          {t("dashboard.overview.stampIssuedTo", { customerName: activity.customer_loyalty_cards?.customer?.name || t("dashboard.overview.customerFallback") })}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(activity.created_at).toLocaleString()}
@@ -615,19 +622,19 @@ export default function DashboardOverview() {
             
             <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
-                🎉 Upgrade Success
+                {t("dashboard.overview.upgradeSuccessBadge")}
               </span>
               <h2 className="text-2xl font-heading font-bold text-foreground mt-2">
-                Plan Successfully Upgraded!
+                {t("dashboard.overview.upgradeSuccessTitle")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                Your business has been upgraded. You now have immediate access to all premium features and elevated plan limits.
+                {t("dashboard.overview.upgradeSuccessDescription")}
               </p>
             </div>
           </div>
 
           <div className="bg-primary/5 border border-primary/10 rounded-2xl p-5 text-center space-y-1">
-            <span className="text-xs text-muted-foreground uppercase font-semibold">Active Plan</span>
+            <span className="text-xs text-muted-foreground uppercase font-semibold">{t("dashboard.overview.activePlan")}</span>
             <div className="text-xl font-heading font-bold text-primary flex items-center justify-center gap-1.5">
               <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
               {upgradeSuccessPlan}
@@ -639,7 +646,7 @@ export default function DashboardOverview() {
             className="w-full font-bold text-white bg-primary hover:bg-primary/95 shadow-md shadow-primary/20 py-6 text-base rounded-xl"
             onClick={() => setUpgradeSuccessPlan(null)}
           >
-            Continue to Dashboard
+            {t("dashboard.overview.continueToDashboard")}
           </Button>
         </DialogContent>
       </Dialog>
