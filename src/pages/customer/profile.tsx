@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { User, Loader2, Save } from "lucide-react";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function CustomerProfilePage() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [customer, setCustomer] = useState<any>({
@@ -54,8 +56,8 @@ export default function CustomerProfilePage() {
     e.preventDefault();
     if (!customer.name.trim()) {
       toast({
-        title: "Validation Error",
-        description: "Your full name is required.",
+        title: t("customer.profile.validationTitle"),
+        description: t("customer.profile.nameRequired"),
         variant: "destructive"
       });
       return;
@@ -74,12 +76,12 @@ export default function CustomerProfilePage() {
       if (error) throw error;
 
       toast({
-        title: "Profile Saved",
-        description: "Your personal details have been updated successfully."
+        title: t("customer.profile.savedTitle"),
+        description: t("customer.profile.savedDescription")
       });
     } catch (err: any) {
       toast({
-        title: "Error Saving Profile",
+        title: t("customer.profile.saveErrorTitle"),
         description: err.message,
         variant: "destructive"
       });
@@ -101,13 +103,13 @@ export default function CustomerProfilePage() {
   return (
     <CustomerLayout>
       <Head>
-        <title>My Profile | Royalty Stamp</title>
+        <title>{t("customer.profile.seoTitle")}</title>
       </Head>
 
       <div className="max-w-xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">My Profile</h1>
-          <p className="text-muted-foreground mt-1">Manage your basic customer information and contacts.</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">{t("customer.profile.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("customer.profile.description")}</p>
         </div>
 
         <form onSubmit={handleSave}>
@@ -118,41 +120,41 @@ export default function CustomerProfilePage() {
                   <User className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Personal Details</CardTitle>
-                  <CardDescription>This is used by merchants when issuing rewards.</CardDescription>
+                  <CardTitle className="text-lg">{t("customer.profile.personalDetails")}</CardTitle>
+                  <CardDescription>{t("customer.profile.personalDetailsDescription")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("customer.profile.email")}</Label>
                 <Input 
                   id="email" 
                   value={customer.email} 
                   disabled 
                   className="bg-muted cursor-not-allowed text-muted-foreground" 
                 />
-                <p className="text-[11px] text-muted-foreground">Contact support to change your account email.</p>
+                <p className="text-[11px] text-muted-foreground">{t("customer.profile.emailHelp")}</p>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">{t("customer.profile.fullName")}</Label>
                 <Input 
                   id="name" 
                   value={customer.name} 
                   onChange={(e) => setCustomer({ ...customer, name: e.target.value })} 
-                  placeholder="e.g. Jean-Pierre" 
+                  placeholder={t("customer.profile.fullNamePlaceholder")}
                   disabled={saving}
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">{t("customer.profile.phone")}</Label>
                 <Input 
                   id="phone" 
                   value={customer.phone} 
                   onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} 
-                  placeholder="e.g. +297 599 1234" 
+                  placeholder={t("customer.profile.phonePlaceholder")}
                   disabled={saving}
                 />
               </div>
@@ -164,7 +166,7 @@ export default function CustomerProfilePage() {
                 ) : (
                   <Save className="h-4 w-4" />
                 )}
-                Save Changes
+                {t("customer.profile.saveChanges")}
               </Button>
             </CardFooter>
           </Card>

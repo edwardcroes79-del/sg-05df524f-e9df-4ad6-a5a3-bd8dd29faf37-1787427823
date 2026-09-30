@@ -9,9 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Settings, Shield, Bell, HelpCircle, ArrowUpRight, ShieldCheck, ShieldAlert, Loader2, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function CustomerSettingsPage() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [promoAlerts, setPromoNotifications] = useState(false);
   const [stampSounds, setStampSounds] = useState(true);
@@ -63,7 +65,7 @@ export default function CustomerSettingsPage() {
       setMfaFactorId(data.id);
       setIsEnrollingMfa(true);
     } catch (err: any) {
-      toast({ title: "Setup Failed", description: err.message, variant: "destructive" });
+      toast({ title: t("customer.settings.setupFailed"), description: err.message, variant: "destructive" });
     } finally {
       setMfaLoading(false);
     }
@@ -77,27 +79,27 @@ export default function CustomerSettingsPage() {
       if (challenge.error) throw challenge.error;
       const verify = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: challenge.data.id, code: mfaVerifyCode });
       if (verify.error) throw verify.error;
-      toast({ title: "2FA Enabled", description: "Two-factor authentication secured on your account." });
+      toast({ title: t("customer.settings.mfaEnabledTitle"), description: t("customer.settings.mfaEnabledDescription") });
       setIsEnrollingMfa(false);
       setMfaVerifyCode("");
       await fetchMfaFactors();
     } catch (err: any) {
-      toast({ title: "Verification Failed", description: err.message || "Invalid code.", variant: "destructive" });
+      toast({ title: t("customer.settings.verificationFailed"), description: err.message || t("customer.settings.invalidCode"), variant: "destructive" });
     } finally {
       setMfaLoading(false);
     }
   };
 
   const handleDisableMfa = async (factorId: string) => {
-    if (!window.confirm("Are you sure you want to disable 2FA? This will reduce your account security.")) return;
+    if (!window.confirm(t("customer.settings.disableConfirm"))) return;
     setMfaLoading(true);
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId });
       if (error) throw error;
-      toast({ title: "2FA Disabled", description: "Two-factor authentication has been removed." });
+      toast({ title: t("customer.settings.mfaDisabledTitle"), description: t("customer.settings.mfaDisabledDescription") });
       await fetchMfaFactors();
     } catch (err: any) {
-      toast({ title: "Failed to Disable", description: err.message, variant: "destructive" });
+      toast({ title: t("customer.settings.disableFailed"), description: err.message, variant: "destructive" });
     } finally {
       setMfaLoading(false);
     }
@@ -108,8 +110,8 @@ export default function CustomerSettingsPage() {
     setTimeout(() => {
       setSaving(false);
       toast({
-        title: "Settings Saved",
-        description: "Your notification preferences have been saved."
+        title: t("customer.settings.savedTitle"),
+        description: t("customer.settings.savedDescription")
       });
     }, 600);
   };
@@ -117,13 +119,13 @@ export default function CustomerSettingsPage() {
   return (
     <CustomerLayout>
       <Head>
-        <title>Settings | Royalty Stamp</title>
+        <title>{t("customer.settings.seoTitle")}</title>
       </Head>
 
       <div className="max-w-xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground mt-1">Manage your loyalty preferences and app settings.</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">{t("customer.settings.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("customer.settings.description")}</p>
         </div>
 
         <div className="space-y-6">
@@ -135,16 +137,16 @@ export default function CustomerSettingsPage() {
                   <Bell className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Notifications & Preferences</CardTitle>
-                  <CardDescription>Control how and when you receive stamp updates.</CardDescription>
+                  <CardTitle className="text-lg">{t("customer.settings.notificationsTitle")}</CardTitle>
+                  <CardDescription>{t("customer.settings.notificationsDescription")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-0.5">
-                  <Label htmlFor="email-notif">Email Receipts</Label>
-                  <p className="text-xs text-muted-foreground">Receive a secure receipt when stamps are added.</p>
+                  <Label htmlFor="email-notif">{t("customer.settings.emailReceipts")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("customer.settings.emailReceiptsDescription")}</p>
                 </div>
                 <Switch 
                   id="email-notif" 
@@ -155,8 +157,8 @@ export default function CustomerSettingsPage() {
 
               <div className="flex items-center justify-between gap-4">
                 <div className="space-y-0.5">
-                  <Label htmlFor="promo-alerts">Promotional Offers</Label>
-                  <p className="text-xs text-muted-foreground">Receive alerts on special local stamp campaigns in Aruba.</p>
+                  <Label htmlFor="promo-alerts">{t("customer.settings.promotionalOffers")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("customer.settings.promotionalOffersDescription")}</p>
                 </div>
                 <Switch 
                   id="promo-alerts" 
@@ -167,8 +169,8 @@ export default function CustomerSettingsPage() {
 
               <div className="flex items-center justify-between gap-4 border-t pt-4 mt-2">
                 <div className="space-y-0.5">
-                  <Label htmlFor="stamp-sounds">Stamp Sounds</Label>
-                  <p className="text-xs text-muted-foreground">Play a short sound and animation when you receive a new stamp.</p>
+                  <Label htmlFor="stamp-sounds">{t("customer.settings.stampSounds")}</Label>
+                  <p className="text-xs text-muted-foreground">{t("customer.settings.stampSoundsDescription")}</p>
                 </div>
                 <Switch 
                   id="stamp-sounds" 
@@ -182,7 +184,7 @@ export default function CustomerSettingsPage() {
             </CardContent>
             <CardFooter className="bg-muted/10 border-t py-4 flex justify-end">
               <Button onClick={handleSaveSettings} disabled={saving}>
-                {saving ? "Saving..." : "Save Preferences"}
+                {saving ? t("dashboard.settings.saving") : t("customer.settings.savePreferences")}
               </Button>
             </CardFooter>
           </Card>
@@ -195,8 +197,8 @@ export default function CustomerSettingsPage() {
                   <ShieldCheck className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Account Security</CardTitle>
-                  <CardDescription>Add an extra layer of protection to your wallet.</CardDescription>
+                  <CardTitle className="text-lg">{t("customer.settings.securityTitle")}</CardTitle>
+                  <CardDescription>{t("customer.settings.securityDescription")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -204,29 +206,29 @@ export default function CustomerSettingsPage() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border rounded-lg bg-background">
                 <div>
                   <h3 className="font-semibold flex items-center gap-2 text-base">
-                    Two-Factor Authentication (2FA)
+                    {t("customer.settings.mfaTitle")}
                     {mfaFactors.length > 0 ? (
                       <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-600 border-emerald-200 uppercase tracking-wider">
-                        Enabled
+                        {t("customer.settings.enabled")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold bg-muted text-muted-foreground uppercase tracking-wider">
-                        Not Enabled
+                        {t("customer.settings.notEnabled")}
                       </span>
                     )}
                   </h3>
                   <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                    Protect your loyalty rewards with a TOTP authenticator app like Google Authenticator or Authy.
+                    {t("customer.settings.mfaDescription")}
                   </p>
                 </div>
                 <div>
                   {mfaFactors.length > 0 ? (
                     <Button variant="destructive" size="sm" onClick={() => handleDisableMfa(mfaFactors[0].id)} disabled={mfaLoading}>
-                      {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Disable 2FA
+                      {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("customer.settings.disable2fa")}
                     </Button>
                   ) : (
                     <Button size="sm" onClick={handleEnableMfa} disabled={mfaLoading || isEnrollingMfa}>
-                      {mfaLoading && !isEnrollingMfa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Enable 2FA
+                      {mfaLoading && !isEnrollingMfa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("customer.settings.enable2fa")}
                     </Button>
                   )}
                 </div>
@@ -234,18 +236,18 @@ export default function CustomerSettingsPage() {
 
               {isEnrollingMfa && (
                 <div className="mt-6 p-4 sm:p-6 border rounded-lg bg-background animate-in fade-in slide-in-from-top-4">
-                  <h4 className="font-heading font-bold text-lg mb-4">Complete 2FA Setup</h4>
+                  <h4 className="font-heading font-bold text-lg mb-4">{t("customer.settings.complete2fa")}</h4>
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
                         <div className="bg-primary text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">1</div>
-                        <p className="text-sm text-muted-foreground">Scan this QR code with your authenticator app.</p>
+                        <p className="text-sm text-muted-foreground">{t("customer.settings.scanQr")}</p>
                       </div>
                       <div className="bg-white p-3 border rounded-xl inline-block shadow-sm">
-                        <img src={mfaQrCode} alt="2FA QR Code" className="w-32 h-32" />
+                        <img src={mfaQrCode} alt={t("customer.settings.qrAlt")} className="w-32 h-32" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground font-medium">Or use setup key:</p>
+                        <p className="text-xs text-muted-foreground font-medium">{t("customer.settings.setupKey")}</p>
                         <code className="text-[10px] bg-muted px-2 py-1 rounded block w-max break-all font-mono font-semibold">
                           {mfaSecret}
                         </code>
@@ -254,11 +256,11 @@ export default function CustomerSettingsPage() {
                     <div className="space-y-4">
                       <div className="flex items-start gap-3">
                         <div className="bg-primary text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">2</div>
-                        <p className="text-sm text-muted-foreground">Enter the 6-digit code to verify.</p>
+                        <p className="text-sm text-muted-foreground">{t("customer.settings.enterCode")}</p>
                       </div>
                       <form onSubmit={handleVerifyMfaSetup} className="space-y-4 pt-1">
                         <div className="space-y-2">
-                          <Label htmlFor="verificationCode" className="text-xs">Verification Code</Label>
+                          <Label htmlFor="verificationCode" className="text-xs">{t("customer.settings.verificationCode")}</Label>
                           <Input 
                             id="verificationCode" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={6} placeholder="000 000"
                             className="font-mono text-lg tracking-[0.2em] text-center h-12"
@@ -266,9 +268,9 @@ export default function CustomerSettingsPage() {
                           />
                         </div>
                         <div className="flex gap-2">
-                          <Button type="button" variant="outline" className="w-full" onClick={() => setIsEnrollingMfa(false)} disabled={mfaLoading}>Cancel</Button>
+                          <Button type="button" variant="outline" className="w-full" onClick={() => setIsEnrollingMfa(false)} disabled={mfaLoading}>{t("customer.settings.cancel")}</Button>
                           <Button type="submit" className="w-full" disabled={mfaVerifyCode.length < 6 || mfaLoading}>
-                            {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
+                            {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("customer.settings.verify")}
                           </Button>
                         </div>
                       </form>
@@ -287,18 +289,14 @@ export default function CustomerSettingsPage() {
                   <HelpCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Support & Help</CardTitle>
-                  <CardDescription>Get help with your digital stamp card.</CardDescription>
+                  <CardTitle className="text-lg">{t("customer.settings.supportTitle")}</CardTitle>
+                  <CardDescription>{t("customer.settings.supportDescription")}</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-4 pt-4 text-sm text-muted-foreground">
-              <p>
-                Are your stamp counts incorrect? Send a photo of your paper stamp card or cash receipt directly to the business to adjust your current balances.
-              </p>
-              <p className="font-semibold text-foreground">
-                Aruba Loyalty Stamp is direct and independent.
-              </p>
+              {t("customer.settings.supportBody")}
+              <p className="font-semibold text-foreground">{t("customer.settings.supportTagline")}</p>
             </CardContent>
           </Card>
         </div>

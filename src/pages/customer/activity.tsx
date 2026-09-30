@@ -6,8 +6,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { History, Calendar, Award, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function CustomerActivityPage() {
+  const { t, language } = useI18n();
+  const locale = language === "es" ? "es-ES" : "en-US";
   const [loading, setLoading] = useState(true);
   const [activities, setActivities] = useState<any[]>([]);
 
@@ -54,13 +57,13 @@ export default function CustomerActivityPage() {
   return (
     <CustomerLayout>
       <Head>
-        <title>Activity History | Royalty Stamp</title>
+        <title>{t("customer.activity.seoTitle")}</title>
       </Head>
 
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">Activity History</h1>
-          <p className="text-muted-foreground mt-1">An immutable real-time log of all stamps earned or redeemed.</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">{t("customer.activity.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("customer.activity.description")}</p>
         </div>
 
         {loading ? (
@@ -73,9 +76,9 @@ export default function CustomerActivityPage() {
           <Card className="border-dashed bg-card/50">
             <CardContent className="p-12 text-center">
               <History className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No activity recorded yet</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">{t("customer.activity.emptyTitle")}</h3>
               <p className="text-muted-foreground max-w-sm mx-auto">
-                Once you collect your first stamp or claim an unlocked reward, your transaction trail will appear here.
+                {t("customer.activity.emptyDescription")}
               </p>
             </CardContent>
           </Card>
@@ -97,20 +100,20 @@ export default function CustomerActivityPage() {
                         {act.businesses?.business_name}
                       </p>
                       <h4 className="font-semibold text-foreground text-sm sm:text-base">
-                        {act.stamp_type === 'earned' ? `Earned ${act.stamp_number} stamp(s)` : 'Reward Redeemed'}
+                        {act.stamp_type === "earned" ? t("customer.activity.earnedStamps", { count: act.stamp_number }) : t("customer.activity.rewardRedeemed")}
                       </h4>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        Program: <span className="font-medium text-foreground">{act.loyalty_programs?.name}</span>
+                        {t("customer.activity.programLabel")} <span className="font-medium text-foreground">{act.loyalty_programs?.name}</span>
                       </p>
                     </div>
                   </div>
                   <div className="text-left sm:text-right shrink-0">
                     <Badge variant="outline" className="bg-muted text-muted-foreground border-none font-medium capitalize text-xs">
-                      {act.verification_method || 'QR Scan'}
+                      {act.verification_method || t("customer.activity.qrScan")}
                     </Badge>
                     <div className="flex items-center sm:justify-end gap-1.5 text-xs text-muted-foreground mt-1.5">
                       <Calendar className="h-3.5 w-3.5" />
-                      <span>{new Date(act.created_at).toLocaleString()}</span>
+                      <span>{new Date(act.created_at).toLocaleString(locale)}</span>
                     </div>
                   </div>
                 </CardContent>

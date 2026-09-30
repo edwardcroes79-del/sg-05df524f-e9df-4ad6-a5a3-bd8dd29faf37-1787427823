@@ -15,7 +15,7 @@ Audit the entire Royalty Stamp app for remaining hard-coded English UI text. Che
 ## Checklist
 - [x] Audit What's New separately for remaining hard-coded English and future-language readiness
 - [x] Audit auth/login/register/reset/update password surfaces for hard-coded UI text
-- [ ] Audit customer dashboard, loyalty cards, rewards, activity, profile, settings, PWA prompt, and mobile navigation
+- [x] Audit customer dashboard, loyalty cards, rewards, activity, profile, settings, PWA prompt, and mobile navigation
 - [ ] Audit business dashboard pages, forms, notifications, errors, loading states, empty states, and responsive shell
 - [ ] Audit Super Admin surfaces for hard-coded UI text
 - [ ] Convert remaining static UI strings to centralized i18n keys only
