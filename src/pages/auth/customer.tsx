@@ -12,12 +12,15 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck } from "lucide-react";
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { useRef } from "react";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function CustomerAuth() {
   const router = useRouter();
   const { returnUrl } = router.query;
   const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(false);
   const [fetchingContext, setFetchingContext] = useState(false);
@@ -113,7 +116,7 @@ export default function CustomerAuth() {
 
       if (error) {
         toast({
-          title: "Sign In Failed",
+          title: t("auth.customer.signInFailed"),
           description: error.message,
           variant: "destructive",
         });
@@ -136,8 +139,8 @@ export default function CustomerAuth() {
       }
 
       toast({
-        title: "Welcome Back!",
-        description: "Logged in successfully to your loyalty wallet.",
+        title: t("auth.customer.welcomeBackTitle"),
+        description: t("auth.customer.welcomeBackDescription"),
       });
       
       // Return back to join program QR page
@@ -149,7 +152,7 @@ export default function CustomerAuth() {
       
     } catch (err: any) {
       toast({
-        title: "Error",
+        title: t("auth.customer.error"),
         description: err.message,
         variant: "destructive",
       });
@@ -174,8 +177,8 @@ export default function CustomerAuth() {
       if (verify.error) throw verify.error;
 
       toast({
-        title: "Verification Successful",
-        description: "Your identity has been verified.",
+        title: t("auth.mfa.successTitle"),
+        description: t("auth.mfa.successDescription"),
       });
       
       if (safeReturnUrl) {
@@ -186,8 +189,8 @@ export default function CustomerAuth() {
 
     } catch (err: any) {
       toast({
-        title: "Verification Failed",
-        description: err.message || "Invalid two-factor authentication code.",
+        title: t("auth.mfa.failedTitle"),
+        description: err.message || t("auth.mfa.failedDescription"),
         variant: "destructive",
       });
       setLoading(false);
@@ -198,8 +201,8 @@ export default function CustomerAuth() {
     e.preventDefault();
     if (!name.trim()) {
       toast({
-        title: "Name required",
-        description: "Please enter your name to personalize your card.",
+        title: t("auth.customer.nameRequired"),
+        description: t("auth.customer.nameRequiredDescription"),
         variant: "destructive",
       });
       return;
@@ -225,8 +228,8 @@ export default function CustomerAuth() {
 
       if (!response.ok) {
         toast({
-          title: "Registration Failed",
-          description: result.error || "Failed to create account.",
+          title: t("auth.customer.registrationFailed"),
+          description: result.error || t("auth.customer.createFailed"),
           variant: "destructive",
         });
         isSubmitting.current = false;
@@ -239,15 +242,15 @@ export default function CustomerAuth() {
         // Keep email state for the success message UI, but lock the form
         
         toast({
-          title: "Account created successfully!",
-          description: "Please check your email to verify your account.",
+          title: t("auth.customer.accountCreatedTitle"),
+          description: t("auth.customer.verifyEmailDescription"),
         });
         
         // We do NOT reset loading/isSubmitting here, intentionally leaving the form locked
       }
     } catch (err: any) {
       toast({
-        title: "Error",
+        title: t("auth.customer.error"),
         description: err.message,
         variant: "destructive",
       });
@@ -260,7 +263,7 @@ export default function CustomerAuth() {
     <>
       <Head>
         <title>
-          {businessName ? `Join ${businessName} Rewards` : "RoyaltyStamp Customer Login"}
+          {businessName ? t("auth.customer.seoJoinTitle", { businessName }) : t("auth.customer.seoDefaultTitle")}
         </title>
       </Head>
       <main className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
@@ -273,7 +276,7 @@ export default function CustomerAuth() {
               className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Program Details
+              {t("auth.customer.backToProgram")}
             </Link>
           )}
 
@@ -297,12 +300,12 @@ export default function CustomerAuth() {
 
             <div>
               <h1 className="text-2xl font-bold font-heading text-foreground">
-                {businessName ? `${businessName} Rewards` : "RoyaltyStamp Wallet"}
+                {businessName ? t("auth.customer.businessRewardsTitle", { businessName }) : t("auth.customer.walletTitle")}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {programName 
-                  ? `Sign in or sign up to collect stamps for "${programName}"` 
-                  : "Collect stamps and unlock rewards in Aruba"
+                  ? t("auth.customer.programPrompt", { programName }) 
+                  : t("auth.customer.defaultPrompt")
                 }
               </p>
             </div>
@@ -313,21 +316,21 @@ export default function CustomerAuth() {
               <CardContent className="p-6 pt-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="grid grid-cols-2 w-full mb-6">
-                    <TabsTrigger value="signin">Sign In</TabsTrigger>
-                    <TabsTrigger value="signup">New Account</TabsTrigger>
+                    <TabsTrigger value="signin">{t("auth.customer.signInTab")}</TabsTrigger>
+                    <TabsTrigger value="signup">{t("auth.customer.newAccountTab")}</TabsTrigger>
                   </TabsList>
 
                   {/* Sign In Form */}
                   <TabsContent value="signin">
                     <form onSubmit={handleSignIn} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="signin-email">Email Address</Label>
+                        <Label htmlFor="signin-email">{t("auth.customer.email")}</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="signin-email"
                             type="email"
-                            placeholder="your.email@example.com"
+                            placeholder={t("auth.customer.emailPlaceholder")}
                             className="pl-10"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -339,12 +342,12 @@ export default function CustomerAuth() {
 
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <Label htmlFor="signin-password">Password</Label>
+                          <Label htmlFor="signin-password">{t("auth.customer.password")}</Label>
                           <Link 
                             href="/auth/reset-password" 
                             className="text-xs text-primary hover:underline"
                           >
-                            Forgot Password?
+                            {t("auth.customer.forgotPassword")}
                           </Link>
                         </div>
                         <div className="relative">
@@ -352,7 +355,7 @@ export default function CustomerAuth() {
                           <Input
                             id="signin-password"
                             type="password"
-                            placeholder="••••••••"
+                            placeholder={t("auth.customer.signingIn")}
                             className="pl-10"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -374,10 +377,10 @@ export default function CustomerAuth() {
                         {loading ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Signing In...
+                            {t("auth.customer.signInCta")}
                           </>
                         ) : (
-                          "Sign In to Earn Stamps"
+                          t("auth.customer.signInCta")
                         )}
                       </Button>
                     </form>
@@ -387,13 +390,13 @@ export default function CustomerAuth() {
                   <TabsContent value="signup">
                     <form onSubmit={handleSignUp} className="space-y-4">
                       <div className="space-y-2">
-                        <Label htmlFor="signup-name">Your Full Name</Label>
+                        <Label htmlFor="signup-name">{t("auth.customer.fullName")}</Label>
                         <div className="relative">
                           <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="signup-name"
                             type="text"
-                            placeholder="John Doe"
+                            placeholder={t("auth.customer.namePlaceholder")}
                             className="pl-10"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -404,13 +407,13 @@ export default function CustomerAuth() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="signup-email">Email Address</Label>
+                        <Label htmlFor="signup-email">{t("auth.customer.email")}</Label>
                         <div className="relative">
                           <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="signup-email"
                             type="email"
-                            placeholder="your.email@example.com"
+                            placeholder={t("auth.customer.emailPlaceholder")}
                             className="pl-10"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -423,18 +426,18 @@ export default function CustomerAuth() {
                       {isSuccess ? (
                         <div className="p-4 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm text-center">
                           <ShieldCheck className="w-6 h-6 mx-auto mb-2 text-green-600" />
-                          <p className="font-semibold">Account created successfully!</p>
-                          <p className="mt-1">We sent a verification link to <strong>{email}</strong>. Please click it to activate your wallet.</p>
+                          <p className="font-semibold">{t("auth.customer.accountCreatedTitle")}</p>
+                          <p className="mt-1">{t("auth.customer.successMessage", { email })}</p>
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <Label htmlFor="signup-password">Create Password</Label>
+                          <Label htmlFor="signup-password">{t("auth.customer.createPassword")}</Label>
                           <div className="relative">
                             <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                             <Input
                               id="signup-password"
                               type="password"
-                              placeholder="Minimum 6 characters"
+                              placeholder={t("auth.customer.passwordPlaceholder")}
                               className="pl-10"
                               value={password}
                               onChange={(e) => setPassword(e.target.value)}
@@ -456,14 +459,14 @@ export default function CustomerAuth() {
                         }}
                       >
                         {isSuccess ? (
-                          "Check Your Email"
+                          t("auth.customer.checkEmail")
                         ) : loading ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Creating Account...
+                            {t("auth.customer.creatingAccount")}
                           </>
                         ) : (
-                          "Create Account & Collect Stamps"
+                          t("auth.customer.createAndCollect")
                         )}
                       </Button>
                     </form>
@@ -472,7 +475,7 @@ export default function CustomerAuth() {
               </CardContent>
 
               <CardFooter className="justify-center border-t p-4 text-xs text-muted-foreground">
-                By continuing, you agree to the customer terms & rewards conditions.
+                {t("auth.customer.terms")}
               </CardFooter>
             </Card>
           ) : (
@@ -484,13 +487,13 @@ export default function CustomerAuth() {
                 >
                   <ShieldCheck className="w-6 h-6 text-white" />
                 </div>
-                <CardTitle className="text-2xl font-heading text-foreground">Security Check</CardTitle>
-                <CardDescription>Enter the 6-digit code from your authenticator app.</CardDescription>
+                <CardTitle className="text-2xl font-heading text-foreground">{t("auth.customer.securityCheck")}</CardTitle>
+                <CardDescription>{t("auth.customer.securityDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="p-6 pt-2">
                 <form onSubmit={handleVerifyMfa} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="customerMfaCode">Verification Code</Label>
+                    <Label htmlFor="customerMfaCode">{t("auth.customer.verificationCode")}</Label>
                     <Input 
                       id="customerMfaCode" 
                       type="text" 
@@ -514,13 +517,13 @@ export default function CustomerAuth() {
                       color: accentColor ? "#fff" : undefined 
                     }}
                   >
-                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Verify Identity"}
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("auth.customer.verifyIdentity")}
                   </Button>
                   <Button type="button" variant="ghost" className="w-full h-11 text-base mt-1" onClick={() => {
                     setMfaRequired(false);
                     supabase.auth.signOut();
                   }} disabled={loading}>
-                    Cancel
+                    {t("auth.customer.cancel")}
                   </Button>
                 </form>
               </CardContent>
@@ -529,10 +532,13 @@ export default function CustomerAuth() {
 
           {/* Option for merchants to switch */}
           <div className="text-center text-xs text-muted-foreground">
-            Are you a merchant?{" "}
+            {t("auth.customer.merchantPrompt")}{" "}
             <Link href="/auth/login" className="text-primary hover:underline font-semibold">
-              Business Login
+              {t("auth.customer.businessLogin")}
             </Link>
+          </div>
+          <div className="absolute top-4 right-4">
+            <LanguageSelector compact />
           </div>
         </div>
       </main>

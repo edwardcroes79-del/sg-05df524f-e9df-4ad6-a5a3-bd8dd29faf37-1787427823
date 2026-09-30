@@ -11,6 +11,8 @@ import { normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -25,6 +27,7 @@ export default function Register() {
   const { returnUrl } = router.query;
   const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   // Handle the countdown timer for the resend button
   useEffect(() => {
@@ -57,8 +60,8 @@ export default function Register() {
 
       if (!response.ok) {
         toast({
-          title: "Registration Failed",
-          description: result.error || "Failed to create account.",
+          title: t("auth.register.registrationFailed"),
+          description: result.error || t("auth.register.createFailed"),
           variant: "destructive",
         });
       } else {
@@ -68,8 +71,8 @@ export default function Register() {
       }
     } catch (err: any) {
       toast({
-        title: "An error occurred",
-        description: err.message || "Please try again later.",
+        title: t("auth.register.errorTitle"),
+        description: err.message || t("auth.register.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -81,22 +84,25 @@ export default function Register() {
   if (isConfirmationSent) {
     return (
       <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
-        <SEO title="Check Your Email - Aruba Royalty Stamp" description="Confirm your email to activate your account." />
+        <SEO title={t("auth.register.checkEmailSeoTitle")} description={t("auth.register.checkEmailSeoDescription")} />
+        <div className="absolute top-4 right-4">
+          <LanguageSelector compact />
+        </div>
         <Card className="w-full max-w-md border-border shadow-sm text-center pt-6">
           <CardHeader className="space-y-4 pb-2">
             <div className="mx-auto w-16 h-16 bg-primary/10 text-primary flex items-center justify-center rounded-full mb-2">
               <Mail className="w-8 h-8" />
             </div>
-            <CardTitle className="text-2xl font-heading">Check Your Email</CardTitle>
+            <CardTitle className="text-2xl font-heading">{t("auth.register.checkEmailTitle")}</CardTitle>
             <CardDescription className="text-base">
-              We've sent a confirmation email to:
+              {t("auth.register.confirmationSent")}
               <br />
               <strong className="text-foreground mt-1 block">{registeredEmail}</strong>
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-4 pb-6 space-y-6">
             <p className="text-sm text-muted-foreground">
-              Please check your inbox (and spam folder) and click the confirmation link to activate your account.
+              {t("auth.register.confirmationInstructions")}
             </p>
             
             <div className="space-y-3 pt-4">
@@ -124,24 +130,24 @@ export default function Register() {
                     
                     if (!response.ok) {
                       toast({ 
-                        title: "Failed to resend", 
-                        description: result.error || "Please try again later.", 
+                        title: t("auth.register.failedToResend"), 
+                        description: result.error || t("auth.register.tryAgain"), 
                         variant: "destructive" 
                       });
                     } else {
-                      toast({ title: "Email resent", description: "Please check your inbox." });
+                      toast({ title: t("auth.register.emailResent"), description: t("auth.register.checkInbox") });
                     }
                   } catch (err: any) {
-                    toast({ title: "Error", description: "Could not resend email", variant: "destructive" });
+                    toast({ title: t("auth.register.resendError"), description: t("auth.register.couldNotResend"), variant: "destructive" });
                   } finally {
                     isResending.current = false;
                   }
                 }}
               >
-                {resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : "Resend Confirmation Email"}
+                {resendCooldown > 0 ? t("auth.register.resendIn", { seconds: resendCooldown }) : t("auth.register.resendConfirmation")}
               </Button>
               <Button variant="ghost" className="w-full text-muted-foreground hover:text-foreground" asChild>
-                <Link href="/auth/login">Return to Login</Link>
+                <Link href="/auth/login">{t("auth.register.returnToLogin")}</Link>
               </Button>
             </div>
           </CardContent>
@@ -152,7 +158,10 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
-      <SEO title="Register Business - Aruba Royalty Stamp" description="Create an account to start your digital loyalty program in Aruba." />
+      <SEO title={t("auth.register.seoTitle")} description={t("auth.register.seoDescription")} />
+      <div className="absolute top-4 right-4">
+        <LanguageSelector compact />
+      </div>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
@@ -163,27 +172,27 @@ export default function Register() {
         <Card className="border-border shadow-sm">
           <CardHeader>
             <CardTitle className="text-2xl font-heading text-foreground">
-              {safeReturnUrl ? "Create Customer Account" : "Create Account"}
+              {safeReturnUrl ? t("auth.register.createCustomerAccount") : t("auth.register.createAccount")}
             </CardTitle>
             <CardDescription>
-              {safeReturnUrl ? "Sign up to start earning rewards." : "Start turning your visitors into loyal customers today."}
+              {safeReturnUrl ? t("auth.register.customerDescription") : t("auth.register.businessDescription")}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Business Email</Label>
+                <Label htmlFor="email">{t("auth.register.businessEmail")}</Label>
                 <Input 
                   id="email" 
                   type="email" 
-                  placeholder="hello@yourbusiness.aw" 
+                  placeholder={t("auth.register.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("auth.register.password")}</Label>
                 <Input 
                   id="password" 
                   type="password" 
@@ -192,25 +201,25 @@ export default function Register() {
                   required 
                   minLength={6}
                 />
-                <p className="text-xs text-muted-foreground mt-1">Must be at least 6 characters long.</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("auth.register.passwordHelp")}</p>
               </div>
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold mt-6" disabled={loading}>
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating Account...
+                    {t("auth.register.creatingAccount")}
                   </>
                 ) : (
-                  safeReturnUrl ? "Create Customer Account" : "Create Account"
+                  safeReturnUrl ? t("auth.register.createCustomerAccount") : t("auth.register.createAccount")
                 )}
               </Button>
             </form>
           </CardContent>
           <CardFooter className="justify-center border-t p-4 mt-4">
             <p className="text-sm text-muted-foreground">
-              Already have an account?{" "}
+              {t("auth.register.alreadyHaveAccount")}{" "}
               <Link href={`/auth/login${safeReturnUrl ? `?returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`} className="text-primary hover:underline font-medium">
-                Sign in
+                {t("auth.register.signIn")}
               </Link>
             </p>
           </CardFooter>

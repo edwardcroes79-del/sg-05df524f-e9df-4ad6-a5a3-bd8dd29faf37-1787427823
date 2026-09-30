@@ -9,12 +9,15 @@ import { getURL } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +30,7 @@ export default function ResetPassword() {
 
       if (error) {
         toast({
-          title: "Reset Failed",
+          title: t("auth.reset.failed"),
           description: error.message,
           variant: "destructive",
         });
@@ -36,8 +39,8 @@ export default function ResetPassword() {
       }
     } catch (err: any) {
       toast({
-        title: "An error occurred",
-        description: err.message || "Please try again later.",
+        title: t("auth.reset.error"),
+        description: err.message || t("auth.register.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -47,7 +50,10 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
-      <SEO title="Reset Password - Aruba Royalty Stamp" />
+      <SEO title={t("auth.reset.seoTitle")} />
+      <div className="absolute top-4 right-4">
+        <LanguageSelector compact />
+      </div>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
@@ -57,41 +63,41 @@ export default function ResetPassword() {
         
         <Card className="border-border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-2xl font-heading text-foreground">Reset Password</CardTitle>
-            <CardDescription>Enter your email to receive a password reset link.</CardDescription>
+            <CardTitle className="text-2xl font-heading text-foreground">{t("auth.reset.title")}</CardTitle>
+            <CardDescription>{t("auth.reset.description")}</CardDescription>
           </CardHeader>
           <CardContent>
             {submitted ? (
               <div className="text-center p-4">
-                <p className="text-foreground mb-4">Check your email for the reset link.</p>
+                <p className="text-foreground mb-4">{t("auth.reset.checkEmail")}</p>
                 <Button variant="outline" onClick={() => setSubmitted(false)} className="w-full">
-                  Try another email
+                  {t("auth.reset.tryAnother")}
                 </Button>
               </div>
             ) : (
               <form onSubmit={handleReset} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Business Email</Label>
+                  <Label htmlFor="email">{t("auth.reset.businessEmail")}</Label>
                   <Input 
                     id="email" 
                     type="email" 
-                    placeholder="name@business.aw" 
+                    placeholder={t("auth.reset.emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required 
                   />
                 </div>
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Send Reset Link"}
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("auth.reset.sendLink")}
                 </Button>
               </form>
             )}
           </CardContent>
           <CardFooter className="justify-center border-t p-4 mt-4">
             <p className="text-sm text-muted-foreground">
-              Remember your password?{" "}
+              {t("auth.reset.rememberPassword")}{" "}
               <Link href="/auth/login" className="text-primary hover:underline font-medium">
-                Sign in
+                {t("auth.register.signIn")}
               </Link>
             </p>
           </CardFooter>

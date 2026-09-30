@@ -9,10 +9,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function UpdatePassword() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,8 +25,8 @@ export default function UpdatePassword() {
 
     if (password.length < 6) {
       toast({
-        title: "Password too short",
-        description: "Your password must be at least 6 characters long.",
+        title: t("auth.update.passwordTooShort"),
+        description: t("auth.update.passwordTooShortDescription"),
         variant: "destructive",
       });
       return;
@@ -31,8 +34,8 @@ export default function UpdatePassword() {
 
     if (password !== confirmPassword) {
       toast({
-        title: "Passwords do not match",
-        description: "Please confirm the same password before continuing.",
+        title: t("auth.update.passwordsDoNotMatch"),
+        description: t("auth.update.passwordsDoNotMatchDescription"),
         variant: "destructive",
       });
       return;
@@ -45,7 +48,7 @@ export default function UpdatePassword() {
 
       if (error) {
         toast({
-          title: "Password update failed",
+          title: t("auth.update.failed"),
           description: error.message,
           variant: "destructive",
         });
@@ -53,16 +56,16 @@ export default function UpdatePassword() {
       }
 
       toast({
-        title: "Password updated",
-        description: "You can now sign in with your new password.",
+        title: t("auth.update.updated"),
+        description: t("auth.update.updatedDescription"),
       });
 
       await supabase.auth.signOut();
       router.push("/auth/login");
     } catch (error: any) {
       toast({
-        title: "Password update failed",
-        description: error.message || "Please request a new reset link and try again.",
+        title: t("auth.update.failed"),
+        description: error.message || t("auth.update.newLink"),
         variant: "destructive",
       });
     } finally {
@@ -72,7 +75,10 @@ export default function UpdatePassword() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center p-4">
-      <SEO title="Update Password - Aruba Royalty Stamp" description="Set a new password for your Aruba Royalty Stamp account." />
+      <SEO title={t("auth.update.seoTitle")} description={t("auth.update.seoDescription")} />
+      <div className="absolute top-4 right-4">
+        <LanguageSelector compact />
+      </div>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
@@ -85,13 +91,13 @@ export default function UpdatePassword() {
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
               <ShieldCheck className="h-6 w-6" />
             </div>
-            <CardTitle className="text-2xl font-heading text-foreground">Create New Password</CardTitle>
-            <CardDescription>Enter a new password for your account.</CardDescription>
+            <CardTitle className="text-2xl font-heading text-foreground">{t("auth.update.title")}</CardTitle>
+            <CardDescription>{t("auth.update.description")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleUpdatePassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password">New Password</Label>
+                <Label htmlFor="password">{t("auth.update.newPassword")}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -104,7 +110,7 @@ export default function UpdatePassword() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword">{t("auth.update.confirmPassword")}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -117,7 +123,7 @@ export default function UpdatePassword() {
               </div>
 
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
-                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Update Password"}
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("auth.update.submit")}
               </Button>
             </form>
           </CardContent>
