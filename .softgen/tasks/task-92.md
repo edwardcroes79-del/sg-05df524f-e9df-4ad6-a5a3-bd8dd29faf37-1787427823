@@ -18,7 +18,7 @@ Translate Business Dashboard core pages using the existing centralized i18n syst
 - [x] Convert Loyalty Programs list page labels, buttons, toasts, badges, and empty states to translation keys
 - [x] Convert Customers page labels, search, empty states, dialogs, confirmations, and reward messages to translation keys
 - [x] Convert Stamps & Rewards scan page labels, modes, validation, confirmations, scanner states, and toasts to translation keys
-- [ ] Convert QR Codes page labels, buttons, empty states, and toasts to translation keys
+- [x] Convert QR Codes page labels, buttons, empty states, and toasts to translation keys
 - [x] Convert Quick Issue Stamp page labels, guidance, alerts, validation rules, countdown controls, and toasts to translation keys
 - [ ] Run project validation
 

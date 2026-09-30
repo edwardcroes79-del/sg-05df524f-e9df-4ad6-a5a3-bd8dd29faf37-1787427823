@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Loader2, QrCode, ArrowRight, Printer, RefreshCw, AlertCircle } from "lucide-react";
 import QRCode from "react-qr-code";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function QRManagement() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [business, setBusiness] = useState<any>(null);
@@ -98,8 +100,8 @@ export default function QRManagement() {
   const handleGenerateQR = async (programId: string) => {
     if (userRole === "staff") {
       toast({
-        title: "Access Denied",
-        description: "Staff are not permitted to generate new QR codes.",
+        title: t("dashboard.qr.accessDeniedTitle"),
+        description: t("dashboard.qr.accessDeniedDescription"),
         variant: "destructive",
       });
       return;
@@ -112,8 +114,8 @@ export default function QRManagement() {
       const existing = qrCodes.find(q => q.loyalty_program_id === programId);
       if (existing) {
         toast({
-          title: "QR Code Exists",
-          description: "A QR code has already been generated for this program.",
+          title: t("dashboard.qr.existsTitle"),
+          description: t("dashboard.qr.existsDescription"),
           variant: "destructive",
         });
         return;
@@ -145,12 +147,12 @@ export default function QRManagement() {
 
       setQrCodes(prev => [newQR, ...prev]);
       toast({
-        title: "Success",
-        description: "QR Code created successfully.",
+        title: t("dashboard.qr.successTitle"),
+        description: t("dashboard.qr.successDescription"),
       });
     } catch (err: any) {
       toast({
-        title: "Error creating QR Code",
+        title: t("dashboard.qr.createErrorTitle"),
         description: err.message,
         variant: "destructive",
       });
@@ -179,21 +181,21 @@ export default function QRManagement() {
   return (
     <DashboardLayout>
       <Head>
-        <title>QR Codes Management | Aruba Royalty Stamp</title>
+        <title>{t("dashboard.qr.seoTitle")}</title>
       </Head>
 
       <div className="space-y-8 max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">QR Codes & Posters</h1>
+            <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.qr.title")}</h1>
             <p className="text-muted-foreground mt-2">
               {isStaff 
-                ? "View and download scannable customer touchpoints created by the business owner."
-                : "Manage scannable customer touchpoints to register and enroll users."}
+                ? t("dashboard.qr.descriptionStaff")
+                : t("dashboard.qr.descriptionOwner")}
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={fetchQRData} className="gap-2 self-start md:self-auto">
-            <RefreshCw className="h-4 w-4" /> Refresh Data
+            <RefreshCw className="h-4 w-4" /> {t("dashboard.qr.refreshData")}
           </Button>
         </div>
 
@@ -203,16 +205,16 @@ export default function QRManagement() {
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2 text-amber-700">
                 <AlertCircle className="h-5 w-5" />
-                <CardTitle className="text-lg">Action Required: Create a Loyalty Program</CardTitle>
+                <CardTitle className="text-lg">{t("dashboard.qr.actionRequiredTitle")}</CardTitle>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground text-sm mb-4">
-                You must have an active Loyalty Program before you can generate a QR code. Customers need a specific program to join when they scan your code.
+                {t("dashboard.qr.actionRequiredDescription")}
               </p>
               <Link href="/dashboard/programs/new">
                 <Button className="bg-amber-600 hover:bg-amber-700 text-white font-semibold">
-                  Create Your First Program
+                  {t("dashboard.qr.createFirstProgram")}
                 </Button>
               </Link>
             </CardContent>
@@ -223,15 +225,15 @@ export default function QRManagement() {
         {!isStaff && programsWithoutQR.length > 0 && (
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader>
-              <CardTitle className="text-lg">Generate Missing QR Codes</CardTitle>
-              <CardDescription>You have active loyalty programs without a dedicated join QR code.</CardDescription>
+              <CardTitle className="text-lg">{t("dashboard.qr.generateMissingTitle")}</CardTitle>
+              <CardDescription>{t("dashboard.qr.generateMissingDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {programsWithoutQR.map(prog => (
                 <div key={prog.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-border bg-card rounded-lg gap-4">
                   <div>
                     <h3 className="font-semibold text-foreground">{prog.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-1">Collect {prog.stamp_target} stamps to win: {prog.reward_title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{t("dashboard.qr.collectToWin", { stampTarget: prog.stamp_target, rewardTitle: prog.reward_title })}</p>
                   </div>
                   <Button 
                     onClick={() => handleGenerateQR(prog.id)} 
@@ -239,7 +241,7 @@ export default function QRManagement() {
                     className="w-full sm:w-auto"
                   >
                     {generating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <QrCode className="h-4 w-4 mr-2" />}
-                    Create QR Code
+                    {t("dashboard.qr.createQrCode")}
                   </Button>
                 </div>
               ))}
@@ -255,13 +257,13 @@ export default function QRManagement() {
                 <QrCode className="h-8 w-8 text-muted-foreground" />
               </div>
               <div className="max-w-md mx-auto">
-                <h3 className="text-lg font-semibold text-foreground">No QR Codes generated yet</h3>
+                <h3 className="text-lg font-semibold text-foreground">{t("dashboard.qr.emptyTitle")}</h3>
                 <p className="text-muted-foreground text-sm mt-1">
                   {isStaff
-                    ? "No QR codes have been created by your business administrator yet."
+                    ? t("dashboard.qr.emptyDescriptionStaff")
                     : programs.length > 0 
-                      ? "You have active programs! Use the section above to generate your first QR code."
-                      : "Once you create an active loyalty program, you can generate QR codes here. Customers scan these to sign up and join your program."}
+                      ? t("dashboard.qr.emptyDescriptionOwnerWithPrograms")
+                      : t("dashboard.qr.emptyDescriptionOwnerNoPrograms")}
                 </p>
               </div>
             </CardContent>
@@ -269,7 +271,7 @@ export default function QRManagement() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {qrCodes.map(qr => {
-              const programName = qr.loyalty_programs?.name || "Loyalty Program";
+              const programName = qr.loyalty_programs?.name || t("dashboard.qr.programFallback");
               const cardColor = qr.loyalty_programs?.card_color || "#EF4444";
               
               // Correct full application join URL using simplified public token structure
@@ -284,7 +286,7 @@ export default function QRManagement() {
                       <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cardColor }} />
                       <CardTitle className="text-base truncate">{programName}</CardTitle>
                     </div>
-                    <CardDescription className="text-xs truncate">Scan to join the loyalty program</CardDescription>
+                    <CardDescription className="text-xs truncate">{t("dashboard.qr.cardDescription")}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-col items-center justify-center py-8 bg-card">
                     <div className="bg-white p-4 rounded-xl shadow-inner border inline-block">
@@ -302,12 +304,12 @@ export default function QRManagement() {
                   <CardFooter className="border-t bg-muted/10 p-3 flex gap-2">
                     <Link href={`/dashboard/programs/${qr.loyalty_program_id}/qr`} className="flex-1">
                       <Button variant="outline" size="sm" className="w-full gap-2">
-                        <Printer className="h-4 w-4" /> Poster / Print
+                        <Printer className="h-4 w-4" /> {t("dashboard.qr.posterPrint")}
                       </Button>
                     </Link>
                     <Link href={`/join/${qr.loyalty_program_id}`} target="_blank" className="flex-1">
                       <Button size="sm" className="w-full gap-1">
-                        View Page <ArrowRight className="h-4 w-4" />
+                        {t("dashboard.qr.viewPage")} <ArrowRight className="h-4 w-4" />
                       </Button>
                     </Link>
                   </CardFooter>
