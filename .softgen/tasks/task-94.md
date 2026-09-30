@@ -10,15 +10,15 @@ position: 94
 ---
 
 ## Notes
-Audit the entire Royalty Stamp app for remaining hard-coded English UI text. Check Customer, Business, Staff, Super Admin, login/register, loyalty cards, rewards, QR, notifications, forms, errors, loading/empty states, and responsive surfaces. Mandatory separate audit for What's New: every static title, feature description, NEW badge, button, label, category, and empty state must use i18n keys and switch correctly between English, Spanish, and future languages. Do not translate user/business-created content. Do not change database, RLS, permissions, billing, or functionality. What's New was audited separately in `DashboardLayout.tsx`; static announcement titles, descriptions, badges, modal copy, and buttons already route through centralized i18n keys.
+Audit the entire Royalty Stamp app for remaining hard-coded English UI text. Checked Customer, Business, Staff, Super Admin, login/register, loyalty cards, rewards, QR, notifications, forms, errors, loading/empty states, and responsive shared surfaces. Mandatory separate audit for What's New: every static title, feature description, NEW badge, button, label, category, and empty state must use i18n keys and switch correctly between English, Spanish, and future languages. Do not translate user/business-created content. Do not change database, RLS, permissions, billing, or functionality. What's New was audited separately in `DashboardLayout.tsx`; static announcement titles, descriptions, badges, modal copy, and buttons route through centralized i18n keys. Super Admin shell, notifications, merchants, payments, customer delete confirmations, contract notices, and security areas were converted to translation keys; business/customer-created and persisted content remains untranslated.
 
 ## Checklist
 - [x] Audit What's New separately for remaining hard-coded English and future-language readiness
 - [x] Audit auth/login/register/reset/update password surfaces for hard-coded UI text
 - [x] Audit customer dashboard, loyalty cards, rewards, activity, profile, settings, PWA prompt, and mobile navigation
-- [ ] Audit business dashboard pages, forms, notifications, errors, loading states, empty states, and responsive shell
-- [ ] Audit Super Admin surfaces for hard-coded UI text
-- [ ] Convert remaining static UI strings to centralized i18n keys only
+- [x] Audit business dashboard pages, forms, notifications, errors, loading states, empty states, and responsive shell
+- [x] Audit Super Admin surfaces for hard-coded UI text
+- [x] Convert remaining static UI strings to centralized i18n keys only
 - [x] Preserve business-created/customer-created/database content unchanged
 - [ ] Run project validation
 
