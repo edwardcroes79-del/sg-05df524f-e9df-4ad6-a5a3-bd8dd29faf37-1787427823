@@ -26,6 +26,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useI18n } from "@/contexts/I18nProvider";
 
 interface CustomerProfile {
   id: string;
@@ -55,6 +56,8 @@ interface CustomerLoyaltyCard {
 
 export default function CustomersDashboard() {
   const { toast } = useToast();
+  const { t, language } = useI18n();
+  const locale = language === "es" ? "es-ES" : "en-US";
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState<any>(null);
   const [effectiveCustomerLimit, setEffectiveCustomerLimit] = useState<number | null>(null);
@@ -118,8 +121,8 @@ export default function CustomersDashboard() {
 
       if (!resolvedBusinessId) {
         toast({
-          title: "Access Error",
-          description: "Could not resolve your active business relationship.",
+          title: t("dashboard.customers.accessError"),
+          description: t("dashboard.customers.accessErrorDescription"),
           variant: "destructive",
         });
         return;
@@ -182,8 +185,8 @@ export default function CustomersDashboard() {
     } catch (err: any) {
       console.error("Error loading customers:", err);
       toast({
-        title: "Query Failed",
-        description: err.message || "Failed to load customer list.",
+        title: t("dashboard.customers.queryFailed"),
+        description: err.message || t("dashboard.customers.loadFailed"),
         variant: "destructive",
       });
     } finally {
@@ -216,8 +219,8 @@ export default function CustomersDashboard() {
       setCustomerRewards(rws || []);
     } catch (err: any) {
       toast({
-        title: "Details Error",
-        description: "Failed to load history metrics.",
+        title: t("dashboard.customers.detailsError"),
+        description: t("dashboard.customers.detailsErrorDescription"),
         variant: "destructive",
       });
     } finally {
@@ -249,8 +252,8 @@ export default function CustomersDashboard() {
 
       if (!result.success) {
         toast({
-          title: isRewardExpired ? "⏰ Reward Expired" : "Redemption Failed",
-          description: isRewardExpired ? "This reward can no longer be redeemed." : result.message,
+          title: isRewardExpired ? t("dashboard.customers.rewardExpiredTitle") : t("dashboard.customers.redemptionFailed"),
+          description: isRewardExpired ? t("dashboard.customers.rewardExpiredDescription") : result.message,
           variant: "destructive",
         });
 
@@ -260,8 +263,11 @@ export default function CustomersDashboard() {
       }
 
       toast({
-        title: "🎉 Award Redeemed!",
-        description: `Successfully redeemed "${reward.reward_title}" for ${selectedCard.customer.name}.`,
+        title: t("dashboard.customers.awardRedeemedTitle"),
+        description: t("dashboard.customers.awardRedeemedDescription", {
+          rewardTitle: reward.reward_title,
+          customerName: selectedCard.customer.name,
+        }),
         variant: "default",
       });
 
@@ -270,8 +276,8 @@ export default function CustomersDashboard() {
       setRewardToRedeem(null);
     } catch (err: any) {
       toast({
-        title: err.message?.includes("Reward Expired") ? "⏰ Reward Expired" : "Redemption Failed",
-        description: err.message?.includes("Reward Expired") ? "This reward can no longer be redeemed." : err.message || "Failed to complete redemption.",
+        title: err.message?.includes("Reward Expired") ? t("dashboard.customers.rewardExpiredTitle") : t("dashboard.customers.redemptionFailed"),
+        description: err.message?.includes("Reward Expired") ? t("dashboard.customers.rewardExpiredDescription") : err.message || t("dashboard.customers.redemptionFailedDescription"),
         variant: "destructive",
       });
     } finally {
@@ -292,7 +298,7 @@ export default function CustomersDashboard() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Customers | Aruba Royalty Stamp</title>
+        <title>{t("dashboard.customers.seoTitle")}</title>
       </Head>
 
       <div className="space-y-6 max-w-7xl mx-auto">
@@ -300,10 +306,10 @@ export default function CustomersDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
           <div>
             <div className="flex items-center gap-2 text-primary font-semibold text-sm mb-1 uppercase tracking-wider">
-              <Users className="h-4 w-4" /> Relationship Management
+              <Users className="h-4 w-4" /> {t("dashboard.customers.kicker")}
             </div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">Registered Customers</h1>
-            <p className="text-muted-foreground">Monitor loyal customers, stamp progress, and issued rewards.</p>
+            <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.customers.title")}</h1>
+            <p className="text-muted-foreground">{t("dashboard.customers.description")}</p>
             {effectiveCustomerLimit !== null && (
               <div className={`mt-3 inline-flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
                 currentMemberCount >= effectiveCustomerLimit && effectiveCustomerLimit < 999999
@@ -311,12 +317,12 @@ export default function CustomersDashboard() {
                   : "border-border bg-card text-muted-foreground"
               }`}>
                 <span className="font-semibold text-foreground">
-                  {currentMemberCount.toLocaleString()} / {effectiveCustomerLimit >= 999999 ? "Unlimited" : effectiveCustomerLimit.toLocaleString()} members
+                  {currentMemberCount.toLocaleString()} / {effectiveCustomerLimit >= 999999 ? t("dashboard.customers.unlimited") : effectiveCustomerLimit.toLocaleString()} {t("dashboard.customers.members")}
                 </span>
                 <span>
                   {currentMemberCount >= effectiveCustomerLimit && effectiveCustomerLimit < 999999
-                    ? "Capacity reached. Existing customer data remains safe, but new joins are blocked until capacity is increased."
-                    : "Effective customer capacity includes active add-ons."}
+                    ? t("dashboard.customers.capacityReached")
+                    : t("dashboard.customers.capacityActive")}
                 </span>
               </div>
             )}
@@ -329,7 +335,7 @@ export default function CustomersDashboard() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name, email, phone number, or program..."
+                placeholder={t("dashboard.customers.searchPlaceholder")}
                 className="pl-9 bg-background"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -337,7 +343,7 @@ export default function CustomersDashboard() {
             </div>
             {searchTerm && (
               <Button variant="ghost" onClick={() => setSearchTerm("")} className="gap-2">
-                <X className="h-4 w-4" /> Clear Search
+                <X className="h-4 w-4" /> {t("dashboard.customers.clearSearch")}
               </Button>
             )}
           </CardContent>
@@ -348,7 +354,7 @@ export default function CustomersDashboard() {
           <div className="flex items-center justify-center p-12 min-h-[300px]">
             <div className="flex flex-col items-center gap-2">
               <Loader2 className="animate-spin w-8 h-8 text-primary" />
-              <p className="text-muted-foreground text-sm font-medium">Retrieving customer relationships...</p>
+              <p className="text-muted-foreground text-sm font-medium">{t("dashboard.customers.loading")}</p>
             </div>
           </div>
         ) : filteredCards.length === 0 ? (
@@ -359,12 +365,12 @@ export default function CustomersDashboard() {
               </div>
               <div className="max-w-md space-y-1">
                 <h3 className="font-heading font-bold text-lg text-foreground">
-                  {searchTerm ? "No Search Results" : "No Customers Found"}
+                  {searchTerm ? t("dashboard.customers.noSearchTitle") : t("dashboard.customers.noCustomersTitle")}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {searchTerm 
-                    ? "Try adjusting your query or keywords to locate the customer." 
-                    : "When customers scan your program's QR code and register, they will securely appear here automatically."}
+                    ? t("dashboard.customers.noSearchDescription")
+                    : t("dashboard.customers.noCustomersDescription")}
                 </p>
               </div>
             </CardContent>
@@ -375,12 +381,12 @@ export default function CustomersDashboard() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Customer Details</TableHead>
-                    <TableHead>Loyalty Program</TableHead>
-                    <TableHead className="text-center">Current Stamps</TableHead>
-                    <TableHead className="text-center">Total Stamps</TableHead>
-                    <TableHead className="text-center">Rewards</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("dashboard.customers.table.customerDetails")}</TableHead>
+                    <TableHead>{t("dashboard.customers.table.loyaltyProgram")}</TableHead>
+                    <TableHead className="text-center">{t("dashboard.customers.table.currentStamps")}</TableHead>
+                    <TableHead className="text-center">{t("dashboard.customers.table.totalStamps")}</TableHead>
+                    <TableHead className="text-center">{t("dashboard.customers.table.rewards")}</TableHead>
+                    <TableHead className="text-right">{t("dashboard.customers.table.actions")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -402,10 +408,10 @@ export default function CustomersDashboard() {
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium text-sm text-foreground">
-                            {card.loyalty_programs?.name || "Active Program"}
+                            {card.loyalty_programs?.name || t("dashboard.customers.activeProgramFallback")}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            Target: {card.loyalty_programs?.stamp_target || 10} stamps
+                            {t("dashboard.customers.targetStamps", { target: card.loyalty_programs?.stamp_target || 10 })}
                           </span>
                         </div>
                       </TableCell>
@@ -428,7 +434,7 @@ export default function CustomersDashboard() {
                           onClick={() => handleViewCustomerDetails(card)} 
                           className="hover:bg-primary hover:text-white"
                         >
-                          <Eye className="w-4 h-4 mr-1.5" /> View Details
+                          <Eye className="w-4 h-4 mr-1.5" /> {t("dashboard.customers.viewDetails")}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -443,7 +449,11 @@ export default function CustomersDashboard() {
         {!loading && filteredCards.length > 0 && totalCount > itemsPerPage && (
           <div className="flex items-center justify-between px-2">
             <p className="text-sm text-muted-foreground">
-              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} customers
+              {t("dashboard.customers.pagination", {
+                start: ((currentPage - 1) * itemsPerPage) + 1,
+                end: Math.min(currentPage * itemsPerPage, totalCount),
+                total: totalCount,
+              })}
             </p>
             <div className="flex gap-2">
               <Button
@@ -455,7 +465,7 @@ export default function CustomersDashboard() {
                 }}
                 disabled={currentPage === 1}
               >
-                Previous
+                {t("dashboard.customers.previous")}
               </Button>
               <Button
                 variant="outline"
@@ -466,7 +476,7 @@ export default function CustomersDashboard() {
                 }}
                 disabled={currentPage * itemsPerPage >= totalCount}
               >
-                Next
+                {t("dashboard.customers.next")}
               </Button>
             </div>
           </div>
@@ -478,10 +488,10 @@ export default function CustomersDashboard() {
             <DialogContent className="max-w-3xl bg-card border-border overflow-y-auto max-h-[90vh]">
               <DialogHeader>
                 <DialogTitle className="font-heading text-2xl font-bold flex items-center gap-2">
-                  <Fingerprint className="text-primary w-6 h-6" /> Customer Overview
+                  <Fingerprint className="text-primary w-6 h-6" /> {t("dashboard.customers.overviewTitle")}
                 </DialogTitle>
                 <DialogDescription>
-                  Detailed overview, activity log, and one-click rewards redemption.
+                  {t("dashboard.customers.overviewDescription")}
                 </DialogDescription>
               </DialogHeader>
 
@@ -497,7 +507,7 @@ export default function CustomersDashboard() {
                         {selectedCard.customer.name}
                       </h4>
                       <p className="text-xs text-muted-foreground">
-                        Customer since {new Date(selectedCard.customer.created_at).toLocaleDateString()}
+                        Customer since {t("dashboard.customers.customerSince", { date: new Date(selectedCard.customer.created_at).toLocaleDateString(locale) })}
                       </p>
                     </div>
                   </div>
@@ -505,35 +515,35 @@ export default function CustomersDashboard() {
                   <div className="space-y-2.5 pt-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Mail className="w-4 h-4 text-primary" />
-                      <span className="truncate">{selectedCard.customer.email || "No email stored"}</span>
+                      <span className="truncate">{selectedCard.customer.email || t("dashboard.customers.noEmail")}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Phone className="w-4 h-4 text-primary" />
-                      <span>{selectedCard.customer.phone || "No phone stored"}</span>
+                      <span>{selectedCard.customer.phone || t("dashboard.customers.noPhone")}</span>
                     </div>
                   </div>
 
                   <div className="p-4 bg-muted/40 rounded-lg border border-border space-y-2">
-                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Active Program State</p>
+                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{t("dashboard.customers.activeProgramState")}</p>
                     <p className="font-bold text-sm text-foreground">{selectedCard.loyalty_programs?.name}</p>
                     <div className="flex justify-between items-center text-xs mt-2 pt-1 border-t">
-                      <span className="text-muted-foreground">Current Stamps:</span>
+                      <span className="text-muted-foreground">{t("dashboard.customers.currentStampsLabel")}</span>
                       <span className="font-bold text-primary">{selectedCard.current_stamps} / {selectedCard.loyalty_programs?.stamp_target || 10}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Total Stamps Issued:</span>
+                      <span className="text-muted-foreground">{t("dashboard.customers.totalStampsIssued")}</span>
                       <span className="font-medium">{selectedCard.total_stamps}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-muted-foreground">Rewards Milestone:</span>
-                      <span className="font-medium text-emerald-600">{selectedCard.rewards_earned} Earned</span>
+                      <span className="text-muted-foreground">{t("dashboard.customers.rewardsMilestone")}</span>
+                      <span className="font-medium text-emerald-600">{selectedCard.rewards_earned} {t("dashboard.customers.earned")}</span>
                     </div>
                   </div>
 
                   {/* Stamp Transactions Section */}
                   <div className="space-y-3">
                     <h4 className="font-heading font-semibold text-sm text-foreground flex items-center gap-1.5 border-b pb-1">
-                      <Clock className="w-4 h-4 text-primary" /> Stamp Activity Log
+                      <Clock className="w-4 h-4 text-primary" /> {t("dashboard.customers.stampActivityLog")}
                     </h4>
 
                     {loadingDetails ? (
@@ -543,20 +553,22 @@ export default function CustomersDashboard() {
                     ) : (
                       <div className="overflow-y-auto space-y-2 max-h-[140px] pr-1">
                         {customerTransactions.length === 0 ? (
-                          <p className="text-center text-xs text-muted-foreground py-6">No stamp transactions found yet.</p>
+                          <p className="text-center text-xs text-muted-foreground py-6">{t("dashboard.customers.noStampTransactions")}</p>
                         ) : (
                           customerTransactions.map((tx) => (
                             <div key={tx.id} className="p-2 bg-muted/20 hover:bg-muted/40 transition-colors rounded border flex justify-between items-center text-xs">
                               <div className="flex flex-col min-w-0">
                                 <span className="font-semibold text-foreground">
-                                  {tx.stamp_number > 0 ? `+${tx.stamp_number} Stamps` : `${tx.stamp_number} Stamps`}
+                                  {tx.stamp_number > 0
+                                    ? `+${t("dashboard.customers.stampCount", { count: tx.stamp_number })}`
+                                    : t("dashboard.customers.stampCount", { count: tx.stamp_number })}
                                 </span>
                                 <span className="text-[10px] text-muted-foreground">
-                                  Method: {tx.verification_method || "Digital Code"}
+                                  {t("dashboard.customers.method", { method: tx.verification_method || t("dashboard.customers.digitalCode") })}
                                 </span>
                               </div>
                               <div className="text-right text-[10px] text-muted-foreground">
-                                {new Date(tx.created_at).toLocaleDateString()}
+                                {new Date(tx.created_at).toLocaleDateString(locale)}
                               </div>
                             </div>
                           ))
@@ -569,7 +581,7 @@ export default function CustomersDashboard() {
                 {/* Dynamic Customer Rewards List (One-Click Redemption panel) */}
                 <div className="flex flex-col min-h-[300px] space-y-4">
                   <h4 className="font-heading font-semibold text-sm text-foreground flex items-center gap-1.5 border-b pb-1">
-                    <Gift className="w-4 h-4 text-primary" /> Customer Earned Rewards
+                    <Gift className="w-4 h-4 text-primary" /> {t("dashboard.customers.earnedRewards")}
                   </h4>
 
                   {loadingDetails ? (
@@ -581,7 +593,7 @@ export default function CustomersDashboard() {
                       {customerRewards.length === 0 ? (
                         <div className="text-center text-sm text-muted-foreground py-16 flex flex-col items-center justify-center space-y-2">
                           <Gift className="w-8 h-8 text-muted/50" />
-                          <p>This customer has not earned any rewards yet.</p>
+                          <p>{t("dashboard.customers.noRewards")}</p>
                         </div>
                       ) : (
                         customerRewards.map((reward) => (
@@ -607,7 +619,7 @@ export default function CustomersDashboard() {
                                     {reward.reward_title}
                                   </span>
                                   <span className="font-mono text-xs text-muted-foreground mt-0.5">
-                                    Code: <strong className="text-foreground tracking-wider">{reward.reward_code}</strong>
+                                    Code: <strong className="text-foreground tracking-wider">{t("dashboard.customers.rewardCode")} <strong className="text-foreground tracking-wider">{reward.reward_code}</strong></strong>
                                   </span>
                                 </div>
                               </div>
@@ -616,7 +628,7 @@ export default function CustomersDashboard() {
                                 variant={reward.status === "available" ? "default" : "secondary"}
                                 className="font-medium text-[10px] tracking-wide"
                               >
-                                {reward.status === "available" ? "AVAILABLE" : "REDEEMED"}
+                                {reward.status === "available" ? t("dashboard.customers.available") : t("dashboard.customers.redeemed")}
                               </Badge>
                             </div>
 
@@ -628,11 +640,11 @@ export default function CustomersDashboard() {
                               >
                                 {redeemingId === reward.id ? (
                                   <>
-                                    <Loader2 className="w-4 h-4 animate-spin" /> Redeeming...
+                                    <Loader2 className="w-4 h-4 animate-spin" /> {t("dashboard.customers.redeeming")}
                                   </>
                                 ) : (
                                   <>
-                                    <CheckCircle className="w-4 h-4" /> REDEEM AWARD
+                                    <CheckCircle className="w-4 h-4" /> {t("dashboard.customers.redeemAward")}
                                   </>
                                 )}
                               </Button>
@@ -640,7 +652,10 @@ export default function CustomersDashboard() {
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2 pt-2 border-t border-muted">
                                 <Clock className="w-3.5 h-3.5 text-muted-foreground" />
                                 <span>
-                                  Redeemed on {new Date(reward.redeemed_at).toLocaleDateString()} at {new Date(reward.redeemed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  {t("dashboard.customers.redeemedOn", {
+                                    date: new Date(reward.redeemed_at).toLocaleDateString(locale),
+                                    time: new Date(reward.redeemed_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                                  })}
                                 </span>
                               </div>
                             )}
@@ -652,14 +667,14 @@ export default function CustomersDashboard() {
 
                   {/* Summary Footer */}
                   <div className="pt-3 border-t border-border flex justify-between items-center text-xs">
-                    <span className="text-muted-foreground">Quick Status:</span>
+                    <span className="text-muted-foreground">{t("dashboard.customers.quickStatus")}</span>
                     <div className="flex gap-1.5 font-semibold">
                       <span className="text-primary">
-                        {customerRewards.filter(r => r.status === "available").length} Available
+                        {t("dashboard.customers.availableCount", { count: customerRewards.filter(r => r.status === "available").length })}
                       </span>
                       <span className="text-muted-foreground">|</span>
                       <span>
-                        {customerRewards.filter(r => r.status === "redeemed").length} Redeemed
+                        {t("dashboard.customers.redeemedCount", { count: customerRewards.filter(r => r.status === "redeemed").length })}
                       </span>
                     </div>
                   </div>
@@ -675,25 +690,25 @@ export default function CustomersDashboard() {
             <DialogContent className="sm:max-w-md bg-card border-border">
               <DialogHeader>
                 <DialogTitle className="text-foreground flex items-center gap-2 font-heading font-bold text-xl">
-                  <AlertCircle className="text-primary h-5 w-5" /> Redeem this award?
+                  <AlertCircle className="text-primary h-5 w-5" /> {t("dashboard.customers.redeemConfirmTitle")}
                 </DialogTitle>
                 <DialogDescription className="space-y-3 pt-2">
                   <div className="p-3.5 bg-muted/40 rounded-lg border border-border space-y-1.5 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground text-xs">Customer:</span>
+                      <span className="text-muted-foreground text-xs">{t("dashboard.customers.customerLabel")}</span>
                       <strong className="text-foreground">{selectedCard.customer.name}</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground text-xs">Reward:</span>
+                      <span className="text-muted-foreground text-xs">{t("dashboard.customers.rewardLabel")}</span>
                       <strong className="text-foreground">{rewardToRedeem.reward_title}</strong>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground text-xs">Voucher Code:</span>
+                      <span className="text-muted-foreground text-xs">{t("dashboard.customers.voucherCode")}</span>
                       <span className="font-mono text-xs text-primary font-bold tracking-wider">{rewardToRedeem.reward_code}</span>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground text-center">
-                    This will mark the customer's voucher code as redeemed in the platform. It cannot be used again.
+                    {t("dashboard.customers.redeemWarning")}
                   </p>
                 </DialogDescription>
               </DialogHeader>
@@ -704,7 +719,7 @@ export default function CustomersDashboard() {
                   onClick={() => setRewardToRedeem(null)}
                   disabled={redeemingId !== null}
                 >
-                  Cancel
+                  {t("dashboard.customers.cancel")}
                 </Button>
                 <Button
                   type="button"
@@ -714,11 +729,11 @@ export default function CustomersDashboard() {
                 >
                   {redeemingId === rewardToRedeem.id ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Redeeming...
+                      <Loader2 className="h-4 w-4 animate-spin" /> {t("dashboard.customers.redeeming")}
                     </>
                   ) : (
                     <>
-                      <CheckCircle className="h-4 w-4" /> Confirm Redeem
+                      <CheckCircle className="h-4 w-4" /> {t("dashboard.customers.confirmRedeem")}
                     </>
                   )}
                 </Button>
