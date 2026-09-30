@@ -18,11 +18,21 @@ import {
   ShieldAlert,
   CreditCard,
   Bell,
-  Zap
+  Zap,
+  type LucideIcon
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
+
+type DashboardNavItem = {
+  nameKey: TranslationKey;
+  href: string;
+  icon: LucideIcon;
+  children?: DashboardNavItem[];
+};
 
 function isContractExpiredForDashboard(businessRecord: any) {
   if (!businessRecord?.contract_end_date) return false;
@@ -37,6 +47,7 @@ function isContractExpiredForDashboard(businessRecord: any) {
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [business, setBusiness] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -218,24 +229,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     router.push("/");
   };
 
-  const navItems = [
-    { name: "Overview", href: "/dashboard", icon: LayoutDashboard },
+  const navItems: DashboardNavItem[] = [
+    { nameKey: "dashboard.nav.overview", href: "/dashboard", icon: LayoutDashboard },
     {
-      name: "Stamps & Rewards",
+      nameKey: "dashboard.nav.stampsRewards",
       href: "/dashboard/scan",
       icon: ScanLine,
       children: [
-        { name: "Issue Stamp", href: "/dashboard/scan", icon: ScanLine },
-        { name: "Redeem Reward", href: "/dashboard/scan", icon: Gift },
-        ...(quickStampQrEnabled ? [{ name: "Quick Issue Stamp", href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
+        { nameKey: "dashboard.nav.issueStamp", href: "/dashboard/scan", icon: ScanLine },
+        { nameKey: "dashboard.nav.redeemReward", href: "/dashboard/scan", icon: Gift },
+        ...(quickStampQrEnabled ? [{ nameKey: "dashboard.nav.quickIssueStamp" as TranslationKey, href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
       ],
     },
-    { name: "Loyalty Programs", href: "/dashboard/programs", icon: Gift },
-    { name: "Customers", href: "/dashboard/customers", icon: Users },
-    { name: "QR Codes", href: "/dashboard/qr", icon: QrCode },
-    { name: "Billing", href: "/dashboard/billing", icon: CreditCard },
-    { name: "Staff", href: "/dashboard/staff", icon: Users },
-    { name: "Settings", href: "/dashboard/settings", icon: Settings },
+    { nameKey: "dashboard.nav.loyaltyPrograms", href: "/dashboard/programs", icon: Gift },
+    { nameKey: "dashboard.nav.customers", href: "/dashboard/customers", icon: Users },
+    { nameKey: "dashboard.nav.qrCodes", href: "/dashboard/qr", icon: QrCode },
+    { nameKey: "dashboard.nav.billing", href: "/dashboard/billing", icon: CreditCard },
+    { nameKey: "dashboard.nav.staff", href: "/dashboard/staff", icon: Users },
+    { nameKey: "dashboard.nav.settings", href: "/dashboard/settings", icon: Settings },
   ];
 
   if (loading) {
@@ -243,7 +254,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Skeleton className="h-12 w-12 rounded-full" />
-          <p className="text-muted-foreground font-medium">Loading workspace...</p>
+          <p className="text-muted-foreground font-medium">{t("common.loadingWorkspace")}</p>
         </div>
       </div>
     );
@@ -256,17 +267,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <ShieldAlert className="h-16 w-16" />
         </div>
         <div className="max-w-md space-y-3">
-          <h1 className="text-3xl font-heading font-bold text-foreground">Access Denied</h1>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.accessDenied.title")}</h1>
           <p className="text-muted-foreground">
-            You do not have an active business membership. If you are a staff member, please ask your business owner to verify your account status.
+            {t("dashboard.accessDenied.description")}
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
           <Button onClick={() => router.push("/onboarding")} className="bg-primary text-white font-bold px-8">
-            Create New Business
+            {t("dashboard.accessDenied.createBusiness")}
           </Button>
           <Button onClick={handleLogout} variant="outline" className="px-8">
-            Sign Out
+            {t("common.signOut")}
           </Button>
         </div>
       </div>
@@ -281,12 +292,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <ShieldAlert className="h-16 w-16" />
         </div>
         <div className="max-w-md space-y-3">
-          <h1 className="text-3xl font-heading font-bold text-foreground">Contract Expired</h1>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.contractExpired.title")}</h1>
           <p className="text-muted-foreground">
-            Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew.
+            {t("dashboard.contractExpired.description")}
           </p>
         </div>
-        <Button onClick={handleLogout} variant="outline">Sign Out</Button>
+        <Button onClick={handleLogout} variant="outline">{t("common.signOut")}</Button>
       </div>
     );
   }
@@ -299,15 +310,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <ShieldAlert className="h-16 w-16" />
         </div>
         <div className="max-w-md space-y-3">
-          <h1 className="text-3xl font-heading font-bold text-foreground">Your Free Trial Has Ended</h1>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.trialExpired.title")}</h1>
           <p className="text-muted-foreground">
-            Your 14-day free trial has expired. To continue issuing stamps, managing rewards, and accessing your dashboard features, please choose a subscription plan.
+            {t("dashboard.trialExpired.description")}
           </p>
         </div>
         <div className="flex items-center gap-4 pt-4">
-          <Button onClick={handleLogout} variant="outline">Sign Out</Button>
+          <Button onClick={handleLogout} variant="outline">{t("common.signOut")}</Button>
           <Link href="/dashboard/billing">
-            <Button className="bg-primary text-white hover:bg-primary/90 font-bold px-8 shadow-md">View Plans & Upgrade</Button>
+            <Button className="bg-primary text-white hover:bg-primary/90 font-bold px-8 shadow-md">{t("dashboard.trialExpired.upgrade")}</Button>
           </Link>
         </div>
       </div>
@@ -321,12 +332,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <ShieldAlert className="h-16 w-16" />
         </div>
         <div className="max-w-md space-y-2">
-          <h1 className="text-3xl font-heading font-bold text-foreground">Account Suspended</h1>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.suspended.title")}</h1>
           <p className="text-muted-foreground">
-            This business account has been suspended by the platform administrator. Access to stamp issuing, reward redemption, and merchant controls is temporarily disabled.
+            {t("dashboard.suspended.description")}
           </p>
         </div>
-        <Button onClick={handleLogout} variant="outline">Sign Out</Button>
+        <Button onClick={handleLogout} variant="outline">{t("common.signOut")}</Button>
       </div>
     );
   }
@@ -338,12 +349,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <ShieldAlert className="h-16 w-16" />
         </div>
         <div className="max-w-md space-y-2">
-          <h1 className="text-3xl font-heading font-bold text-foreground">Account Pending Approval</h1>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.pending.title")}</h1>
           <p className="text-muted-foreground">
-            Your business registration has been received and is currently being reviewed.
+            {t("dashboard.pending.description")}
           </p>
         </div>
-        <Button onClick={handleLogout} variant="outline">Sign Out</Button>
+        <Button onClick={handleLogout} variant="outline">{t("common.signOut")}</Button>
       </div>
     );
   }
@@ -397,7 +408,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 flex items-center gap-3 px-3 py-2.5 mb-4 rounded-md text-sm font-semibold transition-colors bg-amber-500/10 text-amber-600 hover:bg-amber-500/20
               `}>
                 <ShieldAlert className="h-5 w-5" />
-                Super Admin Panel
+                {t("dashboard.nav.superAdminPanel")}
               </span>
             </Link>
           )}
@@ -411,7 +422,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               const isGroupActive = isActive || children.some((child) => router.pathname === child.href || router.pathname.startsWith(`${child.href}/`));
 
               return (
-                <div key={item.name} className="space-y-1">
+                <div key={item.nameKey} className="space-y-1">
                   <Link href={item.href}>
                     <span className={`
                       flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
@@ -420,7 +431,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"}
                     `}>
                       <Icon className="h-5 w-5" />
-                      {item.name}
+                      {t(item.nameKey)}
                     </span>
                   </Link>
 
@@ -430,7 +441,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       const isChildActive = router.pathname === child.href || router.pathname.startsWith(`${child.href}/`);
 
                       return (
-                        <Link key={child.name} href={child.href}>
+                        <Link key={child.nameKey} href={child.href}>
                           <span className={`
                             flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors
                             ${isChildActive 
@@ -438,7 +449,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"}
                           `}>
                             <ChildIcon className="h-4 w-4" />
-                            {child.name}
+                            {t(child.nameKey)}
                           </span>
                         </Link>
                       );
@@ -449,7 +460,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             }
 
             return (
-              <Link key={item.name} href={item.href}>
+              <Link key={item.nameKey} href={item.href}>
                 <span className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
                   ${isActive 
@@ -457,7 +468,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"}
                 `}>
                   <Icon className="h-5 w-5" />
-                  {item.name}
+                  {t(item.nameKey)}
                 </span>
               </Link>
             );
@@ -502,18 +513,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               onClick={handleOpenWhatsNew}
             >
               <Bell className={`h-4 w-4 ${!hasReadWhatsNew ? 'animate-bell-shake text-primary' : ''}`} />
-              <span className="text-sm font-medium">What's New</span>
+              <span className="text-sm font-medium">{t("dashboard.whatsNew")}</span>
               {!hasReadWhatsNew && (
                 <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
               )}
             </Button>
+            <LanguageSelector compact />
             <Button
               variant="ghost"
               className="flex items-center gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               onClick={handleLogout}
             >
               <LogOut className="h-4 w-4" />
-              <span className="text-sm font-medium">Sign Out</span>
+              <span className="text-sm font-medium">{t("common.signOut")}</span>
             </Button>
           </div>
         </header>
@@ -522,12 +534,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="bg-indigo-600 px-4 py-2.5 flex items-center justify-between text-indigo-50 shadow-sm z-10">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Gift className="h-4 w-4" /> 
-              Your Free Trial Ends Soon: <span className="font-bold">{trialDaysLeft} Days Remaining</span>
+              {t("dashboard.trial.endsSoon")} <span className="font-bold">{t("dashboard.trial.daysRemaining", { days: trialDaysLeft })}</span>
             </div>
             <Link href="/dashboard/billing">
-              <span className="text-xs font-bold uppercase tracking-wide bg-white/20 hover:bg-white/30 transition-colors px-3 py-1 rounded-full cursor-pointer">
-                Upgrade Plan
-              </span>
+              <span className="text-xs font-bold uppercase tracking-wide bg-white/20 hover:bg-white/30 transition-colors px-3 py-1 rounded-full cursor-pointer">{t("dashboard.trial.upgradePlan")}</span>
             </Link>
           </div>
         )}
@@ -543,7 +553,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <SheetHeader className="mb-6">
             <SheetTitle className="flex items-center gap-2 text-2xl font-heading">
               <Bell className="h-6 w-6 text-primary" />
-              What's New
+              {t("dashboard.whatsNew")}
             </SheetTitle>
           </SheetHeader>
 
@@ -797,7 +807,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </DialogHeader>
           <div className="mt-6 flex justify-center w-full">
             <Button type="button" onClick={() => setComingSoonModalOpen(false)} className="w-full sm:w-auto px-8">
-              Got it
+              {t("common.gotIt")}
             </Button>
           </div>
         </DialogContent>

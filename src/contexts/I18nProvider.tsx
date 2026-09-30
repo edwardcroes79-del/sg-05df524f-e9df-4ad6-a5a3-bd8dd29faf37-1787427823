@@ -62,3 +62,4 @@ export function useI18n() {
 }
 
 export { languages };
+export type { LanguageCode, TranslationKey };

@@ -87,9 +87,9 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
     }
   };
 
-  const navItems: { nameKey: TranslationKey; href: string; icon: typeof LayoutDashboard }[] = [
+  const navItems: { nameKey: TranslationKey; mobileNameKey?: TranslationKey; href: string; icon: typeof LayoutDashboard }[] = [
     { nameKey: "customer.nav.dashboard", href: "/customer", icon: LayoutDashboard },
-    { nameKey: "customer.nav.cards", href: "/customer/cards", icon: CreditCard },
+    { nameKey: "customer.nav.cards", mobileNameKey: "customer.nav.cardsShort", href: "/customer/cards", icon: CreditCard },
     { nameKey: "customer.nav.rewards", href: "/customer/rewards", icon: Gift },
     { nameKey: "customer.nav.activity", href: "/customer/activity", icon: History },
     { nameKey: "customer.nav.profile", href: "/customer/profile", icon: User },
@@ -193,7 +193,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                 ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}
               `}>
                 <Icon className="h-5 w-5 mb-0.5" />
-                {t(item.nameKey).replace("My ", "")}
+                {t(item.mobileNameKey || item.nameKey).replace("My ", "")}
               </span>
             </Link>
           );

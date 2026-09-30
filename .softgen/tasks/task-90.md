@@ -10,15 +10,15 @@ position: 90
 ---
 
 ## Notes
-Add proper internationalization foundation for English and Spanish. English remains default. Spanish support must use a centralized translation system with keys, an accessible language selector, and persisted user language selection. Do not translate business-created content such as customer names, business names, program names, descriptions, or reward titles. Preserve existing database data, authentication, RLS, permissions, billing, plans, add-ons, QR, stamp, reward, and dashboard functionality. Inspect existing architecture first and reuse any existing i18n if present. Focus only on foundation and do not redesign the UI.
+Add proper internationalization foundation for English and Spanish. English remains default. Spanish support uses a centralized typed translation dictionary, i18n provider/hook, accessible language selector, and persisted user language selection. Do not translate business-created content such as customer names, business names, program names, descriptions, or reward titles. Preserve existing database data, authentication, RLS, permissions, billing, plans, add-ons, QR, stamp, reward, and dashboard functionality. Existing isolated business-created and feature-specific content remains unchanged unless part of the shared shell touched by this foundation.
 
 ## Checklist
-- [ ] Inspect existing codebase for any i18n, locale, language, or translation architecture
-- [ ] Create or reuse centralized English and Spanish translation dictionaries with typed keys
-- [ ] Add an i18n provider/hook that defaults to English and persists selected language
-- [ ] Add an accessible language selector to shared user-facing layout areas
-- [ ] Convert foundation/shared UI shell text touched by this change to translation keys
-- [ ] Ensure business-created/customer-created content remains untranslated
+- [x] Inspect existing codebase for any i18n, locale, language, or translation architecture
+- [x] Create or reuse centralized English and Spanish translation dictionaries with typed keys
+- [x] Add an i18n provider/hook that defaults to English and persists selected language
+- [x] Add an accessible language selector to shared user-facing layout areas
+- [x] Convert foundation/shared UI shell text touched by this change to translation keys
+- [x] Ensure business-created/customer-created content remains untranslated
 - [ ] Run project validation
 
 ## Acceptance
