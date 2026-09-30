@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { useI18n } from "@/contexts/I18nProvider";
 
 function asMetadataObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -99,6 +101,8 @@ function getAddonDisplayMetric(addon: any, quantity = 1) {
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t, language } = useI18n();
+  const locale = language === "es" ? "es-ES" : "en-US";
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [businesses, setBusinesses] = useState<any[]>([]);
@@ -124,13 +128,13 @@ export default function AdminDashboard() {
     try {
       await supabase.auth.signOut();
       toast({
-        title: "Logged Out",
-        description: "Successfully signed out of the Super Admin Portal.",
+        title: t("admin.logout.title"),
+        description: t("admin.logout.description"),
       });
       router.push("/");
     } catch (err: any) {
       toast({
-        title: "Logout Error",
+        title: t("admin.logout.errorTitle"),
         description: err.message,
         variant: "destructive",
       });
@@ -314,12 +318,12 @@ export default function AdminDashboard() {
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId: targetId });
       if (error) throw error;
-      toast({ title: "Setup Canceled", description: "The pending 2FA setup was safely removed." });
+      toast({ title: t("admin.security.setupCanceled"), description: t("admin.security.setupCanceledDescription") });
       setPendingFactorId(null);
       setIsEnrollingMfa(false);
       await fetchMfaFactors();
     } catch (err: any) {
-      toast({ title: "Failed to cancel", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.security.cancelFailed"), description: err.message, variant: "destructive" });
     } finally {
       setMfaLoading(false);
     }
@@ -340,7 +344,7 @@ export default function AdminDashboard() {
       setPendingFactorId(data.id);
       setIsEnrollingMfa(true);
     } catch (err: any) {
-      toast({ title: "Setup Failed", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.security.setupFailed"), description: err.message, variant: "destructive" });
     } finally {
       setMfaLoading(false);
     }
@@ -354,27 +358,27 @@ export default function AdminDashboard() {
       if (challenge.error) throw challenge.error;
       const verify = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: challenge.data.id, code: mfaVerifyCode });
       if (verify.error) throw verify.error;
-      toast({ title: "2FA Enabled", description: "Two-factor authentication secured on your account." });
+      toast({ title: t("admin.security.enabledTitle"), description: t("admin.security.enabledDescription") });
       setIsEnrollingMfa(false);
       setMfaVerifyCode("");
       await fetchMfaFactors();
     } catch (err: any) {
-      toast({ title: "Verification Failed", description: err.message || "Invalid code.", variant: "destructive" });
+      toast({ title: t("admin.security.verificationFailed"), description: err.message || t("admin.security.invalidCode"), variant: "destructive" });
     } finally {
       setMfaLoading(false);
     }
   };
 
   const handleDisableMfa = async (factorId: string) => {
-    if (!window.confirm("Are you sure you want to disable 2FA? This will reduce your account security.")) return;
+    if (!window.confirm(t("admin.security.disableConfirm"))) return;
     setMfaLoading(true);
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId });
       if (error) throw error;
-      toast({ title: "2FA Disabled", description: "Two-factor authentication has been removed." });
+      toast({ title: t("admin.security.disabledTitle"), description: t("admin.security.disabledDescription") });
       await fetchMfaFactors();
     } catch (err: any) {
-      toast({ title: "Failed to Disable", description: err.message, variant: "destructive" });
+      toast({ title: t("admin.security.disableFailed"), description: err.message, variant: "destructive" });
     } finally {
       setMfaLoading(false);
     }
@@ -617,8 +621,8 @@ export default function AdminDashboard() {
     .map((reminder) => {
       const business = Array.isArray(reminder.businesses) ? reminder.businesses[0] : reminder.businesses;
       const plan = plans.find((item) => item.id === business?.subscription_plan);
-      const planName = plan?.name || business?.subscription_plan || "No plan assigned";
-      const termText = business?.contract_term_months ? `${business.contract_term_months}-month contract` : "contract term unassigned";
+      const planName = plan?.name || business?.subscription_plan || t("admin.common.noPlanAssigned");
+      const termText = business?.contract_term_months ? t("admin.contract.monthTerm", { months: business.contract_term_months }) : t("admin.contract.termUnassigned");
       const expirationDate = formatContractDisplayDate(reminder.contract_end_date);
       const isExpired = reminder.reminder_type === "expiration";
 
@@ -626,8 +630,13 @@ export default function AdminDashboard() {
         id: notificationKey("contract_reminder", String(reminder.id)),
         sourceType: "contract_reminder",
         sourceId: String(reminder.id),
-        type: getContractReminderTitle(reminder.reminder_type),
-        businessName: business?.business_name || "Unknown business",
+        type: reminder.reminder_type === "expiration"
+          ? t("admin.contract.expired")
+          : t("admin.contract.expiringIn", {
+              days: reminder.reminder_type.replace("_days", "").replace("_day", ""),
+              plural: reminder.reminder_type === "1_day" ? "" : "s",
+            }),
+        businessName: business?.business_name || t("admin.common.unknownBusiness"),
         description: isExpired
           ? `${planName} — ${termText} — contract expired ${expirationDate}.`
           : `${planName} — ${termText} — expires ${expirationDate} (${getContractReminderDaysText(reminder.reminder_type)}).`,
@@ -651,11 +660,11 @@ export default function AdminDashboard() {
           id: notificationKey("business_addon_subscription", subscription.id),
           sourceType: "business_addon_subscription",
           sourceId: String(subscription.id),
-          type: "Add-on Request",
-          businessName: business?.business_name || "Unknown business",
+          type: t("admin.notifications.addonRequest"),
+          businessName: business?.business_name || t("admin.common.unknownBusiness"),
           description: isQuickStampAddon(addon)
-            ? "requested Quick Stamp QR access."
-            : `requested +${addedCapacity.toLocaleString()} Customers.`,
+            ? t("admin.notifications.quickStampRequested")
+            : t("admin.notifications.customersRequested", { count: addedCapacity.toLocaleString() }),
           createdAt: subscription.created_at,
           status: "pending" as const,
           destination: "addons" as const,
@@ -665,7 +674,7 @@ export default function AdminDashboard() {
     ...payments
       .filter((payment) => payment.metadata?.kind === "subscription_plan_change")
       .map((payment) => {
-        const changeType = payment.metadata?.change_type === "downgrade" ? "Downgrade Request" : "Upgrade Request";
+        const changeType = payment.metadata?.change_type === "downgrade" ? t("admin.notifications.downgradeRequest") : t("admin.notifications.upgradeRequest");
         const resolvedStatus = payment.status === "approved" ? "approved" : payment.status === "rejected" ? "rejected" : "pending";
 
         return {
@@ -673,8 +682,11 @@ export default function AdminDashboard() {
           sourceType: "subscription_payment",
           sourceId: String(payment.id),
           type: changeType,
-          businessName: payment.businesses?.business_name || payment.metadata?.business_name || "Unknown business",
-          description: `requested ${payment.metadata?.current_plan_name || "current plan"} → ${payment.metadata?.requested_plan_name || payment.plan_id}.`,
+          businessName: payment.businesses?.business_name || payment.metadata?.business_name || t("admin.common.unknownBusiness"),
+          description: t("admin.notifications.planChangeRequested", {
+            currentPlan: payment.metadata?.current_plan_name || "current plan",
+            requestedPlan: payment.metadata?.requested_plan_name || payment.plan_id,
+          }),
           createdAt: payment.created_at,
           status: resolvedStatus as SuperAdminNotification["status"],
           destination: "payments" as const,
@@ -685,9 +697,9 @@ export default function AdminDashboard() {
       id: notificationKey("business_registration", business.id),
       sourceType: "business_registration",
       sourceId: String(business.id),
-      type: "Business Registration",
-      businessName: business.business_name || "Unknown business",
-      description: "is awaiting approval.",
+      type: t("admin.notifications.businessRegistration"),
+      businessName: business.business_name || t("admin.common.unknownBusiness"),
+      description: t("admin.notifications.awaitingApproval"),
       createdAt: business.created_at,
       status: "pending" as const,
       destination: "merchants" as const,
@@ -2163,17 +2175,17 @@ export default function AdminDashboard() {
   return (
     <>
       <Head>
-        <title>Super Admin Panel | Aruba Royalty Stamp</title>
+        <title>{t("admin.seoTitle")}</title>
       </Head>
 
       <div className="min-h-screen bg-background p-6 md:p-12 space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
           <div>
             <div className="flex items-center gap-2 text-primary font-semibold text-sm mb-1 uppercase tracking-wider">
-              <Shield className="h-4 w-4" /> Super Admin Portal
+              <Shield className="h-4 w-4" /> {t("admin.portal")}
             </div>
-            <h1 className="text-4xl font-heading font-bold text-foreground">Platform Management</h1>
-            <p className="text-muted-foreground mt-1">Configure subscription plans, monitor businesses, and manage limits.</p>
+            <h1 className="text-4xl font-heading font-bold text-foreground">{t("admin.title")}</h1>
+            <p className="text-muted-foreground mt-1">{t("admin.description")}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -2183,7 +2195,7 @@ export default function AdminDashboard() {
                 size="icon"
                 className="relative"
                 onClick={handleToggleNotificationPanel}
-                aria-label="Open Super Admin notifications"
+                aria-label={t("admin.notifications.open")}
               >
                 <Bell className="h-5 w-5" />
                 {unreadNotificationCount > 0 && (
@@ -2197,15 +2209,15 @@ export default function AdminDashboard() {
                 <div className="absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border bg-card p-3 shadow-2xl">
                   <div className="flex items-center justify-between border-b pb-2">
                     <div>
-                      <p className="font-heading font-semibold text-foreground">Notifications</p>
-                      <p className="text-xs text-muted-foreground">{unreadNotificationCount} unread pending action{unreadNotificationCount === 1 ? "" : "s"}</p>
+                      <p className="font-heading font-semibold text-foreground">{t("admin.notifications.title")}</p>
+                      <p className="text-xs text-muted-foreground">{t("admin.notifications.unreadPending", { count: unreadNotificationCount, plural: unreadNotificationCount === 1 ? "" : "s" })}</p>
                     </div>
-                    <Badge variant="secondary">{superAdminNotifications.length}</Badge>
+                    <Badge variant="secondary">{t("admin.notifications.count", { count: superAdminNotifications.length })}</Badge>
                   </div>
                   <div className="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1">
                     {superAdminNotifications.length === 0 ? (
                       <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                        No Super Admin notifications yet.
+                        {t("admin.notifications.empty")}
                       </div>
                     ) : (
                       superAdminNotifications.slice(0, 12).map((notification) => {
@@ -2225,17 +2237,17 @@ export default function AdminDashboard() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="text-sm font-semibold text-foreground">{notification.type}</p>
-                                  {isUnread && <span className="h-2 w-2 rounded-full bg-destructive" aria-label="Unread" />}
+                                  {isUnread && <span className="h-2 w-2 rounded-full bg-destructive" aria-label={t("admin.notifications.unread")} />}
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                   <span className="font-medium text-foreground">{notification.businessName}</span> {notification.description}
                                 </p>
-                                <p className="mt-1 text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleString()}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleString(locale)}</p>
                               </div>
                             </div>
                             <div className="mt-3 flex items-center justify-between gap-2">
                               <Badge variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"} className="text-[10px] uppercase">
-                                {notification.sourceType === "contract_reminder" ? "Action Required" : notification.status === "pending" ? "Pending Review" : notification.status}
+                                {notification.sourceType === "contract_reminder" ? t("admin.notifications.actionRequired") : notification.status === "pending" ? t("admin.notifications.pendingReview") : notification.status}
                               </Badge>
                               <Button
                                 type="button"
@@ -2243,7 +2255,7 @@ export default function AdminDashboard() {
                                 variant={notification.status === "pending" ? "default" : "outline"}
                                 onClick={() => handleReviewNotification(notification)}
                               >
-                                Review
+                                {t("admin.notifications.review")}
                               </Button>
                             </div>
                           </div>
@@ -2255,11 +2267,12 @@ export default function AdminDashboard() {
               )}
             </div>
             <Link href="/dashboard">
-              <Button variant="outline">Back to Merchant Dashboard</Button>
+              <Button variant="outline">{t("admin.backToMerchant")}</Button>
             </Link>
             <Button variant="destructive" onClick={handleLogout} className="gap-2">
-              <LogOut className="h-4 w-4" /> Sign Out
+              <LogOut className="h-4 w-4" /> {t("common.signOut")}
             </Button>
+            <LanguageSelector compact />
           </div>
         </div>
 
@@ -2267,7 +2280,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Merchants</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalMerchants")}</CardTitle>
               <Building2 className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
@@ -2276,7 +2289,7 @@ export default function AdminDashboard() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Active Subscriptions</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.activeSubscriptions")}</CardTitle>
               <CheckCircle className="h-4 w-4 text-emerald-500" />
             </CardHeader>
             <CardContent>
@@ -2285,7 +2298,7 @@ export default function AdminDashboard() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Customers</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalCustomers")}</CardTitle>
               <Users className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
@@ -2294,7 +2307,7 @@ export default function AdminDashboard() {
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total Stamps Issued</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalStampsIssued")}</CardTitle>
               <CreditCard className="h-4 w-4 text-amber-500" />
             </CardHeader>
             <CardContent>
@@ -2305,14 +2318,14 @@ export default function AdminDashboard() {
 
         <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} className="space-y-6">
           <TabsList className="bg-muted p-1 rounded-lg flex-wrap h-auto">
-            <TabsTrigger value="merchants">Merchants & Subscriptions</TabsTrigger>
-            <TabsTrigger value="payments">Payment Review</TabsTrigger>
-            <TabsTrigger value="plans">Subscription Plans & Limits</TabsTrigger>
-            <TabsTrigger value="addons">Customer Capacity Add-ons</TabsTrigger>
-            <TabsTrigger value="customers">Customers</TabsTrigger>
-            <TabsTrigger value="payment_settings">Payment Settings</TabsTrigger>
-            <TabsTrigger value="website">Website Settings</TabsTrigger>
-            <TabsTrigger value="security">Account Security</TabsTrigger>
+            <TabsTrigger value="merchants">{t("admin.tabs.merchants")}</TabsTrigger>
+            <TabsTrigger value="payments">{t("admin.tabs.payments")}</TabsTrigger>
+            <TabsTrigger value="plans">{t("admin.tabs.plans")}</TabsTrigger>
+            <TabsTrigger value="addons">{t("admin.tabs.addons")}</TabsTrigger>
+            <TabsTrigger value="customers">{t("admin.tabs.customers")}</TabsTrigger>
+            <TabsTrigger value="payment_settings">{t("admin.tabs.paymentSettings")}</TabsTrigger>
+            <TabsTrigger value="website">{t("admin.tabs.website")}</TabsTrigger>
+            <TabsTrigger value="security">{t("admin.tabs.security")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="merchants">
@@ -3831,45 +3844,43 @@ export default function AdminDashboard() {
               <CardHeader className="bg-muted/10 border-b">
                 <CardTitle className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-primary" />
-                  Super Admin Account Security
+                  {t("admin.security.title")}
                 </CardTitle>
-                <CardDescription>Add an extra layer of protection to your Super Admin account. Highly recommended.</CardDescription>
+                <CardDescription>{t("admin.security.description")}</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 border rounded-lg">
                   <div>
                     <h3 className="font-semibold flex items-center gap-2 text-lg">
-                      Two-Factor Authentication (2FA)
+                      {t("admin.security.mfaTitle")}
                       {mfaFactors.length > 0 ? (
                         <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600 border-emerald-200">
-                          🟢 2FA Enabled
+                          {t("admin.security.enabled")}
                         </span>
                       ) : pendingFactorId ? (
                         <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-600 border-amber-200">
-                          🟡 Setup Pending
+                          {t("admin.security.pending")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
-                          ⚪ 2FA Disabled
+                          {t("admin.security.disabled")}
                         </span>
                       )}
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                      Protect your admin account with TOTP authenticator apps.
-                    </p>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-md">{t("admin.security.mfaDescription")}</p>
                   </div>
                   <div>
                     {mfaFactors.length > 0 ? (
                       <Button variant="destructive" onClick={() => handleDisableMfa(mfaFactors[0].id)} disabled={mfaLoading}>
-                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Disable 2FA
+                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("admin.security.disable2fa")}
                       </Button>
                     ) : pendingFactorId && !isEnrollingMfa ? (
                       <Button variant="outline" onClick={() => handleCancelPendingSetup()} disabled={mfaLoading}>
-                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Cancel Pending Setup
+                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("admin.security.cancelPending")}
                       </Button>
                     ) : !isEnrollingMfa ? (
                       <Button onClick={handleEnableMfa} disabled={mfaLoading}>
-                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Enable 2FA
+                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("admin.security.enable2fa")}
                       </Button>
                     ) : null}
                   </div>
@@ -3877,18 +3888,18 @@ export default function AdminDashboard() {
 
                 {isEnrollingMfa && (
                   <div className="mt-6 p-6 border rounded-lg bg-muted/20 animate-in fade-in slide-in-from-top-4">
-                    <h4 className="font-heading font-bold text-lg mb-4">Complete 2FA Setup</h4>
+                    <h4 className="font-heading font-bold text-lg mb-4">{t("admin.security.completeSetup")}</h4>
                     <div className="grid md:grid-cols-2 gap-8">
                       <div className="space-y-4">
                         <div className="flex items-start gap-3">
                           <div className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">1</div>
-                          <p className="text-sm text-muted-foreground">Open your authenticator app and scan this QR code.</p>
+                          <p className="text-sm text-muted-foreground">{t("admin.security.scanQr")}</p>
                         </div>
                         <div className="bg-white p-4 border rounded-xl inline-block shadow-sm">
-                          <img src={mfaQrCode} alt="2FA QR Code" className="w-40 h-40" />
+                          <img src={mfaQrCode} alt={t("admin.security.qrAlt")} className="w-40 h-40" />
                         </div>
                         <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground font-medium">Or enter this setup key manually:</p>
+                          <p className="text-xs text-muted-foreground font-medium">{t("admin.security.manualKey")}</p>
                           <code className="text-xs bg-muted px-2 py-1 rounded block w-max break-all select-all font-mono font-semibold">
                             {mfaSecret}
                           </code>
@@ -3897,11 +3908,11 @@ export default function AdminDashboard() {
                       <div className="space-y-4">
                         <div className="flex items-start gap-3">
                           <div className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">2</div>
-                          <p className="text-sm text-muted-foreground">Enter the 6-digit code generated by your app to verify and enable 2FA.</p>
+                          <p className="text-sm text-muted-foreground">{t("admin.security.enterCode")}</p>
                         </div>
                         <form onSubmit={handleVerifyMfaSetup} className="space-y-4 pt-2">
                           <div className="space-y-2">
-                            <Label htmlFor="verificationCode">Verification Code</Label>
+                            <Label htmlFor="verificationCode">{t("admin.security.verificationCode")}</Label>
                             <Input 
                               id="verificationCode" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={6} placeholder="000 000"
                               className="font-mono text-lg tracking-[0.25em] text-center"
@@ -3912,15 +3923,15 @@ export default function AdminDashboard() {
                             <Button type="button" variant="outline" className="w-full" onClick={() => {
                               setIsEnrollingMfa(false);
                               if (mfaFactorId) handleCancelPendingSetup(mfaFactorId);
-                            }} disabled={mfaLoading}>Cancel Setup</Button>
+                            }} disabled={mfaLoading}>{t("admin.security.cancelSetup")}</Button>
                             <Button type="submit" className="w-full" disabled={mfaVerifyCode.length < 6 || mfaLoading}>
-                              {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Key className="h-4 w-4 mr-2" />} Verify & Enable
+                              {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Key className="h-4 w-4 mr-2" />} {t("admin.security.verifyEnable")}
                             </Button>
                           </div>
                         </form>
                         <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded text-xs text-amber-700 mt-4 flex gap-2">
                           <ShieldAlert className="h-4 w-4 shrink-0" />
-                          <p><strong>Backup Option:</strong> Please save the manual setup key in a secure password manager. It can be used to recover access if you lose your authenticator app.</p>
+                          <p><strong>{t("admin.security.backupOption")}</strong> {t("admin.security.backupText")}</p>
                         </div>
                       </div>
                     </div>
