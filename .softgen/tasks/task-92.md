@@ -1,24 +1,28 @@
 ---
 title: Spanish dashboard core pages
-status: todo
+status: in_progress
 priority: high
 type: feature
 tags: [i18n, spanish, dashboard-pages]
 created_by: agent
-created_at: 2026-09-30T16:27:53Z
+created_at: 2026-09-30T16:27:54Z
 position: 92
 ---
 
 ## Notes
-Translate core Business Dashboard pages using the existing centralized i18n system. Scope includes Dashboard overview, analytics/metric labels, Customers, Loyalty Programs list/detail/new forms, Stamps & Rewards, Issue Stamp, Redeem Reward, Quick Issue Stamp, QR Codes, and Card Customizer text if present in these dashboard surfaces. English remains default. Use translation keys only. Do not translate business/customer-created content or database values.
+Translate Business Dashboard core pages using the existing centralized i18n system. English remains default. Use translation keys only. Do not translate business-created content such as customer names, loyalty program names, descriptions, reward titles, customer notes, or persisted values. Preserve page behavior, queries, mutations, realtime refresh, QR/token logic, stamp logic, reward logic, billing logic, auth, permissions, and RLS.
 
 ## Checklist
-- [ ] Inspect dashboard overview, customers, programs, scan, quick-stamp, and QR pages
-- [ ] Add missing English and Spanish translation keys for headings, forms, buttons, labels, empty states, confirmations, validation, success, and error messages
-- [ ] Replace hardcoded UI copy with translation keys while preserving business-created content
-- [ ] Validate affected pages compile and existing actions still work
+- [x] Inspect dashboard overview, customers, loyalty programs, stamps/rewards, QR, and Quick Issue Stamp pages
+- [ ] Convert Overview page shared UI, contract information, metrics labels, empty states, and dialogs to translation keys
+- [x] Convert Loyalty Programs list page labels, buttons, toasts, badges, and empty states to translation keys
+- [ ] Convert Customers page labels, search, empty states, dialogs, confirmations, and reward messages to translation keys
+- [ ] Convert Stamps & Rewards scan page labels, modes, validation, confirmations, scanner states, and toasts to translation keys
+- [ ] Convert QR Codes page labels, buttons, empty states, and toasts to translation keys
+- [ ] Convert Quick Issue Stamp page labels, guidance, alerts, validation rules, countdown controls, and toasts to translation keys
+- [ ] Run project validation
 
 ## Acceptance
-Core Business Dashboard pages switch between English and Spanish through the shared selector.
-Program/customer/reward/business-created names and descriptions remain unchanged.
-Existing stamp, reward, QR, and program functionality remain unchanged.
+Core Business Dashboard pages switch between English and Spanish using the shared selector.
+Business-created names, descriptions, reward titles, and customer names remain untranslated.
+Existing stamp, reward, QR, and program functionality remains unchanged.
