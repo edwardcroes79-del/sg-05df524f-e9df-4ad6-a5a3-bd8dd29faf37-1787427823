@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle, ChevronsUpDown, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/contexts/I18nProvider";
 
 interface RegisteredCustomer {
   id: string;
@@ -24,6 +25,7 @@ interface RegisteredCustomer {
 export default function ScanQR() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [business, setBusiness] = useState<any>(null);
@@ -147,8 +149,8 @@ export default function ScanQR() {
     } catch (err: any) {
       console.error("Customer search failed:", err);
       toast({
-        title: "Customer Search Failed",
-        description: err.message || "Could not search registered customers.",
+        title: t("dashboard.scan.customerSearchFailed"),
+        description: err.message || t("dashboard.scan.customerSearchFailedDescription"),
         variant: "destructive",
       });
     } finally {
@@ -192,15 +194,15 @@ export default function ScanQR() {
                 const defaultCamId = backCamera ? backCamera.id : devices[0].id;
                 setActiveCameraId(defaultCamId);
               } else {
-                setCameraError("No video input cameras found on this device.");
+                setCameraError(t("dashboard.scan.noCameras"));
               }
             }
           } catch (err: any) {
             if (active) {
-              setCameraError("Camera permission denied. Please allow camera access in browser settings.");
+              setCameraError(t("dashboard.scan.cameraPermissionDenied"));
               toast({
-                title: "Camera Access Required",
-                description: "Please enable camera permissions to scan your customer's QR loyalty cards.",
+                title: t("dashboard.scan.cameraAccessRequired"),
+                description: t("dashboard.scan.cameraAccessDescription"),
                 variant: "destructive"
               });
             }
@@ -250,7 +252,7 @@ export default function ScanQR() {
         console.error("Scanner startup failed:", err);
         if (active) {
           setIsScanning(false);
-          setCameraError("Failed to access selected camera. Try switching devices.");
+          setCameraError(t("dashboard.scan.cameraStartupFailed"));
         }
       }
     };
@@ -286,8 +288,10 @@ export default function ScanQR() {
     setActiveCameraId(cameras[nextIndex].id);
     
     toast({
-      title: "Switched Camera",
-      description: `Now scanning with: ${cameras[nextIndex].label || `Camera ${nextIndex + 1}`}`,
+      title: t("dashboard.scan.switchedCamera"),
+      description: t("dashboard.scan.nowScanningWith", {
+        camera: cameras[nextIndex].label || t("dashboard.scan.cameraFallback", { number: nextIndex + 1 }),
+      }),
     });
   };
 
@@ -319,8 +323,8 @@ export default function ScanQR() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No active session");
-      if (!business?.id) throw new Error("Missing business configuration");
+      if (!session) throw new Error(t("dashboard.scan.noActiveSession"));
+      if (!business?.id) throw new Error(t("dashboard.scan.missingBusiness"));
 
       // Handle Temporary Customer Reward QR (Phase 3)
       if (qrData.startsWith("REWARD_TOKEN:")) {
@@ -334,14 +338,14 @@ export default function ScanQR() {
 
         if (tokenError) {
           if (tokenError.message.includes("Reward Expired")) {
-            throw new Error("⏰ Reward Expired. This reward can no longer be redeemed.");
+            throw new Error(t("dashboard.scan.rewardExpiredMessage"));
           }
 
           if (tokenError.message.includes("QR code has expired")) {
-            throw new Error("🔒 QR Code Expired. Ask the customer to generate a new QR.");
+            throw new Error(t("dashboard.scan.qrExpiredMessage"));
           }
 
-          throw new Error(tokenError.message || "Invalid or unauthorized reward QR");
+          throw new Error(tokenError.message || t("dashboard.scan.invalidRewardQr"));
         }
 
         // If valid, show the confirmation screen instead of auto-redeeming
@@ -358,7 +362,7 @@ export default function ScanQR() {
           setManualCode("");
           return;
         } else {
-          throw new Error("This reward has already been redeemed or is no longer available.");
+          throw new Error(t("dashboard.scan.rewardAlreadyRedeemed"));
         }
       }
 
@@ -378,8 +382,8 @@ export default function ScanQR() {
         setScanResult(result);
         
         toast({
-          title: result.success ? "✅ Reward Redeemed" : isRewardExpired ? "⏰ Reward Expired" : "Redemption Failed",
-          description: isRewardExpired ? "This reward can no longer be redeemed." : result.message,
+          title: result.success ? t("dashboard.scan.rewardRedeemedTitle") : isRewardExpired ? t("dashboard.scan.rewardExpiredTitle") : t("dashboard.scan.redemptionFailed"),
+          description: isRewardExpired ? t("dashboard.scan.rewardExpiredDescription") : result.message,
           variant: result.success ? "default" : "destructive",
         });
         
@@ -396,11 +400,11 @@ export default function ScanQR() {
 
       const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
       if (!uuidRegex.test(customerId)) {
-        throw new Error("Invalid QR Code format. Please scan a Customer or Reward code.");
+        throw new Error(t("dashboard.scan.invalidQrFormat"));
       }
 
       if (!selectedProgramId) {
-        throw new Error("Missing loyalty program selection.");
+        throw new Error(t("dashboard.scan.missingProgram"));
       }
 
       const { data, error } = await (supabase.rpc as any)("issue_stamp_tx", {
@@ -415,20 +419,20 @@ export default function ScanQR() {
       
       // CRITICAL: Force the system to prove the stamp was actually persisted and tied to a real card.
       if (result.success && (!result.transaction_id || !result.loyalty_card_id)) {
-        throw new Error("System verification failed: Stamp record could not be confirmed in the database.");
+        throw new Error(t("dashboard.scan.stampVerificationFailed"));
       }
 
       setScanResult(result);
       
       if (result.success) {
         toast({
-          title: result.reward_earned ? "🎉 Reward Unlocked!" : "Stamp Added",
+          title: result.reward_earned ? t("dashboard.scan.rewardUnlocked") : t("dashboard.scan.stampAdded"),
           description: result.message,
           variant: "default",
         });
       } else {
         toast({
-          title: "Failed to issue stamp",
+          title: t("dashboard.scan.failedIssueStamp"),
           description: result.message,
           variant: "destructive",
         });
@@ -438,11 +442,11 @@ export default function ScanQR() {
 
       setScanResult({
         success: false,
-        message: err.message || "Failed to process QR code"
+        message: err.message || t("dashboard.scan.processFailed")
       });
       toast({
-        title: isRewardExpired ? "⏰ Reward Expired" : err.message?.includes("QR Code Expired") ? "QR Code Expired" : "Error",
-        description: isRewardExpired ? "This reward can no longer be redeemed." : err.message || "Failed to process QR code",
+        title: isRewardExpired ? t("dashboard.scan.rewardExpiredTitle") : err.message?.includes("QR Code Expired") || err.message?.includes("Código QR vencido") ? t("dashboard.scan.qrCodeExpiredTitle") : t("dashboard.scan.error"),
+        description: isRewardExpired ? t("dashboard.scan.rewardExpiredDescription") : err.message || t("dashboard.scan.processFailed"),
         variant: "destructive",
       });
     } finally {
@@ -464,7 +468,7 @@ export default function ScanQR() {
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session || !business?.id) throw new Error("Unauthorized");
+      if (!session || !business?.id) throw new Error(t("dashboard.scan.unauthorized"));
 
       // Pass the 2 strict arguments required by the corrected wrapper function
       const { data, error } = await (supabase.rpc as any)('redeem_reward_by_qr_tx', {
@@ -474,10 +478,10 @@ export default function ScanQR() {
 
       if (error) {
         if (error.message.includes('expired')) {
-          throw new Error("🔒 QR Code Expired during confirmation. Ask the customer to generate a new QR.");
+          throw new Error(t("dashboard.scan.qrExpiredDuringConfirmation"));
         }
         if (error.message.includes('already redeemed')) {
-          throw new Error("Reward already redeemed.");
+          throw new Error(t("dashboard.scan.rewardAlreadyRedeemedShort"));
         }
         throw error;
       }
@@ -487,18 +491,18 @@ export default function ScanQR() {
       setScanResult(result);
       
       toast({
-        title: result.success ? "✅ Reward Redeemed" : isRewardExpired ? "⏰ Reward Expired" : "Redemption Failed",
-        description: isRewardExpired ? "This reward can no longer be redeemed." : result.message,
+        title: result.success ? t("dashboard.scan.rewardRedeemedTitle") : isRewardExpired ? t("dashboard.scan.rewardExpiredTitle") : t("dashboard.scan.redemptionFailed"),
+        description: isRewardExpired ? t("dashboard.scan.rewardExpiredDescription") : result.message,
         variant: result.success ? "default" : "destructive",
       });
 
     } catch (err: any) {
       setScanResult({
         success: false,
-        message: err.message || "Failed to redeem reward"
+        message: err.message || t("dashboard.scan.failedRedeemReward")
       });
       toast({
-        title: "Redemption Failed",
+        title: t("dashboard.scan.redemptionFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -513,16 +517,16 @@ export default function ScanQR() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Stamps & Rewards | Aruba Royalty Stamp</title>
+        <title>{t("dashboard.scan.seoTitle")}</title>
       </Head>
       
       <div className="max-w-xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Stamps & Rewards</h1>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.scan.title")}</h1>
           <p className="text-muted-foreground mt-2">
-            <strong>➕ Issue Stamp:</strong> Add a loyalty stamp to a customer.<br/>
-            <strong>🎁 Redeem Reward:</strong> Redeem an available customer reward.<br/>
-            <span className="text-xs mt-1 block">Scan a Customer QR or a Reward QR below to automatically process the action.</span>
+            <strong>{t("dashboard.scan.descriptionIssueTitle")}</strong> {t("dashboard.scan.descriptionIssue")}<br/>
+            <strong>{t("dashboard.scan.descriptionRedeemTitle")}</strong> {t("dashboard.scan.descriptionRedeem")}<br/>
+            <span className="text-xs mt-1 block">{t("dashboard.scan.descriptionHelp")}</span>
           </p>
         </div>
 
@@ -530,20 +534,20 @@ export default function ScanQR() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center p-6">
-                <p className="text-muted-foreground mb-4">You need an active loyalty program to issue stamps.</p>
-                <Button onClick={() => router.push("/dashboard/programs/new")}>Create Program</Button>
+                <p className="text-muted-foreground mb-4">{t("dashboard.scan.noProgramMessage")}</p>
+                <Button onClick={() => router.push("/dashboard/programs/new")}>{t("dashboard.scan.createProgram")}</Button>
               </div>
             </CardContent>
           </Card>
         ) : (
           <Card className="border-primary/20 shadow-sm overflow-hidden">
             <CardHeader className="bg-muted/30 border-b">
-              <CardTitle className="text-lg">Select Program</CardTitle>
-              <CardDescription>Which loyalty program are you stamping today?</CardDescription>
+              <CardTitle className="text-lg">{t("dashboard.scan.selectProgramTitle")}</CardTitle>
+              <CardDescription>{t("dashboard.scan.selectProgramDescription")}</CardDescription>
               <div className="mt-4">
                 <Select value={selectedProgramId} onValueChange={setSelectedProgramId} disabled={processing || !!scanResult || !!pendingRewardQR}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a program" />
+                    <SelectValue placeholder={t("dashboard.scan.selectProgramPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
                     {programs.map(p => (
@@ -560,32 +564,32 @@ export default function ScanQR() {
                   <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4">
                     <Check className="w-8 h-8" />
                   </div>
-                  <h2 className="text-2xl font-bold text-foreground mb-1">Reward Found</h2>
+                  <h2 className="text-2xl font-bold text-foreground mb-1">{t("dashboard.scan.rewardFound")}</h2>
                   <Badge variant="outline" className="mb-6 bg-green-50 text-green-700 border-green-200">
-                    STATUS: {pendingRewardQR.status.toUpperCase()}
+                    {t("dashboard.scan.status", { status: pendingRewardQR.status.toUpperCase() })}
                   </Badge>
                   
                   <div className="w-full text-left bg-muted/30 p-4 rounded-xl space-y-3 mb-6 border">
                     <div>
-                      <p className="text-xs text-muted-foreground uppercase font-semibold">Customer</p>
+                      <p className="text-xs text-muted-foreground uppercase font-semibold">{t("dashboard.scan.customer")}</p>
                       <p className="font-medium text-foreground">{pendingRewardQR.customer_name}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground uppercase font-semibold">Program</p>
+                      <p className="text-xs text-muted-foreground uppercase font-semibold">{t("dashboard.scan.program")}</p>
                       <p className="font-medium text-foreground">{pendingRewardQR.program_name}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground uppercase font-semibold">Reward to Redeem</p>
+                      <p className="text-xs text-muted-foreground uppercase font-semibold">{t("dashboard.scan.rewardToRedeem")}</p>
                       <p className="font-bold text-lg text-primary">{pendingRewardQR.reward_title}</p>
                     </div>
                   </div>
 
                   <div className="flex w-full gap-3">
                     <Button onClick={resetScanner} variant="outline" className="flex-1" disabled={processing}>
-                      Cancel
+                      {t("dashboard.scan.cancel")}
                     </Button>
                     <Button onClick={confirmRewardRedemption} className="flex-1 bg-primary text-primary-foreground" disabled={processing}>
-                      {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Redeem Reward"}
+                      {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : t("dashboard.scan.redeemReward")}
                     </Button>
                   </div>
                 </div>
@@ -596,11 +600,11 @@ export default function ScanQR() {
                       <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <CheckCircle2 className="w-10 h-10" />
                       </div>
-                      <h2 className="text-2xl font-bold text-foreground mb-2">Success!</h2>
+                      <h2 className="text-2xl font-bold text-foreground mb-2">{t("dashboard.scan.success")}</h2>
                       <p className="text-muted-foreground text-lg mb-4">{scanResult.message}</p>
                       {scanResult.reward_earned && (
                         <div className="bg-primary/10 text-primary border border-primary/20 p-4 rounded-lg font-medium text-lg w-full mb-6">
-                          🎉 Customer unlocked a reward!
+                          {t("dashboard.scan.customerUnlockedReward")}
                         </div>
                       )}
                     </>
@@ -609,12 +613,12 @@ export default function ScanQR() {
                       <div className="w-20 h-20 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-6 shadow-sm">
                         <XCircle className="w-10 h-10" />
                       </div>
-                      <h2 className="text-2xl font-bold text-foreground mb-2">Failed</h2>
+                      <h2 className="text-2xl font-bold text-foreground mb-2">{t("dashboard.scan.failed")}</h2>
                       <p className="text-muted-foreground text-lg mb-6">{scanResult.message}</p>
                     </>
                   )}
                   <Button onClick={resetScanner} size="lg" className="w-full sm:w-auto mt-2">
-                    Scan Next Customer
+                    {t("dashboard.scan.scanNextCustomer")}
                   </Button>
                 </div>
               ) : (
@@ -625,14 +629,14 @@ export default function ScanQR() {
                       className="flex-1"
                       onClick={() => setScanMode("camera")}
                     >
-                      <Camera className="w-4 h-4 mr-2" /> Camera
+                      <Camera className="w-4 h-4 mr-2" /> {t("dashboard.scan.camera")}
                     </Button>
                     <Button 
                       variant={scanMode === "manual" ? "default" : "outline"} 
                       className="flex-1"
                       onClick={() => setScanMode("manual")}
                     >
-                      <Keyboard className="w-4 h-4 mr-2" /> Manual / USB
+                      <Keyboard className="w-4 h-4 mr-2" /> {t("dashboard.scan.manualUsb")}
                     </Button>
                   </div>
 
@@ -642,11 +646,11 @@ export default function ScanQR() {
                       {cameraError ? (
                         <div className="p-6 text-center max-w-sm flex flex-col items-center gap-3 z-20">
                           <AlertTriangle className="w-12 h-12 text-amber-500 animate-pulse" />
-                          <h3 className="font-bold text-lg text-white">Camera Offline</h3>
+                          <h3 className="font-bold text-lg text-white">{t("dashboard.scan.cameraOffline")}</h3>
                           <p className="text-sm text-slate-400 leading-normal">{cameraError}</p>
                           {cameras.length > 1 && (
                             <Button size="sm" onClick={switchCamera} className="mt-2 font-bold">
-                              Try Another Camera
+                              {t("dashboard.scan.tryAnotherCamera")}
                             </Button>
                           )}
                         </div>
@@ -678,14 +682,14 @@ export default function ScanQR() {
                           className="absolute bottom-4 right-4 bg-black/80 hover:bg-black border-white/20 hover:border-white/40 text-white z-20 font-bold gap-1.5 shadow-md h-9"
                           onClick={switchCamera}
                         >
-                          <RefreshCw className="w-3.5 h-3.5" /> Switch Camera
+                          <RefreshCw className="w-3.5 h-3.5" /> {t("dashboard.scan.switchCamera")}
                         </Button>
                       )}
 
                       {processing && (
                         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30">
                           <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
-                          <p className="font-bold text-lg text-white">Processing Stamp...</p>
+                          <p className="font-bold text-lg text-white">{t("dashboard.scan.processingStamp")}</p>
                         </div>
                       )}
                     </div>
@@ -693,7 +697,7 @@ export default function ScanQR() {
                     <form onSubmit={handleManualSubmit} className="space-y-6 py-4">
                       <div className="space-y-4">
                         <div className="space-y-2 text-left">
-                          <label className="text-sm font-medium">Search Registered Customers</label>
+                          <label className="text-sm font-medium">{t("dashboard.scan.searchCustomersLabel")}</label>
                           <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
                             <PopoverTrigger asChild>
                               <Button
@@ -704,15 +708,15 @@ export default function ScanQR() {
                                 disabled={processing}
                               >
                                 {selectedCustomer
-                                  ? customers.find((c) => c.id === selectedCustomer)?.name || "Customer selected"
-                                  : "Search by name, email, or phone..."}
+                                  ? customers.find((c) => c.id === selectedCustomer)?.name || t("dashboard.scan.customerSelected")
+                                  : t("dashboard.scan.searchByNameEmailPhone")}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-full p-0 max-w-[calc(100vw-3rem)] sm:max-w-md" align="start">
                               <Command shouldFilter={false}>
                                 <CommandInput
-                                  placeholder="Search customers..."
+                                  placeholder={t("dashboard.scan.searchCustomersPlaceholder")}
                                   value={customerSearchTerm}
                                   onValueChange={(value) => {
                                     setCustomerSearchTerm(value);
@@ -721,7 +725,7 @@ export default function ScanQR() {
                                 />
                                 <CommandList>
                                   <CommandEmpty>
-                                    {customerSearchLoading ? "Searching customers..." : "No registered customers found."}
+                                    {customerSearchLoading ? t("dashboard.scan.searchingCustomers") : t("dashboard.scan.noRegisteredCustomers")}
                                   </CommandEmpty>
                                   <CommandGroup>
                                     {customers.map((c) => (
@@ -757,14 +761,14 @@ export default function ScanQR() {
                         
                         <div className="relative flex py-2 items-center">
                           <div className="flex-grow border-t border-border"></div>
-                          <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-medium uppercase tracking-wider">Or Scan Phone</span>
+                          <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-medium uppercase tracking-wider">{t("dashboard.scan.orScanPhone")}</span>
                           <div className="flex-grow border-t border-border"></div>
                         </div>
 
                         <div className="space-y-2 text-left">
-                          <label className="text-sm font-medium">Hardware Scanner (USB)</label>
+                          <label className="text-sm font-medium">{t("dashboard.scan.hardwareScanner")}</label>
                           <Input 
-                            placeholder="Point scanner and scan QR..." 
+                            placeholder={t("dashboard.scan.hardwarePlaceholder")}
                             value={manualCode}
                             onChange={(e) => {
                               setManualCode(e.target.value);
@@ -773,13 +777,11 @@ export default function ScanQR() {
                             disabled={processing}
                             autoFocus
                           />
-                          <p className="text-xs text-muted-foreground">
-                            Use a physical barcode scanner or type a Reward Code.
-                          </p>
+                          <p className="text-xs text-muted-foreground">{t("dashboard.scan.hardwareHelp")}</p>
                         </div>
                       </div>
                       <Button type="submit" className="w-full" disabled={(!manualCode && !selectedCustomer) || processing}>
-                        {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</> : "Issue Stamp"}
+                        {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("dashboard.scan.processing")}</> : t("dashboard.scan.issueStamp")}
                       </Button>
                     </form>
                   )}

@@ -507,7 +507,7 @@ export default function CustomersDashboard() {
                         {selectedCard.customer.name}
                       </h4>
                       <p className="text-xs text-muted-foreground">
-                        Customer since {t("dashboard.customers.customerSince", { date: new Date(selectedCard.customer.created_at).toLocaleDateString(locale) })}
+                        {t("dashboard.customers.customerSince", { date: new Date(selectedCard.customer.created_at).toLocaleDateString(locale) })}
                       </p>
                     </div>
                   </div>
@@ -619,7 +619,7 @@ export default function CustomersDashboard() {
                                     {reward.reward_title}
                                   </span>
                                   <span className="font-mono text-xs text-muted-foreground mt-0.5">
-                                    Code: <strong className="text-foreground tracking-wider">{t("dashboard.customers.rewardCode")} <strong className="text-foreground tracking-wider">{reward.reward_code}</strong></strong>
+                                    {t("dashboard.customers.rewardCode")} <strong className="text-foreground tracking-wider">{reward.reward_code}</strong>
                                   </span>
                                 </div>
                               </div>
