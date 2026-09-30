@@ -1,3 +1,4 @@
+import { I18nProvider } from "@/contexts/I18nProvider";
 import { Toaster } from "@/components/ui/toaster";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
@@ -15,9 +16,9 @@ export default function App({ Component, pageProps }: AppProps) {
   }, []);
 
   return (
-    <>
+    <I18nProvider>
       <Component {...pageProps} />
       <Toaster />
-    </>
+    </I18nProvider>
   );
 }

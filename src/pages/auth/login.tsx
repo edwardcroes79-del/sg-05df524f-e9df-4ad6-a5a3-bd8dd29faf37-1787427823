@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ArrowLeft, ShieldCheck } from "lucide-react";
 import { SEO } from "@/components/SEO";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { useI18n } from "@/contexts/I18nProvider";
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 
 export default function Login() {
@@ -24,6 +26,7 @@ export default function Login() {
   const router = useRouter();
   const { returnUrl } = router.query;
   const { toast } = useToast();
+  const { t } = useI18n();
   const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
 
   const routeUser = async () => {
@@ -99,7 +102,7 @@ export default function Login() {
 
       if (error) {
         toast({
-          title: "Login Failed",
+          title: t("auth.login.failed"),
           description: error.message,
           variant: "destructive",
         });
@@ -117,16 +120,16 @@ export default function Login() {
       }
 
       toast({
-        title: "Welcome back!",
-        description: "Successfully logged in.",
+        title: t("auth.login.welcomeBackToast"),
+        description: t("auth.login.success"),
       });
       
       await routeUser();
       
     } catch (err: any) {
       toast({
-        title: "An error occurred",
-        description: err.message || "Please try again later.",
+        title: t("auth.login.error"),
+        description: err.message || t("auth.login.tryAgain"),
         variant: "destructive",
       });
       setLoading(false);
@@ -150,16 +153,16 @@ export default function Login() {
       if (verify.error) throw verify.error;
 
       toast({
-        title: "Verification Successful",
-        description: "Your identity has been verified.",
+        title: t("auth.mfa.successTitle"),
+        description: t("auth.mfa.successDescription"),
       });
       
       await routeUser();
 
     } catch (err: any) {
       toast({
-        title: "Verification Failed",
-        description: err.message || "Invalid two-factor authentication code.",
+        title: t("auth.mfa.failedTitle"),
+        description: err.message || t("auth.mfa.failedDescription"),
         variant: "destructive",
       });
       setLoading(false);
@@ -172,12 +175,15 @@ export default function Login() {
         <Link href="/">
           <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
-            Back to Home
+            {t("common.backToHome")}
           </Button>
         </Link>
       </div>
+      <div className="absolute top-4 right-4 md:top-8 md:right-8">
+        <LanguageSelector compact />
+      </div>
 
-      <SEO title="Login - Aruba Royalty Stamp" description="Log in to manage your digital loyalty programs." />
+      <SEO title={t("auth.login.seoTitle")} description={t("auth.login.seoDescription")} />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
@@ -188,13 +194,13 @@ export default function Login() {
         {!mfaRequired ? (
           <Card className="border-border shadow-sm">
             <CardHeader>
-              <CardTitle className="text-2xl font-heading text-foreground">Welcome Back</CardTitle>
-              <CardDescription>Enter your credentials to access your business dashboard.</CardDescription>
+              <CardTitle className="text-2xl font-heading text-foreground">{t("auth.login.welcome")}</CardTitle>
+              <CardDescription>{t("auth.login.description")}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email">{t("auth.login.email")}</Label>
                   <Input 
                     id="email" 
                     type="email" 
@@ -207,9 +213,9 @@ export default function Login() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">{t("auth.login.password")}</Label>
                     <Link href="/auth/reset-password" className="text-sm text-primary hover:underline font-medium">
-                      Forgot password?
+                      {t("auth.login.forgotPassword")}
                     </Link>
                   </div>
                   <Input 
@@ -222,15 +228,15 @@ export default function Login() {
                   />
                 </div>
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("auth.login.signIn")}
                 </Button>
               </form>
             </CardContent>
             <CardFooter className="justify-center border-t p-4 mt-4">
               <p className="text-sm text-muted-foreground">
-                Don't have an account?{" "}
+                {t("auth.login.noAccount")}{" "}
                 <Link href={`/auth/register${safeReturnUrl ? `?returnUrl=${encodeURIComponent(safeReturnUrl)}` : ""}`} className="text-primary hover:underline font-medium">
-                  {safeReturnUrl ? "Create Customer Account" : "Register your business"}
+                  {safeReturnUrl ? t("auth.login.createCustomerAccount") : t("auth.login.registerBusiness")}
                 </Link>
               </p>
             </CardFooter>
@@ -241,13 +247,13 @@ export default function Login() {
               <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2">
                 <ShieldCheck className="w-6 h-6 text-primary" />
               </div>
-              <CardTitle className="text-2xl font-heading text-foreground">Two-Factor Authentication</CardTitle>
-              <CardDescription>Enter the 6-digit verification code generated by your authenticator app.</CardDescription>
+              <CardTitle className="text-2xl font-heading text-foreground">{t("auth.mfa.title")}</CardTitle>
+              <CardDescription>{t("auth.mfa.description")}</CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
               <form onSubmit={handleVerifyMfa} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="mfaCode">Verification Code</Label>
+                  <Label htmlFor="mfaCode">{t("auth.mfa.code")}</Label>
                   <Input 
                     id="mfaCode" 
                     type="text" 
@@ -263,13 +269,13 @@ export default function Login() {
                   />
                 </div>
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold h-11" disabled={loading || mfaCode.length < 6}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Verify Identity"}
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("auth.mfa.verify")}
                 </Button>
                 <Button type="button" variant="ghost" className="w-full" onClick={() => {
                   setMfaRequired(false);
                   supabase.auth.signOut();
                 }} disabled={loading}>
-                  Cancel and sign out
+                  {t("common.cancelAndSignOut")}
                 </Button>
               </form>
             </CardContent>

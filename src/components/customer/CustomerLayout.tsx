@@ -15,6 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { PWAInstallPrompt } from "./PWAInstallPrompt";
+import { LanguageSelector } from "@/components/LanguageSelector";
+import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 
 interface CustomerLayoutProps {
   children: React.ReactNode;
@@ -22,6 +24,7 @@ interface CustomerLayoutProps {
 
 export function CustomerLayout({ children }: CustomerLayoutProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<any>(null);
 
@@ -84,13 +87,13 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
     }
   };
 
-  const navItems = [
-    { name: "Dashboard", href: "/customer", icon: LayoutDashboard },
-    { name: "My Cards", href: "/customer/cards", icon: CreditCard },
-    { name: "Rewards", href: "/customer/rewards", icon: Gift },
-    { name: "Activity", href: "/customer/activity", icon: History },
-    { name: "Profile", href: "/customer/profile", icon: User },
-    { name: "Settings", href: "/customer/settings", icon: Settings },
+  const navItems: { nameKey: TranslationKey; href: string; icon: typeof LayoutDashboard }[] = [
+    { nameKey: "customer.nav.dashboard", href: "/customer", icon: LayoutDashboard },
+    { nameKey: "customer.nav.cards", href: "/customer/cards", icon: CreditCard },
+    { nameKey: "customer.nav.rewards", href: "/customer/rewards", icon: Gift },
+    { nameKey: "customer.nav.activity", href: "/customer/activity", icon: History },
+    { nameKey: "customer.nav.profile", href: "/customer/profile", icon: User },
+    { nameKey: "customer.nav.settings", href: "/customer/settings", icon: Settings },
   ];
 
   if (loading) {
@@ -98,7 +101,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-muted-foreground text-sm font-medium">Verifying account...</p>
+          <p className="text-muted-foreground text-sm font-medium">{t("common.verifyingAccount")}</p>
         </div>
       </div>
     );
@@ -111,7 +114,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
         <div className="p-6 border-b">
           <Link href="/customer" className="flex items-center gap-2">
             <Gift className="h-6 w-6 text-primary" />
-            <span className="font-heading font-bold text-lg text-foreground">Royalty Customer</span>
+            <span className="font-heading font-bold text-lg text-foreground">{t("customer.brand")}</span>
           </Link>
         </div>
 
@@ -120,7 +123,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
             const isActive = router.pathname === item.href;
             const Icon = item.icon;
             return (
-              <Link key={item.name} href={item.href}>
+              <Link key={item.nameKey} href={item.href}>
                 <span className={`
                   flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all cursor-pointer
                   ${isActive 
@@ -128,7 +131,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"}
                 `}>
                   <Icon className="h-5 w-5" />
-                  {item.name}
+                  {t(item.nameKey)}
                 </span>
               </Link>
             );
@@ -142,7 +145,7 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
             onClick={handleLogout}
           >
             <LogOut className="h-5 w-5" />
-            Sign Out
+            {t("common.signOut")}
           </Button>
         </div>
       </aside>
@@ -153,21 +156,27 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
         <header className="md:hidden h-16 border-b bg-card px-4 flex items-center justify-between sticky top-0 z-10">
           <Link href="/customer" className="flex items-center gap-2">
             <Gift className="h-5 w-5 text-primary" />
-            <span className="font-heading font-bold text-base text-foreground">Royalty Customer</span>
+            <span className="font-heading font-bold text-base text-foreground">{t("customer.brand")}</span>
           </Link>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={handleLogout}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <LanguageSelector compact />
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </header>
 
         {/* Dynamic Page Content */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full">
           <PWAInstallPrompt />
+          <div className="mb-4 hidden md:flex justify-end">
+            <LanguageSelector />
+          </div>
           {children}
         </main>
       </div>
@@ -178,13 +187,13 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
           const isActive = router.pathname === item.href;
           const Icon = item.icon;
           return (
-            <Link key={item.name} href={item.href} className="flex-1">
+            <Link key={item.nameKey} href={item.href} className="flex-1">
               <span className={`
                 flex flex-col items-center justify-center py-2 text-[10px] font-medium transition-all
                 ${isActive ? "text-primary font-semibold" : "text-muted-foreground"}
               `}>
                 <Icon className="h-5 w-5 mb-0.5" />
-                {item.name.replace("My ", "")}
+                {t(item.nameKey).replace("My ", "")}
               </span>
             </Link>
           );
