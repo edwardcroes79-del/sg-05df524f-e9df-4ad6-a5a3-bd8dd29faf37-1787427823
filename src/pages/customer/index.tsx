@@ -8,11 +8,13 @@ import { Coffee, Gift, History, HelpCircle, ArrowRight } from "lucide-react";
 import QRCode from "react-qr-code";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function CustomerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [customer, setCustomer] = useState<any>(null);
   const { toast } = useToast();
+  const { t } = useI18n();
   const [stats, setGlobalStats] = useState({
     totalCards: 0,
     availableRewards: 0,
@@ -53,8 +55,8 @@ export default function CustomerDashboardPage() {
         (payload) => {
           console.log("🔥 DASHBOARD REALTIME EVENT: rewards INSERT", payload);
           toast({
-            title: "🎉 Reward Unlocked!",
-            description: "You've earned a new reward. Check your rewards page!",
+            title: t("customer.home.rewardUnlockedTitle"),
+            description: t("customer.home.rewardUnlockedDescription"),
             duration: 7000,
             className: "bg-green-500 text-white border-none shadow-lg",
           });
@@ -144,14 +146,14 @@ export default function CustomerDashboardPage() {
   return (
     <CustomerLayout>
       <Head>
-        <title>Customer Dashboard | Royalty Stamp</title>
+        <title>{t("customer.home.seoTitle")}</title>
       </Head>
 
       <div className="space-y-8">
         {/* Welcome Section */}
         <div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">Bon Bini, {customer?.name}!</h1>
-          <p className="text-muted-foreground mt-1">Here is your digital loyalty summary for local Aruba businesses.</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">{t("customer.home.welcome", { name: customer?.name || "" })}</h1>
+          <p className="text-muted-foreground mt-1">{t("customer.home.summary")}</p>
         </div>
 
         {/* Customer ID / Scan Card */}
@@ -161,11 +163,11 @@ export default function CustomerDashboardPage() {
             <div className="text-center md:text-left space-y-3">
               <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
                 <Coffee className="h-3.5 w-3.5" />
-                Active Stamp Pass
+                {t("customer.home.activePass")}
               </div>
-              <h2 className="text-xl sm:text-2xl font-heading font-bold">Your Personal QR Code</h2>
+              <h2 className="text-xl sm:text-2xl font-heading font-bold">{t("customer.home.personalQr")}</h2>
               <p className="text-muted-foreground text-sm max-w-md">
-                Present this card to the cashier or merchant assistant when checking out to claim stamps securely.
+                {t("customer.home.personalQrDescription")}
               </p>
             </div>
             <div className="bg-white p-4 rounded-2xl shadow-md border flex flex-col items-center">
@@ -177,7 +179,7 @@ export default function CustomerDashboardPage() {
                   fgColor="#0F172A"
                 />
               )}
-              <p className="text-[10px] text-muted-foreground mt-2 font-mono uppercase tracking-wider">ID: {customer?.id?.split("-")[0]}</p>
+              <p className="text-[10px] text-muted-foreground mt-2 font-mono uppercase tracking-wider">{t("customer.home.customerId", { id: customer?.id?.split("-")[0] || "" })}</p>
             </div>
           </CardContent>
         </Card>
@@ -187,24 +189,24 @@ export default function CustomerDashboardPage() {
           <Link href="/customer/cards">
             <div className="bg-card hover:bg-muted/10 border border-border/50 p-4 rounded-xl text-center shadow-sm cursor-pointer transition-colors">
               <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats.totalCards}</p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">My Cards</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">{t("customer.home.myCards")}</p>
             </div>
           </Link>
           <Link href="/customer/rewards">
             <div className="bg-card hover:bg-muted/10 border border-border/50 p-4 rounded-xl text-center shadow-sm cursor-pointer transition-colors">
               <p className="text-2xl sm:text-3xl font-bold text-primary">{stats.availableRewards}</p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">Available Rewards</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">{t("customer.home.availableRewards")}</p>
               <div className="mt-2 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
-                <span>{stats.expiredRewards} Expired</span>
+                <span>{t("customer.home.expired", { count: stats.expiredRewards })}</span>
                 <span aria-hidden="true">•</span>
-                <span>{stats.totalRewardsEarned} Total Earned</span>
+                <span>{t("customer.home.totalEarned", { count: stats.totalRewardsEarned })}</span>
               </div>
             </div>
           </Link>
           <Link href="/customer/activity">
             <div className="bg-card hover:bg-muted/10 border border-border/50 p-4 rounded-xl text-center shadow-sm cursor-pointer transition-colors">
               <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats.totalStamps}</p>
-              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">Stamps Earned</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">{t("customer.home.stampsEarned")}</p>
             </div>
           </Link>
         </div>
@@ -217,13 +219,13 @@ export default function CustomerDashboardPage() {
                 <div className="p-2 bg-primary/10 text-primary w-fit rounded-lg mb-3">
                   <Coffee className="h-5 w-5" />
                 </div>
-                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">Collect Stamps</h3>
+                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("customer.home.collectStamps")}</h3>
                 <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                  View and verify current stamp progress grids across restaurants, salons, and cafés.
+                  {t("customer.home.collectDescription")}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-primary font-medium mt-4 group-hover:translate-x-1 transition-transform">
-                View Cards <ArrowRight className="h-3.5 w-3.5" />
+                {t("customer.home.viewCards")} <ArrowRight className="h-3.5 w-3.5" />
               </div>
             </div>
           </Link>
@@ -234,13 +236,13 @@ export default function CustomerDashboardPage() {
                 <div className="p-2 bg-green-500/10 text-green-600 w-fit rounded-lg mb-3">
                   <Gift className="h-5 w-5" />
                 </div>
-                <h3 className="font-semibold text-foreground group-hover:text-green-600 transition-colors">Claim Rewards</h3>
+                <h3 className="font-semibold text-foreground group-hover:text-green-600 transition-colors">{t("customer.home.claimRewards")}</h3>
                 <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                  Check available rewards, generate secure codes, and redeem vouchers instantly.
+                  {t("customer.home.claimDescription")}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium mt-4 group-hover:translate-x-1 transition-transform">
-                Claim Now <ArrowRight className="h-3.5 w-3.5" />
+                {t("customer.home.claimNow")} <ArrowRight className="h-3.5 w-3.5" />
               </div>
             </div>
           </Link>

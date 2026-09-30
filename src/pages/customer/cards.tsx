@@ -10,8 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
+import { useI18n } from "@/contexts/I18nProvider";
 
 const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
+  const { t } = useI18n();
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isExpired, setIsExpired] = useState(false);
 
@@ -35,26 +37,26 @@ const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
       const minutes = Math.floor((diff / 1000 / 60) % 60);
 
       if (days > 0) {
-        setTimeLeft(`${days} day${days !== 1 ? 's' : ''} ${hours} hour${hours !== 1 ? 's' : ''}`);
+        setTimeLeft(t("customer.countdown.daysHours", { days, hours }));
       } else if (hours > 0) {
-        setTimeLeft(`${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`);
+        setTimeLeft(t("customer.countdown.hoursMinutes", { hours, minutes }));
       } else if (minutes > 0) {
-        setTimeLeft(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+        setTimeLeft(t("customer.countdown.minutes", { minutes }));
       } else {
-        setTimeLeft(`Less than 1 minute`);
+        setTimeLeft(t("customer.countdown.lessThanMinute"));
       }
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 15000); 
     return () => clearInterval(interval);
-  }, [expiresAt]);
+  }, [expiresAt, t]);
 
   if (!expiresAt) {
     return (
       <div className="text-xs font-bold text-muted-foreground flex items-center gap-1.5 mt-1.5">
         <span>♾️</span>
-        <span>No expiration</span>
+        <span>{t("customer.countdown.noExpiration")}</span>
       </div>
     );
   }
@@ -63,10 +65,10 @@ const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
     return (
       <div className="mt-1.5">
         <p className="text-sm font-bold text-destructive flex items-center gap-1">
-          ⏰ Reward Expired
+          {t("customer.countdown.rewardExpired")}
         </p>
         <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
-          This reward can no longer be redeemed.
+          {t("customer.countdown.rewardExpiredDescription")}
         </p>
       </div>
     );
@@ -119,6 +121,7 @@ export default function MyCardsPage() {
   const [unlockedReward, setUnlockedReward] = useState<any | null>(null);
   const [animatingCardId, setAnimatingCardId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { t } = useI18n();
   
   const cardsRef = useRef(cards);
   useEffect(() => {
@@ -248,13 +251,13 @@ export default function MyCardsPage() {
   return (
     <CustomerLayout>
       <Head>
-        <title>My Cards | Royalty Stamp</title>
+        <title>{t("customer.cards.seoTitle")}</title>
       </Head>
 
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">My Loyalty Cards</h1>
-          <p className="text-muted-foreground mt-1">Track your stamp progress and upcoming rewards across all businesses.</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">{t("customer.cards.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("customer.cards.description")}</p>
         </div>
 
         {loading ? (
@@ -266,9 +269,9 @@ export default function MyCardsPage() {
           <Card className="border-dashed bg-card/50">
             <CardContent className="p-12 text-center">
               <CreditCard className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No active cards yet</h3>
+              <h3 className="text-lg font-medium text-foreground mb-2">{t("customer.cards.emptyTitle")}</h3>
               <p className="text-muted-foreground max-w-sm mx-auto">
-                Scan a loyalty program QR code at your favorite shop in Aruba to get your digital stamp card!
+                {t("customer.cards.emptyDescription")}
               </p>
             </CardContent>
           </Card>
@@ -319,7 +322,7 @@ export default function MyCardsPage() {
             <button 
               onClick={() => setUnlockedReward(null)}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted text-muted-foreground transition-colors z-20"
-              aria-label="Close celebration"
+              aria-label={t("customer.cards.closeCelebration")}
             >
               <X className="w-5 h-5" />
             </button>
@@ -344,10 +347,10 @@ export default function MyCardsPage() {
 
               <div className="space-y-2">
                 <h2 className="text-3xl font-heading font-extrabold tracking-tight text-foreground">
-                  Pabien! 🎉
+                  {t("customer.cards.celebrationTitle")}
                 </h2>
                 <p className="text-muted-foreground font-medium text-base">
-                  You completed your loyalty stamp card!
+                  {t("customer.cards.completedCard")}
                 </p>
               </div>
 
@@ -361,9 +364,9 @@ export default function MyCardsPage() {
                     <Check className="w-6 h-6" strokeWidth={3} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary opacity-90">REWARD UNLOCKED</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary opacity-90">{t("customer.cards.rewardUnlockedBadge")}</span>
                     <h3 className="font-heading font-bold text-lg text-foreground leading-tight mt-0.5">
-                      {unlockedReward.reward_title || "Free Reward"}
+                      {unlockedReward.reward_title || t("customer.cards.freeReward")}
                     </h3>
                     <RewardCountdown expiresAt={unlockedReward.expires_at} />
                   </div>
@@ -371,7 +374,7 @@ export default function MyCardsPage() {
               </div>
 
               <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-                Your reward voucher code has been successfully recorded in your profile. Present it to the merchant during your next checkout.
+                {t("customer.cards.rewardRecorded")}
               </p>
 
               {/* View Reward Navigation Action */}
@@ -381,7 +384,7 @@ export default function MyCardsPage() {
                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-xl shadow-md gap-2"
                     onClick={() => setUnlockedReward(null)}
                   >
-                    View My Rewards
+                    {t("customer.cards.viewRewards")}
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>

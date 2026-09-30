@@ -10,8 +10,10 @@ import QRCode from "react-qr-code";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useI18n } from "@/contexts/I18nProvider";
 
 const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
+  const { t } = useI18n();
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isExpired, setIsExpired] = useState(false);
 
@@ -35,13 +37,13 @@ const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
       const minutes = Math.floor((diff / 1000 / 60) % 60);
 
       if (days > 0) {
-        setTimeLeft(`${days} day${days !== 1 ? 's' : ''} ${hours} hour${hours !== 1 ? 's' : ''}`);
+        setTimeLeft(t("customer.countdown.daysHours", { days, hours }));
       } else if (hours > 0) {
-        setTimeLeft(`${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}`);
+        setTimeLeft(t("customer.countdown.hoursMinutes", { hours, minutes }));
       } else if (minutes > 0) {
-        setTimeLeft(`${minutes} minute${minutes !== 1 ? 's' : ''}`);
+        setTimeLeft(t("customer.countdown.minutes", { minutes }));
       } else {
-        setTimeLeft(`Less than 1 minute`);
+        setTimeLeft(t("customer.countdown.lessThanMinute"));
       }
     };
 
@@ -54,7 +56,7 @@ const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
     return (
       <div className="font-bold text-foreground flex items-center gap-1.5">
         <span>♾️</span>
-        <span>No expiration</span>
+        <span>{t("customer.countdown.noExpiration")}</span>
       </div>
     );
   }
@@ -63,10 +65,10 @@ const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
     return (
       <div className="mt-1">
         <p className="text-sm font-bold text-destructive flex items-center gap-1">
-          ⏰ Reward Expired
+          {t("customer.countdown.rewardExpired")}
         </p>
         <p className="text-[10px] text-muted-foreground mt-0.5">
-          This reward can no longer be redeemed.
+          {t("customer.countdown.rewardExpiredDescription")}
         </p>
       </div>
     );
@@ -93,6 +95,7 @@ export default function CustomerRewardsPage() {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   
   const { toast } = useToast();
+  const { t } = useI18n();
 
   useEffect(() => {
     fetchRewards();
@@ -108,8 +111,8 @@ export default function CustomerRewardsPage() {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             toast({
-              title: "🎉 Reward Unlocked!",
-              description: "You've earned a new reward!",
+              title: t("customer.home.rewardUnlockedTitle"),
+              description: t("customer.home.rewardUnlockedDescription"),
               duration: 5000,
               className: "bg-green-500 text-white border-none",
             });
@@ -181,8 +184,8 @@ export default function CustomerRewardsPage() {
       console.error("Error generating QR token:", err);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: err.message || "Failed to generate temporary QR code.",
+        title: t("customer.rewards.generateErrorTitle"),
+        description: err.message || t("customer.rewards.generateErrorDescription"),
       });
     } finally {
       setQrLoading(false);
@@ -229,13 +232,13 @@ export default function CustomerRewardsPage() {
   return (
     <CustomerLayout>
       <Head>
-        <title>My Rewards | Royalty Stamp</title>
+        <title>{t("customer.rewards.seoTitle")}</title>
       </Head>
 
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">My Rewards</h1>
-          <p className="text-muted-foreground mt-1">Scan the QR code below at the store to claim your free reward.</p>
+          <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">{t("customer.rewards.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("customer.rewards.description")}</p>
         </div>
 
         {loading ? (
@@ -249,19 +252,19 @@ export default function CustomerRewardsPage() {
               <Card className="border-primary/20 bg-primary/5">
                 <CardContent className="p-4 text-center">
                   <p className="text-2xl font-bold text-primary">{availableRewards.length}</p>
-                  <p className="text-[11px] font-medium text-muted-foreground mt-1">Available Rewards</p>
+                  <p className="text-[11px] font-medium text-muted-foreground mt-1">{t("customer.rewards.availableRewards")}</p>
                 </CardContent>
               </Card>
               <Card className="border-destructive/20 bg-destructive/5">
                 <CardContent className="p-4 text-center">
                   <p className="text-2xl font-bold text-destructive">{expiredRewards.length}</p>
-                  <p className="text-[11px] font-medium text-muted-foreground mt-1">Expired Rewards</p>
+                  <p className="text-[11px] font-medium text-muted-foreground mt-1">{t("customer.rewards.expiredRewards")}</p>
                 </CardContent>
               </Card>
               <Card className="border-border/60 bg-card">
                 <CardContent className="p-4 text-center">
                   <p className="text-2xl font-bold text-foreground">{totalRewardsEarned}</p>
-                  <p className="text-[11px] font-medium text-muted-foreground mt-1">Total Earned</p>
+                  <p className="text-[11px] font-medium text-muted-foreground mt-1">{t("customer.rewards.totalEarned")}</p>
                 </CardContent>
               </Card>
             </div>
@@ -270,14 +273,14 @@ export default function CustomerRewardsPage() {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
                 <Clock className="h-5 w-5 text-amber-500" />
-                Available Rewards ({availableRewards.length})
+                {t("customer.rewards.availableSection", { count: availableRewards.length })}
               </h2>
 
               {availableRewards.length === 0 ? (
                 <Card className="border-dashed bg-card/50">
                   <CardContent className="p-10 text-center text-muted-foreground">
                     <Gift className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                    <p className="text-sm">No available rewards to redeem right now.</p>
+                    <p className="text-sm">{t("customer.rewards.emptyAvailable")}</p>
                   </CardContent>
                 </Card>
               ) : (
@@ -291,18 +294,18 @@ export default function CustomerRewardsPage() {
                             {reward.businesses?.business_name}
                           </span>
                           <Badge variant="default" className="bg-green-500/10 text-green-600 border-none font-medium hover:bg-green-500/10">
-                            Available
+                            {t("customer.rewards.availableBadge")}
                           </Badge>
                         </div>
                         <CardTitle className="text-lg mt-1 flex items-center gap-2">
-                          🎁 Reward Available
+                          {t("customer.rewards.rewardAvailable")}
                         </CardTitle>
                         <div className="font-medium text-foreground text-base">
                           {reward.reward_title}
                         </div>
                         <CardDescription className="text-xs mt-2 space-y-1.5">
                           <RewardCountdown expiresAt={reward.expires_at} />
-                          <div className="text-muted-foreground">Earned on {new Date(reward.earned_at).toLocaleDateString()}</div>
+                          <div className="text-muted-foreground">{t("customer.rewards.earnedOn", { date: new Date(reward.earned_at).toLocaleDateString() })}</div>
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="pt-2 flex flex-col items-center justify-center">
@@ -311,7 +314,7 @@ export default function CustomerRewardsPage() {
                           disabled={qrLoading}
                           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-6 rounded-xl shadow-md"
                         >
-                          SHOW REWARD QR
+                          {t("customer.rewards.showQr")}
                         </Button>
                       </CardContent>
                     </Card>
@@ -324,13 +327,13 @@ export default function CustomerRewardsPage() {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
                 <Clock className="h-5 w-5 text-destructive" />
-                Expired Rewards ({expiredRewards.length})
+                {t("customer.rewards.expiredSection", { count: expiredRewards.length })}
               </h2>
 
               {expiredRewards.length === 0 ? (
                 <Card className="border-dashed bg-card/50">
                   <CardContent className="p-8 text-center text-muted-foreground text-sm">
-                    No expired rewards.
+                    {t("customer.rewards.emptyExpired")}
                   </CardContent>
                 </Card>
               ) : (
@@ -349,16 +352,16 @@ export default function CustomerRewardsPage() {
                             <h4 className="font-medium text-foreground">{reward.reward_title}</h4>
                             <div className="mt-2">
                               <p className="text-sm font-bold text-destructive flex items-center gap-1">
-                                ⏰ Reward Expired
+                                {t("customer.countdown.rewardExpired")}
                               </p>
                               <p className="text-[10px] text-muted-foreground mt-0.5">
-                                Expired on {reward.expires_at ? new Date(reward.expires_at).toLocaleDateString() : "recorded expiration"}.
+                                {t("customer.rewards.expiredOn", { date: reward.expires_at ? new Date(reward.expires_at).toLocaleDateString() : t("customer.rewards.recordedExpiration") })}
                               </p>
                             </div>
                           </div>
                         </div>
                         <Badge variant="outline" className="bg-destructive/10 text-destructive border-none font-medium w-fit">
-                          EXPIRED
+                          {t("customer.rewards.expiredBadge")}
                         </Badge>
                       </CardContent>
                     </Card>
@@ -370,13 +373,13 @@ export default function CustomerRewardsPage() {
             <div className="space-y-4">
               <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
                 <CheckCircle className="h-5 w-5 text-emerald-500" />
-                Redeemed Rewards ({redeemedRewards.length})
+                {t("customer.rewards.redeemedSection", { count: redeemedRewards.length })}
               </h2>
 
               {redeemedRewards.length === 0 ? (
                 <Card className="border-dashed bg-card/50">
                   <CardContent className="p-8 text-center text-muted-foreground text-sm">
-                    No redeemed rewards yet.
+                    {t("customer.rewards.emptyRedeemed")}
                   </CardContent>
                 </Card>
               ) : (
@@ -395,7 +398,7 @@ export default function CustomerRewardsPage() {
                               </p>
                               <h4 className="font-medium text-foreground">{reward.reward_title}</h4>
                               <p className="text-xs text-muted-foreground mt-0.5">
-                                Code: <span className="font-mono font-semibold">{reward.reward_code}</span>
+                                {t("customer.rewards.code")} <span className="font-mono font-semibold">{reward.reward_code}</span>
                               </p>
                             </div>
                           </div>
@@ -427,10 +430,10 @@ export default function CustomerRewardsPage() {
           <DialogHeader>
             <DialogTitle className="text-center font-heading text-2xl flex items-center justify-center gap-2">
               <Gift className="h-6 w-6 text-primary" />
-              REWARD READY
+              {t("customer.rewards.qrReady")}
             </DialogTitle>
             <DialogDescription className="text-center">
-              Show this QR code to the cashier to redeem your reward.
+              {t("customer.rewards.qrDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -457,7 +460,7 @@ export default function CustomerRewardsPage() {
                   </div>
                   
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Expires in</p>
+                    <p className="text-sm text-muted-foreground">{t("customer.rewards.expiresIn")}</p>
                     <p className="font-mono text-3xl font-bold text-foreground tracking-widest">
                       00:{timeLeft.toString().padStart(2, '0')}
                     </p>
@@ -469,8 +472,8 @@ export default function CustomerRewardsPage() {
                     <Clock className="w-10 h-10 text-muted-foreground opacity-50" />
                   </div>
                   <div className="space-y-1">
-                    <h4 className="font-bold text-lg text-foreground">QR CODE EXPIRED</h4>
-                    <p className="text-sm text-muted-foreground">This QR code has expired for security.</p>
+                    <h4 className="font-bold text-lg text-foreground">{t("customer.rewards.qrExpired")}</h4>
+                    <p className="text-sm text-muted-foreground">{t("customer.rewards.qrExpiredDescription")}</p>
                   </div>
                   <Button 
                     onClick={() => generateQrToken(activeReward)}
@@ -478,7 +481,7 @@ export default function CustomerRewardsPage() {
                     variant="outline"
                     className="mt-4"
                   >
-                    GENERATE NEW QR
+                    {t("customer.rewards.generateNewQr")}
                   </Button>
                 </div>
               )}

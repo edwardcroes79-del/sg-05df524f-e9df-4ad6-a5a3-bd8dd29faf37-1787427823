@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Share, PlusSquare, Smartphone } from "lucide-react";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export function PWAInstallPrompt() {
+  const { t } = useI18n();
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -84,27 +86,27 @@ export function PWAInstallPrompt() {
         <div className="flex-1 space-y-1">
           <h3 className="font-semibold text-foreground flex items-center gap-1.5">
             <Smartphone className="h-4 w-4 text-primary" />
-            Add Royalty Stamp to Home Screen
+            {t("customer.pwa.title")}
           </h3>
           <p className="text-sm text-muted-foreground">
-            Get faster access to your loyalty cards.
+            {t("customer.pwa.description")}
           </p>
 
           {isIOS ? (
             <div className="mt-3 bg-white/50 rounded-lg p-3 text-xs text-foreground space-y-2 border border-primary/10">
-              <p className="font-medium">How to install on iOS:</p>
+              <p className="font-medium">{t("customer.pwa.iosTitle")}</p>
               <ol className="space-y-1.5 pl-1">
                 <li className="flex items-center gap-2">
                   <span className="bg-primary/10 text-primary w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold">1</span>
-                  Tap <Share className="h-3 w-3 inline mx-0.5 text-primary" /> Share in the Safari menu
+                  <span><Share className="h-3 w-3 inline mx-0.5 text-primary" /> {t("customer.pwa.iosStepShare")}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="bg-primary/10 text-primary w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold">2</span>
-                  Tap <PlusSquare className="h-3 w-3 inline mx-0.5 text-primary" /> Add to Home Screen
+                  <span><PlusSquare className="h-3 w-3 inline mx-0.5 text-primary" /> {t("customer.pwa.iosStepAddHome")}</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <span className="bg-primary/10 text-primary w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold">3</span>
-                  Tap Add in the top right
+                  {t("customer.pwa.iosStepAdd")}
                 </li>
               </ol>
             </div>
@@ -115,7 +117,7 @@ export function PWAInstallPrompt() {
               onClick={handleInstallClick}
               disabled={!deferredPrompt}
             >
-              Install App
+              {t("customer.pwa.installApp")}
             </Button>
           )}
         </div>
