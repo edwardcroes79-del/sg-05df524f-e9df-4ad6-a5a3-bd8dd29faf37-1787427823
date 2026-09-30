@@ -388,7 +388,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </span>
               {business?.subscription_plan === 'business' && (
                 <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded w-max mt-0.5 tracking-wider uppercase">
-                  Pro Business
+                  {t("dashboard.plan.business")}
                 </span>
               )}
               {business?.subscription_plan === 'enterprise' && (
@@ -491,6 +491,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-4 shrink-0">
+            <LanguageSelector compact />
             <button onClick={handleOpenWhatsNew} className="relative">
               <Bell className={`h-5 w-5 text-foreground ${!hasReadWhatsNew ? 'animate-bell-shake' : ''}`} />
               {!hasReadWhatsNew && (
