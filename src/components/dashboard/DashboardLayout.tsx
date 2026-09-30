@@ -123,12 +123,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 : Promise.resolve({ data: null }),
             ]);
 
-            const staffName = staffProfile?.full_name || staffProfile?.email || "A staff member";
-            const customerName = customer?.name ? ` to ${customer.name}` : "";
+            const staffName = staffProfile?.full_name || staffProfile?.email || t("dashboard.notifications.staffFallback");
+            const customerName = customer?.name || "";
 
             toast({
-              title: "Stamp issued by staff",
-              description: `${staffName} issued a stamp${customerName}.`,
+              title: t("dashboard.notifications.stampIssuedTitle"),
+              description: customerName
+                ? t("dashboard.notifications.stampIssuedDescriptionWithCustomer", { staffName, customerName })
+                : t("dashboard.notifications.stampIssuedDescription", { staffName }),
             });
           })();
         }
@@ -391,7 +393,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               )}
               {business?.subscription_plan === 'enterprise' && (
                 <span className="text-[9px] font-bold text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded w-max mt-0.5 tracking-wider uppercase border border-amber-500/20 font-serif">
-                  ★ Enterprise
+                  ★ {t("dashboard.plan.enterprise")}
                 </span>
               )}
             </div>
@@ -567,34 +569,34 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">⚡</span>
-                      <h4 className="font-semibold text-foreground">Quick Issue Stamp</h4>
+                      <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.quickIssue.title")}</h4>
                     </div>
                     <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      NEW
+                      {t("common.new")}
                     </span>
                   </div>
                   
                   <div className="space-y-3">
                     <p className="text-sm font-semibold text-foreground">
-                      Let customers scan your business QR code and receive their loyalty stamp themselves — perfect for busy periods.
+                      {t("dashboard.whatsNew.quickIssue.description")}
                     </p>
                     
                     <div className="pt-2 space-y-2">
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">📱</span>
-                        <span><strong>Business Displays QR</strong> - Show the Quick Issue Stamp QR at your counter.</span>
+                        <span><strong>{t("dashboard.whatsNew.quickIssue.displayQrTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.displayQrDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">📷</span>
-                        <span><strong>Customer Scans</strong> - Customers scan the QR with their phone and confirm to receive their stamp.</span>
+                        <span><strong>{t("dashboard.whatsNew.quickIssue.customerScansTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.customerScansDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">⏱️</span>
-                        <span><strong>High Security</strong> - The QR refreshes automatically every 60 seconds.</span>
+                        <span><strong>{t("dashboard.whatsNew.quickIssue.securityTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.securityDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">🧩</span>
-                        <span><strong>Optional Add-on</strong> - Available now as a secure subscription add-on.</span>
+                        <span><strong>{t("dashboard.whatsNew.quickIssue.addonTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.addonDescription")}</span>
                       </div>
                     </div>
                   </div>
@@ -607,47 +609,47 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🧩</span>
-                      <h4 className="font-semibold text-foreground">Available Add-ons</h4>
+                      <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.addons.title")}</h4>
                     </div>
                     <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      NEW
+                      {t("common.new")}
                     </span>
                   </div>
                   
                   <div className="space-y-3">
                     <p className="text-sm font-semibold text-foreground">
-                      Need more room to grow? Add extra customer capacity to your existing plan without changing your current plan.
+                      {t("dashboard.whatsNew.addons.description")}
                     </p>
                     <p className="text-sm text-muted-foreground italic">
-                      "Your business is growing? Add more customer capacity when you need it."
+                      {t("dashboard.whatsNew.addons.quote")}
                     </p>
                     
                     <div className="pt-2 space-y-2">
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">➕</span>
-                        <span><strong>Add More Customers</strong> - Increase your customer/member capacity when you need it.</span>
+                        <span><strong>{t("dashboard.whatsNew.addons.moreCustomersTitle")}</strong> - {t("dashboard.whatsNew.addons.moreCustomersDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">💳</span>
-                        <span><strong>Keep Your Current Plan</strong> - Add capacity without having to switch to a different plan.</span>
+                        <span><strong>{t("dashboard.whatsNew.addons.keepPlanTitle")}</strong> - {t("dashboard.whatsNew.addons.keepPlanDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">📈</span>
-                        <span><strong>Flexible Growth</strong> - Choose the amount of additional capacity that fits your business.</span>
+                        <span><strong>{t("dashboard.whatsNew.addons.flexibleGrowthTitle")}</strong> - {t("dashboard.whatsNew.addons.flexibleGrowthDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">⚡</span>
-                        <span><strong>Simple Approval</strong> - Request an add-on and wait for Super Admin approval.</span>
+                        <span><strong>{t("dashboard.whatsNew.addons.simpleApprovalTitle")}</strong> - {t("dashboard.whatsNew.addons.simpleApprovalDescription")}</span>
                       </div>
                     </div>
 
                     <div className="pt-2 mt-2 border-t border-primary/10">
-                      <p className="text-xs font-semibold text-foreground mb-2">Available options:</p>
+                      <p className="text-xs font-semibold text-foreground mb-2">{t("dashboard.whatsNew.addons.availableOptions")}</p>
                       <div className="flex flex-wrap gap-2">
-                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">+100 Customers</span>
-                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">+250 Customers</span>
-                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">+500 Customers</span>
-                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">+1,000 Customers</span>
+                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option100")}</span>
+                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option250")}</span>
+                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option500")}</span>
+                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option1000")}</span>
                       </div>
                     </div>
                   </div>
@@ -660,37 +662,37 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🎁</span>
-                      <h4 className="font-semibold text-foreground">Reward Expiration</h4>
+                      <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.rewardExpiration.title")}</h4>
                     </div>
                     <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      NEW
+                      {t("common.new")}
                     </span>
                   </div>
                   
                   <div className="space-y-3">
                     <p className="text-sm font-semibold text-foreground">
-                      Set an expiration date for customer rewards so earned rewards don't stay redeemable forever.
+                      {t("dashboard.whatsNew.rewardExpiration.description")}
                     </p>
                     <p className="text-sm text-muted-foreground italic">
-                      "Give customers enough time to redeem their reward while keeping your loyalty program active and organized."
+                      {t("dashboard.whatsNew.rewardExpiration.quote")}
                     </p>
                     
                     <div className="pt-2 space-y-2">
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">⏰</span>
-                        <span><strong>Set Reward Expiration</strong> - Choose how long a reward remains valid after it is earned.</span>
+                        <span><strong>{t("dashboard.whatsNew.rewardExpiration.setTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.setDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">🎁</span>
-                        <span><strong>Flexible Options</strong> - Choose from preset expiration periods or set a custom number of days.</span>
+                        <span><strong>{t("dashboard.whatsNew.rewardExpiration.flexibleTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.flexibleDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">🔒</span>
-                        <span><strong>Automatic Protection</strong> - Expired rewards can no longer be redeemed.</span>
+                        <span><strong>{t("dashboard.whatsNew.rewardExpiration.protectionTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.protectionDescription")}</span>
                       </div>
                       <div className="flex items-start gap-2 text-sm text-muted-foreground">
                         <span className="text-primary mt-0.5">📅</span>
-                        <span><strong>Clear Expiration Dates</strong> - Customers can see when their reward expires.</span>
+                        <span><strong>{t("dashboard.whatsNew.rewardExpiration.clearDatesTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.clearDatesDescription")}</span>
                       </div>
                     </div>
                   </div>
@@ -704,14 +706,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🆕</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Birthday Rewards</h4>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.birthday.title")}</h4>
                     </div>
                     <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                      Coming Soon
+                      {t("common.comingSoon")}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Reward your customers with special birthday offers and incentives.
+                    {t("dashboard.whatsNew.birthday.description")}
                   </p>
                 </div>
 
@@ -723,14 +725,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🎁</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Bonus Stamps</h4>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.bonusStamps.title")}</h4>
                     </div>
                     <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                      Coming Soon
+                      {t("common.comingSoon")}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Give customers extra stamps for special promotions, events, or loyalty campaigns.
+                    {t("dashboard.whatsNew.bonusStamps.description")}
                   </p>
                 </div>
 
@@ -741,14 +743,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🔊</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Stamp Sounds</h4>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.stampSounds.title")}</h4>
                     </div>
                     <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      NEW
+                      {t("common.new")}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Customers can now hear a satisfying sound when they receive a stamp.
+                    {t("dashboard.whatsNew.stampSounds.description")}
                   </p>
                 </div>
 
@@ -759,14 +761,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">🎨</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Custom Loyalty Card Banner</h4>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.customBanner.title")}</h4>
                     </div>
                     <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      NEW
+                      {t("common.new")}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Business owners can now upload their own custom banner image to their Loyalty Card.
+                    {t("dashboard.whatsNew.customBanner.description")}
                   </p>
                 </div>
 
@@ -777,14 +779,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">📷</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">Customer Reward Scan</h4>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.rewardScan.title")}</h4>
                     </div>
                     <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      NEW
+                      {t("common.new")}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Businesses can now scan a customer's Reward QR code to quickly verify and redeem available rewards.
+                    {t("dashboard.whatsNew.rewardScan.description")}
                   </p>
                 </div>
               </div>
@@ -800,9 +802,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
               <span className="text-2xl">🚀</span>
             </div>
-            <DialogTitle className="text-2xl font-heading text-center">Coming Soon</DialogTitle>
+            <DialogTitle className="text-2xl font-heading text-center">{t("dashboard.comingSoonModal.title")}</DialogTitle>
             <DialogDescription className="text-center text-base pt-2">
-              This feature is currently in development and will be available in a future Royalty Stamp update.
+              {t("dashboard.comingSoonModal.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-6 flex justify-center w-full">
