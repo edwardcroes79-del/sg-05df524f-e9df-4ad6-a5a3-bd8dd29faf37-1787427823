@@ -13,10 +13,10 @@ position: 93
 Translate remaining Business Dashboard commerce/admin pages using the existing centralized i18n system. English remains default. Use translation keys only. Do not translate business-created content, staff names, customer names, plan/add-on names from persisted database rows, payment IDs, transaction IDs, or uploaded/configured values. Preserve billing, add-on request, plan change, staff invitation/removal, settings, permissions, auth, RLS, and all database logic.
 
 ## Checklist
-- [ ] Inspect Billing, Staff, and Settings pages
-- [ ] Convert Billing page forms, buttons, labels, add-ons, plan-change messages, payment proof states, and empty states to translation keys
-- [ ] Convert Staff page labels, invitations, permissions, buttons, empty states, confirmations, and toasts to translation keys
-- [ ] Convert Settings page business profile, branding, card customizer, form labels, validation, success/error messages, and actions to translation keys
+- [x] Inspect Billing, Staff, and Settings pages
+- [x] Convert Billing page forms, buttons, labels, add-ons, plan-change messages, payment proof states, and empty states to translation keys
+- [x] Convert Staff page labels, invitations, permissions, buttons, empty states, confirmations, and toasts to translation keys
+- [x] Convert Settings page business profile, branding, card customizer, form labels, validation, success/error messages, and actions to translation keys
 - [ ] Run project validation
 
 ## Acceptance

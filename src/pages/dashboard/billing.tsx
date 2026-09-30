@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check, Clock, CheckCircle, XCircle, AlertCircle, Loader2, PlusCircle } from "lucide-react";
+import { useI18n } from "@/contexts/I18nProvider";
 
 type PaymentRow = {
   id: string;
@@ -27,6 +28,8 @@ type PaymentRow = {
 export default function BillingPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t, language } = useI18n();
+  const locale = language === "es" ? "es-ES" : "en-US";
   const [loading, setLoading] = useState(true);
   const [isStaff, setIsStaff] = useState(false);
   const [business, setBusiness] = useState<any>(null);
@@ -126,7 +129,7 @@ export default function BillingPage() {
         });
       } else {
         const addonResult = await addonResponse.json().catch(() => ({}));
-        throw new Error(addonResult.error || "Failed to load customer capacity add-ons");
+        throw new Error(addonResult.error || t("dashboard.billing.loadAddonsFailed"));
       }
 
       // Fetch all plans
@@ -159,7 +162,7 @@ export default function BillingPage() {
     try {
       setRequestingPlanId(plan.id);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("dashboard.billing.notAuthenticated"));
 
       const existingPendingPlanChange = pendingPayments.find((payment) =>
         payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change"
@@ -167,8 +170,8 @@ export default function BillingPage() {
 
       if (existingPendingPlanChange) {
         toast({
-          title: "Downgrade request pending approval.",
-          description: "Your current entitlements remain active until Super Admin review is complete.",
+          title: t("dashboard.billing.pendingPlanToastTitle"),
+          description: t("dashboard.billing.pendingPlanToastDescription"),
         });
         return;
       }
@@ -185,18 +188,18 @@ export default function BillingPage() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to request plan change");
+        throw new Error(result.error || t("dashboard.billing.planChangeFailedFallback"));
       }
 
       toast({
-        title: result.request?.metadata?.change_type === "downgrade" ? "Downgrade request submitted" : "Plan change requested",
-        description: "Super Admin has been notified. Your current entitlements remain unchanged until approval.",
+        title: result.request?.metadata?.change_type === "downgrade" ? t("dashboard.billing.downgradeSubmitted") : t("dashboard.billing.planChangeSubmitted"),
+        description: t("dashboard.billing.planChangeDescription"),
       });
 
       await fetchData();
     } catch (err: any) {
       toast({
-        title: "Plan change request failed",
+        title: t("dashboard.billing.planChangeFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -207,7 +210,7 @@ export default function BillingPage() {
 
   const refreshAddonOverview = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Not authenticated");
+    if (!session) throw new Error(t("dashboard.billing.notAuthenticated"));
 
     const response = await fetch("/api/business/addons", {
       headers: {
@@ -218,7 +221,7 @@ export default function BillingPage() {
     const result = await response.json();
 
     if (!response.ok || !result.success) {
-      throw new Error(result.error || "Failed to refresh customer capacity add-ons");
+      throw new Error(result.error || t("dashboard.billing.refreshAddonsFailed"));
     }
 
     setEffectiveCustomerLimit(Number(result.effectiveCustomerLimit ?? effectiveCustomerLimit ?? currentPlan?.max_customers ?? 300));
@@ -234,7 +237,7 @@ export default function BillingPage() {
     try {
       setAddonActionId(addon.id);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("dashboard.billing.notAuthenticated"));
 
       const response = await fetch("/api/business/addons", {
         method: "POST",
@@ -251,7 +254,7 @@ export default function BillingPage() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to request add-on purchase");
+        throw new Error(result.error || t("dashboard.billing.addonRequestFailedFallback"));
       }
 
       setEffectiveCustomerLimit(Number(result.effectiveCustomerLimit ?? effectiveCustomerLimit ?? currentPlan?.max_customers ?? 300));
@@ -267,12 +270,12 @@ export default function BillingPage() {
       );
 
       toast({
-        title: "Subscription change requested",
-        description: `A pending payment was created for the full new monthly subscription total: AWG ${requestedNewMonthlyTotal.toFixed(2)}.`,
+        title: t("dashboard.billing.subscriptionChangeRequested"),
+        description: t("dashboard.billing.pendingPaymentCreated", { amount: requestedNewMonthlyTotal.toFixed(2) }),
       });
     } catch (err: any) {
       toast({
-        title: "Add-on purchase failed",
+        title: t("dashboard.billing.addonPurchaseFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -285,7 +288,7 @@ export default function BillingPage() {
     try {
       setAddonActionId(subscription.id);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("dashboard.billing.notAuthenticated"));
 
       const response = await fetch("/api/business/addons", {
         method: "PATCH",
@@ -301,7 +304,7 @@ export default function BillingPage() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to schedule add-on cancellation");
+        throw new Error(result.error || t("dashboard.billing.cancelAddonFailedFallback"));
       }
 
       setEffectiveCustomerLimit(Number(result.effectiveCustomerLimit ?? effectiveCustomerLimit ?? currentPlan?.max_customers ?? 300));
@@ -311,12 +314,12 @@ export default function BillingPage() {
       setAddonPayments(result.addonPayments || []);
 
       toast({
-        title: "Cancellation scheduled",
-        description: "The add-on remains active until the current billing period ends. Existing customer data remains safe.",
+        title: t("dashboard.billing.cancellationScheduledToast"),
+        description: t("dashboard.billing.cancellationScheduledDescription"),
       });
     } catch (err: any) {
       toast({
-        title: "Cancellation failed",
+        title: t("dashboard.billing.cancellationFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -330,8 +333,8 @@ export default function BillingPage() {
 
     if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
       toast({
-        title: "Invalid file type",
-        description: "Upload an image or PDF payment proof.",
+        title: t("dashboard.billing.invalidFileType"),
+        description: t("dashboard.billing.invalidFileDescription"),
         variant: "destructive",
       });
       return;
@@ -339,8 +342,8 @@ export default function BillingPage() {
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: "File too large",
-        description: "Please upload a payment proof under 5MB.",
+        title: t("dashboard.billing.fileTooLarge"),
+        description: t("dashboard.billing.fileTooLargeDescription"),
         variant: "destructive",
       });
       return;
@@ -349,9 +352,9 @@ export default function BillingPage() {
     try {
       setUploadingProofId(payment.id);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("dashboard.billing.notAuthenticated"));
       if (!business?.id || payment.business_id !== business.id) {
-        throw new Error("Payment proof can only be uploaded for your own business.");
+        throw new Error(t("dashboard.billing.ownProofOnly"));
       }
 
       const extension = file.name.split(".").pop()?.toLowerCase() || "bin";
@@ -386,15 +389,15 @@ export default function BillingPage() {
       if (updateError) throw updateError;
 
       toast({
-        title: "Subscription payment proof submitted",
-        description: "Your subscription change is awaiting Super Admin verification.",
+        title: t("dashboard.billing.proofSubmitted"),
+        description: t("dashboard.billing.proofSubmittedDescription"),
       });
 
       await refreshAddonOverview();
       await fetchData();
     } catch (err: any) {
       toast({
-        title: "Proof upload failed",
+        title: t("dashboard.billing.proofUploadFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -413,7 +416,7 @@ export default function BillingPage() {
       }
 
       if (!business?.id || payment.business_id !== business.id) {
-        throw new Error("Payment proof can only be viewed for your own business.");
+        throw new Error(t("dashboard.billing.ownProofOnly"));
       }
 
       const { data, error } = await supabase.storage
@@ -424,7 +427,7 @@ export default function BillingPage() {
       window.open(data.signedUrl, "_blank", "noopener,noreferrer");
     } catch (err: any) {
       toast({
-        title: "Could not open proof",
+        title: t("dashboard.billing.couldNotOpenProof"),
         description: err.message,
         variant: "destructive",
       });
@@ -432,8 +435,8 @@ export default function BillingPage() {
   };
 
   const formatDate = (value?: string | null) => {
-    if (!value) return "Not available";
-    return new Date(value).toLocaleDateString();
+    if (!value) return t("dashboard.billing.notAvailable");
+    return new Date(value).toLocaleDateString(locale);
   };
 
   const getStatusIcon = (status: string) => {
@@ -466,17 +469,17 @@ export default function BillingPage() {
     addon?.id === "quick_stamp_qr" || addon?.slug === "quick-stamp-qr" || addon?.addon_type === "quick_stamp_qr";
 
   const getAddonTitle = (addon: any) =>
-    isQuickStampAddon(addon) ? "⚡ Quick Stamp QR" : `+${Number(addon?.capacity_amount || 0).toLocaleString()} Customers`;
+    isQuickStampAddon(addon) ? t("dashboard.billing.quickStampTitle") : t("dashboard.billing.customersAddonTitle", { count: Number(addon?.capacity_amount || 0).toLocaleString() });
 
   const getAddonDescription = (addon: any) =>
     isQuickStampAddon(addon)
-      ? (addon?.description || "Unlock a secure 60-second rotating QR for future quick stamp issuance.")
+      ? (addon?.description || t("dashboard.billing.quickStampDescription"))
       : (addon?.description || addon?.name);
 
   const getAddonMetric = (addon: any, subscription?: any) => {
-    if (isQuickStampAddon(addon)) return "Quick Stamp QR access";
+    if (isQuickStampAddon(addon)) return t("dashboard.billing.quickStampAccess");
     const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription?.quantity || 1);
-    return `+${addedCapacity.toLocaleString()} members`;
+    return t("dashboard.billing.membersMetric", { count: addedCapacity.toLocaleString() });
   };
 
   if (loading) {
@@ -498,7 +501,7 @@ export default function BillingPage() {
     return (
       <DashboardLayout>
         <Head>
-          <title>Access Denied | Dashboard</title>
+          <title>{t("dashboard.accessDenied.title")} | Dashboard</title>
         </Head>
         <div className="max-w-md mx-auto my-12 text-center">
           <Card className="border-destructive/20 shadow-md">
@@ -506,16 +509,16 @@ export default function BillingPage() {
               <div className="w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-2">
                 <AlertCircle className="w-6 h-6" />
               </div>
-              <CardTitle className="text-xl text-destructive">Access Denied</CardTitle>
-              <CardDescription>You do not have permission to view Billing & Subscription.</CardDescription>
+              <CardTitle className="text-xl text-destructive">{t("dashboard.accessDenied.title")}</CardTitle>
+              <CardDescription>{t("dashboard.billing.accessDeniedDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Only Business Owners can manage subscription tiers, billing profiles, and view payment history. Please contact your administrator.
+                {t("dashboard.billing.accessDeniedBody")}
               </p>
             </CardContent>
             <CardFooter className="bg-muted/30 border-t justify-center py-4">
-              <Button onClick={() => router.push("/dashboard")}>Return to Dashboard</Button>
+              <Button onClick={() => router.push("/dashboard")}>{t("dashboard.billing.returnToDashboard")}</Button>
             </CardFooter>
           </Card>
         </div>
@@ -526,13 +529,13 @@ export default function BillingPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Billing & Subscription | Dashboard</title>
+        <title>{t("dashboard.billing.seoTitle")}</title>
       </Head>
 
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Billing & Subscription</h1>
-          <p className="text-muted-foreground mt-1">Manage your subscription plan and view payment history.</p>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.billing.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("dashboard.billing.description")}</p>
         </div>
 
         {/* Current Plan */}
@@ -552,7 +555,7 @@ export default function BillingPage() {
                   )}
                 </CardTitle>
                 <Badge variant="default" className="gap-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold">
-                  <Check className="h-3.5 w-3.5" /> Activated
+                  <Check className="h-3.5 w-3.5" /> {t("dashboard.billing.activated")}
                 </Badge>
               </div>
             </CardHeader>
@@ -561,37 +564,37 @@ export default function BillingPage() {
                 <h3 className="text-3xl font-heading font-extrabold text-foreground">{currentPlan.name}</h3>
                 <p className="text-3xl font-heading font-extrabold text-primary">
                   AWG {subscriptionTotals.currentSubscriptionTotal > 0 ? subscriptionTotals.currentSubscriptionTotal.toFixed(2) : currentPlan.price_awg.toFixed(2)}
-                  <span className="text-sm text-muted-foreground font-normal"> / month total subscription</span>
+                  <span className="text-sm text-muted-foreground font-normal">{t("dashboard.billing.monthTotal")}</span>
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Base plan: AWG {Number(currentPlan.price_awg || 0).toFixed(2)} / month
-                  {subscriptionTotals.activeAddonMonthlyTotal > 0 ? ` · Active add-ons: AWG ${subscriptionTotals.activeAddonMonthlyTotal.toFixed(2)} / month` : ""}
+                  {t("dashboard.billing.basePlan", { amount: Number(currentPlan.price_awg || 0).toFixed(2) })}
+                  {subscriptionTotals.activeAddonMonthlyTotal > 0 ? t("dashboard.billing.activeAddonsInline", { amount: subscriptionTotals.activeAddonMonthlyTotal.toFixed(2) }) : ""}
                 </p>
                 <div className="pt-4 grid sm:grid-cols-2 gap-2 border-t border-dashed mt-4">
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <span>Up to <strong>{currentPlan.max_loyalty_programs === 9999 ? "Unlimited" : currentPlan.max_loyalty_programs}</strong> active loyalty programs</span>
+                    <span>{t("dashboard.billing.upToPrograms", { count: currentPlan.max_loyalty_programs === 9999 ? t("dashboard.customers.unlimited") : currentPlan.max_loyalty_programs })}</span>
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <span>Up to <strong>{currentPlan.max_customers === 999999 ? "Unlimited" : currentPlan.max_customers.toLocaleString()}</strong> Loyalty Members</span>
+                    <span>{t("dashboard.billing.upToMembers", { count: currentPlan.max_customers === 999999 ? t("dashboard.customers.unlimited") : currentPlan.max_customers.toLocaleString() })}</span>
                   </p>
                   {effectiveCustomerLimit !== null && effectiveCustomerLimit !== Number(currentPlan.max_customers) && (
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
                       <span>
-                        Effective capacity with add-ons: <strong>{effectiveCustomerLimit >= 999999 ? "Unlimited" : effectiveCustomerLimit.toLocaleString()}</strong> Loyalty Members
+                        {t("dashboard.billing.effectiveCapacity", { count: effectiveCustomerLimit >= 999999 ? t("dashboard.customers.unlimited") : effectiveCustomerLimit.toLocaleString() })}
                       </span>
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <span>Up to <strong>{currentPlan.max_staff || 1}</strong> authorized merchant staff accounts</span>
+                    <span>{t("dashboard.billing.upToStaff", { count: currentPlan.max_staff || 1 })}</span>
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-2">
                     <Check className={`h-4 w-4 shrink-0 ${currentPlan.includes_premium_templates ? "text-emerald-500" : "text-muted-foreground/30"}`} />
                     <span className={currentPlan.includes_premium_templates ? "font-semibold text-foreground" : "line-through opacity-50"}>
-                      Premium Design Presets & Templates {currentPlan.includes_premium_templates ? "✨" : "🔒"}
+                      {t("dashboard.billing.premiumTemplates")} {currentPlan.includes_premium_templates ? "✨" : "🔒"}
                     </span>
                   </p>
                   {currentPlan.features?.map((feature: string, idx: number) => (
@@ -603,12 +606,12 @@ export default function BillingPage() {
                 </div>
                 {effectiveCustomerLimit !== null && currentMemberCount >= effectiveCustomerLimit && effectiveCustomerLimit < 999999 && (
                   <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
-                    Your account is at or above its current customer capacity. Existing customers, cards, stamps, and rewards remain safe, but new customer registrations are blocked until capacity is increased.
+                    {t("dashboard.billing.capacityWarning")}
                   </div>
                 )}
                 {activeAddonSubscriptions.length > 0 && (
                   <div className="mt-4 rounded-lg border bg-muted/20 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Active customer capacity add-ons</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("dashboard.billing.activeCapacityAddons")}</p>
                     <div className="space-y-2">
                       {activeAddonSubscriptions.map((subscription) => {
                         const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
@@ -620,7 +623,7 @@ export default function BillingPage() {
                             <span className="text-muted-foreground">
                               {addon?.name || subscription.addon_id}
                               {!isQuickStampAddon(addon) ? ` × ${subscription.quantity}` : ""}
-                              {subscription.cancel_at_period_end ? " · cancels at period end" : ""}
+                              {subscription.cancel_at_period_end ? t("dashboard.billing.cancelsAtPeriodEnd") : ""}
                             </span>
                             <strong className="text-foreground">{getAddonMetric(addon, subscription)} · AWG {subscriptionAmount.toFixed(2)}/month</strong>
                           </div>
@@ -629,7 +632,7 @@ export default function BillingPage() {
                     </div>
                     {subscriptionTotals.cancellingAddonMonthlyTotal > 0 && (
                       <p className="mt-3 text-xs text-amber-700">
-                        Next billing after scheduled cancellations: AWG {subscriptionTotals.nextBillingTotal.toFixed(2)} / month.
+                        {t("dashboard.billing.nextBillingAfterCancellations", { amount: subscriptionTotals.nextBillingTotal.toFixed(2) })}
                       </p>
                     )}
                   </div>
@@ -645,42 +648,42 @@ export default function BillingPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PlusCircle className="h-5 w-5 text-primary" />
-                Optional Add-ons
+                {t("dashboard.billing.optionalAddons")}
               </CardTitle>
               <CardDescription>
-                Request optional add-ons for your existing subscription. Super Admin approval is required before an add-on becomes active.
+                {t("dashboard.billing.optionalAddonsDescription")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Included in {currentPlan.name}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("dashboard.billing.includedInPlan", { planName: currentPlan.name })}</p>
                   <p className="text-2xl font-heading font-bold text-foreground mt-2">
-                    {currentPlan.max_customers === 999999 ? "Unlimited" : currentPlan.max_customers.toLocaleString()}
+                    {currentPlan.max_customers === 999999 ? t("dashboard.customers.unlimited") : currentPlan.max_customers.toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground">base customer capacity</p>
+                  <p className="text-sm text-muted-foreground">{t("dashboard.billing.baseCustomerCapacity")}</p>
                 </div>
                 <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current Usage</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("dashboard.billing.currentUsage")}</p>
                   <p className="text-2xl font-heading font-bold text-foreground mt-2">
-                    {currentMemberCount.toLocaleString()} / {effectiveCustomerLimit === 999999 ? "Unlimited" : (effectiveCustomerLimit ?? currentPlan.max_customers).toLocaleString()}
+                    {currentMemberCount.toLocaleString()} / {effectiveCustomerLimit === 999999 ? t("dashboard.customers.unlimited") : (effectiveCustomerLimit ?? currentPlan.max_customers).toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground">real registered loyalty members</p>
+                  <p className="text-sm text-muted-foreground">{t("dashboard.billing.realMembers")}</p>
                 </div>
                 <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subscription Total</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("dashboard.billing.subscriptionTotal")}</p>
                   <p className="text-2xl font-heading font-bold text-primary mt-2">
                     AWG {(subscriptionTotals.currentSubscriptionTotal || Number(currentPlan.price_awg || 0)).toFixed(2)}
                   </p>
-                  <p className="text-sm text-muted-foreground">current monthly subscription amount</p>
+                  <p className="text-sm text-muted-foreground">{t("dashboard.billing.currentMonthlyAmount")}</p>
                 </div>
               </div>
 
               <div>
-                <h3 className="font-heading font-semibold text-foreground mb-3">Available Add-ons</h3>
+                <h3 className="font-heading font-semibold text-foreground mb-3">{t("dashboard.billing.availableAddons")}</h3>
                 {availableAddons.length === 0 ? (
                   <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-                    No add-ons are currently available.
+                    {t("dashboard.billing.noAddonsAvailable")}
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-4 gap-4">
@@ -691,7 +694,7 @@ export default function BillingPage() {
                           <p className="text-sm text-muted-foreground mt-1">{getAddonDescription(addon)}</p>
                           <p className="text-xl font-heading font-extrabold text-primary mt-3">
                             AWG {Number(addon.monthly_price_awg || 0).toFixed(2)}
-                            <span className="text-xs text-muted-foreground font-normal"> / month</span>
+                            <span className="text-xs text-muted-foreground font-normal">{t("dashboard.billing.perMonth")}</span>
                           </p>
                         </div>
                         <Button
@@ -701,7 +704,7 @@ export default function BillingPage() {
                           onClick={() => handlePurchaseAddon(addon)}
                         >
                           {addonActionId === addon.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                          Request Add-on
+                          {t("dashboard.billing.requestAddon")}
                         </Button>
                       </div>
                     ))}
@@ -710,10 +713,10 @@ export default function BillingPage() {
               </div>
 
               <div>
-                <h3 className="font-heading font-semibold text-foreground mb-3">Active & Requested Add-ons</h3>
+                <h3 className="font-heading font-semibold text-foreground mb-3">{t("dashboard.billing.activeRequestedAddons")}</h3>
                 {activeAddonSubscriptions.length === 0 ? (
                   <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
-                    No add-ons have been requested yet.
+                    {t("dashboard.billing.noAddonsRequested")}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -730,24 +733,24 @@ export default function BillingPage() {
                             <div className="flex flex-wrap items-center gap-2">
                               <h4 className="font-heading font-bold text-foreground">{addon?.name || subscription.addon_id}</h4>
                               <Badge variant={isApprovedActive ? "default" : isPending ? "secondary" : isRejected ? "destructive" : "outline"}>
-                                {isPending ? "Pending Approval" : isRejected ? "Rejected" : subscription.cancel_at_period_end ? "Cancellation scheduled" : subscription.status}
+                                {isPending ? t("dashboard.billing.pendingApproval") : isRejected ? t("dashboard.billing.rejected") : subscription.cancel_at_period_end ? t("dashboard.billing.cancellationScheduled") : subscription.status}
                               </Badge>
                             </div>
                             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 text-sm">
                               <div>
-                                <p className="text-muted-foreground">{isQuickStampAddon(addon) ? "Feature access" : "Capacity added"}</p>
+                                <p className="text-muted-foreground">{isQuickStampAddon(addon) ? t("dashboard.billing.featureAccess") : t("dashboard.billing.capacityAdded")}</p>
                                 <p className="font-semibold">{getAddonMetric(addon, subscription)}</p>
                               </div>
                               <div>
-                                <p className="text-muted-foreground">Monthly cost</p>
+                                <p className="text-muted-foreground">{t("dashboard.billing.monthlyCost")}</p>
                                 <p className="font-semibold">AWG {(Number(addon?.monthly_price_awg || 0) * Number(subscription.quantity || 1)).toFixed(2)}</p>
                               </div>
                               <div>
-                                <p className="text-muted-foreground">{isPending ? "Requested date" : "Start date"}</p>
+                                <p className="text-muted-foreground">{isPending ? t("dashboard.billing.requestedDate") : t("dashboard.billing.startDate")}</p>
                                 <p className="font-semibold">{formatDate(subscription.starts_at)}</p>
                               </div>
                               <div>
-                                <p className="text-muted-foreground">Next billing date</p>
+                                <p className="text-muted-foreground">{t("dashboard.billing.nextBillingDate")}</p>
                                 <p className="font-semibold">{formatDate(subscription.current_period_end)}</p>
                               </div>
                             </div>
@@ -761,17 +764,17 @@ export default function BillingPage() {
                               onClick={() => handleCancelAddon(subscription)}
                             >
                               {addonActionId === subscription.id ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                              Cancel at Period End
+                              {t("dashboard.billing.cancelAtPeriodEnd")}
                             </Button>
                           )}
                           {subscription.cancel_at_period_end && (
                             <p className="mt-2 text-xs text-amber-700">
-                              Capacity remains available until {formatDate(subscription.current_period_end)}. Next billing total excludes this add-on.
+                              {t("dashboard.billing.capacityAvailableUntil", { date: formatDate(subscription.current_period_end) })}
                             </p>
                           )}
                           {isPending && (
                             <p className="text-sm text-muted-foreground lg:max-w-xs">
-                              Your add-on request is waiting for Super Admin approval. Capacity and subscription total update only after approval.
+                              {t("dashboard.billing.addonPendingDescription")}
                             </p>
                           )}
                         </div>
@@ -783,12 +786,12 @@ export default function BillingPage() {
 
               {addonPayments.length > 0 && (
                 <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Other subscription payment history</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{t("dashboard.billing.otherPaymentHistory")}</p>
                   <div className="space-y-2">
                     {addonPayments.slice(0, 5).map((payment) => (
                       <div key={payment.id} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between">
                         <span className="text-muted-foreground">
-                          Reference {payment.payment_reference || payment.id} · AWG {Number(payment.amount || 0).toFixed(2)}
+                          {t("dashboard.billing.reference")} {payment.payment_reference || payment.id} · AWG {Number(payment.amount || 0).toFixed(2)}
                         </span>
                         <Badge variant={getStatusVariant(payment.status || "pending")} className="w-max gap-1">
                           {getStatusIcon(payment.status || "pending")}
@@ -805,16 +808,16 @@ export default function BillingPage() {
 
         {/* Available Plans */}
         <div>
-          <h2 className="text-xl font-heading font-semibold mb-4">Choose Your Growth Plan</h2>
+          <h2 className="text-xl font-heading font-semibold mb-4">{t("dashboard.billing.choosePlan")}</h2>
           {pendingPayments.some((payment) => payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change") && (
             <Card className="mb-6 border-amber-300 bg-amber-50/70">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-amber-900">
                   <Clock className="h-5 w-5" />
-                  Downgrade Request: Pending Super Admin Approval
+                  {t("dashboard.billing.downgradePendingTitle")}
                 </CardTitle>
                 <CardDescription className="text-amber-800">
-                  Current entitlements remain active until the requested plan change is approved.
+                  {t("dashboard.billing.downgradePendingDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -824,20 +827,20 @@ export default function BillingPage() {
                   .map((payment) => (
                     <div key={payment.id} className="grid gap-3 text-sm sm:grid-cols-3">
                       <div>
-                        <p className="text-amber-800/80">Current Plan</p>
+                        <p className="text-amber-800/80">{t("dashboard.billing.currentPlan")}</p>
                         <p className="font-semibold text-amber-950">
                           {payment.metadata?.current_plan_name || currentPlan?.name} — AWG {Number(payment.metadata?.current_plan_price_awg || currentPlan?.price_awg || 0).toFixed(2)}/month
                         </p>
                       </div>
                       <div>
-                        <p className="text-amber-800/80">Requested Plan</p>
+                        <p className="text-amber-800/80">{t("dashboard.billing.requestedPlan")}</p>
                         <p className="font-semibold text-amber-950">
                           {payment.metadata?.requested_plan_name || payment.metadata?.plan_name || payment.plan_id} — AWG {Number(payment.metadata?.requested_plan_price_awg || payment.amount || 0).toFixed(2)}/month
                         </p>
                       </div>
                       <div>
-                        <p className="text-amber-800/80">Requested</p>
-                        <p className="font-semibold text-amber-950">{new Date(payment.created_at).toLocaleString()}</p>
+                        <p className="text-amber-800/80">{t("dashboard.billing.requested")}</p>
+                        <p className="font-semibold text-amber-950">{new Date(payment.created_at).toLocaleString(locale)}</p>
                       </div>
                     </div>
                   ))}
@@ -874,28 +877,28 @@ export default function BillingPage() {
                       <span className="text-3xl font-heading font-extrabold text-foreground">
                         AWG {plan.price_awg.toFixed(2)}
                       </span>
-                      <span className="text-muted-foreground text-sm"> / month</span>
+                      <span className="text-muted-foreground text-sm">{t("dashboard.billing.perMonth")}</span>
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3.5 flex-grow pb-6">
                     <p className="text-sm flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <span><strong>{plan.max_loyalty_programs === 9999 ? "Unlimited" : plan.max_loyalty_programs}</strong> Loyalty Programs</span>
+                      <span><strong>{plan.max_loyalty_programs === 9999 ? t("dashboard.customers.unlimited") : plan.max_loyalty_programs}</strong> {t("dashboard.billing.loyaltyPrograms")}</span>
                     </p>
                     <p className="text-sm flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <span><strong>{plan.max_customers === 999999 ? "Unlimited" : plan.max_customers.toLocaleString()}</strong> Loyalty Members</span>
+                      <span><strong>{plan.max_customers === 999999 ? t("dashboard.customers.unlimited") : plan.max_customers.toLocaleString()}</strong> {t("dashboard.billing.loyaltyMembers")}</span>
                     </p>
                     <p className="text-sm flex items-center gap-2.5">
                       <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <span><strong>{plan.max_staff || 1}</strong> Staff Accounts</span>
+                      <span><strong>{plan.max_staff || 1}</strong> {t("dashboard.billing.staffAccounts")}</span>
                     </p>
                     
                     {/* Explicit visual Premium Templates checklist check */}
                     <p className="text-sm flex items-center gap-2.5 pt-2 border-t border-dashed">
                       <Check className={`h-4 w-4 shrink-0 ${plan.includes_premium_templates ? "text-emerald-500" : "text-muted-foreground/20"}`} />
                       <span className={plan.includes_premium_templates ? "font-semibold text-foreground" : "text-muted-foreground/60 line-through"}>
-                        Premium Design Presets {!plan.includes_premium_templates && "🔒"}
+                        {t("dashboard.billing.premiumTemplates")} {!plan.includes_premium_templates && "🔒"}
                       </span>
                     </p>
                     
@@ -920,13 +923,13 @@ export default function BillingPage() {
                       {requestingPlanId === plan.id ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Requesting...
+                          {t("dashboard.billing.requesting")}
                         </>
                       ) : isCurrent 
-                        ? "Active Plan" 
+                        ? t("dashboard.billing.activePlan") 
                         : (plan.price_awg < (currentPlan?.price_awg || 0)) 
-                        ? "Downgrade Plan" 
-                        : "Upgrade Plan"
+                        ? t("dashboard.billing.downgradePlan") 
+                        : t("dashboard.billing.upgradePlan")
                       }
                     </Button>
                   </CardFooter>
@@ -939,14 +942,14 @@ export default function BillingPage() {
         {/* Payment History */}
         {pendingPayments.length > 0 && (
           <div>
-            <h2 className="text-xl font-heading font-semibold mb-4">Payment History</h2>
+            <h2 className="text-xl font-heading font-semibold mb-4">{t("dashboard.billing.paymentHistory")}</h2>
             <div className="space-y-4">
               {pendingPayments.map((payment) => (
                 <Card key={payment.id}>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">
-                        {payment.metadata?.plan_name || "Subscription Payment"}
+                        {payment.metadata?.plan_name || t("dashboard.billing.subscriptionPayment")}
                       </CardTitle>
                       <Badge variant={getStatusVariant(payment.status)} className="gap-1">
                         {getStatusIcon(payment.status)}
@@ -954,28 +957,28 @@ export default function BillingPage() {
                       </Badge>
                     </div>
                     <CardDescription>
-                      Reference: {payment.payment_reference}
+                      {t("dashboard.billing.reference")}: {payment.payment_reference}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid sm:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <p className="text-muted-foreground">Amount</p>
+                        <p className="text-muted-foreground">{t("dashboard.billing.amount")}</p>
                         <p className="font-semibold">AWG {payment.amount.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Submitted</p>
-                        <p className="font-semibold">{new Date(payment.created_at).toLocaleDateString()}</p>
+                        <p className="text-muted-foreground">{t("dashboard.billing.submitted")}</p>
+                        <p className="font-semibold">{new Date(payment.created_at).toLocaleDateString(locale)}</p>
                       </div>
                       {payment.reviewed_at && (
                         <div>
-                          <p className="text-muted-foreground">Reviewed</p>
-                          <p className="font-semibold">{new Date(payment.reviewed_at).toLocaleDateString()}</p>
+                          <p className="text-muted-foreground">{t("dashboard.billing.reviewed")}</p>
+                          <p className="font-semibold">{new Date(payment.reviewed_at).toLocaleDateString(locale)}</p>
                         </div>
                       )}
                       {payment.admin_notes && (
                         <div className="sm:col-span-2">
-                          <p className="text-muted-foreground">Admin Notes</p>
+                          <p className="text-muted-foreground">{t("dashboard.billing.adminNotes")}</p>
                           <p className="font-semibold">{payment.admin_notes}</p>
                         </div>
                       )}
