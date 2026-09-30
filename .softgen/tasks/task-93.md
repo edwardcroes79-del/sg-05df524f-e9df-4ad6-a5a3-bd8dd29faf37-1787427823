@@ -1,24 +1,25 @@
 ---
 title: Spanish dashboard commerce pages
-status: todo
+status: in_progress
 priority: high
 type: feature
-tags: [i18n, spanish, billing]
+tags: [i18n, spanish, dashboard-commerce]
 created_by: agent
-created_at: 2026-09-30T16:27:53Z
+created_at: 2026-09-30T16:27:55Z
 position: 93
 ---
 
 ## Notes
-Translate Business Dashboard commerce and administration pages using the existing centralized i18n system. Scope includes Billing, Add-ons, contract information, subscription states, payment request UI messages, Staff, Settings, forms, buttons, labels, empty states, confirmations, success/error/validation messages. English remains default. Use translation keys only. Do not modify billing, plan, add-on, subscription, contract, auth, RLS, permissions, or payment logic.
+Translate remaining Business Dashboard commerce/admin pages using the existing centralized i18n system. English remains default. Use translation keys only. Do not translate business-created content, staff names, customer names, plan/add-on names from persisted database rows, payment IDs, transaction IDs, or uploaded/configured values. Preserve billing, add-on request, plan change, staff invitation/removal, settings, permissions, auth, RLS, and all database logic.
 
 ## Checklist
-- [ ] Inspect billing, staff, and settings pages
-- [ ] Add missing English and Spanish translation keys for commerce/admin UI copy
-- [ ] Replace hardcoded UI copy with translation keys while preserving persisted plan/add-on/business data values
-- [ ] Validate affected pages compile and existing actions still work
+- [ ] Inspect Billing, Staff, and Settings pages
+- [ ] Convert Billing page forms, buttons, labels, add-ons, plan-change messages, payment proof states, and empty states to translation keys
+- [ ] Convert Staff page labels, invitations, permissions, buttons, empty states, confirmations, and toasts to translation keys
+- [ ] Convert Settings page business profile, branding, card customizer, form labels, validation, success/error messages, and actions to translation keys
+- [ ] Run project validation
 
 ## Acceptance
-Billing, add-ons, contract information, staff, and settings UI switch between English and Spanish.
-Persisted plan/add-on/business data remains unchanged and untranslated.
+Billing, Add-ons, Staff, Settings, and Card Customizer dashboard text switches between English and Spanish.
+Business-created names, staff/customer names, persisted plan/add-on names, transaction references, and uploaded values remain untranslated.
 Existing billing, permissions, staff, and settings functionality remains unchanged.

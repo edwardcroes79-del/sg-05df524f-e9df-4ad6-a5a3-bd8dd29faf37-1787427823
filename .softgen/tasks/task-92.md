@@ -1,6 +1,6 @@
 ---
 title: Spanish dashboard core pages
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [i18n, spanish, dashboard-pages]
@@ -10,7 +10,7 @@ position: 92
 ---
 
 ## Notes
-Translate Business Dashboard core pages using the existing centralized i18n system. English remains default. Use translation keys only. Do not translate business-created content such as customer names, loyalty program names, descriptions, reward titles, customer notes, or persisted values. Preserve page behavior, queries, mutations, realtime refresh, QR/token logic, stamp logic, reward logic, billing logic, auth, permissions, and RLS.
+Translated Business Dashboard core pages using the existing centralized i18n system. English remains default. Translation keys were added for Overview, contract information, loyalty programs, customers, Stamps & Rewards, QR Codes, and Quick Issue Stamp. Business-created content such as customer names, loyalty program names, descriptions, reward titles, customer notes, and persisted values remains untranslated. Preserved page behavior, queries, mutations, realtime refresh, QR/token logic, stamp logic, reward logic, billing logic, auth, permissions, and RLS. Project validation passed after the core page conversion.
 
 ## Checklist
 - [x] Inspect dashboard overview, customers, loyalty programs, stamps/rewards, QR, and Quick Issue Stamp pages
@@ -20,7 +20,7 @@ Translate Business Dashboard core pages using the existing centralized i18n syst
 - [x] Convert Stamps & Rewards scan page labels, modes, validation, confirmations, scanner states, and toasts to translation keys
 - [x] Convert QR Codes page labels, buttons, empty states, and toasts to translation keys
 - [x] Convert Quick Issue Stamp page labels, guidance, alerts, validation rules, countdown controls, and toasts to translation keys
-- [ ] Run project validation
+- [x] Run project validation
 
 ## Acceptance
 Core Business Dashboard pages switch between English and Spanish using the shared selector.
