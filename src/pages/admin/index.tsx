@@ -67,9 +67,9 @@ function getContractStatusBadgeVariant(status?: string | null) {
   return "default";
 }
 
-function formatContractDisplayDate(dateValue?: string | null) {
-  if (!dateValue) return "unknown date";
-  return new Date(`${dateValue}T00:00:00`).toLocaleDateString("en-US", {
+function formatContractDisplayDate(dateValue?: string | null, locale = "en-US", fallback = "unknown date") {
+  if (!dateValue) return fallback;
+  return new Date(`${dateValue}T00:00:00`).toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -83,19 +83,19 @@ function getContractReminderTitle(reminderType: string) {
   return `Contract Expiring in ${days} Day${days === "1" ? "" : "s"}`;
 }
 
-function getContractReminderDaysText(reminderType: string) {
-  if (reminderType === "expiration") return "0 days remaining";
-  if (reminderType === "1_day") return "1 day remaining";
-  return `${reminderType.replace("_days", "")} days remaining`;
+function getContractReminderDaysText(reminderType: string, t: ReturnType<typeof useI18n>["t"]) {
+  if (reminderType === "expiration") return t("admin.contract.zeroDaysRemaining");
+  if (reminderType === "1_day") return t("admin.contract.oneDayRemaining");
+  return t("admin.contract.daysRemaining", { days: reminderType.replace("_days", "") });
 }
 
 function isQuickStampAddon(addon: any) {
   return addon?.id === "quick_stamp_qr" || addon?.slug === "quick-stamp-qr" || addon?.addon_type === "quick_stamp_qr";
 }
 
-function getAddonDisplayMetric(addon: any, quantity = 1) {
-  if (isQuickStampAddon(addon)) return "Quick Stamp QR access";
-  return `+${(Number(addon?.capacity_amount || 0) * Number(quantity || 1)).toLocaleString()} customer capacity`;
+function getAddonDisplayMetric(addon: any, quantity = 1, t: ReturnType<typeof useI18n>["t"]) {
+  if (isQuickStampAddon(addon)) return t("admin.addons.quickStampMetric");
+  return t("admin.addons.customerCapacityMetric", { count: (Number(addon?.capacity_amount || 0) * Number(quantity || 1)).toLocaleString() });
 }
 
 export default function AdminDashboard() {
@@ -402,7 +402,7 @@ export default function AdminDashboard() {
           plansData = plansResult.plans || [];
         } else {
           const plansResult = await plansResponse.json().catch(() => ({}));
-          throw new Error(plansResult.error || "Failed to load subscription plans");
+          throw new Error(plansResult.error || t("admin.api.failedLoadPlans"));
         }
       }
 
@@ -421,7 +421,7 @@ export default function AdminDashboard() {
           addonsData = addonsResult.addons || [];
         } else {
           const addonsResult = await addonsResponse.json().catch(() => ({}));
-          throw new Error(addonsResult.error || "Failed to load subscription add-ons");
+          throw new Error(addonsResult.error || t("admin.api.failedLoadAddons"));
         }
       }
 
@@ -440,7 +440,7 @@ export default function AdminDashboard() {
           businessAddonsData = businessAddonsResult.businessAddons || [];
         } else {
           const businessAddonsResult = await businessAddonsResponse.json().catch(() => ({}));
-          throw new Error(businessAddonsResult.error || "Failed to load business add-on subscriptions");
+          throw new Error(businessAddonsResult.error || t("admin.api.failedLoadBusinessAddons"));
         }
       }
 
@@ -623,7 +623,7 @@ export default function AdminDashboard() {
       const plan = plans.find((item) => item.id === business?.subscription_plan);
       const planName = plan?.name || business?.subscription_plan || t("admin.common.noPlanAssigned");
       const termText = business?.contract_term_months ? t("admin.contract.monthTerm", { months: business.contract_term_months }) : t("admin.contract.termUnassigned");
-      const expirationDate = formatContractDisplayDate(reminder.contract_end_date);
+      const expirationDate = formatContractDisplayDate(reminder.contract_end_date, locale, t("admin.contract.unknownDate"));
       const isExpired = reminder.reminder_type === "expiration";
 
       return {
@@ -638,8 +638,13 @@ export default function AdminDashboard() {
             }),
         businessName: business?.business_name || t("admin.common.unknownBusiness"),
         description: isExpired
-          ? `${planName} — ${termText} — contract expired ${expirationDate}.`
-          : `${planName} — ${termText} — expires ${expirationDate} (${getContractReminderDaysText(reminder.reminder_type)}).`,
+          ? t("admin.contract.expiredDescription", { planName, termText, expirationDate })
+          : t("admin.contract.expiringDescription", {
+              planName,
+              termText,
+              expirationDate,
+              daysText: getContractReminderDaysText(reminder.reminder_type, t),
+            }),
         createdAt: reminder.sent_at || reminder.created_at,
         status: "pending" as const,
         destination: "merchants" as const,
@@ -684,7 +689,7 @@ export default function AdminDashboard() {
           type: changeType,
           businessName: payment.businesses?.business_name || payment.metadata?.business_name || t("admin.common.unknownBusiness"),
           description: t("admin.notifications.planChangeRequested", {
-            currentPlan: payment.metadata?.current_plan_name || "current plan",
+            currentPlan: payment.metadata?.current_plan_name || t("admin.common.currentPlan"),
             requestedPlan: payment.metadata?.requested_plan_name || payment.plan_id,
           }),
           createdAt: payment.created_at,
@@ -777,14 +782,14 @@ export default function AdminDashboard() {
       if (error) throw error;
 
       toast({
-        title: `Business ${nextStatus === "suspended" ? "Suspended" : "Activated"}`,
-        description: "The status update has been successfully saved.",
+        title: t("admin.merchants.businessStatusUpdated", { status: nextStatus === "suspended" ? t("admin.merchants.suspend") : t("admin.merchants.activate") }),
+        description: t("admin.merchants.statusSaved"),
       });
 
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Error updating status",
+        title: t("admin.merchants.statusUpdateFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -795,7 +800,7 @@ export default function AdminDashboard() {
     try {
       setApproving(bizId);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const response = await fetch("/api/admin/approve-business", {
         method: "POST",
@@ -809,21 +814,21 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to approve business");
+        throw new Error(result.error || t("admin.merchants.approvalFailed"));
       }
 
       toast({
-        title: "Business Approved",
+        title: t("admin.merchants.businessApproved"),
         description: result.emailSent 
-          ? "The business is now active and the approval email has been sent."
-          : "The business is now active, but the approval email failed to send (SMTP timeout).",
+          ? t("admin.merchants.approvalEmailSent")
+          : t("admin.merchants.approvalEmailFailed"),
         variant: result.emailSent ? "default" : "destructive",
       });
 
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Approval Failed",
+        title: t("admin.merchants.approvalFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -836,7 +841,7 @@ export default function AdminDashboard() {
     try {
       setRetryingEmail(bizId);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const response = await fetch("/api/admin/approve-business", {
         method: "POST",
@@ -850,21 +855,21 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to resend email");
+        throw new Error(result.error || t("admin.merchants.notificationFailed"));
       }
 
       toast({
-        title: result.emailSent ? "Email Resent" : "Email Failed",
+        title: result.emailSent ? t("admin.merchants.emailResent") : t("admin.merchants.emailFailed"),
         description: result.emailSent 
-          ? "The approval email was successfully resent."
-          : `Email failed: ${result.error || 'Unknown error occurred.'}`,
+          ? t("admin.merchants.emailResentDescription")
+          : t("admin.merchants.emailFailedDescription", { error: result.error || t("admin.common.unknown") }),
         variant: result.emailSent ? "default" : "destructive",
       });
 
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Retry Failed",
+        title: t("admin.merchants.retryFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -886,21 +891,21 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!result.success && !result.emailSent) {
-        throw new Error(result.error || "Failed to resend admin notification");
+        throw new Error(result.error || t("admin.merchants.notificationFailed"));
       }
 
       toast({
-        title: result.emailSent ? "Notification Resent" : "Notification Failed",
+        title: result.emailSent ? t("admin.merchants.notificationResent") : t("admin.merchants.notificationFailed"),
         description: result.emailSent
-          ? "The admin notification was successfully resent."
-          : `Email failed: ${result.error || 'Unknown error occurred.'}`,
+          ? t("admin.merchants.notificationResentDescription")
+          : t("admin.merchants.emailFailedDescription", { error: result.error || t("admin.common.unknown") }),
         variant: result.emailSent ? "default" : "destructive",
       });
 
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Retry Failed",
+        title: t("admin.merchants.retryFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -930,14 +935,14 @@ export default function AdminDashboard() {
       if (error) throw error;
 
       toast({
-        title: "Subscription Updated",
-        description: `Successfully changed plan to ${planId.toUpperCase()}`,
+        title: t("admin.merchants.subscriptionUpdated"),
+        description: t("admin.merchants.subscriptionUpdatedDescription", { planId: planId.toUpperCase() }),
       });
 
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Error updating plan",
+        title: t("admin.merchants.planUpdateFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -958,8 +963,8 @@ export default function AdminDashboard() {
 
     if (!draft?.term || !draft?.startDate) {
       toast({
-        title: "Contract details required",
-        description: "Select a 6 or 12 month term and a contract start date.",
+        title: t("admin.contract.detailsRequired"),
+        description: t("admin.contract.detailsRequiredDescription"),
         variant: "destructive",
       });
       return;
@@ -968,8 +973,8 @@ export default function AdminDashboard() {
     const termMonths = Number(draft.term);
     if (![6, 12].includes(termMonths)) {
       toast({
-        title: "Invalid contract term",
-        description: "Contract term must be 6 or 12 months.",
+        title: t("admin.contract.invalidTerm"),
+        description: t("admin.contract.invalidTermDescription"),
         variant: "destructive",
       });
       return;
@@ -997,8 +1002,11 @@ export default function AdminDashboard() {
       if (error) throw error;
 
       toast({
-        title: "Contract Assigned",
-        description: `Saved a ${termMonths}-month contract ending ${new Date(`${contractEndDate}T00:00:00`).toLocaleDateString()}.`,
+        title: t("admin.contract.assigned"),
+        description: t("admin.contract.assignedDescription", {
+          termMonths,
+          endDate: new Date(`${contractEndDate}T00:00:00`).toLocaleDateString(locale),
+        }),
       });
 
       setContractDrafts((current) => {
@@ -1009,7 +1017,7 @@ export default function AdminDashboard() {
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Contract assignment failed",
+        title: t("admin.contract.assignmentFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -1033,7 +1041,7 @@ export default function AdminDashboard() {
       setRenewingContractId(`${biz.id}:${termMonths}`);
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error(t("admin.common.notAuthenticated"));
 
       const { error: businessError } = await (supabase as any)
         .from("businesses")
@@ -1074,14 +1082,18 @@ export default function AdminDashboard() {
       if (auditError) throw auditError;
 
       toast({
-        title: "Contract Renewed",
-        description: `${biz.business_name} now has an active ${termMonths}-month contract ending ${new Date(`${newEndDate}T00:00:00`).toLocaleDateString()}.`,
+        title: t("admin.contract.renewed"),
+        description: t("admin.contract.renewedDescription", {
+          businessName: biz.business_name,
+          termMonths,
+          endDate: new Date(`${newEndDate}T00:00:00`).toLocaleDateString(locale),
+        }),
       });
 
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Contract renewal failed",
+        title: t("admin.contract.renewalFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -1132,7 +1144,7 @@ export default function AdminDashboard() {
 
   const savePlanThroughApi = async (method: "POST" | "PATCH") => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Not authenticated");
+    if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
     const entitlements = [
       ...availablePlanEntitlements.map((feature) => ({
@@ -1186,7 +1198,7 @@ export default function AdminDashboard() {
     const result = await response.json();
 
     if (!response.ok || !result.success) {
-      throw new Error(result.error || "Failed to save plan");
+      throw new Error(result.error || t("admin.api.failedSavePlan"));
     }
 
     setPlans(result.plans || []);
@@ -1266,7 +1278,7 @@ export default function AdminDashboard() {
       });
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const response = await fetch("/api/admin/plans", {
         method: "PATCH",
@@ -1306,7 +1318,7 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to update plan status");
+        throw new Error(result.error || t("admin.api.failedUpdatePlanStatus"));
       }
 
       setPlans(result.plans || []);
@@ -1352,7 +1364,7 @@ export default function AdminDashboard() {
 
   const saveAddonThroughApi = async (method: "POST" | "PATCH") => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Not authenticated");
+    if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
     const response = await fetch("/api/admin/addons", {
       method,
@@ -1379,7 +1391,7 @@ export default function AdminDashboard() {
     const result = await response.json();
 
     if (!response.ok || !result.success) {
-      throw new Error(result.error || "Failed to save add-on");
+      throw new Error(result.error || t("admin.api.failedSaveAddon"));
     }
 
     setAddons(result.addons || []);
@@ -1428,7 +1440,7 @@ export default function AdminDashboard() {
     try {
       setSavingAddon(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const response = await fetch("/api/admin/addons", {
         method: "PATCH",
@@ -1455,7 +1467,7 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to update add-on status");
+        throw new Error(result.error || t("admin.api.failedUpdateAddonStatus"));
       }
 
       setAddons(result.addons || []);
@@ -1489,7 +1501,7 @@ export default function AdminDashboard() {
     try {
       setAssigningBusinessAddon(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const response = await fetch("/api/admin/business-addons", {
         method: "POST",
@@ -1508,7 +1520,7 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to assign add-on");
+        throw new Error(result.error || t("admin.api.failedAssignAddon"));
       }
 
       setBusinessAddonSubscriptions(result.businessAddons || []);
@@ -1533,7 +1545,7 @@ export default function AdminDashboard() {
     try {
       setCancellingBusinessAddonId(subscription.id);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const response = await fetch("/api/admin/business-addons", {
         method: "PATCH",
@@ -1551,7 +1563,7 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to cancel add-on");
+        throw new Error(result.error || t("admin.api.failedCancelAddon"));
       }
 
       setBusinessAddonSubscriptions(result.businessAddons || []);
@@ -1575,7 +1587,7 @@ export default function AdminDashboard() {
     try {
       setReviewingAddonRequestId(subscription.id);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error(t("admin.common.notAuthenticated"));
 
       const now = new Date().toISOString();
       const metadata = asMetadataObject(subscription.metadata);
@@ -1625,7 +1637,7 @@ export default function AdminDashboard() {
     try {
       setReviewingAddonRequestId(subscription.id);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error(t("admin.common.notAuthenticated"));
 
       const now = new Date().toISOString();
       const metadata = asMetadataObject(subscription.metadata);
@@ -1676,8 +1688,8 @@ export default function AdminDashboard() {
 
     if (payment.provider === "bank_transfer" && !payment.payment_proof_url && !isAddonApprovalPayment && !isPlanChangeRequest) {
       toast({
-        title: "Payment Proof Required",
-        description: "Manual bank-transfer subscription payments require uploaded proof before approval.",
+        title: t("admin.payments.proofRequired"),
+        description: t("admin.payments.proofRequiredDescription"),
         variant: "destructive",
       });
       return;
@@ -1686,7 +1698,7 @@ export default function AdminDashboard() {
     try {
       setProcessing(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error(t("admin.common.notAuthenticated"));
 
       const reviewedAt = new Date().toISOString();
       const paymentMetadata = asMetadataObject(payment.metadata);
@@ -1701,8 +1713,11 @@ export default function AdminDashboard() {
         if (reviewError) throw reviewError;
 
         toast({
-          title: payment.metadata?.change_type === "downgrade" ? "Downgrade Approved" : "Plan Change Approved",
-          description: `${payment.businesses.business_name} is now on the ${payment.metadata?.requested_plan_name || payment.plan_id} plan. Existing customer and loyalty data was preserved.`,
+          title: payment.metadata?.change_type === "downgrade" ? t("admin.payments.downgradeApproved") : t("admin.payments.planChangeApproved"),
+          description: t("admin.payments.planChangeApprovedDescription", {
+            businessName: payment.businesses.business_name,
+            planName: payment.metadata?.requested_plan_name || payment.plan_id,
+          }),
         });
 
         setReviewingPayment(null);
@@ -1779,8 +1794,8 @@ export default function AdminDashboard() {
         }
 
         toast({
-          title: "Subscription Change Approved",
-          description: `${payment.businesses.business_name}'s add-on is now part of the active subscription.`,
+          title: t("admin.payments.subscriptionChangeApproved"),
+          description: t("admin.payments.subscriptionChangeApprovedDescription", { businessName: payment.businesses.business_name }),
         });
       } else if (isPlanChangeRequest) {
         const requestedPlanId = String(payment.metadata?.requested_plan_id || payment.plan_id || "");
@@ -1800,8 +1815,11 @@ export default function AdminDashboard() {
         if (businessError) throw businessError;
 
         toast({
-          title: payment.metadata?.change_type === "downgrade" ? "Downgrade Approved" : "Plan Change Approved",
-          description: `${payment.businesses.business_name} is now on the ${payment.metadata?.requested_plan_name || requestedPlanId} plan. Existing customer and loyalty data was preserved.`,
+          title: payment.metadata?.change_type === "downgrade" ? t("admin.payments.downgradeApproved") : t("admin.payments.planChangeApproved"),
+          description: t("admin.payments.planChangeApprovedDescription", {
+            businessName: payment.businesses.business_name,
+            planName: payment.metadata?.requested_plan_name || requestedPlanId,
+          }),
         });
       } else {
         const { error: businessError } = await supabase
@@ -1815,8 +1833,11 @@ export default function AdminDashboard() {
         if (businessError) throw businessError;
 
         toast({
-          title: "Payment Approved",
-          description: `${payment.businesses.business_name} has been upgraded to ${payment.plan_id.toUpperCase()} plan.`,
+          title: t("admin.payments.paymentApproved"),
+          description: t("admin.payments.paymentApprovedDescription", {
+            businessName: payment.businesses.business_name,
+            planId: payment.plan_id.toUpperCase(),
+          }),
         });
       }
 
@@ -1825,7 +1846,7 @@ export default function AdminDashboard() {
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Approval Failed",
+        title: t("admin.payments.approvalFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -1837,8 +1858,8 @@ export default function AdminDashboard() {
   const handleRejectPayment = async (payment: any) => {
     if (!adminNotes.trim()) {
       toast({
-        title: "Admin Notes Required",
-        description: "Please add a rejection reason before rejecting.",
+        title: t("admin.payments.notesRequired"),
+        description: t("admin.payments.notesRequiredDescription"),
         variant: "destructive",
       });
       return;
@@ -1847,7 +1868,7 @@ export default function AdminDashboard() {
     try {
       setProcessing(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user) throw new Error(t("admin.common.notAuthenticated"));
 
       const rejectedAt = new Date().toISOString();
       const paymentMetadata = asMetadataObject(payment.metadata);
@@ -1862,8 +1883,8 @@ export default function AdminDashboard() {
         if (reviewError) throw reviewError;
 
         toast({
-          title: "Request Rejected",
-          description: "The business has been notified and the current subscription remains unchanged.",
+          title: t("admin.payments.requestRejected"),
+          description: t("admin.payments.requestRejectedDescription"),
         });
 
         setReviewingPayment(null);
@@ -1963,8 +1984,8 @@ export default function AdminDashboard() {
       }
 
       toast({
-        title: "Payment Rejected",
-        description: "The business has been notified of the rejection.",
+        title: t("admin.payments.paymentRejected"),
+        description: t("admin.payments.paymentRejectedDescription"),
       });
 
       setReviewingPayment(null);
@@ -1972,7 +1993,7 @@ export default function AdminDashboard() {
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Rejection Failed",
+        title: t("admin.payments.rejectionFailed"),
         description: err.message,
         variant: "destructive",
       });
@@ -1998,7 +2019,7 @@ export default function AdminDashboard() {
       window.open(data.signedUrl, "_blank", "noopener,noreferrer");
     } catch (err: any) {
       toast({
-        title: "Could not open payment proof",
+        title: t("admin.payments.couldNotOpenProof"),
         description: err.message,
         variant: "destructive",
       });
@@ -2012,7 +2033,7 @@ export default function AdminDashboard() {
       setDeleting(true);
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const response = await fetch("/api/admin/delete-customer", {
         method: "POST",
@@ -2026,19 +2047,19 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to delete customer");
+        throw new Error(result.error || t("admin.customers.deleteTitle"));
       }
 
       toast({
-        title: "Customer Deleted",
-        description: result.message || `Successfully removed ${customerToDelete.name} and verified backend deletion.`,
+        title: t("admin.customers.deleted"),
+        description: result.message || t("admin.customers.deletedDescription", { name: customerToDelete.name }),
       });
 
       setCustomerToDelete(null);
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Deletion Failed",
+        title: t("admin.delete.failed"),
         description: err.message,
         variant: "destructive",
       });
@@ -2054,7 +2075,7 @@ export default function AdminDashboard() {
       setDeletingBusiness(true);
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const response = await fetch("/api/admin/delete-business", {
         method: "POST",
@@ -2068,19 +2089,19 @@ export default function AdminDashboard() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to delete business");
+        throw new Error(result.error || t("admin.businessDelete.title"));
       }
 
       toast({
-        title: "Business Deleted",
-        description: `Successfully removed ${businessToDelete.business_name} and all related demo data.`,
+        title: t("admin.businessDelete.deleted"),
+        description: t("admin.businessDelete.deletedDescription", { businessName: businessToDelete.business_name }),
       });
 
       setBusinessToDelete(null);
       await fetchAdminData();
     } catch (err: any) {
       toast({
-        title: "Deletion Failed",
+        title: t("admin.delete.failed"),
         description: err.message,
         variant: "destructive",
       });
@@ -2331,15 +2352,15 @@ export default function AdminDashboard() {
           <TabsContent value="merchants">
             <Card>
               <CardHeader>
-                <CardTitle>Aruban Merchants</CardTitle>
+                <CardTitle>{t("admin.merchants.title")}</CardTitle>
                 <CardDescription>
-                  Manage active business accounts, plan limits, and suspend/activate services.
+                  {t("admin.merchants.description")}
                   <div className="flex gap-4 mt-3 font-medium text-sm">
                     <span className="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 flex items-center gap-2">
-                      <Clock className="h-4 w-4" /> Active Trials: {globalStats.activeTrials}
+                      <Clock className="h-4 w-4" /> {t("admin.merchants.activeTrials")} {globalStats.activeTrials}
                     </span>
                     <span className="text-destructive bg-destructive/10 px-2.5 py-1 rounded-md border border-destructive/20 flex items-center gap-2">
-                      <Ban className="h-4 w-4" /> Expired Trials: {globalStats.expiredTrials}
+                      <Ban className="h-4 w-4" /> {t("admin.merchants.expiredTrials")} {globalStats.expiredTrials}
                     </span>
                   </div>
                 </CardDescription>
@@ -2348,18 +2369,18 @@ export default function AdminDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Business Name</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Plan</TableHead>
-                      <TableHead>Contract Term</TableHead>
-                      <TableHead>Contract Dates</TableHead>
-                      <TableHead>Contract Status</TableHead>
-                      <TableHead>Plan Price</TableHead>
-                      <TableHead>Active Add-ons</TableHead>
-                      <TableHead>Add-on Total</TableHead>
-                      <TableHead>Total Subscription</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("admin.merchants.businessName")}</TableHead>
+                      <TableHead>{t("admin.merchants.created")}</TableHead>
+                      <TableHead>{t("admin.merchants.status")}</TableHead>
+                      <TableHead>{t("admin.merchants.plan")}</TableHead>
+                      <TableHead>{t("admin.merchants.contractTerm")}</TableHead>
+                      <TableHead>{t("admin.merchants.contractDates")}</TableHead>
+                      <TableHead>{t("admin.merchants.contractStatus")}</TableHead>
+                      <TableHead>{t("admin.merchants.planPrice")}</TableHead>
+                      <TableHead>{t("admin.merchants.activeAddons")}</TableHead>
+                      <TableHead>{t("admin.merchants.addonTotal")}</TableHead>
+                      <TableHead>{t("admin.merchants.totalSubscription")}</TableHead>
+                      <TableHead className="text-right">{t("admin.merchants.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2396,7 +2417,7 @@ export default function AdminDashboard() {
       </Badge>
       <div className="mt-2 flex flex-col gap-1">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Approval Email
+          {t("admin.merchants.approvalEmail")}
         </span>
         <Badge
           variant={approvalEmailStatus === "sent" ? "default" : approvalEmailStatus === "failed" ? "destructive" : "secondary"}
@@ -2417,7 +2438,7 @@ export default function AdminDashboard() {
           aria-label={`Assign subscription plan for ${biz.business_name}`}
         >
           <option value="" disabled>
-            Select plan
+            {t("admin.merchants.selectPlan")}
           </option>
           {plans
             .filter((plan) => (plan.status || (plan.is_active ? "active" : "inactive")) === "active" || plan.id === biz.subscription_plan)
@@ -2430,10 +2451,10 @@ export default function AdminDashboard() {
         {assigningPlanId === biz.id && (
           <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
-            Updating plan...
+            {t("admin.merchants.updatingPlan")}
           </div>
         )}
-        <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || "None"}</div>
+        <div className="uppercase font-mono font-bold text-xs">{biz.subscription_plan || t("admin.common.none")}</div>
         {biz.trial_end && plans.find(p => p.id === biz.subscription_plan)?.is_trial && (
           <div className="text-[10px] mt-1.5 flex flex-col gap-0.5">
             <span className="text-muted-foreground">Start: {new Date(biz.trial_start).toLocaleDateString()}</span>
@@ -2459,8 +2480,8 @@ export default function AdminDashboard() {
           aria-label={`Assign contract term for ${biz.business_name}`}
         >
           <option value="">Assign term</option>
-          <option value="6">6 months</option>
-          <option value="12">12 months</option>
+          <option value="6">{t("admin.contract.months6")}</option>
+          <option value="12">{t("admin.contract.months12")}</option>
         </select>
         <Input
           type="date"
@@ -2482,7 +2503,7 @@ export default function AdminDashboard() {
           disabled={assigningContractId === biz.id || !contractDraft.term || !contractDraft.startDate}
         >
           {assigningContractId === biz.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-          Save Contract
+          {t("admin.contract.saveContract")}
         </Button>
         {biz.contract_end_date && (
           <div className="grid grid-cols-2 gap-1">
@@ -2495,7 +2516,7 @@ export default function AdminDashboard() {
               disabled={renewingContractId === `${biz.id}:6` || renewingContractId === `${biz.id}:12`}
             >
               {renewingContractId === `${biz.id}:6` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
-              Renew 6
+              {t("admin.contract.renew6")}
             </Button>
             <Button
               type="button"
@@ -2506,24 +2527,24 @@ export default function AdminDashboard() {
               disabled={renewingContractId === `${biz.id}:6` || renewingContractId === `${biz.id}:12`}
             >
               {renewingContractId === `${biz.id}:12` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
-              Renew 12
+              {t("admin.contract.renew12")}
             </Button>
           </div>
         )}
         <div className="text-[11px] text-muted-foreground">
-          Current: {biz.contract_term_months ? `${biz.contract_term_months} months` : "Unassigned"}
+          {t("admin.contract.current")} {biz.contract_term_months ? t("dashboard.contract.months", { months: biz.contract_term_months }) : t("admin.common.unassigned")}
         </div>
       </div>
     </TableCell>
     <TableCell>
       {biz.contract_start_date && biz.contract_end_date ? (
         <div className="space-y-1 text-xs">
-          <div><span className="text-muted-foreground">Start:</span> {new Date(`${biz.contract_start_date}T00:00:00`).toLocaleDateString()}</div>
-          <div><span className="text-muted-foreground">End:</span> {new Date(`${biz.contract_end_date}T00:00:00`).toLocaleDateString()}</div>
-          <div><span className="text-muted-foreground">Renewal:</span> {biz.renewal_date ? new Date(`${biz.renewal_date}T00:00:00`).toLocaleDateString() : "Not set"}</div>
+          <div><span className="text-muted-foreground">{t("admin.contract.start")}</span> {new Date(`${biz.contract_start_date}T00:00:00`).toLocaleDateString(locale)}</div>
+          <div><span className="text-muted-foreground">{t("admin.contract.end")}</span> {new Date(`${biz.contract_end_date}T00:00:00`).toLocaleDateString(locale)}</div>
+          <div><span className="text-muted-foreground">{t("admin.contract.renewal")}</span> {biz.renewal_date ? new Date(`${biz.renewal_date}T00:00:00`).toLocaleDateString(locale) : t("admin.common.notSet")}</div>
         </div>
       ) : (
-        <span className="text-xs text-muted-foreground italic">No contract assigned</span>
+        <span className="text-xs text-muted-foreground italic">{t("admin.contract.noContractAssigned")}</span>
       )}
     </TableCell>
     <TableCell>
@@ -2533,7 +2554,7 @@ export default function AdminDashboard() {
         </Badge>
       ) : (
         <Badge variant="outline" className="text-[10px] uppercase">
-          Unassigned
+          {t("admin.common.unassigned")}
         </Badge>
       )}
     </TableCell>
@@ -2549,26 +2570,26 @@ export default function AdminDashboard() {
             return (
               <span key={sub.id} className="text-xs text-muted-foreground whitespace-nowrap">
                 {sub.cancel_at_period_end && (
-                  <span title="Cancels at period end">
+                  <span title={t("admin.merchants.cancelsAtPeriodEnd")}>
                     <Clock className="inline w-3 h-3 text-amber-500 mr-1" aria-hidden="true" />
                   </span>
                 )}
                 {isQuickStampAddon(addon)
-                  ? "Quick Stamp QR access"
-                  : `+${addedCapacity.toLocaleString()} Customers`}
+                  ? t("admin.addons.quickStampMetric")
+                  : t("admin.merchants.customerAddon", { count: addedCapacity.toLocaleString() })}
               </span>
             );
           })}
         </div>
       ) : (
-        <span className="text-xs text-muted-foreground italic">None</span>
+        <span className="text-xs text-muted-foreground italic">{t("admin.common.none")}</span>
       )}
     </TableCell>
     <TableCell className="text-foreground">
       {activeAddonSubs.length > 0 ? `AWG ${addonTotal.toFixed(2)}` : "-"}
     </TableCell>
     <TableCell className="font-bold text-primary whitespace-nowrap">
-      AWG {totalSubscription.toFixed(2)} / month
+      {t("admin.merchants.totalPerMonth", { amount: totalSubscription.toFixed(2) })}
     </TableCell>
     <TableCell className="text-right flex items-center justify-end gap-2">
       {biz.status === "pending" ? (
@@ -2580,7 +2601,7 @@ export default function AdminDashboard() {
           disabled={approving === biz.id}
         >
           {approving === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-          Approve
+          {t("admin.merchants.approve")}
         </Button>
       ) : (
         <Button
@@ -2592,7 +2613,7 @@ export default function AdminDashboard() {
           }}
         >
           {biz.status === "active" ? <Ban className="h-3.5 w-3.5 text-amber-500" /> : <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
-          {biz.status === "active" ? "Suspend" : "Activate"}
+          {biz.status === "active" ? t("admin.merchants.suspend") : t("admin.merchants.activate")}
         </Button>
       )}
       {biz.status !== "pending" && approvalEmailStatus !== "sent" && (
@@ -2604,7 +2625,7 @@ export default function AdminDashboard() {
           disabled={retryingEmail === biz.id}
         >
           {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-          Resend Approval Email
+          {t("admin.merchants.resendApprovalEmail")}
         </Button>
       )}
       <Button
@@ -2613,7 +2634,7 @@ export default function AdminDashboard() {
         className="gap-1 text-xs"
         onClick={() => setBusinessToDelete(biz)}
       >
-        <Trash2 className="h-3.5 w-3.5" /> Delete
+        <Trash2 className="h-3.5 w-3.5" /> {t("admin.common.delete")}
       </Button>
     </TableCell>
   </TableRow>
@@ -2622,7 +2643,7 @@ export default function AdminDashboard() {
 {businesses.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={12} className="text-center py-6 text-muted-foreground">
-                          No merchants onboarded yet.
+                          {t("admin.merchants.noMerchants")}
                         </TableCell>
                       </TableRow>
                     )}
@@ -2635,33 +2656,33 @@ export default function AdminDashboard() {
           <TabsContent value="payments">
             <Card>
               <CardHeader>
-                <CardTitle>Payment Review Queue</CardTitle>
-                <CardDescription>Review manual subscription payments, subscription plan-change requests, and direct add-on approval requests.</CardDescription>
+                <CardTitle>{t("admin.payments.title")}</CardTitle>
+                <CardDescription>{t("admin.payments.description")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Business</TableHead>
-                      <TableHead>Plan / Add-on</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("admin.payments.business")}</TableHead>
+                      <TableHead>{t("admin.payments.planAddon")}</TableHead>
+                      <TableHead>{t("admin.payments.amount")}</TableHead>
+                      <TableHead>{t("admin.payments.reference")}</TableHead>
+                      <TableHead>{t("admin.payments.submitted")}</TableHead>
+                      <TableHead>{t("admin.payments.status")}</TableHead>
+                      <TableHead className="text-right">{t("admin.payments.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {payments.map((payment) => (
                       <TableRow key={payment.id}>
-                        <TableCell className="font-semibold">{payment.businesses?.business_name || "Unknown"}</TableCell>
+                        <TableCell className="font-semibold">{payment.businesses?.business_name || t("admin.common.unknown")}</TableCell>
                         <TableCell className="uppercase font-mono text-xs">
                           {payment.metadata?.kind === "subscription_plan_change"
-                            ? payment.metadata?.notification_title || "Subscription Plan Change Request"
+                            ? payment.metadata?.notification_title || t("admin.payments.subscriptionPlanChange")
                             : payment.metadata?.kind === "subscription_change"
-                            ? "Subscription change"
+                            ? t("admin.payments.subscriptionChange")
                             : payment.metadata?.kind === "addon_purchase"
-                            ? payment.metadata?.addon_name || "Customer capacity add-on"
+                            ? payment.metadata?.addon_name || t("admin.payments.customerCapacityAddon")
                             : payment.plan_id}
                         </TableCell>
                         <TableCell className="font-semibold">AWG {payment.amount.toFixed(2)}</TableCell>
@@ -2692,12 +2713,12 @@ export default function AdminDashboard() {
                                 setAdminNotes("");
                               }}
                             >
-                              <Eye className="h-4 w-4 mr-1" /> Review
+                              <Eye className="h-4 w-4 mr-1" /> {t("admin.common.review")}
                             </Button>
                           )}
                           {payment.status !== "pending" && (
                             <span className="text-xs text-muted-foreground">
-                              Reviewed {new Date(payment.reviewed_at).toLocaleDateString()}
+                              {t("admin.common.reviewed")} {new Date(payment.reviewed_at).toLocaleDateString(locale)}
                             </span>
                           )}
                         </TableCell>
@@ -2706,7 +2727,7 @@ export default function AdminDashboard() {
                     {payments.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                          No payment submissions yet.
+                          {t("admin.payments.noPayments")}
                         </TableCell>
                       </TableRow>
                     )}
@@ -2719,22 +2740,25 @@ export default function AdminDashboard() {
             {reviewingPayment && (
               <Card className="mt-6">
                 <CardHeader>
-                  <CardTitle>Review {reviewingPayment.metadata?.kind === "subscription_plan_change" ? "Subscription Plan Change" : "Payment"}: {reviewingPayment.businesses?.business_name}</CardTitle>
+                  <CardTitle>{t("admin.payments.reviewTitle", {
+                    type: reviewingPayment.metadata?.kind === "subscription_plan_change" ? t("admin.payments.subscriptionPlanChange") : t("admin.payments.payment"),
+                    businessName: reviewingPayment.businesses?.business_name || t("admin.common.unknown"),
+                  })}</CardTitle>
                   <CardDescription>
                     {reviewingPayment.metadata?.kind === "subscription_plan_change"
-                      ? "Review the requested plan change before it becomes effective."
-                      : "Verify payment proof and approve or reject the subscription change."}
+                      ? t("admin.payments.reviewPlanChange")
+                      : t("admin.payments.reviewPaymentProof")}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div>
-                        <p className="text-sm text-muted-foreground">Business</p>
+                        <p className="text-sm text-muted-foreground">{t("admin.payments.business")}</p>
                         <p className="font-semibold">{reviewingPayment.businesses?.business_name}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Subscription Change</p>
+                        <p className="text-sm text-muted-foreground">{t("admin.payments.subscriptionChangeLabel")}</p>
                         <p className="font-semibold">
                           {reviewingPayment.metadata?.kind === "subscription_plan_change"
                             ? `${reviewingPayment.metadata?.current_plan_name || "Current plan"} → ${reviewingPayment.metadata?.requested_plan_name || reviewingPayment.plan_id}`
@@ -2749,57 +2773,57 @@ export default function AdminDashboard() {
                         <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
                           <div className="flex items-center gap-2">
                             <Badge variant={reviewingPayment.metadata?.change_type === "downgrade" ? "secondary" : "default"}>
-                              {reviewingPayment.metadata?.change_type === "downgrade" ? "Downgrade Request" : "Upgrade Request"}
+                              {reviewingPayment.metadata?.change_type === "downgrade" ? t("admin.notifications.downgradeRequest") : t("admin.notifications.upgradeRequest")}
                             </Badge>
                             <span className="text-xs text-muted-foreground">
-                              Requested {reviewingPayment.metadata?.requested_at ? new Date(reviewingPayment.metadata.requested_at).toLocaleString() : new Date(reviewingPayment.created_at).toLocaleString()}
+                              {t("admin.payments.submitted")} {reviewingPayment.metadata?.requested_at ? new Date(reviewingPayment.metadata.requested_at).toLocaleString(locale) : new Date(reviewingPayment.created_at).toLocaleString(locale)}
                             </span>
                           </div>
                           <div className="grid gap-3 text-sm sm:grid-cols-2">
                             <div>
-                              <p className="text-muted-foreground">Current Plan</p>
+                              <p className="text-muted-foreground">{t("admin.payments.currentPlan")}</p>
                               <p className="font-semibold">{reviewingPayment.metadata?.current_plan_name}</p>
                               <p className="text-xs text-muted-foreground">AWG {Number(reviewingPayment.metadata?.current_plan_price_awg || 0).toFixed(2)}/month</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground">Requested Plan</p>
+                              <p className="text-muted-foreground">{t("admin.payments.requestedPlan")}</p>
                               <p className="font-semibold">{reviewingPayment.metadata?.requested_plan_name}</p>
                               <p className="text-xs text-primary font-semibold">AWG {Number(reviewingPayment.metadata?.requested_plan_price_awg || reviewingPayment.amount || 0).toFixed(2)}/month</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground">Current Entitlements</p>
-                              <p className="font-semibold">{Number(reviewingPayment.metadata?.current_entitlements?.max_loyalty_programs || 0).toLocaleString()} Loyalty Programs</p>
-                              <p className="text-xs text-muted-foreground">{Number(reviewingPayment.metadata?.current_entitlements?.max_customers || 0).toLocaleString()} Loyalty Members · {Number(reviewingPayment.metadata?.current_entitlements?.max_staff || 0).toLocaleString()} Staff</p>
+                              <p className="text-muted-foreground">{t("admin.payments.currentEntitlements")}</p>
+                              <p className="font-semibold">{Number(reviewingPayment.metadata?.current_entitlements?.max_loyalty_programs || 0).toLocaleString()} {t("admin.payments.loyaltyPrograms")}</p>
+                              <p className="text-xs text-muted-foreground">{Number(reviewingPayment.metadata?.current_entitlements?.max_customers || 0).toLocaleString()} {t("admin.payments.loyaltyMembers")} · {Number(reviewingPayment.metadata?.current_entitlements?.max_staff || 0).toLocaleString()} {t("admin.payments.staff")}</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground">Requested Entitlements</p>
-                              <p className="font-semibold">{Number(reviewingPayment.metadata?.requested_entitlements?.max_loyalty_programs || 0).toLocaleString()} Loyalty Programs</p>
-                              <p className="text-xs text-muted-foreground">{Number(reviewingPayment.metadata?.requested_entitlements?.max_customers || 0).toLocaleString()} Loyalty Members · {Number(reviewingPayment.metadata?.requested_entitlements?.max_staff || 0).toLocaleString()} Staff</p>
+                              <p className="text-muted-foreground">{t("admin.payments.requestedEntitlements")}</p>
+                              <p className="font-semibold">{Number(reviewingPayment.metadata?.requested_entitlements?.max_loyalty_programs || 0).toLocaleString()} {t("admin.payments.loyaltyPrograms")}</p>
+                              <p className="text-xs text-muted-foreground">{Number(reviewingPayment.metadata?.requested_entitlements?.max_customers || 0).toLocaleString()} {t("admin.payments.loyaltyMembers")} · {Number(reviewingPayment.metadata?.requested_entitlements?.max_staff || 0).toLocaleString()} {t("admin.payments.staff")}</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground">Current Member Count</p>
+                              <p className="text-muted-foreground">{t("admin.payments.currentMemberCount")}</p>
                               <p className="font-semibold">{Number(reviewingPayment.metadata?.current_member_count || 0).toLocaleString()}</p>
                             </div>
                             <div>
-                              <p className="text-muted-foreground">Current Staff Count</p>
+                              <p className="text-muted-foreground">{t("admin.payments.currentStaffCount")}</p>
                               <p className="font-semibold">{Number(reviewingPayment.metadata?.current_staff_count || 0).toLocaleString()}</p>
                             </div>
                           </div>
                           <p className="text-xs text-muted-foreground border-t pt-2">
-                            Existing customers, cards, stamps, and rewards are preserved. If usage is above the new limit, existing data stays safe and new additions follow the existing limit rules.
+                            {t("admin.payments.dataPreserved")}
                           </p>
                         </div>
                       )}
                       <div>
-                        <p className="text-sm text-muted-foreground">Amount</p>
+                        <p className="text-sm text-muted-foreground">{t("admin.payments.amount")}</p>
                         <p className="font-bold text-xl">AWG {reviewingPayment.amount.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Payment Reference</p>
+                        <p className="text-sm text-muted-foreground">{t("admin.payments.reference")}</p>
                         <p className="font-mono font-semibold">{reviewingPayment.payment_reference}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-muted-foreground">Submitted</p>
+                        <p className="text-sm text-muted-foreground">{t("admin.payments.submitted")}</p>
                         <p className="font-semibold">{new Date(reviewingPayment.created_at).toLocaleString()}</p>
                       </div>
                     </div>
@@ -2808,26 +2832,26 @@ export default function AdminDashboard() {
                       {reviewingPayment.metadata?.kind === "subscription_plan_change" ? (
                         <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
                           <Clock className="h-8 w-8 text-primary mx-auto" />
-                          <p className="font-semibold text-foreground">{reviewingPayment.metadata?.notification_title || "Subscription Plan Change Request"}</p>
-                          <p className="text-sm text-muted-foreground">No payment proof is required. Super Admin approval applies the requested plan change.</p>
+                          <p className="font-semibold text-foreground">{reviewingPayment.metadata?.notification_title || t("admin.payments.subscriptionPlanChange")}</p>
+                          <p className="text-sm text-muted-foreground">{t("admin.payments.noProofRequiredPlan")}</p>
                         </div>
                       ) : reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase" ? (
                         <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
                           <CheckCircle className="h-8 w-8 text-primary mx-auto" />
-                          <p className="font-semibold text-foreground">Customer capacity add-on approval</p>
-                          <p className="text-sm text-muted-foreground">No payment proof is required for customer-capacity add-on approval.</p>
+                          <p className="font-semibold text-foreground">{t("admin.payments.customerCapacityAddon")}</p>
+                          <p className="text-sm text-muted-foreground">{t("admin.payments.noProofRequiredAddon")}</p>
                         </div>
                       ) : (
                         <>
-                          <p className="text-sm text-muted-foreground mb-2">Payment Proof</p>
+                          <p className="text-sm text-muted-foreground mb-2">{t("admin.payments.paymentProof")}</p>
                           {reviewingPayment.payment_proof_url ? (
                             <div className="border rounded-lg p-6 text-center space-y-3">
                               <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto" />
                               <div>
-                                <p className="font-semibold text-foreground">Payment proof uploaded</p>
+                                <p className="font-semibold text-foreground">{t("admin.payments.proofUploaded")}</p>
                                 <p className="text-xs text-muted-foreground break-all">
                                   {reviewingPayment.payment_proof_url.startsWith("http")
-                                    ? "Legacy public proof URL"
+                                    ? t("admin.payments.legacyProofUrl")
                                     : reviewingPayment.payment_proof_url}
                                 </p>
                               </div>
@@ -2836,12 +2860,12 @@ export default function AdminDashboard() {
                                 variant="outline"
                                 onClick={() => handleOpenAdminPaymentProof(reviewingPayment)}
                               >
-                                View Payment Proof
+                                {t("admin.payments.viewProof")}
                               </Button>
                             </div>
                           ) : (
                             <div className="border rounded-lg p-8 text-center text-muted-foreground">
-                              No proof uploaded
+                              {t("admin.payments.noProofUploaded")}
                             </div>
                           )}
                         </>
@@ -2850,11 +2874,11 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="adminNotes">Admin Review Notes</Label>
+                    <Label htmlFor="adminNotes">{t("admin.payments.adminNotes")}</Label>
                     <textarea
                       id="adminNotes"
                       className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder="Add notes about this payment verification..."
+                      placeholder={t("admin.payments.adminNotesPlaceholder")}
                       value={adminNotes}
                       onChange={(e) => setAdminNotes(e.target.value)}
                       disabled={processing}
@@ -2870,7 +2894,7 @@ export default function AdminDashboard() {
                     }}
                     disabled={processing}
                   >
-                    Cancel
+                    {t("admin.common.cancel")}
                   </Button>
                   <Button 
                     variant="destructive"
@@ -2878,7 +2902,7 @@ export default function AdminDashboard() {
                     disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase" && reviewingPayment.metadata?.kind !== "subscription_plan_change")}
                   >
                     {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                    {reviewingPayment.metadata?.kind === "subscription_plan_change" ? "Reject Request" : "Reject Payment"}
+                    {reviewingPayment.metadata?.kind === "subscription_plan_change" ? t("admin.payments.rejectRequest") : t("admin.payments.rejectPayment")}
                   </Button>
                   <Button 
                     onClick={() => handleApprovePayment(reviewingPayment)}
@@ -2886,8 +2910,8 @@ export default function AdminDashboard() {
                   >
                     {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                     {reviewingPayment.metadata?.kind === "subscription_plan_change"
-                      ? reviewingPayment.metadata?.change_type === "downgrade" ? "Approve Downgrade" : "Approve Plan Change"
-                      : "Approve & Activate"}
+                      ? reviewingPayment.metadata?.change_type === "downgrade" ? t("admin.payments.approveDowngrade") : t("admin.payments.approvePlanChange")
+                      : t("admin.payments.approveActivate")}
                   </Button>
                 </CardFooter>
               </Card>
@@ -3576,7 +3600,7 @@ export default function AdminDashboard() {
                                 )}
                               </div>
                               <p className="text-sm text-muted-foreground mt-1">
-                                {addon?.name || subscription.addon_id} × {subscription.quantity} = {getAddonDisplayMetric(addon, subscription.quantity)}
+                                {addon?.name || subscription.addon_id} × {subscription.quantity} = {getAddonDisplayMetric(addon, subscription.quantity, t)}
                               </p>
                               {isPendingApproval && (
                                 <div className="mt-3 grid gap-2 rounded-md border bg-muted/20 p-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
@@ -3649,26 +3673,26 @@ export default function AdminDashboard() {
           <TabsContent value="customers">
             <Card>
               <CardHeader>
-                <CardTitle>Platform Customers & Users</CardTitle>
-                <CardDescription>Manage, deactivate, and permanently delete registered test customer accounts and profiles.</CardDescription>
+                <CardTitle>{t("admin.customers.title")}</CardTitle>
+                <CardDescription>{t("admin.customers.description")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Customer Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Registered At</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>{t("admin.customers.name")}</TableHead>
+                      <TableHead>{t("admin.customers.email")}</TableHead>
+                      <TableHead>{t("admin.customers.phone")}</TableHead>
+                      <TableHead>{t("admin.customers.registeredAt")}</TableHead>
+                      <TableHead className="text-right">{t("admin.merchants.actions")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {customers.map((cust) => (
                       <TableRow key={cust.id}>
                         <TableCell className="font-semibold">{cust.name}</TableCell>
-                        <TableCell className="font-mono text-xs">{cust.email || "No Email"}</TableCell>
-                        <TableCell className="text-xs">{cust.phone || "No Phone"}</TableCell>
+                        <TableCell className="font-mono text-xs">{cust.email || t("admin.customers.noEmail")}</TableCell>
+                        <TableCell className="text-xs">{cust.phone || t("admin.customers.noPhone")}</TableCell>
                         <TableCell className="text-xs">{new Date(cust.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -3677,7 +3701,7 @@ export default function AdminDashboard() {
                             onClick={() => setCustomerToDelete(cust)}
                             className="gap-1 text-xs"
                           >
-                            <Trash2 className="h-3.5 w-3.5" /> Delete User
+                            <Trash2 className="h-3.5 w-3.5" /> {t("admin.customers.deleteUser")}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -3685,7 +3709,7 @@ export default function AdminDashboard() {
                     {customers.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                          No customer profiles found on the platform.
+                          {t("admin.customers.noCustomers")}
                         </TableCell>
                       </TableRow>
                     )}
@@ -3949,15 +3973,17 @@ export default function AdminDashboard() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-destructive flex items-center gap-2">
-                <Trash2 className="h-5 w-5" /> Delete this customer?
+                <Trash2 className="h-5 w-5" /> {t("admin.customers.deleteTitle")}
               </DialogTitle>
               <DialogDescription className="space-y-3 pt-2">
                 <p>
-                  You are about to permanently delete the test customer <strong className="text-foreground">{customerToDelete.name}</strong> 
-                  {customerToDelete.email ? ` (${customerToDelete.email})` : ""}.
+                  {t("admin.customers.deleteDescription", {
+                    name: customerToDelete.name,
+                    email: customerToDelete.email ? ` (${customerToDelete.email})` : "",
+                  })}
                 </p>
                 <p className="text-xs font-semibold text-destructive uppercase tracking-wider bg-destructive/10 p-2.5 rounded border border-destructive/20">
-                  ⚠️ This action is irreversible. All stamp logs, active loyalty cards, and rewards earned by this customer will be permanently deleted from the database.
+                  {t("admin.customers.deleteWarning")}
                 </p>
               </DialogDescription>
             </DialogHeader>
@@ -3968,7 +3994,7 @@ export default function AdminDashboard() {
                 onClick={() => setCustomerToDelete(null)}
                 disabled={deleting}
               >
-                Cancel
+                {t("admin.common.cancel")}
               </Button>
               <Button
                 type="button"
@@ -3979,11 +4005,11 @@ export default function AdminDashboard() {
               >
                 {deleting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t("admin.common.deleting")}
                   </>
                 ) : (
                   <>
-                    <Trash2 className="h-4 w-4" /> Confirm Delete
+                    <Trash2 className="h-4 w-4" /> {t("admin.common.confirmDelete")}
                   </>
                 )}
               </Button>
@@ -3998,14 +4024,14 @@ export default function AdminDashboard() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="text-destructive flex items-center gap-2">
-                <Trash2 className="h-5 w-5" /> Delete this business?
+                <Trash2 className="h-5 w-5" /> {t("admin.businessDelete.title")}
               </DialogTitle>
               <DialogDescription className="space-y-3 pt-2">
                 <p>
-                  You are about to permanently delete the test business <strong className="text-foreground">{businessToDelete.business_name}</strong>.
+                  {t("admin.businessDelete.description", { businessName: businessToDelete.business_name })}
                 </p>
                 <p className="text-xs font-semibold text-destructive uppercase tracking-wider bg-destructive/10 p-2.5 rounded border border-destructive/20">
-                  ⚠️ This action is irreversible. All related staff accounts, programs, loyalty cards, rewards, QR codes, and stamp transactions will be permanently deleted from the database.
+                  {t("admin.businessDelete.warning")}
                 </p>
               </DialogDescription>
             </DialogHeader>
@@ -4016,7 +4042,7 @@ export default function AdminDashboard() {
                 onClick={() => setBusinessToDelete(null)}
                 disabled={deletingBusiness}
               >
-                Cancel
+                {t("admin.common.cancel")}
               </Button>
               <Button
                 type="button"
@@ -4027,11 +4053,11 @@ export default function AdminDashboard() {
               >
                 {deletingBusiness ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t("admin.common.deleting")}
                   </>
                 ) : (
                   <>
-                    <Trash2 className="h-4 w-4" /> Confirm Delete
+                    <Trash2 className="h-4 w-4" /> {t("admin.common.confirmDelete")}
                   </>
                 )}
               </Button>
