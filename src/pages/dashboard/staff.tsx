@@ -11,9 +11,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function StaffPage() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState<any>(null);
   const [plan, setPlan] = useState<any>(null);
@@ -129,7 +131,7 @@ export default function StaffPage() {
       setAddingStaff(true);
       
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No active session");
+      if (!session) throw new Error(t("dashboard.staff.noActiveSession"));
 
       const response = await fetch("/api/staff/create", {
         method: "POST",
@@ -148,12 +150,12 @@ export default function StaffPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to create staff account");
+        throw new Error(result.error || t("dashboard.staff.createFailedFallback"));
       }
 
       toast({
-        title: "Staff Added",
-        description: "Staff account has been created successfully.",
+        title: t("dashboard.staff.addedTitle"),
+        description: t("dashboard.staff.addedDescription"),
       });
 
       setShowAddModal(false);
@@ -162,7 +164,7 @@ export default function StaffPage() {
 
     } catch (err: any) {
       toast({
-        title: "Error",
+        title: t("dashboard.staff.error"),
         description: err.message,
         variant: "destructive"
       });
@@ -180,10 +182,10 @@ export default function StaffPage() {
 
       if (error) throw error;
       
-      toast({ title: "Status updated" });
+      toast({ title: t("dashboard.staff.statusUpdated") });
       fetchStaffData();
     } catch (err: any) {
-      toast({ title: "Error updating status", description: err.message, variant: "destructive" });
+      toast({ title: t("dashboard.staff.statusUpdateError"), description: err.message, variant: "destructive" });
     }
   };
 
@@ -193,7 +195,7 @@ export default function StaffPage() {
     try {
       setRemovingStaff(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No active session");
+      if (!session) throw new Error(t("dashboard.staff.noActiveSession"));
 
       const response = await fetch("/api/staff/remove", {
         method: "POST",
@@ -207,14 +209,14 @@ export default function StaffPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to remove staff member");
+        throw new Error(result.error || t("dashboard.staff.removeFailedFallback"));
       }
       
-      toast({ title: "Staff member removed", description: "The staff account has been completely removed." });
+      toast({ title: t("dashboard.staff.removedTitle"), description: t("dashboard.staff.removedDescription") });
       setStaffToRemove(null);
       fetchStaffData();
     } catch (err: any) {
-      toast({ title: "Error removing staff", description: err.message, variant: "destructive" });
+      toast({ title: t("dashboard.staff.removeError"), description: err.message, variant: "destructive" });
     } finally {
       setRemovingStaff(false);
     }
@@ -235,8 +237,8 @@ export default function StaffPage() {
       <DashboardLayout>
         <div className="p-8 text-center max-w-md mx-auto">
           <ShieldAlert className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">Only Business Owners can manage staff accounts.</p>
+          <h2 className="text-xl font-bold mb-2">{t("dashboard.accessDenied.title")}</h2>
+          <p className="text-muted-foreground">{t("dashboard.staff.accessDeniedBody")}</p>
         </div>
       </DashboardLayout>
     );
@@ -249,15 +251,15 @@ export default function StaffPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Staff Management | Aruba Royalty Stamp</title>
+        <title>{t("dashboard.staff.seoTitle")}</title>
       </Head>
 
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Team Members</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("dashboard.staff.title")}</h1>
             <p className="text-muted-foreground text-sm">
-              Manage staff accounts that can issue stamps and redeem rewards.
+              {t("dashboard.staff.description")}
             </p>
           </div>
           
@@ -267,7 +269,7 @@ export default function StaffPage() {
             className="w-full sm:w-auto"
           >
             <UserPlus className="w-4 h-4 mr-2" />
-            Add Staff
+            {t("dashboard.staff.addStaff")}
           </Button>
         </div>
 
@@ -277,7 +279,7 @@ export default function StaffPage() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-muted-foreground" />
-                <span className="font-semibold">Staff Accounts Used</span>
+                <span className="font-semibold">{t("dashboard.staff.staffUsed")}</span>
               </div>
               <span className="font-bold text-lg">{activeStaff} / {maxStaff}</span>
             </div>
@@ -291,7 +293,7 @@ export default function StaffPage() {
             
             {limitReached && (
               <p className="text-sm text-destructive mt-3 font-medium">
-                You have reached the staff limit included in your current {plan?.name} plan. Please upgrade your plan to add more staff accounts.
+                {t("dashboard.staff.limitReached", { planName: plan?.name || "" })}
               </p>
             )}
           </CardContent>
@@ -303,10 +305,10 @@ export default function StaffPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Users className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <h3 className="font-semibold text-lg mb-1">No staff members yet</h3>
-                <p className="text-muted-foreground text-sm mb-4">Add your first staff member to help manage the loyalty program.</p>
+                <h3 className="font-semibold text-lg mb-1">{t("dashboard.staff.emptyTitle")}</h3>
+                <p className="text-muted-foreground text-sm mb-4">{t("dashboard.staff.emptyDescription")}</p>
                 <Button onClick={() => setShowAddModal(true)} disabled={limitReached}>
-                  Add Staff Member
+                  {t("dashboard.staff.addStaffMember")}
                 </Button>
               </CardContent>
             </Card>
@@ -319,14 +321,14 @@ export default function StaffPage() {
                       {member.profile?.full_name?.charAt(0)?.toUpperCase() || "S"}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-semibold truncate">{member.profile?.full_name || "Staff Member"}</h4>
-                      <p className="text-sm text-muted-foreground truncate">{member.profile?.email || "Email unavailable"}</p>
+                      <h4 className="font-semibold truncate">{member.profile?.full_name || t("dashboard.staff.memberFallback")}</h4>
+                      <p className="text-sm text-muted-foreground truncate">{member.profile?.email || t("dashboard.staff.emailUnavailable")}</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-4 shrink-0">
                     <Badge variant="outline" className="hidden sm:inline-flex capitalize">
-                      {member.role || "Staff"}
+                      {member.role || t("dashboard.staff.roleFallback")}
                     </Badge>
                     <Badge variant={member.status === 'active' ? "default" : "secondary"} className="hidden sm:inline-flex capitalize">
                       {member.status}
@@ -341,18 +343,18 @@ export default function StaffPage() {
                       <DropdownMenuContent align="end">
                         {member.status === 'active' ? (
                           <DropdownMenuItem onClick={() => handleUpdateStatus(member.id, 'inactive')}>
-                            <PowerOff className="w-4 h-4 mr-2" /> Deactivate
+                            <PowerOff className="w-4 h-4 mr-2" /> {t("dashboard.staff.deactivate")}
                           </DropdownMenuItem>
                         ) : (
                           <DropdownMenuItem 
                             onClick={() => handleUpdateStatus(member.id, 'active')}
                             disabled={limitReached}
                           >
-                            <PowerOff className="w-4 h-4 mr-2" /> Activate
+                            <PowerOff className="w-4 h-4 mr-2" /> {t("dashboard.staff.activate")}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuItem onClick={() => setStaffToRemove(member)} className="text-destructive focus:text-destructive">
-                          <Trash2 className="w-4 h-4 mr-2" /> Remove
+                          <Trash2 className="w-4 h-4 mr-2" /> {t("dashboard.staff.remove")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -369,15 +371,15 @@ export default function StaffPage() {
         <DialogContent>
           <form onSubmit={handleAddStaff}>
             <DialogHeader>
-              <DialogTitle>Add Staff Member</DialogTitle>
+              <DialogTitle>{t("dashboard.staff.addModalTitle")}</DialogTitle>
               <DialogDescription>
-                Create a new staff account. They will be able to issue stamps and redeem rewards for your business.
+                {t("dashboard.staff.addModalDescription")}
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">{t("dashboard.staff.fullName")}</Label>
                 <Input 
                   id="name" 
                   value={newStaff.name} 
@@ -386,7 +388,7 @@ export default function StaffPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("dashboard.staff.emailAddress")}</Label>
                 <Input 
                   id="email" 
                   type="email" 
@@ -396,28 +398,28 @@ export default function StaffPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Temporary Password</Label>
+                <Label htmlFor="password">{t("dashboard.staff.temporaryPassword")}</Label>
                 <Input 
                   id="password" 
                   type="text" 
                   value={newStaff.password} 
                   onChange={(e) => setNewStaff({...newStaff, password: e.target.value})}
-                  placeholder="Min 6 characters"
+                  placeholder={t("dashboard.staff.passwordPlaceholder")}
                   required 
                   minLength={6}
                 />
-                <p className="text-xs text-muted-foreground">Share this password with the staff member so they can log in.</p>
+                <p className="text-xs text-muted-foreground">{t("dashboard.staff.passwordHelp")}</p>
               </div>
             </div>
             
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setShowAddModal(false)} disabled={addingStaff}>
-                Cancel
+                {t("dashboard.staff.cancel")}
               </Button>
               <Button type="submit" disabled={addingStaff || limitReached}>
                 {addingStaff ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...</>
-                ) : "Create Account"}
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("dashboard.staff.creating")}</>
+                ) : t("dashboard.staff.createAccount")}
               </Button>
             </DialogFooter>
           </form>
@@ -428,33 +430,33 @@ export default function StaffPage() {
       <Dialog open={!!staffToRemove} onOpenChange={(open) => !open && setStaffToRemove(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove Team Member?</DialogTitle>
+            <DialogTitle>{t("dashboard.staff.removeTitle")}</DialogTitle>
             <DialogDescription>
-              This action will completely remove the staff member from your business and deactivate their account. They will no longer be able to log in.
+              {t("dashboard.staff.removeDescription")}
             </DialogDescription>
           </DialogHeader>
           
           {staffToRemove && (
             <div className="py-4 space-y-2">
               <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
-                <span className="text-sm font-medium">Name:</span>
-                <span className="text-sm">{staffToRemove.profile?.full_name || "Staff Member"}</span>
+                <span className="text-sm font-medium">{t("dashboard.staff.name")}</span>
+                <span className="text-sm">{staffToRemove.profile?.full_name || t("dashboard.staff.memberFallback")}</span>
               </div>
               <div className="flex justify-between items-center bg-muted/50 p-3 rounded-md">
-                <span className="text-sm font-medium">Email:</span>
-                <span className="text-sm">{staffToRemove.profile?.email || "Email unavailable"}</span>
+                <span className="text-sm font-medium">{t("dashboard.staff.email")}</span>
+                <span className="text-sm">{staffToRemove.profile?.email || t("dashboard.staff.emailUnavailable")}</span>
               </div>
             </div>
           )}
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setStaffToRemove(null)} disabled={removingStaff}>
-              Cancel
+              {t("dashboard.staff.cancel")}
             </Button>
             <Button variant="destructive" onClick={confirmRemoveStaff} disabled={removingStaff}>
               {removingStaff ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Removing...</>
-              ) : "Remove Staff"}
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {t("dashboard.staff.removing")}</>
+              ) : t("dashboard.staff.removeStaff")}
             </Button>
           </DialogFooter>
         </DialogContent>

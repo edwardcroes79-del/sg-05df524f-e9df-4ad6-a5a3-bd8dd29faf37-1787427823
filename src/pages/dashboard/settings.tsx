@@ -10,10 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, ShieldCheck, ShieldAlert, Key } from "lucide-react";
+import { useI18n } from "@/contexts/I18nProvider";
 
 export default function SettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [isStaff, setIsStaff] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -118,7 +120,7 @@ export default function SettingsPage() {
       setIsEnrollingMfa(true);
     } catch (err: any) {
       toast({
-        title: "Setup Failed",
+        title: t("dashboard.settings.setupFailed"),
         description: err.message,
         variant: "destructive"
       });
@@ -144,8 +146,8 @@ export default function SettingsPage() {
       if (verify.error) throw verify.error;
 
       toast({
-        title: "2FA Enabled",
-        description: "Two-factor authentication has been successfully secured on your account.",
+        title: t("dashboard.settings.mfaEnabled"),
+        description: t("dashboard.settings.mfaEnabledDescription"),
       });
 
       setIsEnrollingMfa(false);
@@ -153,8 +155,8 @@ export default function SettingsPage() {
       await fetchMfaFactors();
     } catch (err: any) {
       toast({
-        title: "Verification Failed",
-        description: err.message || "Invalid code. Please try again.",
+        title: t("dashboard.settings.verificationFailed"),
+        description: err.message || t("dashboard.settings.invalidCode"),
         variant: "destructive"
       });
     } finally {
@@ -163,7 +165,7 @@ export default function SettingsPage() {
   };
 
   const handleDisableMfa = async (factorId: string) => {
-    if (!window.confirm("Are you sure you want to disable 2FA? This will reduce your account security.")) return;
+    if (!window.confirm(t("dashboard.settings.disableConfirm"))) return;
     
     setMfaLoading(true);
     try {
@@ -171,14 +173,14 @@ export default function SettingsPage() {
       if (error) throw error;
       
       toast({
-        title: "2FA Disabled",
-        description: "Two-factor authentication has been removed from your account.",
+        title: t("dashboard.settings.mfaDisabled"),
+        description: t("dashboard.settings.mfaDisabledDescription"),
       });
       
       await fetchMfaFactors();
     } catch (err: any) {
       toast({
-        title: "Failed to Disable",
+        title: t("dashboard.settings.disableFailed"),
         description: err.message,
         variant: "destructive"
       });
@@ -215,8 +217,8 @@ export default function SettingsPage() {
       if (error) throw error;
 
       toast({
-        title: "Settings Saved",
-        description: "Your business profile has been updated successfully.",
+        title: t("dashboard.settings.savedTitle"),
+        description: t("dashboard.settings.savedDescription"),
       });
       
       // Refresh local state to ensure it matches DB
@@ -224,8 +226,8 @@ export default function SettingsPage() {
       
     } catch (err: any) {
       toast({
-        title: "Failed to save",
-        description: err.message || "An error occurred while saving settings.",
+        title: t("dashboard.settings.saveFailed"),
+        description: err.message || t("dashboard.settings.saveFailedDescription"),
         variant: "destructive"
       });
     } finally {
@@ -247,7 +249,7 @@ export default function SettingsPage() {
     return (
       <DashboardLayout>
         <Head>
-          <title>Access Denied | Dashboard</title>
+          <title>{t("dashboard.accessDenied.title")} | Dashboard</title>
         </Head>
         <div className="max-w-md mx-auto my-12 text-center">
           <Card className="border-destructive/20 shadow-md">
@@ -255,16 +257,14 @@ export default function SettingsPage() {
               <div className="w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto mb-2">
                 <ShieldAlert className="w-6 h-6" />
               </div>
-              <CardTitle className="text-xl text-destructive">Access Denied</CardTitle>
-              <CardDescription>You do not have permission to modify Business Settings.</CardDescription>
+              <CardTitle className="text-xl text-destructive">{t("dashboard.accessDenied.title")}</CardTitle>
+              <CardDescription>{t("dashboard.settings.accessDeniedDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Only Business Owners are authorized to modify public brand profiles, public emails, phone details, addresses, and physical locations.
-              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{t("dashboard.settings.accessDeniedBody")}</p>
             </CardContent>
             <CardFooter className="bg-muted/30 border-t justify-center py-4">
-              <Button onClick={() => router.push("/dashboard")}>Return to Dashboard</Button>
+              <Button onClick={() => router.push("/dashboard")}>{t("dashboard.billing.returnToDashboard")}</Button>
             </CardFooter>
           </Card>
         </div>
@@ -275,24 +275,24 @@ export default function SettingsPage() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Settings | Aruba Royalty Stamp</title>
+        <title>{t("dashboard.settings.seoTitle")}</title>
       </Head>
 
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Settings</h1>
-          <p className="text-muted-foreground mt-1">Manage your business profile and preferences.</p>
+          <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.settings.title")}</h1>
+          <p className="text-muted-foreground mt-1">{t("dashboard.settings.description")}</p>
         </div>
 
         <form onSubmit={handleSave}>
           <Card className="border-border shadow-sm">
             <CardHeader className="bg-muted/30 border-b">
-              <CardTitle>Business Profile</CardTitle>
-              <CardDescription>This information will be displayed to your customers.</CardDescription>
+              <CardTitle>{t("dashboard.settings.businessProfile")}</CardTitle>
+              <CardDescription>{t("dashboard.settings.businessProfileDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="space-y-2">
-                <Label htmlFor="business_name">Business Name <span className="text-destructive">*</span></Label>
+                <Label htmlFor="business_name">{t("dashboard.settings.businessName")} <span className="text-destructive">*</span></Label>
                 <Input 
                   id="business_name" 
                   name="business_name"
@@ -303,11 +303,11 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">{t("dashboard.settings.descriptionLabel")}</Label>
                 <Textarea 
                   id="description" 
                   name="description"
-                  placeholder="Briefly describe your business..."
+                  placeholder={t("dashboard.settings.descriptionPlaceholder")}
                   value={formData.description}
                   onChange={handleInputChange}
                   rows={3} 
@@ -316,7 +316,7 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Public Email</Label>
+                  <Label htmlFor="email">{t("dashboard.settings.publicEmail")}</Label>
                   <Input 
                     id="email" 
                     name="email"
@@ -327,7 +327,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">{t("dashboard.settings.phoneNumber")}</Label>
                   <Input 
                     id="phone" 
                     name="phone"
@@ -340,7 +340,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="website">Website</Label>
+                <Label htmlFor="website">{t("dashboard.settings.website")}</Label>
                 <Input 
                   id="website" 
                   name="website"
@@ -352,7 +352,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="address">Physical Address</Label>
+                <Label htmlFor="address">{t("dashboard.settings.address")}</Label>
                 <Textarea 
                   id="address" 
                   name="address"
@@ -366,9 +366,9 @@ export default function SettingsPage() {
             <CardFooter className="bg-muted/30 border-t flex justify-end py-4">
               <Button type="submit" disabled={saving} className="min-w-[120px]">
                 {saving ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("dashboard.settings.saving")}</>
                 ) : (
-                  <><Save className="mr-2 h-4 w-4" /> Save Changes</>
+                  <><Save className="mr-2 h-4 w-4" /> {t("dashboard.settings.saveChanges")}</>
                 )}
               </Button>
             </CardFooter>
@@ -380,27 +380,27 @@ export default function SettingsPage() {
           <CardHeader className="bg-muted/10 border-b">
             <CardTitle className="flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-primary" />
-              Account Security
+              {t("dashboard.settings.security")}
             </CardTitle>
-            <CardDescription>Add an extra layer of protection to your account by requiring a verification code when you sign in.</CardDescription>
+            <CardDescription>{t("dashboard.settings.securityDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 border rounded-lg">
               <div>
                 <h3 className="font-semibold flex items-center gap-2 text-lg">
-                  Two-Factor Authentication (2FA)
+                  {t("dashboard.settings.mfaTitle")}
                   {mfaFactors.length > 0 ? (
                     <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600 border-emerald-200">
-                      🟢 Enabled
+                      {t("dashboard.settings.enabled")}
                     </span>
                   ) : (
                     <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
-                      ⚪ Not Enabled
+                      {t("dashboard.settings.notEnabled")}
                     </span>
                   )}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                  Protect your account with TOTP authenticator apps like Google Authenticator, Authy, or 1Password.
+                  {t("dashboard.settings.mfaDescription")}
                 </p>
               </div>
               <div>
@@ -411,7 +411,7 @@ export default function SettingsPage() {
                     disabled={mfaLoading}
                   >
                     {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Disable 2FA
+                    {t("dashboard.settings.disable2fa")}
                   </Button>
                 ) : (
                   <Button 
@@ -419,7 +419,7 @@ export default function SettingsPage() {
                     disabled={mfaLoading || isEnrollingMfa}
                   >
                     {mfaLoading && !isEnrollingMfa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Enable 2FA
+                    {t("dashboard.settings.enable2fa")}
                   </Button>
                 )}
               </div>
@@ -427,21 +427,21 @@ export default function SettingsPage() {
 
             {isEnrollingMfa && (
               <div className="mt-6 p-6 border rounded-lg bg-muted/20 animate-in fade-in slide-in-from-top-4">
-                <h4 className="font-heading font-bold text-lg mb-4">Complete 2FA Setup</h4>
+                <h4 className="font-heading font-bold text-lg mb-4">{t("dashboard.settings.complete2fa")}</h4>
                 
                 <div className="grid md:grid-cols-2 gap-8">
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
                       <div className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">1</div>
-                      <p className="text-sm text-muted-foreground">Open your authenticator app and scan this QR code.</p>
+                      <p className="text-sm text-muted-foreground">{t("dashboard.settings.mfaStep1")}</p>
                     </div>
                     
                     <div className="bg-white p-4 border rounded-xl inline-block shadow-sm">
-                      <img src={mfaQrCode} alt="2FA QR Code" className="w-40 h-40" />
+                      <img src={mfaQrCode} alt={t("dashboard.settings.qrAlt")} className="w-40 h-40" />
                     </div>
 
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground font-medium">Or enter this setup key manually:</p>
+                      <p className="text-xs text-muted-foreground font-medium">{t("dashboard.settings.manualKey")}</p>
                       <code className="text-xs bg-muted px-2 py-1 rounded block w-max break-all select-all font-mono font-semibold">
                         {mfaSecret}
                       </code>
@@ -451,12 +451,12 @@ export default function SettingsPage() {
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
                       <div className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">2</div>
-                      <p className="text-sm text-muted-foreground">Enter the 6-digit code generated by your app to verify and enable 2FA.</p>
+                      <p className="text-sm text-muted-foreground">{t("dashboard.settings.mfaStep2")}</p>
                     </div>
 
                     <form onSubmit={handleVerifyMfaSetup} className="space-y-4 pt-2">
                       <div className="space-y-2">
-                        <Label htmlFor="verificationCode">Verification Code</Label>
+                        <Label htmlFor="verificationCode">{t("dashboard.settings.verificationCode")}</Label>
                         <Input 
                           id="verificationCode"
                           type="text"
@@ -474,18 +474,18 @@ export default function SettingsPage() {
                       
                       <div className="flex gap-2 pt-2">
                         <Button type="button" variant="outline" className="w-full" onClick={() => setIsEnrollingMfa(false)} disabled={mfaLoading}>
-                          Cancel
+                          {t("dashboard.staff.cancel")}
                         </Button>
                         <Button type="submit" className="w-full" disabled={mfaVerifyCode.length < 6 || mfaLoading}>
                           {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Key className="h-4 w-4 mr-2" />}
-                          Verify & Enable
+                          {t("dashboard.settings.verifyEnable")}
                         </Button>
                       </div>
                     </form>
                     
                     <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded text-xs text-amber-700 mt-4 flex gap-2">
                       <ShieldAlert className="h-4 w-4 shrink-0" />
-                      <p><strong>Backup Option:</strong> Please save the manual setup key in a secure password manager. It can be used to recover access if you lose your authenticator app.</p>
+                      <p><strong>{t("dashboard.settings.backupOption")}</strong> {t("dashboard.settings.backupText")}</p>
                     </div>
                   </div>
                 </div>
