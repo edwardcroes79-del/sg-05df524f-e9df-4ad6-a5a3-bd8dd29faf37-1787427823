@@ -77,7 +77,7 @@ const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
   return (
     <div className="text-xs font-bold text-amber-600 flex items-center gap-1.5 mt-1.5">
       <span>⏳</span>
-      <span>{timeLeft} remaining</span>
+      <span>{timeLeft}</span>
     </div>
   );
 };

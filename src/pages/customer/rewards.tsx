@@ -50,7 +50,7 @@ const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
     updateCountdown();
     const interval = setInterval(updateCountdown, 15000); 
     return () => clearInterval(interval);
-  }, [expiresAt]);
+  }, [expiresAt, t]);
 
   if (!expiresAt) {
     return (
@@ -77,7 +77,7 @@ const RewardCountdown = ({ expiresAt }: { expiresAt: string | null }) => {
   return (
     <div className="font-bold text-amber-600 flex items-center gap-1.5">
       <span>⏳</span>
-      <span>{timeLeft} remaining</span>
+      <span>{timeLeft}</span>
     </div>
   );
 };
