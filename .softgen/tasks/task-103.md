@@ -1,6 +1,6 @@
 ---
 title: Add multilingual support announcement to homepage
-status: in_progress
+status: done
 priority: medium
 type: feature
 tags: [homepage, i18n, marketing]
@@ -19,7 +19,7 @@ Must match existing branding, be responsive, and fit naturally without translati
 - [x] Design and implement the new section using existing branding tokens
 - [x] Insert the section naturally into the page flow
 - [x] Ensure responsiveness
-- [ ] Validate implementation
+- [x] Validate implementation
 
 ## Acceptance
 Homepage includes the new language announcement section.
