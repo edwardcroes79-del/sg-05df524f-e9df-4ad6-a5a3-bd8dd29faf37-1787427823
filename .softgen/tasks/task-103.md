@@ -15,10 +15,10 @@ Content must highlight "Royalty Stamp Speaks Your Language", "Available in Spani
 Must match existing branding, be responsive, and fit naturally without translating the rest of the page. No fake statistics.
 
 ## Checklist
-- [ ] Open and inspect `src/pages/index.tsx`
-- [ ] Design and implement the new section using existing branding tokens
-- [ ] Insert the section naturally into the page flow
-- [ ] Ensure responsiveness
+- [x] Open and inspect `src/pages/index.tsx`
+- [x] Design and implement the new section using existing branding tokens
+- [x] Insert the section naturally into the page flow
+- [x] Ensure responsiveness
 - [ ] Validate implementation
 
 ## Acceptance

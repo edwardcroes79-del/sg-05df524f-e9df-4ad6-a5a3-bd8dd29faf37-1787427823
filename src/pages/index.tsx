@@ -285,6 +285,71 @@ export default function Home() {
           </div>
         </section>
 
+        {/* MULTILINGUAL ANNOUNCEMENT */}
+        <section className="py-16 md:py-24 bg-card border-t border-border/50 overflow-hidden relative">
+          {/* Subtle Aruba flag color hints as blurred abstract blobs in background */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#0072C6]/5 rounded-full blur-[80px] pointer-events-none -z-0"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#FFD100]/5 rounded-full blur-[80px] pointer-events-none -z-0"></div>
+          
+          <div className="container mx-auto px-4 md:px-8 relative z-10">
+            <div className="max-w-5xl mx-auto bg-background rounded-[2rem] border border-border/50 shadow-xl overflow-hidden">
+              <div className="grid md:grid-cols-2">
+                <div className="p-8 sm:p-12 md:p-16 flex flex-col justify-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-bold text-sm tracking-wide border border-primary/20 mb-6 w-fit">
+                    <span className="text-lg">🌎</span> Local First
+                  </div>
+                  <h2 className="text-3xl md:text-4xl font-bold font-heading mb-4 tracking-tight leading-tight">
+                    Royalty Stamp Speaks Your Language
+                  </h2>
+                  <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+                    Royalty Stamp is now available in English, Spanish and Papiamento — making loyalty easier for businesses and customers across Aruba.
+                  </p>
+                  
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-secondary/30 border border-border/50">
+                      <span className="text-3xl">🇪🇸</span>
+                      <span className="font-semibold text-foreground text-sm sm:text-base">Available in Spanish</span>
+                    </div>
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-secondary/30 border border-border/50">
+                      <span className="text-3xl">🇦🇼</span>
+                      <span className="font-semibold text-foreground text-sm sm:text-base">Disponible na Papiamento</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Visual side */}
+                <div className="bg-primary/5 p-8 md:p-12 flex items-center justify-center border-t md:border-t-0 md:border-l border-border/50 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.03)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none opacity-50"></div>
+                  
+                  <div className="relative w-full max-w-[320px] aspect-[4/3] bg-background rounded-2xl shadow-2xl border border-border/50 p-6 flex flex-col gap-5 transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                    <div className="w-12 h-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center mb-2 shadow-sm border border-primary/20">
+                      <HeartHandshake className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-4">
+                      <div className="h-5 w-3/4 bg-foreground/90 rounded-md"></div>
+                      <div className="space-y-2">
+                        <div className="h-3 w-full bg-muted rounded-md"></div>
+                        <div className="h-3 w-5/6 bg-muted rounded-md"></div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-auto flex justify-between items-end pt-4 border-t border-border/50">
+                      <div className="flex -space-x-3">
+                        <div className="w-10 h-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-sm shadow-sm z-30">🇺🇸</div>
+                        <div className="w-10 h-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-sm shadow-sm z-20">🇪🇸</div>
+                        <div className="w-10 h-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-sm shadow-sm z-10">🇦🇼</div>
+                      </div>
+                      <div className="text-xs font-bold text-primary uppercase tracking-widest bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
+                        Multi-Language
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* CORE FEATURES (4-column) */}
         <section id="features" className="py-24 bg-card border-y border-border/50">
           <div className="container mx-auto px-4 md:px-8">
