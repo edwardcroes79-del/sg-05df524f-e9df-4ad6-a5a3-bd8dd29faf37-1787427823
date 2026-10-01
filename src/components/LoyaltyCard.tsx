@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 
 export const STAMP_ICONS: Record<string, React.ElementType> = {
   Coffee, Scissors, Car, Dumbbell, Utensils, Star, Gift, Sparkles, Heart, Crown, CupSoda, ShoppingBag,
@@ -94,8 +95,13 @@ const THEME_REGISTRY: Record<string, {
   arubasunset: { layout: "gradient", bg: "bg-gradient-to-br from-orange-400 via-pink-500 to-indigo-700", text: "text-white", badgeText: "Aruba Sunset" }
 };
 
+const getThemeBadgeKey = (templateId: string) => {
+  return `dashboard.customizer.card.badge.${templateId}` as TranslationKey;
+};
+
 export function LoyaltyCard(props: LoyaltyCardProps) {
   const { customization, stampIcon, color, stampTarget, currentStamps, programName, programDescription, businessName, rewardTitle, rewardDescription, animateStamp } = props;
+  const { t } = useI18n();
   const templateId = (customization?.template_id || "classic").toLowerCase();
   
   // Resolve Theme Specification
@@ -199,10 +205,10 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
           
           <div className="flex flex-col items-end shrink-0 ml-4">
             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-black/10 text-inherit">
-              {theme.badgeText || "Loyalty"}
+              {t(getThemeBadgeKey(templateId))}
             </span>
             <span className="text-xs font-mono font-bold mt-1.5 opacity-80">
-              STAMPS: {currentStamps}/{stampTarget}
+              {t("dashboard.customizer.card.stampsLabel", { current: currentStamps, target: stampTarget })}
             </span>
           </div>
         </div>
@@ -250,8 +256,8 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         {/* Footer/Reward Section */}
         <div className="border-t pt-4 flex items-center justify-between gap-4 border-current/10">
           <div className="min-w-0">
-            <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block">Target Reward</span>
-            <span className="text-sm font-extrabold truncate block">{rewardTitle || "Unlocked Reward"}</span>
+            <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block">{t("dashboard.customizer.card.targetReward")}</span>
+            <span className="text-sm font-extrabold truncate block">{rewardTitle || t("dashboard.customizer.card.unlockedReward")}</span>
           </div>
           
           <div className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-black/5" style={{ color: primaryColor }}>
@@ -264,13 +270,13 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
           <div className="mt-4 pt-4 border-t border-current/10 space-y-3">
             {visibleProgramDescription && (
               <div>
-                <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">About This Program</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">{t("dashboard.customizer.card.aboutProgram")}</span>
                 <p className="text-xs leading-relaxed opacity-90 break-words">{visibleProgramDescription}</p>
               </div>
             )}
             {visibleRewardDescription && (
               <div>
-                <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">Reward Instructions</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">{t("dashboard.customizer.card.rewardInstructions")}</span>
                 <p className="text-xs leading-relaxed opacity-90 break-words">{visibleRewardDescription}</p>
               </div>
             )}
