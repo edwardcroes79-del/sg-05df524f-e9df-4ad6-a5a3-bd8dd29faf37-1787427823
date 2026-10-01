@@ -1,6 +1,7 @@
 export const languages = {
   en: "English",
   es: "Español",
+  pa: "Papiamento",
 } as const;
 
 export type LanguageCode = keyof typeof languages;
@@ -2196,8 +2197,79 @@ export const translations = {
 
 export type TranslationKey = keyof typeof translations.en;
 
+type TranslationDictionary = Record<TranslationKey, string>;
+
+const papiamentoOverrides: Partial<TranslationDictionary> = {
+  "language.selector.label": "Idioma",
+  "language.selector.english": "English",
+  "language.selector.spanish": "Spaño",
+  "language.selector.papiamento": "Papiamento",
+
+  "common.loadingWorkspace": "Kargando workspace...",
+  "common.verifyingAccount": "Verifikando kuenta...",
+  "common.signOut": "Sali",
+  "common.cancelAndSignOut": "Kanselá i sali",
+  "common.backToHome": "Bèk na inisio",
+  "common.gotIt": "Mi a komprondé",
+  "common.new": "NOBO",
+  "common.comingSoon": "Pronto",
+
+  "customer.brand": "Royalty Kliente",
+  "customer.nav.dashboard": "Dashboard",
+  "customer.nav.cards": "Mi Kaartnan",
+  "customer.nav.cardsShort": "Kaartnan",
+  "customer.nav.rewards": "Rekompensanan",
+  "customer.nav.activity": "Aktividat",
+  "customer.nav.profile": "Profil",
+  "customer.nav.settings": "Settings",
+
+  "dashboard.nav.overview": "Resumen",
+  "dashboard.nav.stampsRewards": "Stamp i Rekom pensa",
+  "dashboard.nav.issueStamp": "Duna Stamp",
+  "dashboard.nav.redeemReward": "Kambia Rekompensa",
+  "dashboard.nav.quickIssueStamp": "Quick Issue Stamp",
+  "dashboard.nav.loyaltyPrograms": "Programanan di Fidelidat",
+  "dashboard.nav.customers": "Klientenan",
+  "dashboard.nav.qrCodes": "QR Codes",
+  "dashboard.nav.billing": "Billing",
+  "dashboard.nav.staff": "Staff",
+  "dashboard.nav.settings": "Settings",
+  "dashboard.nav.superAdminPanel": "Super Admin Panel",
+  "dashboard.whatsNew": "Kiko Ta Nobo",
+
+  "auth.login.welcome": "Bon Bini Bek",
+  "auth.login.description": "Hinka bo datonan pa drenta bo dashboard di negoshi.",
+  "auth.login.email": "Email",
+  "auth.login.password": "Password",
+  "auth.login.forgotPassword": "Bo a lubidá bo password?",
+  "auth.login.signIn": "Drenta",
+  "auth.login.noAccount": "Bo no tin kuenta?",
+  "auth.login.createCustomerAccount": "Krea Kuenta di Kliente",
+  "auth.login.registerBusiness": "Registrá bo negoshi",
+  "auth.login.failed": "Login a faya",
+  "auth.login.welcomeBackToast": "Bon bini bek!",
+  "auth.login.success": "Login eksitoso.",
+  "auth.login.error": "Un eror a pasa",
+  "auth.login.tryAgain": "Purba atrobe mas despues.",
+
+  "admin.portal": "Portal Super Admin",
+  "admin.title": "Manejo di Plataforma",
+  "admin.description": "Konfigurá plannan di suskripshon, monitorea negoshinan, i manehá límitenan.",
+  "admin.notifications.title": "Notifikashonnan",
+  "admin.backToMerchant": "Bèk na Dashboard di Negoshi",
+};
+
+const translationCatalog: Record<LanguageCode, TranslationDictionary> = {
+  en: translations.en as TranslationDictionary,
+  es: translations.es as TranslationDictionary,
+  pa: {
+    ...translations.en,
+    ...papiamentoOverrides,
+  } as TranslationDictionary,
+};
+
 export function translate(language: LanguageCode, key: TranslationKey, values?: Record<string, string | number>) {
-  const template = translations[language][key] || translations[defaultLanguage][key];
+  const template = translationCatalog[language][key] || translationCatalog[defaultLanguage][key];
 
   if (!values) return template;
 
