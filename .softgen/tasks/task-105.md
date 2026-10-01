@@ -1,6 +1,6 @@
 ---
 title: Customer wallet email receipts
-status: in_progress
+status: done
 priority: high
 type: bug
 tags: [customer-wallet, notifications, email, stamps]
@@ -10,7 +10,7 @@ position: 105
 ---
 
 ## Notes
-Investigate and fix the Customer Wallet “Notifications & Preferences” Email Receipts toggle. Trace the toggle, saved preference, database field, and stamp-issued email workflow. Ensure the authenticated customer's preference saves persistently, restores after refresh/login, and controls whether stamp receipt emails are sent. Apply consistently to Business/Staff Issue Stamp and Quick Issue Stamp. Use the authenticated account and existing secure email infrastructure; never trust a customer ID supplied by the client without authorization checks. Send receipts only after a stamp transaction successfully commits. Email delivery failures must not roll back or falsely report stamp failure. Check existing email settings, RLS, permissions, and database schema before changes. Reuse existing fields and email utilities where possible. Do not change unrelated notification preferences, reward redemption, billing, or other functionality.
+Investigated and fixed the Customer Wallet “Notifications & Preferences” Email Receipts toggle. Traced the toggle, saved preference, database field, existing email infrastructure, and stamp-issued email workflow. Added a persistent authenticated customer preference field and secure customer preference API. The toggle now saves for the authenticated customer, restores after refresh/login, and controls whether stamp receipt emails are sent. Applied consistently to Business/Staff Issue Stamp and Quick Issue Stamp. Receipt sending uses authenticated sessions and server-side transaction/customer lookups; it does not trust a customer ID supplied by the client. Receipts are requested only after successful committed stamp transactions. Email delivery failures are handled gracefully: the stamp remains recorded and UI success is not converted into a false stamp failure. Did not change unrelated notification preferences, reward redemption, billing, permissions, routes, or stamp logic. Project validation passed with no CSS, linting, TypeScript, or server errors.
 
 ## Checklist
 - [x] Inspect Customer Wallet settings toggle and preference persistence
@@ -20,7 +20,7 @@ Investigate and fix the Customer Wallet “Notifications & Preferences” Email 
 - [x] Persist and restore the authenticated customer’s email receipt preference securely
 - [x] Send stamp receipt emails after successful stamp transactions only when enabled
 - [x] Apply preference consistently to all stamp-issuing flows without breaking stamp success on email failure
-- [ ] Run project validation
+- [x] Run project validation
 
 ## Acceptance
 Email Receipts toggle persists for the authenticated customer and restores correctly after refresh/login.
