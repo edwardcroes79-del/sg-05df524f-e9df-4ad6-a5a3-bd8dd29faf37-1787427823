@@ -16,8 +16,8 @@ Fix translation gaps in the Branding & Card Customizer using the existing i18n s
 - [x] Locate the Branding & Card Customizer implementation
 - [x] Inspect existing i18n catalog and Customizer hard-coded text
 - [x] Add English, Spanish, and Aruban Papiamento translation keys for Customizer static UI
-- [ ] Replace Customizer hard-coded static text with i18n keys
-- [ ] Preserve business-created program names, descriptions, and reward content
+- [x] Replace Customizer hard-coded static text with i18n keys
+- [x] Preserve business-created program names, descriptions, and reward content
 - [ ] Verify forbidden language-name variant is absent
 - [ ] Run project validation
 

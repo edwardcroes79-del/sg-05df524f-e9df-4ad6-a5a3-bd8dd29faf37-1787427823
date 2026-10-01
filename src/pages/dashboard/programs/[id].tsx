@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -94,6 +95,7 @@ export default function EditProgram() {
   const router = useRouter();
   const { id } = router.query;
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -120,6 +122,24 @@ export default function EditProgram() {
     reward_expiration_custom_days: ""
   });
 
+  const getTemplateKey = (templateId: string, field: "name" | "desc") => {
+    return `dashboard.customizer.template.${templateId}.${field}` as TranslationKey;
+  };
+
+  const categoryLabels: Record<"All" | "Industry" | "Style" | "Aruba", TranslationKey> = {
+    All: "dashboard.customizer.filter.all",
+    Industry: "dashboard.customizer.filter.industry",
+    Style: "dashboard.customizer.filter.style",
+    Aruba: "dashboard.customizer.filter.aruba"
+  };
+
+  const getTemplateStyleLabel = (style: string) => {
+    if (style === "Industry") return t("dashboard.customizer.filter.industry");
+    if (style === "Style") return t("dashboard.customizer.filter.style");
+    if (style === "Aruba") return t("dashboard.customizer.filter.aruba");
+    return style;
+  };
+
   const getRewardExpirationDays = () => {
     if (formData.reward_expiration_option === "none") return null;
 
@@ -130,7 +150,7 @@ export default function EditProgram() {
     const parsedValue = Number(rawValue);
 
     if (!Number.isInteger(parsedValue) || parsedValue < 1 || parsedValue > MAX_REWARD_EXPIRATION_DAYS) {
-      throw new Error(`Reward expiration must be a whole number between 1 and ${MAX_REWARD_EXPIRATION_DAYS} days.`);
+      throw new Error(t("dashboard.customizer.rules.customHelp", { max: MAX_REWARD_EXPIRATION_DAYS }));
     }
 
     return parsedValue;
@@ -240,7 +260,7 @@ export default function EditProgram() {
       });
     } catch (error: any) {
       toast({
-        title: "Error fetching program",
+        title: t("dashboard.customizer.toast.errorFetching"),
         description: error.message,
         variant: "destructive"
       });
@@ -255,14 +275,14 @@ export default function EditProgram() {
     const file = e.target.files[0];
 
     if (!businessId) {
-      toast({ title: "Error", description: "Business context missing.", variant: "destructive" });
+      toast({ title: t("auth.login.error"), description: t("dashboard.customizer.toast.businessMissing"), variant: "destructive" });
       return;
     }
 
     if (!file.type.startsWith("image/")) {
       toast({
-        title: "Invalid file type",
-        description: "Please upload an image file.",
+        title: t("dashboard.customizer.toast.invalidFileType"),
+        description: t("dashboard.customizer.toast.uploadImage"),
         variant: "destructive"
       });
       return;
@@ -270,8 +290,8 @@ export default function EditProgram() {
 
     if (file.size > 2 * 1024 * 1024) {
       toast({
-        title: "File too large",
-        description: "Please ensure your logo is under 2MB before uploading.",
+        title: t("dashboard.customizer.toast.fileTooLarge"),
+        description: t("dashboard.customizer.toast.logoTooLarge"),
         variant: "destructive"
       });
       return;
@@ -299,12 +319,12 @@ export default function EditProgram() {
       }));
 
       toast({
-        title: "Logo uploaded",
-        description: "Your brand logo was successfully uploaded."
+        title: t("dashboard.customizer.toast.logoUploaded"),
+        description: t("dashboard.customizer.toast.logoUploadedDescription")
       });
     } catch (error: any) {
       toast({
-        title: "Upload failed",
+        title: t("dashboard.customizer.toast.uploadFailed"),
         description: error.message,
         variant: "destructive"
       });
@@ -318,14 +338,14 @@ export default function EditProgram() {
     const file = e.target.files[0];
 
     if (!businessId) {
-      toast({ title: "Error", description: "Business context missing.", variant: "destructive" });
+      toast({ title: t("auth.login.error"), description: t("dashboard.customizer.toast.businessMissing"), variant: "destructive" });
       return;
     }
 
     if (!file.type.startsWith("image/")) {
       toast({
-        title: "Invalid file type",
-        description: "Please upload an image file.",
+        title: t("dashboard.customizer.toast.invalidFileType"),
+        description: t("dashboard.customizer.toast.uploadImage"),
         variant: "destructive"
       });
       return;
@@ -333,8 +353,8 @@ export default function EditProgram() {
 
     if (file.size > 2 * 1024 * 1024) {
       toast({
-        title: "File too large",
-        description: "Please ensure your banner image is under 2MB before uploading.",
+        title: t("dashboard.customizer.toast.fileTooLarge"),
+        description: t("dashboard.customizer.toast.bannerTooLarge"),
         variant: "destructive"
       });
       return;
@@ -362,12 +382,12 @@ export default function EditProgram() {
       }));
 
       toast({
-        title: "Banner uploaded",
-        description: "Your hero banner was successfully uploaded."
+        title: t("dashboard.customizer.toast.bannerUploaded"),
+        description: t("dashboard.customizer.toast.bannerUploadedDescription")
       });
     } catch (error: any) {
       toast({
-        title: "Upload failed",
+        title: t("dashboard.customizer.toast.uploadFailed"),
         description: error.message,
         variant: "destructive"
       });
@@ -378,18 +398,18 @@ export default function EditProgram() {
 
   const removeLogo = () => {
     setCustomization((prev) => ({ ...prev, card_logo_url: "" }));
-    toast({ title: "Logo removed", description: "Logo has been removed from active preview." });
+    toast({ title: t("dashboard.customizer.toast.logoRemoved"), description: t("dashboard.customizer.toast.logoRemovedDescription") });
   };
 
   const removeBanner = () => {
     setCustomization((prev) => ({ ...prev, card_banner_url: "" }));
-    toast({ title: "Banner removed", description: "Banner has been removed from active preview." });
+    toast({ title: t("dashboard.customizer.toast.bannerRemoved"), description: t("dashboard.customizer.toast.bannerRemovedDescription") });
   };
 
   const handleSelectTemplate = (preset: typeof TEMPLATE_PRESETS[0]) => {
     const isPremium = !["classic", "modern", "minimal"].includes(preset.id);
     if (isPremium && !hasPremiumTemplates) {
-      setLockedTemplateName(preset.name);
+      setLockedTemplateName(t(getTemplateKey(preset.id, "name")));
       setShowUpgradeDialog(true);
       return;
     }
@@ -412,8 +432,8 @@ export default function EditProgram() {
     }));
 
     toast({
-      title: `${preset.name} Theme Loaded`,
-      description: "Default style guidelines loaded successfully."
+      title: t("dashboard.customizer.toast.themeLoaded", { templateName: t(getTemplateKey(preset.id, "name")) }),
+      description: t("dashboard.customizer.toast.themeLoadedDescription")
     });
   };
 
@@ -456,12 +476,12 @@ export default function EditProgram() {
       if (error) throw error;
 
       toast({
-        title: "Loyalty Card Theme Applied",
-        description: "Your design customizations are now live and visible to all customers instantly."
+        title: t("dashboard.customizer.toast.themeApplied"),
+        description: t("dashboard.customizer.toast.themeAppliedDescription")
       });
     } catch (error: any) {
       toast({
-        title: "Error applying design",
+        title: t("dashboard.customizer.toast.applyError"),
         description: error.message,
         variant: "destructive"
       });
@@ -480,15 +500,15 @@ export default function EditProgram() {
 
       if (error) {
         if (error.code === '23503') {
-          throw new Error("Cannot delete program with active users. Pause it instead.");
+          throw new Error(t("dashboard.customizer.toast.cannotDelete"));
         }
         throw error;
       }
 
-      toast({ title: "Deleted", description: "Loyalty program deleted successfully." });
+      toast({ title: t("dashboard.customizer.toast.deleted"), description: t("dashboard.customizer.toast.deletedDescription") });
       router.push("/dashboard/programs");
     } catch (error: any) {
-      toast({ title: "Error deleting", description: error.message, variant: "destructive" });
+      toast({ title: t("dashboard.customizer.toast.deleteError"), description: error.message, variant: "destructive" });
       setDeleting(false);
     }
   };
@@ -502,19 +522,19 @@ export default function EditProgram() {
   activeCategory === "All" || preset.style === activeCategory
   );
 
-  if (loading) return <DashboardLayout><div className="flex p-8 justify-center">Loading...</div></DashboardLayout>;
+  if (loading) return <DashboardLayout><div className="flex p-8 justify-center">{t("dashboard.customizer.loading")}</div></DashboardLayout>;
 
   if (isStaff) {
     return (
       <DashboardLayout>
         <Head>
-          <title>Access Denied | Dashboard</title>
+          <title>{t("dashboard.customizer.accessDeniedTitle")} | Dashboard</title>
         </Head>
         <div className="max-w-md mx-auto my-12 text-center p-6 border rounded-xl bg-card shadow-sm">
           <ShieldAlert className="w-12 h-12 text-destructive mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground mb-6">Only Business Owners can modify branding and loyalty program settings.</p>
-          <Button onClick={() => router.push("/dashboard/programs")}>Return to Programs</Button>
+          <h2 className="text-xl font-bold mb-2">{t("dashboard.customizer.accessDeniedTitle")}</h2>
+          <p className="text-muted-foreground mb-6">{t("dashboard.customizer.accessDeniedDescription")}</p>
+          <Button onClick={() => router.push("/dashboard/programs")}>{t("dashboard.customizer.returnToPrograms")}</Button>
         </div>
       </DashboardLayout>);
 
@@ -523,7 +543,7 @@ export default function EditProgram() {
   return (
     <DashboardLayout>
       <Head>
-        <title>Branding & Design Editor | Dashboard</title>
+        <title>{t("dashboard.customizer.seoTitle")}</title>
       </Head>
 
       <div className="max-w-6xl mx-auto space-y-8 pb-12">
@@ -535,34 +555,34 @@ export default function EditProgram() {
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-heading font-bold text-foreground">Branding & Card Customizer</h1>
-              <p className="text-muted-foreground mt-1">Design a loyalty experience custom tailored to your business brand.</p>
+              <h1 className="text-3xl font-heading font-bold text-foreground">{t("dashboard.customizer.title")}</h1>
+              <p className="text-muted-foreground mt-1">{t("dashboard.customizer.description")}</p>
             </div>
           </div>
           
           <div className="flex gap-2">
             <Link href={`/dashboard/programs/${id}/qr`}>
               <Button variant="outline" size="sm" className="gap-2 border-primary text-primary hover:bg-primary/10">
-                <QrCode className="h-4 w-4" /> Get QR Poster
+                <QrCode className="h-4 w-4" /> {t("dashboard.customizer.getQrPoster")}
               </Button>
             </Link>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm" className="gap-2">
-                  <Trash2 className="h-4 w-4" /> Delete
+                  <Trash2 className="h-4 w-4" /> {t("dashboard.customizer.delete")}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogTitle>{t("dashboard.customizer.deleteConfirmTitle")}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete your loyalty program.
+                    {t("dashboard.customizer.deleteConfirmDescription")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t("dashboard.customizer.cancel")}</AlertDialogCancel>
                   <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    {deleting ? "Deleting..." : "Delete Program"}
+                    {deleting ? t("dashboard.customizer.deleting") : t("dashboard.customizer.deleteProgram")}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -575,26 +595,26 @@ export default function EditProgram() {
           {/* Card Preview Sidebar */}
           <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-8 order-first lg:order-last">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Live Customer Preview</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("dashboard.customizer.livePreview")}</h2>
               <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 animate-pulse" /> Realtime Sync
+                <Sparkles className="w-3.5 h-3.5 animate-pulse" /> {t("dashboard.customizer.realtimeSync")}
               </span>
             </div>
             
             <div className="border border-border rounded-xl p-4 bg-muted/30">
               <LoyaltyCard
-                programName={formData.name || "Program Name"}
+                programName={formData.name || t("dashboard.customizer.previewProgramName")}
                 programDescription={formData.description}
                 businessName={businessName}
                 stampTarget={parseInt(formData.stamp_target, 10) || 10}
                 currentStamps={3}
                 stampIcon={customization.stamp_icon}
-                rewardTitle={formData.reward_title || "Sample Reward"}
+                rewardTitle={formData.reward_title || t("dashboard.customizer.previewReward")}
                 rewardDescription={formData.reward_description}
                 customization={customization} />
               
               <p className="text-center text-xs text-muted-foreground mt-3 italic">
-                * Simulated representation. Real customer cards will display actual stamp counts on scan.
+                {t("dashboard.customizer.previewNote")}
               </p>
             </div>
           </div>
@@ -607,10 +627,10 @@ export default function EditProgram() {
                   <Tabs defaultValue="design" className="w-full">
                     <TabsList className="grid grid-cols-2 w-full">
                       <TabsTrigger value="design" className="gap-2">
-                        <Layout className="w-4 h-4" /> Card Design & Template
+                        <Layout className="w-4 h-4" /> {t("dashboard.customizer.tabs.design")}
                       </TabsTrigger>
                       <TabsTrigger value="rules" className="gap-2">
-                        <Palette className="w-4 h-4" /> Program Rules & Rewards
+                        <Palette className="w-4 h-4" /> {t("dashboard.customizer.tabs.rules")}
                       </TabsTrigger>
                     </TabsList>
 
@@ -620,8 +640,8 @@ export default function EditProgram() {
                       <div className="space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
-                            <Label className="text-base font-semibold">1. Choose a Design Preset Template</Label>
-                            <p className="text-xs text-muted-foreground mt-0.5">Selecting a preset automatically loads design values optimized for layout readability.</p>
+                            <Label className="text-base font-semibold">{t("dashboard.customizer.template.heading")}</Label>
+                            <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.customizer.template.description")}</p>
                           </div>
                         </div>
 
@@ -638,7 +658,7 @@ export default function EditProgram() {
                             "bg-muted text-muted-foreground hover:bg-muted/85"}`
                             }>
                             
-                              {category === "Aruba" ? "🇦🇼 Aruba-inspired" : category}
+                              {t(categoryLabels[category])}
                             </button>
                           )}
                         </div>
@@ -664,22 +684,22 @@ export default function EditProgram() {
                                 
                                 <div className="flex items-center justify-between w-full mb-1">
                                   <span className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                                    {preset.name}
+                                    {t(getTemplateKey(preset.id, "name"))}
                                     {isSelected && <Check className="w-3.5 h-3.5 text-primary" strokeWidth={3} />}
                                     {isLocked && <span className="text-xs">🔒</span>}
                                   </span>
                                   <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground">
-                                    {preset.style}
+                                    {getTemplateStyleLabel(preset.style)}
                                   </span>
                                 </div>
                                 <p className="text-[11px] text-muted-foreground flex-grow mt-0.5 leading-tight">
-                                  {preset.desc}
+                                  {t(getTemplateKey(preset.id, "desc"))}
                                 </p>
                                 {isPremium &&
                                 <span className={`text-[8px] font-bold px-1 py-0.2 rounded w-max mt-2 ${
                                 isLocked ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" : "bg-primary/10 text-primary"}`
                                 }>
-                                    {isLocked ? "Upgrade to Unlock" : "Premium Unlocked"}
+                                    {isLocked ? t("dashboard.customizer.template.upgradeToUnlock") : t("dashboard.customizer.template.premiumUnlocked")}
                                   </span>
                                 }
                               </button>);
@@ -691,8 +711,8 @@ export default function EditProgram() {
                       {/* Logo Asset Configuration */}
                       <div className="space-y-4 border-t pt-6">
                         <div>
-                          <Label className="text-base font-semibold">2. Branded Logo Asset</Label>
-                          <p className="text-xs text-muted-foreground mt-0.5">Your logo will represent your company cleanly in the upper sections of the card layouts.</p>
+                          <Label className="text-base font-semibold">{t("dashboard.customizer.logo.heading")}</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.customizer.logo.description")}</p>
                         </div>
                         <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 bg-muted/20 p-4 rounded-xl border">
                           {customization.card_logo_url ?
@@ -701,7 +721,7 @@ export default function EditProgram() {
                             </div> :
 
                           <div className="w-16 h-16 rounded-lg border bg-muted/50 border-dashed flex items-center justify-center text-muted-foreground text-xs font-semibold shrink-0">
-                              No Logo
+                              {t("dashboard.customizer.logo.noLogo")}
                             </div>
                           }
                           
@@ -715,7 +735,7 @@ export default function EditProgram() {
                                 disabled={uploading}>
                                 
                                 <Upload className="w-4 h-4" />
-                                {uploading ? "Uploading..." : "Upload Brand Logo"}
+                                {uploading ? t("dashboard.customizer.logo.uploading") : t("dashboard.customizer.logo.upload")}
                                 <input
                                   type="file"
                                   accept="image/*"
@@ -731,18 +751,18 @@ export default function EditProgram() {
                                 onClick={removeLogo}
                                 className="text-destructive hover:bg-destructive/10 h-9">
                                 
-                                  Remove Logo
+                                  {t("dashboard.customizer.logo.remove")}
                                 </Button>
                               }
                             </div>
-                            <p className="text-[11px] text-muted-foreground">Compatible with PNG, JPG under 2MB. Symmetrical icons recommended.</p>
+                            <p className="text-[11px] text-muted-foreground">{t("dashboard.customizer.logo.help")}</p>
                           </div>
                         </div>
 
                         {/* Banner Asset Configuration */}
                         <div className="mt-4 pt-4 border-t">
-                          <Label className="text-base font-semibold">Hero Banner Image (Optional)</Label>
-                          <p className="text-xs text-muted-foreground mt-0.5">Add a wide background banner to the top of your loyalty card.</p>
+                          <Label className="text-base font-semibold">{t("dashboard.customizer.banner.heading")}</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.customizer.banner.description")}</p>
                           
                           <div className="flex flex-col sm:flex-row items-center gap-4 mt-2 bg-muted/20 p-4 rounded-xl border">
                             {customization.card_banner_url ?
@@ -751,7 +771,7 @@ export default function EditProgram() {
                               </div> :
 
                             <div className="w-full sm:w-32 h-16 rounded-lg border bg-muted/50 border-dashed flex items-center justify-center text-muted-foreground text-xs font-semibold shrink-0">
-                                No Banner
+                                {t("dashboard.customizer.banner.noBanner")}
                               </div>
                             }
                             
@@ -765,7 +785,7 @@ export default function EditProgram() {
                                   disabled={uploading}>
                                   
                                   <Upload className="w-4 h-4" />
-                                  {uploading ? "Uploading..." : "Upload Banner Image"}
+                                  {uploading ? t("dashboard.customizer.logo.uploading") : t("dashboard.customizer.banner.upload")}
                                   <input
                                     type="file"
                                     accept="image/*"
@@ -781,11 +801,11 @@ export default function EditProgram() {
                                   onClick={removeBanner}
                                   className="text-destructive hover:bg-destructive/10 h-9">
                                   
-                                    Remove Banner
+                                    {t("dashboard.customizer.banner.remove")}
                                   </Button>
                                 }
                               </div>
-                              <p className="text-[11px] text-muted-foreground">Recommended: 1200x500px JPG/PNG under 2MB. Appears at the very top of the card.</p>
+                              <p className="text-[11px] text-muted-foreground">{t("dashboard.customizer.banner.help")}</p>
                             </div>
                           </div>
                         </div>
@@ -795,8 +815,8 @@ export default function EditProgram() {
                       <div className="space-y-4 border-t pt-6">
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                           <div>
-                            <Label className="text-base font-semibold">3. Branding Palette Color Editor</Label>
-                            <p className="text-xs text-muted-foreground mt-0.5">Adjust custom accents on top of your selected template preset.</p>
+                            <Label className="text-base font-semibold">{t("dashboard.customizer.colors.heading")}</Label>
+                            <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.customizer.colors.description")}</p>
                           </div>
                           <Button
                             type="button"
@@ -805,13 +825,13 @@ export default function EditProgram() {
                             onClick={handleResetToDefaults}
                             className="text-xs text-muted-foreground gap-1 h-7 border border-dashed border-border hover:bg-muted self-start">
                             
-                            <RefreshCw className="w-3.5 h-3.5" /> Revert Custom Colors to Template Default
+                            <RefreshCw className="w-3.5 h-3.5" /> {t("dashboard.customizer.colors.revert")}
                           </Button>
                         </div>
 
                         <div className="grid sm:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl border">
                           <div className="space-y-2">
-                            <Label htmlFor="primary_color" className="text-sm font-medium">Primary Theme Action Color</Label>
+                            <Label htmlFor="primary_color" className="text-sm font-medium">{t("dashboard.customizer.colors.primary")}</Label>
                             <div className="flex gap-2">
                               <Input
                                 id="primary_color"
@@ -831,7 +851,7 @@ export default function EditProgram() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="bg_color" className="text-sm font-medium">Card Background Color</Label>
+                            <Label htmlFor="bg_color" className="text-sm font-medium">{t("dashboard.customizer.colors.background")}</Label>
                             <div className="flex gap-2">
                               <Input
                                 id="bg_color"
@@ -851,7 +871,7 @@ export default function EditProgram() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="text_color" className="text-sm font-medium">Card Text & Numeric Data Color</Label>
+                            <Label htmlFor="text_color" className="text-sm font-medium">{t("dashboard.customizer.colors.text")}</Label>
                             <div className="flex gap-2">
                               <Input
                                 id="text_color"
@@ -871,7 +891,7 @@ export default function EditProgram() {
                           </div>
 
                           <div className="space-y-2 flex flex-col justify-end pb-1">
-                            <Label className="text-xs text-muted-foreground mb-1">Standard Brand Color Swatches</Label>
+                            <Label className="text-xs text-muted-foreground mb-1">{t("dashboard.customizer.colors.swatches")}</Label>
                             <div className="flex flex-wrap gap-1.5">
                               {["#F87171", "#10B981", "#3B82F6", "#F59E0B", "#8B5CF6", "#1F2937"].map((p) =>
                               <button
@@ -890,13 +910,13 @@ export default function EditProgram() {
                       {/* Icon Options */}
                       <div className="space-y-4 border-t pt-6">
                         <div>
-                          <Label className="text-base font-semibold">4. Stamp Icon Representation</Label>
-                          <p className="text-xs text-muted-foreground mt-0.5">Choose vector stamps that correspond beautifully to your business niche.</p>
+                          <Label className="text-base font-semibold">{t("dashboard.customizer.icons.heading")}</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">{t("dashboard.customizer.icons.description")}</p>
                         </div>
                         
                         <div className="grid sm:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl border">
                           <div className="space-y-2">
-                            <Label htmlFor="stamp_icon_select" className="text-sm font-medium">Stamp Icon Representation</Label>
+                            <Label htmlFor="stamp_icon_select" className="text-sm font-medium">{t("dashboard.customizer.icons.stamp")}</Label>
                             <select
                               id="stamp_icon_select"
                               className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -922,7 +942,7 @@ export default function EditProgram() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="reward_icon_select" className="text-sm font-medium">Reward Target Icon</Label>
+                            <Label htmlFor="reward_icon_select" className="text-sm font-medium">{t("dashboard.customizer.icons.reward")}</Label>
                             <select
                               id="reward_icon_select"
                               className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
@@ -942,7 +962,7 @@ export default function EditProgram() {
 
                     <TabsContent value="rules" className="space-y-6 pt-6">
                       <div className="space-y-2">
-                        <Label htmlFor="name">Program Name</Label>
+                        <Label htmlFor="name">{t("dashboard.customizer.rules.programName")}</Label>
                         <Input
                           id="name"
                           required
@@ -952,7 +972,7 @@ export default function EditProgram() {
                       </div>
                       
                       <div className="space-y-2">
-                        <Label htmlFor="description">Program Description</Label>
+                        <Label htmlFor="description">{t("dashboard.customizer.rules.programDescription")}</Label>
                         <Textarea
                           id="description"
                           value={formData.description}
@@ -961,7 +981,7 @@ export default function EditProgram() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="stamp_target">Stamps Required for Reward</Label>
+                        <Label htmlFor="stamp_target">{t("dashboard.customizer.rules.stampsRequired")}</Label>
                         <Input
                           id="stamp_target"
                           type="number"
@@ -976,11 +996,11 @@ export default function EditProgram() {
                       <div className="pt-4 border-t border-border space-y-6">
                         <div className="flex items-center gap-2 text-primary">
                           <Gift className="w-5 h-5" />
-                          <h3 className="text-lg font-heading font-semibold text-foreground">Reward Completion Terms</h3>
+                          <h3 className="text-lg font-heading font-semibold text-foreground">{t("dashboard.customizer.rules.rewardTerms")}</h3>
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="reward_title">Reward Title</Label>
+                          <Label htmlFor="reward_title">{t("dashboard.customizer.rules.rewardTitle")}</Label>
                           <Input
                             id="reward_title"
                             required
@@ -990,7 +1010,7 @@ export default function EditProgram() {
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="reward_description">Reward Instructions / Expiration Rules</Label>
+                          <Label htmlFor="reward_description">{t("dashboard.customizer.rules.rewardInstructions")}</Label>
                           <Textarea
                             id="reward_description"
                             value={formData.reward_description}
@@ -1000,11 +1020,11 @@ export default function EditProgram() {
 
                         <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
                           <div>
-                            <Label htmlFor="reward_expiration_option">Reward Expiration</Label>
+                            <Label htmlFor="reward_expiration_option">{t("dashboard.customizer.rules.rewardExpiration")}</Label>
                             <p className="text-xs text-muted-foreground mt-1">
                               {canUseRewardExpiration
-                                ? "Choose how long newly earned rewards remain valid. Existing rewards are not affected."
-                                : "Reward expiration is not enabled for your current subscription plan."}
+                                ? t("dashboard.customizer.rules.expirationEnabledHelp")
+                                : t("dashboard.customizer.rules.expirationDisabledHelp")}
                             </p>
                           </div>
                           {canUseRewardExpiration ? (
@@ -1019,18 +1039,18 @@ export default function EditProgram() {
                                   reward_expiration_custom_days: e.target.value === "custom" ? formData.reward_expiration_custom_days : ""
                                 })}
                               >
-                                <option value="none">No expiration</option>
-                                <option value="7">7 days</option>
-                                <option value="14">14 days</option>
-                                <option value="30">30 days</option>
-                                <option value="60">60 days</option>
-                                <option value="90">90 days</option>
-                                <option value="custom">Custom number of days</option>
+                                <option value="none">{t("dashboard.customizer.rules.noExpiration")}</option>
+                                <option value="7">{t("dashboard.customizer.rules.days", { count: 7 })}</option>
+                                <option value="14">{t("dashboard.customizer.rules.days", { count: 14 })}</option>
+                                <option value="30">{t("dashboard.customizer.rules.days", { count: 30 })}</option>
+                                <option value="60">{t("dashboard.customizer.rules.days", { count: 60 })}</option>
+                                <option value="90">{t("dashboard.customizer.rules.days", { count: 90 })}</option>
+                                <option value="custom">{t("dashboard.customizer.rules.customDays")}</option>
                               </select>
 
                               {formData.reward_expiration_option === "custom" && (
                                 <div className="space-y-2">
-                                  <Label htmlFor="reward_expiration_custom_days">Custom expiration days</Label>
+                                  <Label htmlFor="reward_expiration_custom_days">{t("dashboard.customizer.rules.customExpirationDays")}</Label>
                                   <Input
                                     id="reward_expiration_custom_days"
                                     type="number"
@@ -1038,19 +1058,19 @@ export default function EditProgram() {
                                     max={MAX_REWARD_EXPIRATION_DAYS}
                                     step="1"
                                     required
-                                    placeholder="Enter 1 to 365 days"
+                                    placeholder={t("dashboard.customizer.rules.customPlaceholder")}
                                     value={formData.reward_expiration_custom_days}
                                     onChange={(e) => setFormData({ ...formData, reward_expiration_custom_days: e.target.value })} />
                                   
                                   <p className="text-xs text-muted-foreground">
-                                    Must be a whole number between 1 and {MAX_REWARD_EXPIRATION_DAYS}.
+                                    {t("dashboard.customizer.rules.customHelp", { max: MAX_REWARD_EXPIRATION_DAYS })}
                                   </p>
                                 </div>
                               )}
                             </>
                           ) : (
                             <div className="rounded-md border border-dashed bg-background p-3 text-sm text-muted-foreground">
-                              Upgrade to a plan with Reward Expiration enabled to set expiration periods.
+                              {t("dashboard.customizer.rules.upgradeExpiration")}
                             </div>
                           )}
                         </div>
@@ -1061,7 +1081,7 @@ export default function EditProgram() {
                 
                 <CardContent className="pt-4 border-t">
                   <Button type="submit" disabled={saving} className="w-full sm:w-auto gap-2 bg-primary text-white hover:bg-primary/95">
-                    {saving ? "Applying Design Theme..." : <><Save className="h-4 w-4" /> Use This Template & Customizations</>}
+                    {saving ? t("dashboard.customizer.submit.saving") : <><Save className="h-4 w-4" /> {t("dashboard.customizer.submit.default")}</>}
                   </Button>
                 </CardContent>
               </Card>
@@ -1075,19 +1095,19 @@ export default function EditProgram() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl font-heading font-bold text-amber-600">
-              <Sparkles className="w-5 h-5" /> Premium Template
+              <Sparkles className="w-5 h-5" /> {t("dashboard.customizer.dialog.premiumTitle")}
             </DialogTitle>
             <DialogDescription className="text-sm pt-2">
-              The <strong className="text-foreground">{lockedTemplateName}</strong> template is available with plans that include Premium Templates. Upgrade now to unlock all 39 design templates and custom branding rules.
+              {t("dashboard.customizer.dialog.premiumDescription", { templateName: lockedTemplateName })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
             <Button variant="outline" onClick={() => setShowUpgradeDialog(false)} className="w-full sm:w-auto">
-              Maybe Later
+              {t("dashboard.customizer.dialog.maybeLater")}
             </Button>
             <Link href="/dashboard/billing" className="w-full sm:w-auto">
               <Button className="w-full bg-primary text-white hover:bg-primary/95 font-bold">
-                Upgrade Plan
+                {t("dashboard.customizer.dialog.upgradePlan")}
               </Button>
             </Link>
           </DialogFooter>
