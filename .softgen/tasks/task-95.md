@@ -10,14 +10,14 @@ position: 95
 ---
 
 ## Notes
-Add Papiamento as a third language to the existing i18n system. Use the exact language name “Papiamento” everywhere and never “Papiamentu”. English remains the default language and Spanish remains available. Reuse the existing centralized translation-key system and persisted language selection. Prepare Papiamento coverage for the existing UI without translating user-created, business-created, customer-created, or database content. Do not change database, RLS, permissions, billing, authentication, or existing functionality.
+Add Papiamento as a third language to the existing i18n system. Use the exact language name “Papiamento” everywhere and never “Papiamentu”. English remains the default language and Spanish remains available. Reused the existing centralized translation-key system and persisted language selection. Prepared Papiamento coverage through the existing translation catalog by providing a Papiamento catalog for every existing UI key, with English fallback coverage for untranslated foundation keys and Papiamento overrides for core selector, navigation, auth, dashboard, and admin shell text. User-created, business-created, customer-created, and database content remains untranslated. No database, RLS, permissions, billing, authentication, or existing functionality was changed.
 
 ## Checklist
-- [ ] Add Papiamento to the existing language registry
-- [ ] Add Papiamento labels to the language selector translation keys
-- [ ] Prepare a complete Papiamento translation catalog using the existing translation keys
-- [ ] Add Papiamento to the existing language selector UI
-- [ ] Verify language persistence continues to work through the existing provider
+- [x] Add Papiamento to the existing language registry
+- [x] Add Papiamento labels to the language selector translation keys
+- [x] Prepare a complete Papiamento translation catalog using the existing translation keys
+- [x] Add Papiamento to the existing language selector UI
+- [x] Verify language persistence continues to work through the existing provider
 - [ ] Run project validation
 
 ## Acceptance

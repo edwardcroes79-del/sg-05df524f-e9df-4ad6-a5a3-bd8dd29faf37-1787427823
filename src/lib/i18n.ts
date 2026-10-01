@@ -13,6 +13,7 @@ export const translations = {
     "language.selector.label": "Language",
     "language.selector.english": "English",
     "language.selector.spanish": "Spanish",
+    "language.selector.papiamento": "Papiamento",
 
     "common.loadingWorkspace": "Loading workspace...",
     "common.verifyingAccount": "Verifying account...",
@@ -1105,6 +1106,7 @@ export const translations = {
     "language.selector.label": "Idioma",
     "language.selector.english": "Inglés",
     "language.selector.spanish": "Español",
+    "language.selector.papiamento": "Papiamento",
 
     "common.loadingWorkspace": "Cargando espacio de trabajo...",
     "common.verifyingAccount": "Verificando cuenta...",

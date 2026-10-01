@@ -22,6 +22,7 @@ export function LanguageSelector({ compact = false, className }: LanguageSelecto
       >
         <option value="en">{t("language.selector.english")}</option>
         <option value="es">{t("language.selector.spanish")}</option>
+        <option value="pa">{t("language.selector.papiamento")}</option>
       </select>
     </label>
   );

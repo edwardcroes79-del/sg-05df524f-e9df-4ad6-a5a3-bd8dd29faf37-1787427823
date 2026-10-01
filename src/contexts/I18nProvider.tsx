@@ -12,7 +12,7 @@ const I18nContext = createContext<I18nContextValue | null>(null);
 const storageKey = "royalty_stamp_language";
 
 function isLanguageCode(value: string | null): value is LanguageCode {
-  return value === "en" || value === "es";
+  return Boolean(value && value in languages);
 }
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
