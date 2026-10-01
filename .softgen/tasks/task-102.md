@@ -13,9 +13,9 @@ position: 102
 Update the existing Papiamento translation for the Redeem Reward wording. Change “Canjea” to exactly “Reclama” where it refers to redeeming a reward. Do not change English or Spanish translations. Update existing i18n translation keys only, not hard-coded UI text. Search other Papiamento occurrences of “Canjea” and replace them with “Reclama” only where they refer to redeeming a reward. Do not change functionality, routes, permissions, database, billing, or redemption logic.
 
 ## Checklist
-- [ ] Locate Papiamento i18n keys containing “Canjea”
-- [ ] Replace reward-redeem wording with exactly “Reclama”
-- [ ] Preserve English, Spanish, database, routes, permissions, and redemption logic unchanged
+- [x] Locate Papiamento i18n keys containing the old redeem wording
+- [x] Replace reward-redeem wording with exactly “Reclama”
+- [x] Preserve English, Spanish, database, routes, permissions, and redemption logic unchanged
 - [ ] Run project validation
 
 ## Acceptance
