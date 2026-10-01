@@ -17,7 +17,7 @@ Perform a strict final audit of all existing Papiamento translations using https
 - [x] Inspect existing Papiamento i18n catalog and language selector/provider
 - [x] Audit What’s New separately for correct Aruban Papiamento static text
 - [x] Correct Papiamento vocabulary, spelling, and terminology across customer/auth/dashboard/admin keys
-- [ ] Verify “Papiamento” is used and the non-Aruban language-name variant is absent
+- [x] Verify “Papiamento” is used and the non-Aruban language-name variant is absent
 - [x] Preserve user/business/customer-created and database content unchanged
 - [ ] Run project validation
 
