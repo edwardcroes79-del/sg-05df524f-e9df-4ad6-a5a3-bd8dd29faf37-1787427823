@@ -10,11 +10,11 @@ position: 96
 ---
 
 ## Notes
-Reviewed and corrected the existing Papiamento translations using authentic Aruban Papiamento. Avoided Curaçao/Bonaire Papiamentu spelling and vocabulary and used the exact language name “Papiamento” everywhere. Translated remaining static UI through the existing translation-key system only, including Customer, Business, Staff, Super Admin, login/register, navigation, loyalty programs, stamps/rewards, QR, billing, settings, notifications, forms, errors, loading states, empty states, and confirmations. Mandatory What’s New pass was completed: titles, descriptions, NEW badges, buttons, labels, categories, and empty states are translated via keys. User-created, business-created, customer-created, and database content remains untranslated. No functionality, database, RLS, permissions, billing, or app logic was changed. Replaced non-Aruban spellings such as “Kliente/Kargando/Konfigurá” with Aruban forms like “cliente/cargando/configura”. Project validation passed with no CSS, linting, TypeScript, or server errors.
+Reviewed and corrected the existing Papiamento translations using authentic Aruban Papiamento. Avoided the non-Aruban language-name variant and non-Aruban spelling/vocabulary, and used the exact language name “Papiamento” everywhere. Translated remaining static UI through the existing translation-key system only, including Customer, Business, Staff, Super Admin, login/register, navigation, loyalty programs, stamps/rewards, QR, billing, settings, notifications, forms, errors, loading states, empty states, and confirmations. Mandatory What’s New pass was completed: titles, descriptions, NEW badges, buttons, labels, categories, and empty states are translated via keys. User-created, business-created, customer-created, and database content remains untranslated. No functionality, database, RLS, permissions, billing, or app logic was changed. Replaced non-Aruban spellings such as “Kliente/Kargando/Konfigurá” with Aruban forms like “cliente/cargando/configura”. Project validation passed with no CSS, linting, TypeScript, or server errors.
 
 ## Checklist
 - [x] Inspect the existing i18n catalog and current Papiamento foundation
-- [x] Replace Curaçao/Bonaire-style spellings and partial fallback entries with authentic Aruban Papiamento
+- [x] Replace non-Aruban spellings and partial fallback entries with authentic Aruban Papiamento
 - [x] Translate Business Dashboard, Staff, Billing, Settings, QR, loyalty, stamps, rewards, and notifications keys
 - [x] Translate Customer app, loyalty cards, rewards, activity, profile, settings, PWA, and empty states keys
 - [x] Translate auth/login/register/reset/update password and Super Admin keys
