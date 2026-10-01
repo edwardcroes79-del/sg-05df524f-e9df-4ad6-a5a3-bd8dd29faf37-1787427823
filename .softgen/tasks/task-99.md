@@ -11,7 +11,7 @@ position: 99
 
 ## Notes
 Add a new item to the existing 🔔 What's New section for Business clients announcing the availability of Spanish and Papiamento.
-Title: 🌎 New Languages Available. Badge: 🆕 NEW. Use existing i18n translation keys. Display correct version based on user's selected language. Papiamento must follow authentic Aruban Papiamento using papiamento.aw terminology. Use "Papiamento", never "Papiamentu". Preserve existing What's New items, unread state (whatsNewRead_v1), and animations. Do not change unrelated functionality.
+Title: 🌎 New Languages Available. Badge: 🆕 NEW. Use existing i18n translation keys. Display correct version based on user's selected language. Papiamento must follow authentic Aruban Papiamento using papiamento.aw terminology. Use "Papiamento" everywhere and avoid the non-Aruban language-name variant. Preserve existing What's New items, unread state (whatsNewRead_v1), and animations. Do not change unrelated functionality.
 
 ## Checklist
 - [x] Add translation keys for the new language announcement to English, Spanish, and Papiamento catalogs
