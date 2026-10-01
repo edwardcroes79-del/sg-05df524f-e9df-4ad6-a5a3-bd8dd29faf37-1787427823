@@ -17,9 +17,9 @@ Investigate and fix the Customer Wallet “Notifications & Preferences” Email 
 - [x] Inspect database types/schema for existing customer notification preference fields
 - [x] Inspect existing email infrastructure and stamp-issued notification utilities
 - [x] Inspect Business/Staff Issue Stamp and Quick Issue Stamp flows
-- [ ] Persist and restore the authenticated customer’s email receipt preference securely
-- [ ] Send stamp receipt emails after successful stamp transactions only when enabled
-- [ ] Apply preference consistently to all stamp-issuing flows without breaking stamp success on email failure
+- [x] Persist and restore the authenticated customer’s email receipt preference securely
+- [x] Send stamp receipt emails after successful stamp transactions only when enabled
+- [x] Apply preference consistently to all stamp-issuing flows without breaking stamp success on email failure
 - [ ] Run project validation
 
 ## Acceptance
