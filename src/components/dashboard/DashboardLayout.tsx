@@ -563,6 +563,27 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="space-y-8">
             <div>
               <div className="space-y-4">
+                {/* New Languages Announcement (NEW) */}
+                <div 
+                  className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">🌎</span>
+                      <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.languages.title" as TranslationKey)}</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                      {t("common.new")}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      {t("dashboard.whatsNew.languages.description" as TranslationKey)}
+                    </p>
+                  </div>
+                </div>
+
                 {/* Quick Issue Stamp Announcement (NEW) */}
                 <div 
                   className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
