@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { sendStampReceiptForTransaction } from "@/services/stampReceiptService";
 
 type QuickStampContext = {
   success: boolean;
@@ -32,6 +33,7 @@ type StampResult = {
   reward_earned?: boolean;
   new_stamps?: number;
   total_stamps?: number;
+  transaction_id?: string;
 };
 
 const EXPIRED_MESSAGE = "QR Code expired. Please scan the current QR code.";
@@ -116,6 +118,14 @@ export default function QuickStampCustomerPage() {
         title: "Stamp added",
         description: data.reward_earned ? "Your stamp was saved and you unlocked a reward." : "Your stamp was saved to your loyalty card.",
       });
+
+      if (data.transaction_id) {
+        void sendStampReceiptForTransaction(data.transaction_id).then((receipt) => {
+          if (receipt.error) {
+            console.warn("Stamp receipt email was not sent:", receipt.error);
+          }
+        });
+      }
     } catch (err: any) {
       setErrorMessage(err.message || EXPIRED_MESSAGE);
     } finally {

@@ -18,6 +18,7 @@ export default function CustomerSettingsPage() {
   const [promoAlerts, setPromoNotifications] = useState(false);
   const [stampSounds, setStampSounds] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [preferencesLoading, setPreferencesLoading] = useState(true);
 
   // 2FA States
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
@@ -30,11 +31,48 @@ export default function CustomerSettingsPage() {
 
   useEffect(() => {
     fetchMfaFactors();
-    const savedSoundPref = localStorage.getItem('stamp_sound_enabled');
+    void fetchEmailReceiptPreference();
+    const savedSoundPref = localStorage.getItem("stamp_sound_enabled");
     if (savedSoundPref !== null) {
-      setStampSounds(savedSoundPref === 'true');
+      setStampSounds(savedSoundPref === "true");
     }
   }, []);
+
+  const fetchEmailReceiptPreference = async () => {
+    setPreferencesLoading(true);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
+      if (!token) {
+        throw new Error(t("dashboard.scan.noActiveSession"));
+      }
+
+      const response = await fetch("/api/customer/email-receipts-preference", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || t("customer.settings.preferencesLoadFailed"));
+      }
+
+      setEmailNotifications(Boolean(result.emailReceiptsEnabled));
+    } catch (err: any) {
+      toast({
+        title: t("customer.settings.preferencesLoadFailed"),
+        description: err.message || t("customer.settings.preferencesLoadFailedDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      setPreferencesLoading(false);
+    }
+  };
 
   const fetchMfaFactors = async () => {
     const { data, error } = await supabase.auth.mfa.listFactors();
@@ -105,15 +143,46 @@ export default function CustomerSettingsPage() {
     }
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
+      if (!token) {
+        throw new Error(t("dashboard.scan.noActiveSession"));
+      }
+
+      const response = await fetch("/api/customer/email-receipts-preference", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ emailReceiptsEnabled: emailNotifications }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.error || t("customer.settings.preferencesSaveFailed"));
+      }
+
+      setEmailNotifications(Boolean(result.emailReceiptsEnabled));
       toast({
         title: t("customer.settings.savedTitle"),
         description: t("customer.settings.savedDescription")
       });
-    }, 600);
+    } catch (err: any) {
+      toast({
+        title: t("customer.settings.preferencesSaveFailed"),
+        description: err.message || t("customer.settings.preferencesSaveFailedDescription"),
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -152,6 +221,7 @@ export default function CustomerSettingsPage() {
                   id="email-notif" 
                   checked={emailNotifications} 
                   onCheckedChange={setEmailNotifications}
+                  disabled={preferencesLoading || saving}
                 />
               </div>
 
@@ -183,7 +253,7 @@ export default function CustomerSettingsPage() {
               </div>
             </CardContent>
             <CardFooter className="bg-muted/10 border-t py-4 flex justify-end">
-              <Button onClick={handleSaveSettings} disabled={saving}>
+              <Button onClick={handleSaveSettings} disabled={saving || preferencesLoading}>
                 {saving ? t("dashboard.settings.saving") : t("customer.settings.savePreferences")}
               </Button>
             </CardFooter>

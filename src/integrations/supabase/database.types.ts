@@ -410,6 +410,7 @@ export type Database = {
           avatar: string | null
           created_at: string | null
           email: string | null
+          email_receipts_enabled: boolean
           id: string
           name: string
           phone: string | null
@@ -419,6 +420,7 @@ export type Database = {
           avatar?: string | null
           created_at?: string | null
           email?: string | null
+          email_receipts_enabled?: boolean
           id?: string
           name: string
           phone?: string | null
@@ -428,6 +430,7 @@ export type Database = {
           avatar?: string | null
           created_at?: string | null
           email?: string | null
+          email_receipts_enabled?: boolean
           id?: string
           name?: string
           phone?: string | null
@@ -1369,6 +1372,10 @@ export type Database = {
         Returns: number
       }
       get_quick_stamp_qr_context: { Args: { p_token: string }; Returns: Json }
+      get_quick_stamp_qr_cooldown_seconds: {
+        Args: { p_business_id: string }
+        Returns: number
+      }
       get_reward_by_qr_token: {
         Args: { p_business_id: string; p_token: string }
         Returns: Json

@@ -14,6 +14,7 @@ import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTrian
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/contexts/I18nProvider";
+import { sendStampReceiptForTransaction } from "@/services/stampReceiptService";
 
 interface RegisteredCustomer {
   id: string;
@@ -429,6 +430,12 @@ export default function ScanQR() {
           title: result.reward_earned ? t("dashboard.scan.rewardUnlocked") : t("dashboard.scan.stampAdded"),
           description: result.message,
           variant: "default",
+        });
+
+        void sendStampReceiptForTransaction(result.transaction_id).then((receipt) => {
+          if (receipt.error) {
+            console.warn("Stamp receipt email was not sent:", receipt.error);
+          }
         });
       } else {
         toast({
