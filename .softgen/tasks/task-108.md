@@ -16,4 +16,7 @@ Investigate "Application error: a client-side exception has occurred" on royalty
 - [x] Inspect `src/pages/index.tsx` and `DashboardLayout.tsx` for runtime errors
 - [x] Identify root cause: `plan.max_customers.toLocaleString()` on null database values
 - [x] Fix the issue safely by adding optional chaining and null coalescing
-- [ ] Verify fix by running check_for_errors
+- [x] Verify fix by running check_for_errors
+
+## Acceptance
+Landing page loads correctly without crashing even if database plans have null values.
