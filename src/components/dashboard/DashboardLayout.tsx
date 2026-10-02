@@ -720,6 +720,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
 
+                {/* Stamp Correction Announcement (COMING SOON) */}
+                <div 
+                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
+                  onClick={() => setComingSoonModalOpen(true)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">↩️</span>
+                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.stampCorrection.title" as TranslationKey)}</h4>
+                    </div>
+                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
+                      {t("common.comingSoon")}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t("dashboard.whatsNew.stampCorrection.description" as TranslationKey)}
+                  </p>
+                </div>
+
                 {/* Feature 1 */}
                 <div 
                   className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
