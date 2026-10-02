@@ -13,8 +13,8 @@ position: 107
 Move the existing “↩️ Stamp Correction” announcement to the first position in the Business Dashboard 🔔 What's New section. Keep its status as COMING SOON. Preserve existing title, description, and translations. Do not change unrelated features.
 
 ## Checklist
-- [ ] Open `DashboardLayout.tsx`
-- [ ] Move the Stamp Correction block to the top of the announcements list
+- [x] Open `DashboardLayout.tsx`
+- [x] Move the Stamp Correction block to the top of the announcements list
 - [ ] Run project validation
 
 ## Acceptance
