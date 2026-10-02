@@ -770,16 +770,16 @@ export default function Home() {
             </div>
             
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {(dbPlans.length > 0 ? dbPlans : pricing.plans).map((plan, i) => {
+              {(dbPlans.length > 0 ? dbPlans : (pricing?.plans || [])).map((plan, i) => {
                 const isDbPlan = dbPlans.length > 0;
                 const isPopular = isDbPlan ? (plan.badge?.toLowerCase() === 'popular' || plan.badge?.toLowerCase() === 'most popular') : plan.isPopular;
                 const features = isDbPlan ? [
-                  `${plan.max_loyalty_programs === 9999 ? "Unlimited" : plan.max_loyalty_programs} Loyalty Programs`,
-                  `${plan.max_customers === 999999 ? "Unlimited" : plan.max_customers.toLocaleString()} Loyalty Members`,
+                  `${plan.max_loyalty_programs === 9999 ? "Unlimited" : (plan.max_loyalty_programs ?? "Unlimited")} Loyalty Programs`,
+                  `${plan.max_customers === 999999 ? "Unlimited" : (plan.max_customers?.toLocaleString() ?? "Unlimited")} Loyalty Members`,
                   `${plan.max_staff || 1} Staff Accounts`,
                   plan.includes_premium_templates ? "Premium Design Presets" : null,
                   ...(Array.isArray(plan.features) ? plan.features : [])
-                ].filter(Boolean) : plan.features;
+                ].filter(Boolean) : (plan.features || []);
 
                 return (
                 <Card key={i} className={cn(
@@ -795,7 +795,7 @@ export default function Home() {
                     <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
                     <CardDescription className="text-base mt-2">{plan.description}</CardDescription>
                     <div className="mt-6 font-heading flex items-baseline gap-2">
-                      <span className="text-5xl font-extrabold">{isDbPlan ? `AWG ${Number(plan.price_awg).toFixed(2)}` : plan.price}</span>
+                      <span className="text-5xl font-extrabold">{isDbPlan ? `AWG ${Number(plan.price_awg || 0).toFixed(2)}` : plan.price}</span>
                       <span className="text-lg text-muted-foreground font-medium">/ month</span>
                     </div>
                   </CardHeader>
@@ -829,10 +829,10 @@ export default function Home() {
         <section id="faq" className="py-24 md:py-32 bg-card border-y border-border/50">
           <div className="container mx-auto px-4 md:px-8 max-w-4xl">
             <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-5xl font-bold font-heading tracking-tight">{faq.title}</h2>
+              <h2 className="text-3xl md:text-5xl font-bold font-heading tracking-tight">{faq?.title}</h2>
             </div>
             <Accordion type="single" collapsible className="w-full space-y-4">
-              {faq.items.map((item) => (
+              {faq?.items?.map((item) => (
                 <AccordionItem key={item.id} value={item.id} className="bg-background border border-border/50 rounded-2xl px-6 shadow-sm data-[state=open]:border-primary/30 transition-colors">
                   <AccordionTrigger className="text-left font-bold text-lg hover:no-underline py-6">
                     {item.question}
@@ -883,15 +883,15 @@ export default function Home() {
                 <span className="font-heading font-bold text-xl tracking-tight">Royalty<span className="text-primary">Stamp</span></span>
               </Link>
               <p className="text-muted-foreground text-base leading-relaxed max-w-md pr-8">
-                {footer.aboutText}
+                {footer?.aboutText}
               </p>
             </div>
             
-            {footer.sections.map((section, idx) => (
+            {footer?.sections?.map((section, idx) => (
               <div key={idx}>
                 <h4 className="font-bold text-foreground mb-6 uppercase tracking-wider text-sm">{section.title}</h4>
                 <ul className="space-y-4">
-                  {section.links.map((link, lIdx) => {
+                  {section.links?.map((link, lIdx) => {
                     const isExternal = link.href.startsWith("http");
                     return (
                       <li key={lIdx}>
@@ -917,7 +917,7 @@ export default function Home() {
             ))}
           </div>
           <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground font-medium">
-            <p>{footer.copyrightText || `© ${new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.`}</p>
+            <p>{footer?.copyrightText || `© ${new Date().getFullYear()} Aruba Royalty Stamp. All rights reserved.`}</p>
             <div className="flex gap-6">
               <Link href="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link>
               <Link href="/terms-of-service" className="hover:text-primary transition-colors">Terms of Service</Link>
