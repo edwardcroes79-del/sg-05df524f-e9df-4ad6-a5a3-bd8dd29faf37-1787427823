@@ -1,6 +1,6 @@
 ---
 title: Prioritize Stamp Correction Announcement
-status: in_progress
+status: done
 priority: medium
 type: chore
 tags: [whats-new, ui, announcements]
@@ -10,12 +10,12 @@ position: 107
 ---
 
 ## Notes
-Move the existing “↩️ Stamp Correction” announcement to the first position in the Business Dashboard 🔔 What's New section. Keep its status as COMING SOON. Preserve existing title, description, and translations. Do not change unrelated features.
+Moved the existing “↩️ Stamp Correction” announcement to the first position in the Business Dashboard 🔔 What's New section. Kept its status as COMING SOON. Preserved existing title, description, and translations. Did not change unrelated features.
 
 ## Checklist
 - [x] Open `DashboardLayout.tsx`
 - [x] Move the Stamp Correction block to the top of the announcements list
-- [ ] Run project validation
+- [x] Run project validation
 
 ## Acceptance
 Stamp Correction appears at the top of the What's New modal.
