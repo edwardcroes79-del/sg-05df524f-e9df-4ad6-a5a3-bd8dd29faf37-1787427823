@@ -338,28 +338,65 @@ export default function ScanQR() {
         const element = document.getElementById("qr-reader");
         if (!element || !active) return;
         
-        const html5QrCode = new Html5Qrcode("qr-reader");
-        localScanner = html5QrCode;
-        qrCodeInstanceRef.current = html5QrCode;
-        
-        await html5QrCode.start(
-          buildRearCameraConstraints(targetCameraId),
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 }
-          },
-          (decodedText: string) => {
-            if (active && handleProcessQRRef.current) {
-              handleProcessQRRef.current(decodedText);
-            }
-          },
-          () => {
-            // silent fail for periodic frame noise
-          }
-        );
+        const initializeScanner = async (cameraConfig: string | MediaTrackConstraints) => {
+          const html5QrCode = new Html5Qrcode("qr-reader");
+          localScanner = html5QrCode;
+          qrCodeInstanceRef.current = html5QrCode;
 
-        const scannerVideo = await waitForScannerVideoReady("qr-reader");
-        await applyContinuousAutofocus(scannerVideo);
+          try {
+            await html5QrCode.start(
+              cameraConfig,
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 }
+              },
+              (decodedText: string) => {
+                if (active && handleProcessQRRef.current) {
+                  handleProcessQRRef.current(decodedText);
+                }
+              },
+              () => {
+                // silent fail for periodic frame noise
+              }
+            );
+
+            const scannerVideo = await waitForScannerVideoReady("qr-reader");
+            await applyContinuousAutofocus(scannerVideo);
+          } catch (startupError) {
+            try {
+              if (html5QrCode.isScanning) {
+                await html5QrCode.stop();
+              }
+              if (typeof html5QrCode.clear === "function") {
+                html5QrCode.clear();
+              }
+            } catch (cleanupError) {
+              console.warn("Scanner retry cleanup failed:", cleanupError);
+            }
+
+            if (qrCodeInstanceRef.current === html5QrCode) {
+              qrCodeInstanceRef.current = null;
+            }
+
+            throw startupError;
+          }
+        };
+
+        try {
+          await initializeScanner(buildRearCameraConstraints(targetCameraId));
+        } catch (firstAttemptError: any) {
+          if (firstAttemptError?.name === "NotAllowedError" || !active) {
+            throw firstAttemptError;
+          }
+
+          console.warn("Scanner first initialization failed; retrying once with selected camera id:", firstAttemptError);
+          await stopActiveScanner();
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+          if (!active) return;
+
+          await initializeScanner(targetCameraId);
+        }
         
         if (active) {
           setIsScanning(true);

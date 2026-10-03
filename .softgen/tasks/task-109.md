@@ -17,7 +17,7 @@ Follow-up investigation for phones where the camera opens on the rear camera but
 - [x] Inspect current scanner stream startup, video readiness, camera constraints, focus behavior, and cleanup
 - [x] Identify the root cause of blurry first stream and inactive first-attempt detection
 - [x] Apply the smallest safe initialization fix
-- [ ] Add one safe retry path without repeated initialization loops
+- [x] Add one safe retry path without repeated initialization loops
 - [x] Ensure stream cleanup on close/switch and no duplicate streams
 - [x] Preserve QR validation, stamp/reward, database, RLS, and security behavior
 - [ ] Run project validation
