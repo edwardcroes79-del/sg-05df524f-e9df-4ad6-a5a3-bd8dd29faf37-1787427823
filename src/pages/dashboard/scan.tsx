@@ -61,6 +61,46 @@ export default function ScanQR() {
   const qrCodeInstanceRef = useRef<any>(null);
   const processingRef = useRef(false);
 
+  const getPreferredRearCamera = (devices: Array<{ id: string; label: string }>) => {
+    const rearCamera = devices.find((device) => {
+      const label = device.label.toLowerCase();
+      return (
+        label.includes("back") ||
+        label.includes("rear") ||
+        label.includes("environment") ||
+        label.includes("world") ||
+        label.includes("facing back") ||
+        label.includes("camera2")
+      );
+    });
+
+    return rearCamera || (devices.length > 1 ? devices[devices.length - 1] : devices[0]);
+  };
+
+  const stopActiveScanner = async () => {
+    const instance = qrCodeInstanceRef.current;
+    if (!instance) {
+      setIsScanning(false);
+      return;
+    }
+
+    try {
+      if (instance.isScanning) {
+        await instance.stop();
+      }
+      if (typeof instance.clear === "function") {
+        instance.clear();
+      }
+    } catch (err) {
+      console.error("Failed to stop scanner cleanly:", err);
+    } finally {
+      if (qrCodeInstanceRef.current === instance) {
+        qrCodeInstanceRef.current = null;
+      }
+      setIsScanning(false);
+    }
+  };
+
   // CRITICAL: Prevent React Stale Closures in the camera callback
   // This ensures the scanner always uses the latest selectedProgramId without restarting the camera hardware
   const handleProcessQRRef = useRef<((qrData: string) => Promise<void>) | null>(null);
@@ -167,6 +207,7 @@ export default function ScanQR() {
   // Secure Scanner Lifecycle Manager (with strict Rear/Back camera filtering)
   useEffect(() => {
     let active = true;
+    let localScanner: any = null;
     
     const startScanner = async () => {
       if (scanMode !== "camera" || loading || programs.length === 0 || scanResult) {
@@ -175,65 +216,64 @@ export default function ScanQR() {
       
       try {
         const { Html5Qrcode } = await import("html5-qrcode");
-        
-        // Retrieve and prioritize Back/Rear cameras
-        if (cameras.length === 0) {
+
+        await stopActiveScanner();
+        setCameraError(null);
+
+        let availableCameras = cameras;
+
+        if (availableCameras.length === 0) {
+          let permissionStream: MediaStream | null = null;
+
           try {
-            const devices = await Html5Qrcode.getCameras();
-            if (active) {
-              if (devices && devices.length > 0) {
-                setCameras(devices);
-                
-                // Identify default Back/Rear/Environment Camera
-                const backCamera = devices.find(device => 
-                  device.label.toLowerCase().includes("back") || 
-                  device.label.toLowerCase().includes("rear") || 
-                  device.label.toLowerCase().includes("environment") ||
-                  device.label.toLowerCase().includes("camera2")
-                );
-                
-                const defaultCamId = backCamera ? backCamera.id : devices[0].id;
-                setActiveCameraId(defaultCamId);
-              } else {
-                setCameraError(t("dashboard.scan.noCameras"));
+            permissionStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: { ideal: "environment" }
               }
-            }
-          } catch (err: any) {
-            if (active) {
-              setCameraError(t("dashboard.scan.cameraPermissionDenied"));
-              toast({
-                title: t("dashboard.scan.cameraAccessRequired"),
-                description: t("dashboard.scan.cameraAccessDescription"),
-                variant: "destructive"
-              });
-            }
+            });
+          } finally {
+            permissionStream?.getTracks().forEach((track) => track.stop());
+          }
+
+          availableCameras = await Html5Qrcode.getCameras();
+
+          if (!active) return;
+
+          if (!availableCameras || availableCameras.length === 0) {
+            setCameraError(t("dashboard.scan.noCameras"));
+            return;
+          }
+
+          setCameras(availableCameras);
+
+          const preferredCamera = getPreferredRearCamera(availableCameras);
+          if (preferredCamera?.id && preferredCamera.id !== activeCameraId) {
+            setActiveCameraId(preferredCamera.id);
             return;
           }
         }
-        
+
+        const targetCameraId = activeCameraId || getPreferredRearCamera(availableCameras)?.id;
+        if (!targetCameraId) {
+          setCameraError(t("dashboard.scan.noCameras"));
+          return;
+        }
+
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
         const element = document.getElementById("qr-reader");
         if (!element || !active) return;
         
-        // Stop any running scanner before starting a new session to prevent hardware collision
-        if (qrCodeInstanceRef.current) {
-          try {
-            await qrCodeInstanceRef.current.stop();
-          } catch (e) {
-            // ignore if not running
-          }
-        }
-        
         const html5QrCode = new Html5Qrcode("qr-reader");
+        localScanner = html5QrCode;
         qrCodeInstanceRef.current = html5QrCode;
         
-        const targetCam = activeCameraId || (cameras.length > 0 ? cameras[0].id : null);
-        if (!targetCam && active) return;
-        
         await html5QrCode.start(
-          targetCam ? targetCam : { facingMode: "environment" },
+          targetCameraId,
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 }
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1
           },
           (decodedText: string) => {
             if (active && handleProcessQRRef.current) {
@@ -253,7 +293,14 @@ export default function ScanQR() {
         console.error("Scanner startup failed:", err);
         if (active) {
           setIsScanning(false);
-          setCameraError(t("dashboard.scan.cameraStartupFailed"));
+          setCameraError(err?.name === "NotAllowedError" ? t("dashboard.scan.cameraPermissionDenied") : t("dashboard.scan.cameraStartupFailed"));
+          if (err?.name === "NotAllowedError") {
+            toast({
+              title: t("dashboard.scan.cameraAccessRequired"),
+              description: t("dashboard.scan.cameraAccessDescription"),
+              variant: "destructive"
+            });
+          }
         }
       }
     };
@@ -262,10 +309,18 @@ export default function ScanQR() {
     
     return () => {
       active = false;
-      if (qrCodeInstanceRef.current) {
-        const instance = qrCodeInstanceRef.current;
+      if (localScanner) {
+        const instance = localScanner;
         if (instance.isScanning) {
-          instance.stop().catch(console.error);
+          instance.stop()
+            .then(() => {
+              if (typeof instance.clear === "function") {
+                instance.clear();
+              }
+            })
+            .catch(console.error);
+        } else if (typeof instance.clear === "function") {
+          instance.clear();
         }
       }
     };
@@ -274,15 +329,8 @@ export default function ScanQR() {
   const switchCamera = async () => {
     if (cameras.length <= 1) return;
     
-    // Stop current scanning session
-    if (qrCodeInstanceRef.current && qrCodeInstanceRef.current.isScanning) {
-      try {
-        await qrCodeInstanceRef.current.stop();
-        setIsScanning(false);
-      } catch (err) {
-        console.error("Failed to stop previous camera:", err);
-      }
-    }
+    await stopActiveScanner();
+    setCameraError(null);
     
     const currentIndex = cameras.findIndex(c => c.id === activeCameraId);
     const nextIndex = (currentIndex + 1) % cameras.length;
@@ -313,14 +361,7 @@ export default function ScanQR() {
     setPendingRewardQR(null);
 
     // Stop active camera feed while processing a code to prevent multiple inputs and freeze preview
-    if (qrCodeInstanceRef.current && qrCodeInstanceRef.current.isScanning) {
-      try {
-        await qrCodeInstanceRef.current.stop();
-        setIsScanning(false);
-      } catch (err) {
-        console.error("Failed to stop camera:", err);
-      }
-    }
+    await stopActiveScanner();
 
     try {
       const { data: { session } } = await supabase.auth.getSession();

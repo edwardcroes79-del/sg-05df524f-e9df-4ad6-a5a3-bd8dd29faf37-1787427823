@@ -13,11 +13,11 @@ position: 109
 Investigate and fix QR scanner camera behavior across Royalty Stamp. The scanners must request the rear/back camera by default, initialize QR detection immediately after opening, preserve optional camera switching, handle permissions/unavailable cameras gracefully, stop previous MediaStreams when switching/closing, prevent multiple streams, and work consistently on Android mobile browsers/PWA and desktop where supported. Do not change QR validation, stamp/reward logic, database logic, security, or fake scan success.
 
 ## Checklist
-- [ ] Locate all QR scanner flows and shared scanner code
-- [ ] Identify the root cause of rear camera/default camera and delayed detection issues
-- [ ] Apply the smallest safe camera initialization/lifecycle fix
-- [ ] Ensure stream cleanup on close/switch and no duplicate streams
-- [ ] Preserve optional camera switch controls and permission error handling
+- [x] Locate all QR scanner flows and shared scanner code
+- [x] Identify the root cause of rear camera/default camera and delayed detection issues
+- [x] Apply the smallest safe camera initialization/lifecycle fix
+- [x] Ensure stream cleanup on close/switch and no duplicate streams
+- [x] Preserve optional camera switch controls and permission error handling
 - [ ] Run project validation
 
 ## Acceptance
