@@ -13,12 +13,12 @@ position: 111
 Investigate and fix why the existing active `QUICK_STAMP_QR` add-on appears in add-on management but is excluded from the Super Admin Business Add-ons assignment dropdown. Use the existing add-on record and identifier. Do not create duplicate add-ons or mock data. Preserve customer-capacity assignment behavior, billing approval/activation/deactivation rules, RLS, and server-side entitlement checks. Quick Stamp QR must grant feature access only and must not increase customer capacity.
 
 ## Checklist
-- [ ] Inspect database schema for add-ons, business add-ons, billing period fields, and entitlement-related objects
-- [ ] Inspect Super Admin Business Add-ons UI dropdown filtering
-- [ ] Inspect admin add-on assignment APIs and approval/activation/deactivation paths
-- [ ] Inspect server-side Quick Stamp QR entitlement checks
-- [ ] Identify root cause for `QUICK_STAMP_QR` exclusion
-- [ ] Apply the smallest safe fix without changing unrelated add-ons
+- [x] Inspect database schema for add-ons, business add-ons, billing period fields, and entitlement-related objects
+- [x] Inspect Super Admin Business Add-ons UI dropdown filtering
+- [x] Inspect admin add-on assignment APIs and approval/activation/deactivation paths
+- [x] Inspect server-side Quick Stamp QR entitlement checks
+- [x] Identify root cause for `QUICK_STAMP_QR` exclusion
+- [x] Apply the smallest safe fix without changing unrelated add-ons
 - [ ] Verify assignment, approval, activation, deactivation, and feature access paths where possible
 - [ ] Run project validation
 

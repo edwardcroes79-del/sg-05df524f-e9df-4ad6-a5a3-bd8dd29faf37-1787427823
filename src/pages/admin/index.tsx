@@ -1492,11 +1492,14 @@ export default function AdminDashboard() {
     if (!businessAddonFormData.business_id || !businessAddonFormData.addon_id) {
       toast({
         title: "Missing selection",
-        description: "Select both a business and a customer capacity add-on.",
+        description: "Select both a business and an active assignable add-on.",
         variant: "destructive",
       });
       return;
     }
+
+    const selectedAddon = addons.find((addon) => addon.id === businessAddonFormData.addon_id);
+    const assignmentQuantity = isQuickStampAddon(selectedAddon) ? 1 : Number(businessAddonFormData.quantity);
 
     try {
       setAssigningBusinessAddon(true);
@@ -1512,7 +1515,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           business_id: businessAddonFormData.business_id,
           addon_id: businessAddonFormData.addon_id,
-          quantity: Number(businessAddonFormData.quantity),
+          quantity: assignmentQuantity,
           current_period_end: businessAddonFormData.current_period_end || null,
         }),
       });
@@ -1527,7 +1530,9 @@ export default function AdminDashboard() {
       setBusinessAddonFormData({ business_id: "", addon_id: "", quantity: 1, current_period_end: "" });
       toast({
         title: "Add-on Assigned",
-        description: "The business customer capacity entitlement now includes this active add-on.",
+        description: isQuickStampAddon(selectedAddon)
+          ? "Quick Stamp QR feature access is now active for this business."
+          : "The business customer capacity entitlement now includes this active add-on.",
       });
       await fetchAdminData();
     } catch (err: any) {
@@ -3522,15 +3527,24 @@ export default function AdminDashboard() {
                         id="businessAddonAddon"
                         className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
                         value={businessAddonFormData.addon_id}
-                        onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, addon_id: e.target.value })}
+                        onChange={(e) => {
+                          const selectedAddon = addons.find((addon) => addon.id === e.target.value);
+                          setBusinessAddonFormData({
+                            ...businessAddonFormData,
+                            addon_id: e.target.value,
+                            quantity: isQuickStampAddon(selectedAddon) ? 1 : businessAddonFormData.quantity,
+                          });
+                        }}
                         required
                       >
                         <option value="">Select add-on</option>
                         {addons
-                          .filter((addon) => addon.status === "active" && addon.addon_type === "customer_capacity")
+                          .filter((addon) => addon.status === "active" && (addon.addon_type === "customer_capacity" || isQuickStampAddon(addon)))
                           .map((addon) => (
                             <option key={addon.id} value={addon.id}>
-                              {addon.name} (+{Number(addon.capacity_amount || 0).toLocaleString()})
+                              {isQuickStampAddon(addon)
+                                ? `${addon.name} (Quick Stamp QR feature access)`
+                                : `${addon.name} (+${Number(addon.capacity_amount || 0).toLocaleString()})`}
                             </option>
                           ))}
                       </select>
@@ -3543,8 +3557,12 @@ export default function AdminDashboard() {
                         min="1"
                         value={businessAddonFormData.quantity}
                         onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, quantity: Number(e.target.value) })}
+                        disabled={isQuickStampAddon(addons.find((addon) => addon.id === businessAddonFormData.addon_id))}
                         required
                       />
+                      {isQuickStampAddon(addons.find((addon) => addon.id === businessAddonFormData.addon_id)) && (
+                        <p className="text-xs text-muted-foreground">Quick Stamp QR grants feature access and always uses quantity 1.</p>
+                      )}
                     </div>
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="businessAddonPeriodEnd">Current Period End</Label>

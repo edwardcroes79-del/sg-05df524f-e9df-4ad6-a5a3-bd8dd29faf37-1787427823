@@ -87,6 +87,14 @@ function getDefaultPeriodEnd() {
   return date.toISOString();
 }
 
+function isAssignableAddon(addon: any) {
+  return addon?.addon_type === "customer_capacity" || addon?.addon_type === "quick_stamp_qr";
+}
+
+function isQuickStampAddon(addon: any) {
+  return addon?.id === "quick_stamp_qr" || addon?.slug === "quick-stamp-qr" || addon?.addon_type === "quick_stamp_qr";
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const adminUserId = await requireSuperAdmin(req);
@@ -111,7 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { data: addon, error: addonError } = await admin
         .from("subscription_addons")
-        .select("id, addon_type, status")
+        .select("id, slug, name, addon_type, capacity_amount, monthly_price_awg, status, metadata")
         .eq("id", body.addon_id)
         .maybeSingle();
 
@@ -119,8 +127,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!addon) {
         return res.status(404).json({ error: "Add-on not found" });
       }
-      if (addon.addon_type !== "customer_capacity") {
-        return res.status(400).json({ error: "Only customer capacity add-ons are supported in this phase" });
+      if (!isAssignableAddon(addon)) {
+        return res.status(400).json({ error: "This add-on type is not supported for Super Admin assignment" });
       }
       if (addon.status !== "active") {
         return res.status(400).json({ error: "Archived or inactive add-ons cannot be newly assigned" });
@@ -138,11 +146,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const currentPeriodEnd = body.current_period_end || getDefaultPeriodEnd();
+      const quantity = isQuickStampAddon(addon) ? 1 : toPositiveInteger(body.quantity, 1);
+      const addedCapacity = addon.addon_type === "customer_capacity" ? Number(addon.capacity_amount || 0) * quantity : 0;
 
       const { error } = await admin.from("business_addon_subscriptions").insert({
         business_id: body.business_id,
         addon_id: body.addon_id,
-        quantity: toPositiveInteger(body.quantity, 1),
+        quantity,
         status: "active",
         payment_status: "approved",
         starts_at: new Date().toISOString(),
@@ -151,6 +161,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         metadata: {
           assigned_by: adminUserId,
           source: "super_admin_manual",
+          addon_type: addon.addon_type,
+          entitlement_key: isQuickStampAddon(addon) ? "quick_stamp_qr" : "max_customers",
+          added_capacity: addedCapacity,
         },
       });
 
@@ -164,7 +177,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         metadata: {
           business_id: body.business_id,
           addon_id: body.addon_id,
-          quantity: toPositiveInteger(body.quantity, 1),
+          quantity,
+          addon_type: addon.addon_type,
         },
       });
     }
