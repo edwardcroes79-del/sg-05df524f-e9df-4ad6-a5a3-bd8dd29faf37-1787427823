@@ -101,6 +101,82 @@ export default function ScanQR() {
     }
   };
 
+  const buildRearCameraConstraints = (cameraId?: string): MediaTrackConstraints => ({
+    ...(cameraId ? { deviceId: { exact: cameraId } } : {}),
+    facingMode: { ideal: "environment" },
+    width: { ideal: 1280 },
+    height: { ideal: 720 },
+  });
+
+  const waitForScannerVideoReady = async (containerId: string) => {
+    const startedAt = Date.now();
+    let video = document.querySelector<HTMLVideoElement>(`#${containerId} video`);
+
+    while (!video && Date.now() - startedAt < 2500) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      video = document.querySelector<HTMLVideoElement>(`#${containerId} video`);
+    }
+
+    if (!video) {
+      throw new Error(t("dashboard.scan.cameraStartupFailed"));
+    }
+
+    if (video.readyState < HTMLMediaElement.HAVE_METADATA || video.videoWidth === 0 || video.videoHeight === 0) {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          cleanup();
+          reject(new Error(t("dashboard.scan.cameraStartupFailed")));
+        }, 3500);
+
+        const cleanup = () => {
+          window.clearTimeout(timeout);
+          video.removeEventListener("loadedmetadata", onReady);
+          video.removeEventListener("canplay", onReady);
+          video.removeEventListener("playing", onReady);
+        };
+
+        const onReady = () => {
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            cleanup();
+            resolve();
+          }
+        };
+
+        video.addEventListener("loadedmetadata", onReady);
+        video.addEventListener("canplay", onReady);
+        video.addEventListener("playing", onReady);
+        onReady();
+      });
+    }
+
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      throw new Error(t("dashboard.scan.cameraStartupFailed"));
+    }
+
+    return video;
+  };
+
+  const applyContinuousAutofocus = async (video: HTMLVideoElement) => {
+    const stream = video.srcObject instanceof MediaStream ? video.srcObject : null;
+    const track = stream?.getVideoTracks()[0];
+
+    if (!track || typeof track.getCapabilities !== "function" || typeof track.applyConstraints !== "function") {
+      return;
+    }
+
+    const capabilities = track.getCapabilities() as MediaTrackCapabilities & { focusMode?: string[] };
+
+    if (Array.isArray(capabilities.focusMode) && capabilities.focusMode.includes("continuous")) {
+      try {
+        await track.applyConstraints({
+          advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
+        });
+      } catch (err) {
+        console.warn("Continuous autofocus is not available for this camera:", err);
+      }
+    }
+  };
+
   // CRITICAL: Prevent React Stale Closures in the camera callback
   // This ensures the scanner always uses the latest selectedProgramId without restarting the camera hardware
   const handleProcessQRRef = useRef<((qrData: string) => Promise<void>) | null>(null);
@@ -227,9 +303,7 @@ export default function ScanQR() {
 
           try {
             permissionStream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                facingMode: { ideal: "environment" }
-              }
+              video: buildRearCameraConstraints()
             });
           } finally {
             permissionStream?.getTracks().forEach((track) => track.stop());
@@ -269,11 +343,10 @@ export default function ScanQR() {
         qrCodeInstanceRef.current = html5QrCode;
         
         await html5QrCode.start(
-          targetCameraId,
+          buildRearCameraConstraints(targetCameraId),
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
-            aspectRatio: 1
+            qrbox: { width: 250, height: 250 }
           },
           (decodedText: string) => {
             if (active && handleProcessQRRef.current) {
@@ -284,6 +357,9 @@ export default function ScanQR() {
             // silent fail for periodic frame noise
           }
         );
+
+        const scannerVideo = await waitForScannerVideoReady("qr-reader");
+        await applyContinuousAutofocus(scannerVideo);
         
         if (active) {
           setIsScanning(true);

@@ -14,12 +14,12 @@ Follow-up investigation for phones where the camera opens on the rear camera but
 
 ## Checklist
 - [x] Locate all QR scanner flows and shared scanner code
-- [ ] Inspect current scanner stream startup, video readiness, camera constraints, focus behavior, and cleanup
-- [ ] Identify the root cause of blurry first stream and inactive first-attempt detection
-- [ ] Apply the smallest safe initialization fix
+- [x] Inspect current scanner stream startup, video readiness, camera constraints, focus behavior, and cleanup
+- [x] Identify the root cause of blurry first stream and inactive first-attempt detection
+- [x] Apply the smallest safe initialization fix
 - [ ] Add one safe retry path without repeated initialization loops
-- [ ] Ensure stream cleanup on close/switch and no duplicate streams
-- [ ] Preserve QR validation, stamp/reward, database, RLS, and security behavior
+- [x] Ensure stream cleanup on close/switch and no duplicate streams
+- [x] Preserve QR validation, stamp/reward, database, RLS, and security behavior
 - [ ] Run project validation
 
 ## Acceptance
