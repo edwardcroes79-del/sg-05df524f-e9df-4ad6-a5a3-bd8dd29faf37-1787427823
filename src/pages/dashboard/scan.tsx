@@ -60,21 +60,75 @@ export default function ScanQR() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const qrCodeInstanceRef = useRef<any>(null);
   const processingRef = useRef(false);
+  const workingRearCameraStorageKey = "royalty_stamp_working_rear_camera_id";
+
+  const getCameraNumber = (label: string) => {
+    const match = label.toLowerCase().match(/camera\s*([0-9]+)/);
+    return match ? Number(match[1]) : null;
+  };
+
+  const isRearCameraLabel = (label: string) => {
+    const normalized = label.toLowerCase();
+    return (
+      normalized.includes("back") ||
+      normalized.includes("rear") ||
+      normalized.includes("environment") ||
+      normalized.includes("facing back") ||
+      normalized.includes("world")
+    );
+  };
+
+  const getStoredWorkingRearCameraId = (devices: Array<{ id: string; label: string }>) => {
+    if (typeof window === "undefined") return null;
+
+    const storedCameraId = window.localStorage.getItem(workingRearCameraStorageKey);
+    if (!storedCameraId) return null;
+
+    const storedCamera = devices.find((device) => device.id === storedCameraId);
+    if (!storedCamera) {
+      window.localStorage.removeItem(workingRearCameraStorageKey);
+      return null;
+    }
+
+    return storedCamera.id;
+  };
+
+  const rememberWorkingRearCamera = (cameraId: string) => {
+    if (typeof window === "undefined" || !cameraId) return;
+
+    const camera = cameras.find((device) => device.id === cameraId);
+    if (camera && !isRearCameraLabel(camera.label)) return;
+
+    window.localStorage.setItem(workingRearCameraStorageKey, cameraId);
+  };
 
   const getPreferredRearCamera = (devices: Array<{ id: string; label: string }>) => {
-    const rearCamera = devices.find((device) => {
+    if (devices.length === 0) return undefined;
+
+    const storedCameraId = getStoredWorkingRearCameraId(devices);
+    if (storedCameraId) {
+      return devices.find((device) => device.id === storedCameraId);
+    }
+
+    const scoredDevices = devices.map((device, index) => {
       const label = device.label.toLowerCase();
-      return (
-        label.includes("back") ||
-        label.includes("rear") ||
-        label.includes("environment") ||
-        label.includes("world") ||
-        label.includes("facing back") ||
-        label.includes("camera2")
-      );
+      const cameraNumber = getCameraNumber(device.label);
+      let score = 0;
+
+      if (isRearCameraLabel(device.label)) score += 100;
+      if (cameraNumber === 0 && isRearCameraLabel(device.label)) score += 80;
+      if (label.includes("environment")) score += 20;
+      if (label.includes("back") || label.includes("rear") || label.includes("facing back")) score += 20;
+      if (label.includes("wide")) score += 8;
+      if (label.includes("ultra") || label.includes("macro") || label.includes("telephoto")) score -= 35;
+      if (cameraNumber !== null && cameraNumber > 0 && isRearCameraLabel(device.label)) score -= cameraNumber * 10;
+      if (!device.label) score -= index;
+
+      return { device, score };
     });
 
-    return rearCamera || (devices.length > 1 ? devices[devices.length - 1] : devices[0]);
+    const bestCamera = scoredDevices.sort((a, b) => b.score - a.score)[0]?.device;
+    return bestCamera || devices[0];
   };
 
   const stopActiveScanner = async () => {
@@ -351,6 +405,7 @@ export default function ScanQR() {
                 qrbox: { width: 250, height: 250 }
               },
               (decodedText: string) => {
+                rememberWorkingRearCamera(targetCameraId);
                 if (active && handleProcessQRRef.current) {
                   handleProcessQRRef.current(decodedText);
                 }
