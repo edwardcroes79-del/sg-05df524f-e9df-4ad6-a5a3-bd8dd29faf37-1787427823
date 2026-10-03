@@ -1,6 +1,6 @@
 ---
 title: QR scanner rear camera initialization fix
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [qr-scanner, camera, mobile, pwa]
@@ -10,7 +10,7 @@ position: 109
 ---
 
 ## Notes
-Investigate and fix QR scanner camera behavior across Royalty Stamp. The scanners must request the rear/back camera by default, initialize QR detection immediately after opening, preserve optional camera switching, handle permissions/unavailable cameras gracefully, stop previous MediaStreams when switching/closing, prevent multiple streams, and work consistently on Android mobile browsers/PWA and desktop where supported. Do not change QR validation, stamp/reward logic, database logic, security, or fake scan success.
+Investigated and fixed QR scanner camera behavior across Royalty Stamp. Root cause was in `src/pages/dashboard/scan.tsx`: the scanner could enumerate/select cameras before permission-backed labels and state were stable, fall back to the first/selfie camera, and initialize `html5-qrcode` before the intended rear camera stream was ready. This caused the preview to open while QR detection did not work until users manually switched cameras. The fix now requests camera permission with an environment-facing preference, selects the rear/back camera where available, starts the scanner with a stable explicit camera id, preserves optional switching, handles permission/unavailable-camera errors, and fully stops/clears scanner instances on processing, switching, cleanup, and close. Existing QR validation, stamp/reward logic, database logic, and security behavior were not changed. Project validation passed with no CSS, linting, TypeScript, or server errors.
 
 ## Checklist
 - [x] Locate all QR scanner flows and shared scanner code
@@ -18,7 +18,7 @@ Investigate and fix QR scanner camera behavior across Royalty Stamp. The scanner
 - [x] Apply the smallest safe camera initialization/lifecycle fix
 - [x] Ensure stream cleanup on close/switch and no duplicate streams
 - [x] Preserve optional camera switch controls and permission error handling
-- [ ] Run project validation
+- [x] Run project validation
 
 ## Acceptance
 QR scanner opens on rear/back camera by default where available.
