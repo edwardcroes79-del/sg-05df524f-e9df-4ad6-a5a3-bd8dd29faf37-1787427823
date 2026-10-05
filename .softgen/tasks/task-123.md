@@ -1,6 +1,6 @@
 ---
 title: Backup job cancel and cleanup
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [backup, lifecycle, cancellation, cleanup]
@@ -37,6 +37,7 @@ Lifecycle test evidence:
 - Normal backup creation still works: backup `01128063-0dac-4c32-8ad8-db3a9bed086a`, package size `59,917,261` bytes, 2 parts, SHA-256 matched metadata, validator result `valid: true`, version `2026-10-05.phase2`.
 - Stale-job test created controlled stale running backup row `02f824a7-d894-4fdc-9846-2e45b13ce05c`; `markStaleBackupJobs` changed it to `abandoned`, set `cleanup_completed_at`, and the test row was deleted after verification.
 - No restore was performed and no production application data was deleted.
+- Final project validation passed with no CSS, linting, TypeScript, or server errors.
 
 ## Checklist
 - [x] Inspect backup job schema, current stuck job metadata, backup engine, scheduler, run/delete/download APIs, Storage layout, and Super Admin dashboard actions
@@ -46,7 +47,7 @@ Lifecycle test evidence:
 - [x] Add idempotent cleanup for incomplete local temp files, archive parts, and temporary Storage objects without deleting successful backups
 - [x] Allow confirmed deletion of cancelled/failed backup records while preventing deletion during restore/validation use
 - [x] Test start backup, cancel backup, cleanup, cancelled delete, normal backup creation, and stale job transition
-- [ ] Run project validation
+- [x] Run project validation
 - [x] Report root cause, files changed, and actual test results
 
 ## Acceptance
