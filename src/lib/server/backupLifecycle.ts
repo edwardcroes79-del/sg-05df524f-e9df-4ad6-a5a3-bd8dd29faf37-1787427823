@@ -115,7 +115,7 @@ export async function markStaleBackupJobs(admin: SupabaseClient) {
     .from("backup_jobs")
     .select("id, status, package_path, manifest, heartbeat_at, started_at")
     .eq("status", "running")
-    .lt("heartbeat_at", cutoff);
+    .or(`heartbeat_at.lt.${cutoff},heartbeat_at.is.null`);
 
   if (error) throw error;
 

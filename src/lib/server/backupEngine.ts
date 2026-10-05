@@ -20,7 +20,7 @@ import {
   type TableManifest,
 } from "@/lib/server/backupConfig";
 import { addBufferToTar, addFileToTar, finishTar, safeArchivePath, sha256Buffer, writeChunk } from "@/lib/server/backupTar";
-import { BackupCancelledError, assertBackupCanContinue, markJobHeartbeat } from "@/lib/server/backupLifecycle";
+import { BackupCancelledError, assertBackupCanContinue, cleanupBackupArtifacts, markJobHeartbeat } from "@/lib/server/backupLifecycle";
 
 async function exportTable(admin: SupabaseClient, table: string, tempDir: string, backupId: string) {
   const filePath = path.join(tempDir, `${table}.jsonl`);
@@ -336,6 +336,12 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
         error_message: error.message || "Backup cancelled.",
         completed_at: new Date().toISOString(),
         cancelled_at: new Date().toISOString(),
+      });
+      await cleanupBackupArtifacts(admin, {
+        id: backupId,
+        status: "cancelled",
+        package_path: null,
+        manifest: null,
       });
       throw error;
     }
