@@ -166,6 +166,7 @@ export default function AdminDashboard() {
   const [backups, setBackups] = useState<any[]>([]);
   const [runningBackup, setRunningBackup] = useState(false);
   const [deletingBackupId, setDeletingBackupId] = useState<string | null>(null);
+  const [downloadingBackupId, setDownloadingBackupId] = useState<string | null>(null);
   const [cancellingBackupId, setCancellingBackupId] = useState<string | null>(null);
   const [viewingBackup, setViewingBackup] = useState<any | null>(null);
   const [validatingBackup, setValidatingBackup] = useState(false);
@@ -2339,6 +2340,7 @@ export default function AdminDashboard() {
 
   const handleDownloadBackup = async (id: string) => {
     try {
+      setDownloadingBackupId(id);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
@@ -2378,6 +2380,8 @@ export default function AdminDashboard() {
       toast({ title: "Backup downloaded", description: `${fileName} is ready to upload and validate.` });
     } catch (err: any) {
       toast({ title: "Download failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDownloadingBackupId(null);
     }
   };
 
@@ -3078,6 +3082,17 @@ export default function AdminDashboard() {
                             <Button variant="outline" size="sm" onClick={() => setViewingBackup(backup)}>
                               <Eye className="h-4 w-4" />
                             </Button>
+                            {backup.status === "completed" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadBackup(backup.id)}
+                                disabled={downloadingBackupId === backup.id}
+                                aria-label="Download backup package"
+                              >
+                                {downloadingBackupId === backup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                              </Button>
+                            )}
                             {backup.status === "running" && (
                               <Button variant="outline" size="sm" onClick={() => handleCancelBackup(backup.id)} disabled={cancellingBackupId === backup.id}>
                                 {cancellingBackupId === backup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
