@@ -13,9 +13,9 @@ position: 119
 Investigate and fix the backup creation error where the frontend receives `Unexpected token '<', '<!DOCTYPE '... is not valid JSON`, indicating an HTML response from an API request expected to return JSON. Must identify the exact endpoint/request, HTTP status, and reason HTML is returned before changing code. Fix the underlying server/API problem without fake backups, fake success responses, production data modification, weakened security, backup format changes unless proven necessary, restore changes, or unrelated feature changes.
 
 ## Checklist
-- [ ] Inspect Super Admin backup creation UI request URL, fetch handling, routing, and JSON parsing
-- [ ] Inspect backup creation API/server route, auth handling, server errors, and response content type
-- [ ] Inspect production/Vercel routing configuration for backup API paths
+- [x] Inspect Super Admin backup creation UI request URL, fetch handling, routing, and JSON parsing
+- [x] Inspect backup creation API/server route, auth handling, server errors, and response content type
+- [x] Inspect production/Vercel routing configuration for backup API paths
 - [ ] Reproduce or simulate the failing request and identify the exact endpoint returning HTML, status, and reason
 - [ ] Fix the underlying backup API/server/routing problem while preserving Super Admin authorization
 - [ ] Test real backup creation, database export, Storage inclusion, package creation, package download, tar.gz validity, and frontend JSON response
