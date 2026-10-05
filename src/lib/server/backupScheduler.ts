@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { backupBucketName } from "@/lib/server/backupConfig";
 import { createBackupPackage } from "@/lib/server/backupEngine";
+import { markStaleBackupJobs } from "@/lib/server/backupLifecycle";
 
 const defaultRetentionDays = 30;
 const defaultMinCompletedBackups = 7;
@@ -8,7 +9,7 @@ const dailyIntervalMs = 24 * 60 * 60 * 1000;
 
 type BackupJobRow = {
   id: string;
-  status: "running" | "completed" | "failed";
+  status: "running" | "completed" | "failed" | "cancelled" | "abandoned";
   package_path: string | null;
   manifest: any;
   completed_at: string | null;
@@ -147,6 +148,7 @@ export async function applyBackupRetention(admin: SupabaseClient) {
 }
 
 export async function runScheduledBackup(admin: SupabaseClient, options: { force?: boolean } = {}) {
+  await markStaleBackupJobs(admin);
   const runningBackup = await getRunningBackup(admin);
 
   if (runningBackup) {

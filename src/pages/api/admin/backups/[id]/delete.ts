@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { backupBucketName } from "@/lib/server/backupConfig";
+import { cleanupBackupArtifacts, markStaleBackupJobs } from "@/lib/server/backupLifecycle";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,6 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const adminUserId = await requireSuperAdmin(req);
     const admin = createServiceClient();
+    await markStaleBackupJobs(admin);
     const backupId = String(req.query.id || "");
 
     const { data: backup, error: backupError } = await admin
@@ -25,7 +27,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (backup.status === "running") {
-      return res.status(409).json({ error: "A running backup cannot be deleted." });
+      return res.status(409).json({ error: "A running backup cannot be deleted. Cancel it first, then delete it after cleanup completes." });
+    }
+
+    if (!["completed", "failed", "cancelled", "abandoned"].includes(backup.status)) {
+      return res.status(409).json({ error: `Backup status ${backup.status} cannot be deleted.` });
     }
 
     if (backup.status === "completed") {
@@ -40,8 +46,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    const cleanup = await cleanupBackupArtifacts(admin, backup as any);
+
     // Delete from storage if package exists
-    if (backup.package_path) {
+    if (backup.status === "completed" && backup.package_path) {
       const packageParts = Array.isArray((backup.manifest as any)?.package_parts)
         ? (backup.manifest as any).package_parts
         : [];
@@ -71,9 +79,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       action: "delete_backup_package",
       target_type: "backup_job",
       target_id: backup.id,
+      metadata: {
+        cleanup,
+        deleted_status: backup.status,
+      },
     });
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({ success: true, cleanup });
   } catch (err: any) {
     return res.status(500).json({ error: err.message || "Failed to delete backup" });
   }

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createBackupPackage } from "@/lib/server/backupEngine";
+import { markStaleBackupJobs } from "@/lib/server/backupLifecycle";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
 
 export const config = {
@@ -21,6 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     adminUserId = await requireSuperAdmin(req);
     admin = createServiceClient();
+    await markStaleBackupJobs(admin);
 
     const result = await createBackupPackage(admin, adminUserId);
 

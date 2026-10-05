@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { backupBucketName } from "@/lib/server/backupConfig";
+import { markStaleBackupJobs } from "@/lib/server/backupLifecycle";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,10 +12,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await requireSuperAdmin(req);
     const admin = createServiceClient();
+    await markStaleBackupJobs(admin);
 
     const { data, error } = await admin
       .from("backup_jobs")
-      .select("id, status, backup_version, package_path, package_sha256, package_size_bytes, manifest, error_message, started_at, completed_at, created_at")
+      .select("id, status, backup_version, package_path, package_sha256, package_size_bytes, manifest, error_message, started_at, completed_at, created_at, heartbeat_at, cancellation_requested_at, cancelled_at, cleanup_completed_at")
       .order("created_at", { ascending: false })
       .limit(50);
 

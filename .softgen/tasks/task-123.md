@@ -31,7 +31,7 @@ Progress:
 - [x] Add heartbeat/timeout handling so stale running jobs become failed or abandoned after a safe timeout
 - [x] Add Super Admin cancel API/action for running or stuck backups with safe server-side stop semantics where technically possible
 - [x] Add idempotent cleanup for incomplete local temp files, archive parts, and temporary Storage objects without deleting successful backups
-- [ ] Allow confirmed deletion of cancelled/failed backup records while preventing deletion during restore/validation use
+- [x] Allow confirmed deletion of cancelled/failed backup records while preventing deletion during restore/validation use
 - [ ] Test start backup, cancel backup, cleanup, cancelled delete, normal backup creation, and stale job transition
 - [ ] Run project validation
 - [ ] Report root cause, files changed, and actual test results

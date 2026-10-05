@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle, UploadCloud, AlertTriangle } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle, UploadCloud, AlertTriangle, Square } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -166,6 +166,7 @@ export default function AdminDashboard() {
   const [backups, setBackups] = useState<any[]>([]);
   const [runningBackup, setRunningBackup] = useState(false);
   const [deletingBackupId, setDeletingBackupId] = useState<string | null>(null);
+  const [cancellingBackupId, setCancellingBackupId] = useState<string | null>(null);
   const [viewingBackup, setViewingBackup] = useState<any | null>(null);
   const [validatingBackup, setValidatingBackup] = useState(false);
   const [backupValidationReport, setBackupValidationReport] = useState<any | null>(null);
@@ -2287,7 +2288,7 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteBackup = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this backup package? This cannot be undone.")) return;
+    if (!window.confirm("Are you sure you want to permanently delete this backup record and its associated backup files? This cannot be undone.")) return;
     try {
       setDeletingBackupId(id);
       const { data: { session } } = await supabase.auth.getSession();
@@ -2308,6 +2309,31 @@ export default function AdminDashboard() {
       toast({ title: "Delete failed", description: err.message, variant: "destructive" });
     } finally {
       setDeletingBackupId(null);
+    }
+  };
+
+  const handleCancelBackup = async (id: string) => {
+    if (!window.confirm("Stop this running backup and clean up any incomplete backup files?")) return;
+
+    try {
+      setCancellingBackupId(id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch(`/api/admin/backups/${id}/cancel`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${session.access_token}` },
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Cancel failed");
+
+      toast({ title: "Backup cancelled", description: "The backup job was stopped and incomplete files were cleaned up." });
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({ title: "Cancel failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCancellingBackupId(null);
     }
   };
 
@@ -3032,10 +3058,10 @@ export default function AdminDashboard() {
                             {new Date(backup.created_at).toLocaleString()}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={backup.status === "completed" ? "default" : backup.status === "failed" ? "destructive" : "secondary"}>
+                            <Badge variant={backup.status === "completed" ? "default" : backup.status === "failed" || backup.status === "abandoned" ? "destructive" : "secondary"}>
                               {backup.status.toUpperCase()}
                             </Badge>
-                            {backup.status === "failed" && backup.error_message && (
+                            {(backup.status === "failed" || backup.status === "cancelled" || backup.status === "abandoned") && backup.error_message && (
                                <p className="text-xs text-destructive mt-1 max-w-[200px] truncate" title={backup.error_message}>{backup.error_message}</p>
                             )}
                           </TableCell>
@@ -3052,19 +3078,21 @@ export default function AdminDashboard() {
                             <Button variant="outline" size="sm" onClick={() => setViewingBackup(backup)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            {backup.status === "completed" && (
-                              <Button variant="outline" size="sm" onClick={() => handleDownloadBackup(backup.id)}>
-                                <Download className="h-4 w-4" />
+                            {backup.status === "running" && (
+                              <Button variant="outline" size="sm" onClick={() => handleCancelBackup(backup.id)} disabled={cancellingBackupId === backup.id}>
+                                {cancellingBackupId === backup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
                               </Button>
                             )}
-                            <Button 
-                              variant="destructive" 
-                              size="sm" 
-                              onClick={() => handleDeleteBackup(backup.id)}
-                              disabled={deletingBackupId === backup.id}
-                            >
-                              {deletingBackupId === backup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                            </Button>
+                            {["completed", "failed", "cancelled", "abandoned"].includes(backup.status) && (
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={() => handleDeleteBackup(backup.id)}
+                                disabled={deletingBackupId === backup.id}
+                              >
+                                {deletingBackupId === backup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -3348,7 +3376,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                  <div>
                    <p className="text-xs text-muted-foreground mb-1">Status</p>
-                   <Badge variant={viewingBackup.status === "completed" ? "default" : viewingBackup.status === "failed" ? "destructive" : "secondary"}>
+                   <Badge variant={viewingBackup.status === "completed" ? "default" : viewingBackup.status === "failed" || viewingBackup.status === "abandoned" ? "destructive" : "secondary"}>
                      {viewingBackup.status.toUpperCase()}
                    </Badge>
                  </div>
