@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -123,6 +123,12 @@ export default function AdminDashboard() {
   const [notificationReads, setNotificationReads] = useState<Record<string, string>>({});
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
   const [activeAdminTab, setActiveAdminTab] = useState("merchants");
+
+  // Backups states
+  const [backups, setBackups] = useState<any[]>([]);
+  const [runningBackup, setRunningBackup] = useState(false);
+  const [deletingBackupId, setDeletingBackupId] = useState<string | null>(null);
+  const [viewingBackup, setViewingBackup] = useState<any | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -605,6 +611,21 @@ export default function AdminDashboard() {
           additionalInstructions: val.additionalInstructions || "",
         });
       }
+
+      // 9. Fetch Backups
+      let backupsData: any[] = [];
+      if (session) {
+        const backupsResponse = await fetch("/api/admin/backups", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+        });
+        if (backupsResponse.ok) {
+          const backupsResult = await backupsResponse.json();
+          backupsData = backupsResult.backups || [];
+        }
+      }
+      setBackups(backupsData);
 
     } catch (err) {
       console.error("Error fetching admin data:", err);
@@ -2190,6 +2211,78 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRunBackup = async () => {
+    try {
+      setRunningBackup(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/backups/run", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${session.access_token}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Backup failed");
+
+      toast({ title: "Backup completed", description: "The backup package was created successfully." });
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({ title: "Backup failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRunningBackup(false);
+    }
+  };
+
+  const handleDeleteBackup = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this backup package? This cannot be undone.")) return;
+    try {
+      setDeletingBackupId(id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch(`/api/admin/backups/${id}/delete`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${session.access_token}` },
+      });
+      if (!response.ok) {
+         const result = await response.json().catch(() => ({}));
+         throw new Error(result.error || "Delete failed");
+      }
+
+      toast({ title: "Backup deleted", description: "The backup package was removed." });
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingBackupId(null);
+    }
+  };
+
+  const handleDownloadBackup = async (id: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch(`/api/admin/backups/${id}/download`, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${session.access_token}` },
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Download failed");
+
+      if (result.download_parts) {
+        toast({ title: "Multi-part Backup", description: "Downloading multiple parts..." });
+        for (const part of result.download_parts) {
+          window.open(part.download_url, "_blank");
+        }
+      } else if (result.download_url) {
+        window.open(result.download_url, "_blank");
+      }
+    } catch (err: any) {
+      toast({ title: "Download failed", description: err.message, variant: "destructive" });
+    }
+  };
+
   if (loading || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -2352,6 +2445,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="payment_settings">{t("admin.tabs.paymentSettings")}</TabsTrigger>
             <TabsTrigger value="website">{t("admin.tabs.website")}</TabsTrigger>
             <TabsTrigger value="security">{t("admin.tabs.security")}</TabsTrigger>
+            <TabsTrigger value="backups">Backups</TabsTrigger>
           </TabsList>
 
           <TabsContent value="merchants">
@@ -2658,1332 +2752,221 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="payments">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin.payments.title")}</CardTitle>
-                <CardDescription>{t("admin.payments.description")}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("admin.payments.business")}</TableHead>
-                      <TableHead>{t("admin.payments.planAddon")}</TableHead>
-                      <TableHead>{t("admin.payments.amount")}</TableHead>
-                      <TableHead>{t("admin.payments.reference")}</TableHead>
-                      <TableHead>{t("admin.payments.submitted")}</TableHead>
-                      <TableHead>{t("admin.payments.status")}</TableHead>
-                      <TableHead className="text-right">{t("admin.payments.actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.map((payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="font-semibold">{payment.businesses?.business_name || t("admin.common.unknown")}</TableCell>
-                        <TableCell className="uppercase font-mono text-xs">
-                          {payment.metadata?.kind === "subscription_plan_change"
-                            ? payment.metadata?.notification_title || t("admin.payments.subscriptionPlanChange")
-                            : payment.metadata?.kind === "subscription_change"
-                            ? t("admin.payments.subscriptionChange")
-                            : payment.metadata?.kind === "addon_purchase"
-                            ? payment.metadata?.addon_name || t("admin.payments.customerCapacityAddon")
-                            : payment.plan_id}
-                        </TableCell>
-                        <TableCell className="font-semibold">AWG {payment.amount.toFixed(2)}</TableCell>
-                        <TableCell className="font-mono text-xs">{payment.payment_reference}</TableCell>
-                        <TableCell>{new Date(payment.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={
-                              payment.status === "pending" ? "secondary" : 
-                              payment.status === "approved" ? "default" : 
-                              "destructive"
-                            }
-                            className="gap-1"
-                          >
-                            {payment.status === "pending" && <Clock className="h-3 w-3" />}
-                            {payment.status === "approved" && <CheckCircle className="h-3 w-3" />}
-                            {payment.status === "rejected" && <XCircle className="h-3 w-3" />}
-                            {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {payment.status === "pending" && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setReviewingPayment(payment);
-                                setAdminNotes("");
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-1" /> {t("admin.common.review")}
-                            </Button>
-                          )}
-                          {payment.status !== "pending" && (
-                            <span className="text-xs text-muted-foreground">
-                              {t("admin.common.reviewed")} {new Date(payment.reviewed_at).toLocaleDateString(locale)}
-                            </span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {payments.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                          {t("admin.payments.noPayments")}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-
-            {/* Payment Review Dialog */}
-            {reviewingPayment && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <CardTitle>{t("admin.payments.reviewTitle", {
-                    type: reviewingPayment.metadata?.kind === "subscription_plan_change" ? t("admin.payments.subscriptionPlanChange") : t("admin.payments.payment"),
-                    businessName: reviewingPayment.businesses?.business_name || t("admin.common.unknown"),
-                  })}</CardTitle>
-                  <CardDescription>
-                    {reviewingPayment.metadata?.kind === "subscription_plan_change"
-                      ? t("admin.payments.reviewPlanChange")
-                      : t("admin.payments.reviewPaymentProof")}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t("admin.payments.business")}</p>
-                        <p className="font-semibold">{reviewingPayment.businesses?.business_name}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t("admin.payments.subscriptionChangeLabel")}</p>
-                        <p className="font-semibold">
-                          {reviewingPayment.metadata?.kind === "subscription_plan_change"
-                            ? `${reviewingPayment.metadata?.current_plan_name || "Current plan"} → ${reviewingPayment.metadata?.requested_plan_name || reviewingPayment.plan_id}`
-                            : reviewingPayment.metadata?.kind === "subscription_change"
-                            ? `${reviewingPayment.metadata?.base_plan_name || reviewingPayment.plan_id} + requested add-ons`
-                            : reviewingPayment.metadata?.kind === "addon_purchase"
-                            ? reviewingPayment.metadata?.addon_name || "Customer capacity add-on"
-                            : reviewingPayment.plan_id}
-                        </p>
-                      </div>
-                      {reviewingPayment.metadata?.kind === "subscription_plan_change" && (
-                        <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Badge variant={reviewingPayment.metadata?.change_type === "downgrade" ? "secondary" : "default"}>
-                              {reviewingPayment.metadata?.change_type === "downgrade" ? t("admin.notifications.downgradeRequest") : t("admin.notifications.upgradeRequest")}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {t("admin.payments.submitted")} {reviewingPayment.metadata?.requested_at ? new Date(reviewingPayment.metadata.requested_at).toLocaleString(locale) : new Date(reviewingPayment.created_at).toLocaleString(locale)}
-                            </span>
-                          </div>
-                          <div className="grid gap-3 text-sm sm:grid-cols-2">
-                            <div>
-                              <p className="text-muted-foreground">{t("admin.payments.currentPlan")}</p>
-                              <p className="font-semibold">{reviewingPayment.metadata?.current_plan_name}</p>
-                              <p className="text-xs text-muted-foreground">AWG {Number(reviewingPayment.metadata?.current_plan_price_awg || 0).toFixed(2)}/month</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">{t("admin.payments.requestedPlan")}</p>
-                              <p className="font-semibold">{reviewingPayment.metadata?.requested_plan_name}</p>
-                              <p className="text-xs text-primary font-semibold">AWG {Number(reviewingPayment.metadata?.requested_plan_price_awg || reviewingPayment.amount || 0).toFixed(2)}/month</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">{t("admin.payments.currentEntitlements")}</p>
-                              <p className="font-semibold">{Number(reviewingPayment.metadata?.current_entitlements?.max_loyalty_programs || 0).toLocaleString()} {t("admin.payments.loyaltyPrograms")}</p>
-                              <p className="text-xs text-muted-foreground">{Number(reviewingPayment.metadata?.current_entitlements?.max_customers || 0).toLocaleString()} {t("admin.payments.loyaltyMembers")} · {Number(reviewingPayment.metadata?.current_entitlements?.max_staff || 0).toLocaleString()} {t("admin.payments.staff")}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">{t("admin.payments.requestedEntitlements")}</p>
-                              <p className="font-semibold">{Number(reviewingPayment.metadata?.requested_entitlements?.max_loyalty_programs || 0).toLocaleString()} {t("admin.payments.loyaltyPrograms")}</p>
-                              <p className="text-xs text-muted-foreground">{Number(reviewingPayment.metadata?.requested_entitlements?.max_customers || 0).toLocaleString()} {t("admin.payments.loyaltyMembers")} · {Number(reviewingPayment.metadata?.requested_entitlements?.max_staff || 0).toLocaleString()} {t("admin.payments.staff")}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">{t("admin.payments.currentMemberCount")}</p>
-                              <p className="font-semibold">{Number(reviewingPayment.metadata?.current_member_count || 0).toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-muted-foreground">{t("admin.payments.currentStaffCount")}</p>
-                              <p className="font-semibold">{Number(reviewingPayment.metadata?.current_staff_count || 0).toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <p className="text-xs text-muted-foreground border-t pt-2">
-                            {t("admin.payments.dataPreserved")}
-                          </p>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t("admin.payments.amount")}</p>
-                        <p className="font-bold text-xl">AWG {reviewingPayment.amount.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t("admin.payments.reference")}</p>
-                        <p className="font-mono font-semibold">{reviewingPayment.payment_reference}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">{t("admin.payments.submitted")}</p>
-                        <p className="font-semibold">{new Date(reviewingPayment.created_at).toLocaleString()}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      {reviewingPayment.metadata?.kind === "subscription_plan_change" ? (
-                        <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
-                          <Clock className="h-8 w-8 text-primary mx-auto" />
-                          <p className="font-semibold text-foreground">{reviewingPayment.metadata?.notification_title || t("admin.payments.subscriptionPlanChange")}</p>
-                          <p className="text-sm text-muted-foreground">{t("admin.payments.noProofRequiredPlan")}</p>
-                        </div>
-                      ) : reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase" ? (
-                        <div className="rounded-lg border bg-muted/20 p-6 text-center space-y-2">
-                          <CheckCircle className="h-8 w-8 text-primary mx-auto" />
-                          <p className="font-semibold text-foreground">{t("admin.payments.customerCapacityAddon")}</p>
-                          <p className="text-sm text-muted-foreground">{t("admin.payments.noProofRequiredAddon")}</p>
-                        </div>
-                      ) : (
+          <TabsContent value="backups">
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Automatic Backups</CardTitle>
+                    <Clock className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl font-bold text-emerald-600">Active</div>
+                    <p className="text-xs text-muted-foreground">Daily at 03:00 UTC</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Last Successful</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-emerald-500" />
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const lastSuccessful = backups.find(b => b.status === "completed");
+                      return (
                         <>
-                          <p className="text-sm text-muted-foreground mb-2">{t("admin.payments.paymentProof")}</p>
-                          {reviewingPayment.payment_proof_url ? (
-                            <div className="border rounded-lg p-6 text-center space-y-3">
-                              <CheckCircle className="h-8 w-8 text-emerald-500 mx-auto" />
-                              <div>
-                                <p className="font-semibold text-foreground">{t("admin.payments.proofUploaded")}</p>
-                                <p className="text-xs text-muted-foreground break-all">
-                                  {reviewingPayment.payment_proof_url.startsWith("http")
-                                    ? t("admin.payments.legacyProofUrl")
-                                    : reviewingPayment.payment_proof_url}
-                                </p>
-                              </div>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => handleOpenAdminPaymentProof(reviewingPayment)}
-                              >
-                                {t("admin.payments.viewProof")}
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="border rounded-lg p-8 text-center text-muted-foreground">
-                              {t("admin.payments.noProofUploaded")}
-                            </div>
+                          <div className="text-lg font-bold">{lastSuccessful ? new Date(lastSuccessful.completed_at || lastSuccessful.created_at).toLocaleString() : "None"}</div>
+                          {lastSuccessful && (
+                            <p className="text-xs text-muted-foreground">{(lastSuccessful.package_size_bytes / 1024 / 1024).toFixed(2)} MB</p>
                           )}
                         </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="adminNotes">{t("admin.payments.adminNotes")}</Label>
-                    <textarea
-                      id="adminNotes"
-                      className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      placeholder={t("admin.payments.adminNotesPlaceholder")}
-                      value={adminNotes}
-                      onChange={(e) => setAdminNotes(e.target.value)}
-                      disabled={processing}
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-end gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setReviewingPayment(null);
-                      setAdminNotes("");
-                    }}
-                    disabled={processing}
-                  >
-                    {t("admin.common.cancel")}
-                  </Button>
-                  <Button 
-                    variant="destructive"
-                    onClick={() => handleRejectPayment(reviewingPayment)}
-                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase" && reviewingPayment.metadata?.kind !== "subscription_plan_change")}
-                  >
-                    {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <XCircle className="h-4 w-4 mr-2" />}
-                    {reviewingPayment.metadata?.kind === "subscription_plan_change" ? t("admin.payments.rejectRequest") : t("admin.payments.rejectPayment")}
-                  </Button>
-                  <Button 
-                    onClick={() => handleApprovePayment(reviewingPayment)}
-                    disabled={processing || !adminNotes.trim() || (reviewingPayment.provider === "bank_transfer" && !reviewingPayment.payment_proof_url && !(reviewingPayment.metadata?.kind === "subscription_change" && reviewingPayment.metadata?.change_type === "addon_purchase") && reviewingPayment.metadata?.kind !== "addon_purchase" && reviewingPayment.metadata?.kind !== "subscription_plan_change")}
-                  >
-                    {processing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                    {reviewingPayment.metadata?.kind === "subscription_plan_change"
-                      ? reviewingPayment.metadata?.change_type === "downgrade" ? t("admin.payments.approveDowngrade") : t("admin.payments.approvePlanChange")
-                      : t("admin.payments.approveActivate")}
-                  </Button>
-                </CardFooter>
-              </Card>
-            )}
-          </TabsContent>
-
-          <TabsContent value="plans">
-            <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8">
-              <Card>
-                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <CardTitle>Subscription Plan Management</CardTitle>
-                    <CardDescription>
-                      Create and manage database-driven plans. Archived plans stay valid for assigned businesses but are hidden from new selection.
-                    </CardDescription>
-                  </div>
-                  <Button type="button" onClick={handleCreatePlanClick} className="gap-2 shrink-0">
-                    <PlusCircle className="h-4 w-4" /> Create Plan
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {plans.map((plan) => {
-                    const status = plan.status || (plan.is_active ? "active" : "inactive");
-                    const entitlementMap = (plan.entitlements || []).reduce((acc: Record<string, any>, entitlement: any) => {
-                      acc[entitlement.key] = entitlement;
-                      return acc;
-                    }, {});
-                    const enabledFeatures = availablePlanEntitlements.filter((feature) => Boolean(entitlementMap[feature.key]?.boolean_value));
-
-                    return (
-                      <div key={plan.id} className="p-4 border rounded-lg bg-card flex flex-col gap-4">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="font-heading font-semibold text-foreground">{plan.name}</h4>
-                              <span className="text-xs font-mono font-bold text-primary uppercase">({plan.id})</span>
-                              {plan.badge && <Badge variant="secondary" className="text-xs">{plan.badge}</Badge>}
-                              <Badge
-                                variant={status === "active" ? "default" : status === "archived" ? "outline" : "destructive"}
-                                className={status === "archived" ? "gap-1 border-amber-300 bg-amber-50 text-amber-700" : "gap-1"}
-                              >
-                                {status === "archived" && <Archive className="h-3 w-3" />}
-                                {status.toUpperCase()}
-                              </Badge>
-                            </div>
-                            {plan.description && (
-                              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{plan.description}</p>
-                            )}
-                            <p className="text-sm text-muted-foreground mt-2">
-                              AWG {Number(plan.price_awg || 0).toFixed(2)}/month
-                              {plan.annual_price_awg ? ` · AWG ${Number(plan.annual_price_awg).toFixed(2)}/year` : ""}
-                              {" · "}Assigned businesses: {plan.assigned_business_count || 0}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Programs: {plan.max_loyalty_programs === 9999 ? "Unlimited" : plan.max_loyalty_programs} ·
-                              Customers: {plan.max_customers === 999999 ? "Unlimited" : plan.max_customers} ·
-                              Staff: {plan.max_staff || 1}
-                              {plan.is_trial ? ` · Trial: ${plan.trial_days || 14} days` : ""}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2 sm:justify-end">
-                            <Button variant="outline" size="sm" onClick={() => handleEditPlanClick(plan)}>
-                              <Edit2 className="h-4 w-4 mr-1" /> View / Edit
-                            </Button>
-                            {status !== "active" && (
-                              <Button variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "active")} disabled={savingPlan}>
-                                Activate
-                              </Button>
-                            )}
-                            {status !== "inactive" && status !== "archived" && (
-                              <Button variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "inactive")} disabled={savingPlan}>
-                                Deactivate
-                              </Button>
-                            )}
-                            {status !== "archived" && (
-                              <Button variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "archived")} disabled={savingPlan} className="text-amber-700 border-amber-300 hover:bg-amber-50">
-                                <Archive className="h-4 w-4 mr-1" /> Archive
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          {enabledFeatures.length > 0 ? (
-                            enabledFeatures.map((feature) => (
-                              <Badge key={feature.key} variant="secondary" className="text-xs">
-                                {feature.label}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">No optional feature entitlements enabled.</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {plans.length === 0 && (
-                    <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-                      No subscription plans found.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {(editingPlan || isCreatingPlan) && (
-                <Card>
-                  <form onSubmit={handleSavePlan}>
-                    <CardHeader>
-                      <CardTitle>{isCreatingPlan ? "Create Plan" : `Edit ${editingPlan?.name} Plan`}</CardTitle>
-                      <CardDescription>
-                        Configure live plan metadata, pricing, limits, trial settings, and existing Royalty Stamp feature entitlements.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-5">
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="planName">Plan Name</Label>
-                          <Input
-                            id="planName"
-                            value={planFormData.name}
-                            onChange={(e) => setPlanFormData({ ...planFormData, name: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="planBadge">Optional Badge</Label>
-                          <Input
-                            id="planBadge"
-                            placeholder="Popular"
-                            value={planFormData.badge}
-                            onChange={(e) => setPlanFormData({ ...planFormData, badge: e.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="planDescription">Description</Label>
-                        <textarea
-                          id="planDescription"
-                          className="flex min-h-[88px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          value={planFormData.description}
-                          onChange={(e) => setPlanFormData({ ...planFormData, description: e.target.value })}
-                          placeholder="Describe who this plan is for."
-                        />
-                      </div>
-
-                      <div className="grid sm:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="planPrice">Monthly Price (AWG)</Label>
-                          <Input
-                            id="planPrice"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={planFormData.price_awg}
-                            onChange={(e) => setPlanFormData({ ...planFormData, price_awg: Number(e.target.value) })}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="annualPrice">Annual Price (AWG)</Label>
-                          <Input
-                            id="annualPrice"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="Optional"
-                            value={planFormData.annual_price_awg}
-                            onChange={(e) => setPlanFormData({ ...planFormData, annual_price_awg: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="displayOrder">Display Order</Label>
-                          <Input
-                            id="displayOrder"
-                            type="number"
-                            value={planFormData.display_order}
-                            onChange={(e) => setPlanFormData({ ...planFormData, display_order: Number(e.target.value) })}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid sm:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="planStatus">Status</Label>
-                          <select
-                            id="planStatus"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
-                            value={planFormData.status}
-                            onChange={(e) => setPlanFormData({ ...planFormData, status: e.target.value })}
-                          >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                            <option value="archived">Archived</option>
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="trialToggle">Trial Available</Label>
-                          <label className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm">
-                            <input
-                              id="trialToggle"
-                              type="checkbox"
-                              checked={planFormData.is_trial}
-                              onChange={(e) => setPlanFormData({ ...planFormData, is_trial: e.target.checked })}
-                            />
-                            Enable trial
-                          </label>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="trialDays">Trial Duration</Label>
-                          <Input
-                            id="trialDays"
-                            type="number"
-                            min="1"
-                            value={planFormData.trial_days}
-                            onChange={(e) => setPlanFormData({ ...planFormData, trial_days: Number(e.target.value) })}
-                            disabled={!planFormData.is_trial}
-                            required={planFormData.is_trial}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 rounded-lg border bg-muted/20 p-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="planMaxPrograms">Max Loyalty Programs</Label>
-                          <Input
-                            id="planMaxPrograms"
-                            type="number"
-                            min="1"
-                            value={planFormData.max_loyalty_programs}
-                            onChange={(e) => setPlanFormData({ ...planFormData, max_loyalty_programs: Number(e.target.value) })}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="planMaxCustomers">Max Members / Customers</Label>
-                          <Input
-                            id="planMaxCustomers"
-                            type="number"
-                            min="1"
-                            value={planFormData.max_customers}
-                            onChange={(e) => setPlanFormData({ ...planFormData, max_customers: Number(e.target.value) })}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="planMaxStaff">Max Staff</Label>
-                          <Input
-                            id="planMaxStaff"
-                            type="number"
-                            min="0"
-                            value={planFormData.max_staff}
-                            onChange={(e) => setPlanFormData({ ...planFormData, max_staff: Number(e.target.value) })}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 rounded-lg border p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold text-foreground">Feature Descriptions</h4>
-                            <p className="text-xs text-muted-foreground">List items shown on the pricing card.</p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPlanFormData({ ...planFormData, features: [...planFormData.features, ""] })}
-                          >
-                            <PlusCircle className="h-4 w-4 mr-1" /> Add Feature
-                          </Button>
-                        </div>
-                        <div className="space-y-2">
-                          {planFormData.features.map((feature, idx) => (
-                            <div key={idx} className="flex items-center gap-2">
-                              <Input
-                                value={feature}
-                                onChange={(e) => {
-                                  const newFeatures = [...planFormData.features];
-                                  newFeatures[idx] = e.target.value;
-                                  setPlanFormData({ ...planFormData, features: newFeatures });
-                                }}
-                                placeholder="e.g. Priority Support"
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="shrink-0 text-destructive border-destructive/30 hover:bg-destructive/10"
-                                onClick={() => {
-                                  const newFeatures = planFormData.features.filter((_, i) => i !== idx);
-                                  setPlanFormData({ ...planFormData, features: newFeatures });
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          {planFormData.features.length === 0 && (
-                            <p className="text-sm text-muted-foreground italic">No custom features added.</p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 rounded-lg border p-4">
-                        <div>
-                          <h4 className="font-semibold text-foreground">Feature Entitlements</h4>
-                          <p className="text-xs text-muted-foreground">Only existing Royalty Stamp feature flags are configurable here.</p>
-                        </div>
-                        <div className="space-y-3">
-                          {availablePlanEntitlements.map((feature) => (
-                            <label key={feature.key} className="flex items-start gap-3 rounded-md border bg-background p-3 text-sm">
-                              <input
-                                type="checkbox"
-                                className="mt-1"
-                                checked={Boolean(planFormData.entitlements[feature.key as keyof typeof planFormData.entitlements])}
-                                onChange={(e) => setPlanFormData({
-                                  ...planFormData,
-                                  includes_premium_templates: feature.key === "premium_templates" ? e.target.checked : planFormData.includes_premium_templates,
-                                  entitlements: {
-                                    ...planFormData.entitlements,
-                                    [feature.key]: e.target.checked,
-                                  },
-                                })}
-                              />
-                              <span>
-                                <span className="block font-medium text-foreground">{feature.label}</span>
-                                <span className="block text-xs text-muted-foreground">{feature.description}</span>
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                      <Button type="button" variant="outline" onClick={() => { setEditingPlan(null); setIsCreatingPlan(false); }} disabled={savingPlan}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" className="gap-2" disabled={savingPlan}>
-                        {savingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        {isCreatingPlan ? "Create Plan" : "Save Plan"}
-                      </Button>
-                    </CardFooter>
-                  </form>
+                      );
+                    })()}
+                  </CardContent>
                 </Card>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="addons">
-            <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8">
-              <Card>
-                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <CardTitle>Customer Capacity Add-ons</CardTitle>
-                    <CardDescription>
-                      Manage configurable add-on definitions and assign purchased customer capacity add-ons to businesses.
-                    </CardDescription>
-                  </div>
-                  <Button type="button" onClick={handleCreateAddonClick} className="gap-2 shrink-0">
-                    <PlusCircle className="h-4 w-4" /> Create Add-on
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {addons.map((addon) => {
-                    const status = addon.status || "active";
-
-                    return (
-                      <div key={addon.id} className="p-4 border rounded-lg bg-card flex flex-col gap-4">
-                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="font-heading font-semibold text-foreground">{addon.name}</h4>
-                              <span className="text-xs font-mono font-bold text-primary uppercase">({addon.id})</span>
-                              <Badge
-                                variant={status === "active" ? "default" : status === "archived" ? "outline" : "destructive"}
-                                className={status === "archived" ? "gap-1 border-amber-300 bg-amber-50 text-amber-700" : "gap-1"}
-                              >
-                                {status === "archived" && <Archive className="h-3 w-3" />}
-                                {status.toUpperCase()}
-                              </Badge>
-                            </div>
-                            {addon.description && (
-                              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{addon.description}</p>
-                            )}
-                            <p className="text-sm text-muted-foreground mt-2">
-                              {isQuickStampAddon(addon)
-                                ? "Quick Stamp QR feature access"
-                                : `+${Number(addon.capacity_amount || 0).toLocaleString()} customers`}
-                              {" · "}AWG {Number(addon.monthly_price_awg || 0).toFixed(2)}/month
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Type: {addon.addon_type} · Display order: {addon.display_order}
-                              {addon.provider ? ` · Provider: ${addon.provider}` : ""}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap gap-2 sm:justify-end">
-                            <Button variant="outline" size="sm" onClick={() => handleEditAddonClick(addon)}>
-                              <Edit2 className="h-4 w-4 mr-1" /> View / Edit
-                            </Button>
-                            {status !== "active" && (
-                              <Button variant="outline" size="sm" onClick={() => handleUpdateAddonStatus(addon, "active")} disabled={savingAddon}>
-                                Activate
-                              </Button>
-                            )}
-                            {status !== "inactive" && status !== "archived" && (
-                              <Button variant="outline" size="sm" onClick={() => handleUpdateAddonStatus(addon, "inactive")} disabled={savingAddon}>
-                                Deactivate
-                              </Button>
-                            )}
-                            {status !== "archived" && (
-                              <Button variant="outline" size="sm" onClick={() => handleUpdateAddonStatus(addon, "archived")} disabled={savingAddon} className="text-amber-700 border-amber-300 hover:bg-amber-50">
-                                <Archive className="h-4 w-4 mr-1" /> Archive
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {addons.length === 0 && (
-                    <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-                      No add-on definitions found.
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {(editingAddon || isCreatingAddon) && (
                 <Card>
-                  <form onSubmit={handleSaveAddon}>
-                    <CardHeader>
-                      <CardTitle>{isCreatingAddon ? "Create Add-on" : `Edit ${editingAddon?.name} Add-on`}</CardTitle>
-                      <CardDescription>
-                        Configure customer capacity add-on metadata and pricing. Prices are stored in the database, not hard-coded in the app.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-5">
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="addonName">Add-on Name</Label>
-                          <Input
-                            id="addonName"
-                            value={addonFormData.name}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, name: e.target.value })}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="addonType">Add-on Type</Label>
-                          <select
-                            id="addonType"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
-                            value={addonFormData.addon_type}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, addon_type: e.target.value })}
-                          >
-                            <option value="customer_capacity">Customer Capacity</option>
-                            <option value="quick_stamp_qr">Quick Stamp QR</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="addonDescription">Description</Label>
-                        <textarea
-                          id="addonDescription"
-                          className="flex min-h-[88px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                          value={addonFormData.description}
-                          onChange={(e) => setAddonFormData({ ...addonFormData, description: e.target.value })}
-                          placeholder="Describe what this add-on gives the business."
-                        />
-                      </div>
-
-                      <div className="grid sm:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="addonCapacity">Customer Capacity</Label>
-                          <Input
-                            id="addonCapacity"
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={addonFormData.capacity_amount}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, capacity_amount: Number(e.target.value) })}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="addonPrice">Monthly Price (AWG)</Label>
-                          <Input
-                            id="addonPrice"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={addonFormData.monthly_price_awg}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, monthly_price_awg: Number(e.target.value) })}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="addonOrder">Display Order</Label>
-                          <Input
-                            id="addonOrder"
-                            type="number"
-                            value={addonFormData.display_order}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, display_order: Number(e.target.value) })}
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="addonStatus">Status</Label>
-                          <select
-                            id="addonStatus"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
-                            value={addonFormData.status}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, status: e.target.value })}
-                          >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                            <option value="archived">Archived</option>
-                          </select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="addonSlug">Slug</Label>
-                          <Input
-                            id="addonSlug"
-                            placeholder="Auto-generated if blank"
-                            value={addonFormData.slug}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, slug: e.target.value })}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid sm:grid-cols-3 gap-4 rounded-lg border bg-muted/20 p-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="addonProvider">Provider</Label>
-                          <Input
-                            id="addonProvider"
-                            placeholder="Optional"
-                            value={addonFormData.provider}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, provider: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="addonProductId">Provider Product ID</Label>
-                          <Input
-                            id="addonProductId"
-                            placeholder="Optional"
-                            value={addonFormData.provider_product_id}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, provider_product_id: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="addonPriceId">Provider Price ID</Label>
-                          <Input
-                            id="addonPriceId"
-                            placeholder="Optional"
-                            value={addonFormData.provider_price_id}
-                            onChange={(e) => setAddonFormData({ ...addonFormData, provider_price_id: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                      <Button type="button" variant="outline" onClick={() => { setEditingAddon(null); setIsCreatingAddon(false); }} disabled={savingAddon}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" className="gap-2" disabled={savingAddon}>
-                        {savingAddon ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                        {isCreatingAddon ? "Create Add-on" : "Save Add-on"}
-                      </Button>
-                    </CardFooter>
-                  </form>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Last Failed</CardTitle>
+                    <XCircle className="h-4 w-4 text-destructive" />
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      const lastFailed = backups.find(b => b.status === "failed");
+                      return (
+                        <div className="text-lg font-bold">{lastFailed ? new Date(lastFailed.created_at).toLocaleString() : "None"}</div>
+                      );
+                    })()}
+                  </CardContent>
                 </Card>
-              )}
-              
-              <Card className="lg:col-span-2">
+                <Card className="bg-primary/5 border-primary/20">
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium text-primary">Manual Backup</CardTitle>
+                    <Database className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <Button onClick={handleRunBackup} disabled={runningBackup} className="w-full gap-2">
+                      {runningBackup ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
+                      {runningBackup ? "Backing up..." : "Backup Now"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
                 <CardHeader>
-                  <CardTitle>Business Add-ons</CardTitle>
-                  <CardDescription>
-                    Assign purchased add-ons to businesses. Active approved customer-capacity add-ons increase effective customer capacity server-side; Quick Stamp QR unlocks the rotating token page when active.
-                  </CardDescription>
+                  <CardTitle>Backup History</CardTitle>
+                  <CardDescription>View, download, and manage system backups.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <form onSubmit={handleAssignBusinessAddon} className="grid md:grid-cols-5 gap-3 rounded-lg border bg-muted/20 p-4">
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="businessAddonBusiness">Business</Label>
-                      <select
-                        id="businessAddonBusiness"
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
-                        value={businessAddonFormData.business_id}
-                        onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, business_id: e.target.value })}
-                        required
-                      >
-                        <option value="">Select business</option>
-                        {businesses.map((business) => (
-                          <option key={business.id} value={business.id}>{business.business_name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="businessAddonAddon">Add-on</Label>
-                      <select
-                        id="businessAddonAddon"
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
-                        value={businessAddonFormData.addon_id}
-                        onChange={(e) => {
-                          const selectedAddon = addons.find((addon) => addon.id === e.target.value);
-                          setBusinessAddonFormData({
-                            ...businessAddonFormData,
-                            addon_id: e.target.value,
-                            quantity: isQuickStampAddon(selectedAddon) ? 1 : businessAddonFormData.quantity,
-                          });
-                        }}
-                        required
-                      >
-                        <option value="">Select add-on</option>
-                        {addons
-                          .filter((addon) => addon.status === "active" && (addon.addon_type === "customer_capacity" || isQuickStampAddon(addon)))
-                          .map((addon) => (
-                            <option key={addon.id} value={addon.id}>
-                              {isQuickStampAddon(addon)
-                                ? `${addon.name} (Quick Stamp QR feature access)`
-                                : `${addon.name} (+${Number(addon.capacity_amount || 0).toLocaleString()})`}
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="businessAddonQuantity">Quantity</Label>
-                      <Input
-                        id="businessAddonQuantity"
-                        type="number"
-                        min="1"
-                        value={businessAddonFormData.quantity}
-                        onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, quantity: Number(e.target.value) })}
-                        disabled={isQuickStampAddon(addons.find((addon) => addon.id === businessAddonFormData.addon_id))}
-                        required
-                      />
-                      {isQuickStampAddon(addons.find((addon) => addon.id === businessAddonFormData.addon_id)) && (
-                        <p className="text-xs text-muted-foreground">Quick Stamp QR grants feature access and always uses quantity 1.</p>
-                      )}
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="businessAddonPeriodEnd">Current Period End</Label>
-                      <Input
-                        id="businessAddonPeriodEnd"
-                        type="datetime-local"
-                        value={businessAddonFormData.current_period_end}
-                        onChange={(e) => setBusinessAddonFormData({ ...businessAddonFormData, current_period_end: e.target.value })}
-                      />
-                    </div>
-                    <div className="md:col-span-3 flex items-end">
-                      <Button type="submit" disabled={assigningBusinessAddon} className="gap-2">
-                        {assigningBusinessAddon ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
-                        Assign Add-on
-                      </Button>
-                    </div>
-                  </form>
-
-                  <div className="space-y-3">
-                    {businessAddonSubscriptions.length === 0 ? (
-                      <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-                        No business add-on subscriptions assigned yet.
-                      </div>
-                    ) : (
-                      businessAddonSubscriptions.map((subscription) => {
-                        const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
-                        const business = Array.isArray(subscription.businesses) ? subscription.businesses[0] : subscription.businesses;
-                        const addedCapacity = Number(addon?.capacity_amount || 0) * Number(subscription.quantity || 1);
-                        const metadata = asMetadataObject(subscription.metadata);
-                        const planId = String(metadata.base_plan_id || business?.subscription_plan || "");
-                        const plan = plans.find((item) => item.id === planId);
-                        const basePrice = Number(metadata.base_plan_price_awg ?? plan?.price_awg ?? 0);
-                        const currentMonthlyTotal = Number(metadata.current_monthly_total ?? basePrice);
-                        const addonMonthlyTotal = Number(metadata.monthly_total_awg ?? (Number(addon?.monthly_price_awg || 0) * Number(subscription.quantity || 1)));
-                        const newMonthlyTotal = Number(metadata.requested_new_monthly_total ?? (currentMonthlyTotal + addonMonthlyTotal));
-                        const currentCustomerLimit = Number(metadata.current_customer_limit ?? plan?.max_customers ?? 0);
-                        const requestedCustomerLimit = Number(metadata.requested_new_customer_limit ?? (currentCustomerLimit + addedCapacity));
-                        const isPendingApproval = subscription.status === "inactive" && subscription.payment_status === "pending";
-                        const isRejected = subscription.status === "cancelled" && subscription.payment_status === "failed";
-
-                        return (
-                          <div key={subscription.id} className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2">
-                                <h4 className="font-semibold text-foreground">{business?.business_name || "Unknown business"}</h4>
-                                <Badge variant={subscription.status === "active" ? "default" : isRejected ? "destructive" : "secondary"}>
-                                  {isPendingApproval ? "PENDING APPROVAL" : isRejected ? "REJECTED" : subscription.status.toUpperCase()}
-                                </Badge>
-                                {subscription.cancel_at_period_end && (
-                                  <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
-                                    Cancels at period end
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {addon?.name || subscription.addon_id} × {subscription.quantity} = {getAddonDisplayMetric(addon, subscription.quantity, t)}
-                              </p>
-                              {isPendingApproval && (
-                                <div className="mt-3 grid gap-2 rounded-md border bg-muted/20 p-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
-                                  <div>
-                                    <p className="text-muted-foreground">Current subscription</p>
-                                    <p className="font-semibold text-foreground">AWG {currentMonthlyTotal.toFixed(2)}/month</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-muted-foreground">Requested add-on</p>
-                                    <p className="font-semibold text-foreground">AWG {addonMonthlyTotal.toFixed(2)}/month</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-muted-foreground">New total</p>
-                                    <p className="font-semibold text-primary">AWG {newMonthlyTotal.toFixed(2)}/month</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-muted-foreground">Customer capacity</p>
-                                    <p className="font-semibold text-foreground">{currentCustomerLimit.toLocaleString()} → {requestedCustomerLimit.toLocaleString()}</p>
-                                  </div>
-                                </div>
-                              )}
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Period end: {subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleString() : "Not set"}
-                              </p>
-                            </div>
-                            {isPendingApproval && (
-                              <div className="flex flex-wrap gap-2 sm:justify-end">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleRejectAddonRequest(subscription)}
-                                  disabled={reviewingAddonRequestId === subscription.id}
-                                >
-                                  {reviewingAddonRequestId === subscription.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <XCircle className="h-4 w-4 mr-1" />}
-                                  Reject
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleApproveAddonRequest(subscription)}
-                                  disabled={reviewingAddonRequestId === subscription.id}
-                                >
-                                  {reviewingAddonRequestId === subscription.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <CheckCircle className="h-4 w-4 mr-1" />}
-                                  Approve Add-on
-                                </Button>
-                              </div>
-                            )}
-                            {subscription.status === "active" && !subscription.cancel_at_period_end && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-amber-300 text-amber-700 hover:bg-amber-50"
-                                onClick={() => handleCancelBusinessAddon(subscription)}
-                                disabled={cancellingBusinessAddonId === subscription.id}
-                              >
-                                {cancellingBusinessAddonId === subscription.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                                Cancel at Period End
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="customers">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin.customers.title")}</CardTitle>
-                <CardDescription>{t("admin.customers.description")}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("admin.customers.name")}</TableHead>
-                      <TableHead>{t("admin.customers.email")}</TableHead>
-                      <TableHead>{t("admin.customers.phone")}</TableHead>
-                      <TableHead>{t("admin.customers.registeredAt")}</TableHead>
-                      <TableHead className="text-right">{t("admin.merchants.actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customers.map((cust) => (
-                      <TableRow key={cust.id}>
-                        <TableCell className="font-semibold">{cust.name}</TableCell>
-                        <TableCell className="font-mono text-xs">{cust.email || t("admin.customers.noEmail")}</TableCell>
-                        <TableCell className="text-xs">{cust.phone || t("admin.customers.noPhone")}</TableCell>
-                        <TableCell className="text-xs">{new Date(cust.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => setCustomerToDelete(cust)}
-                            className="gap-1 text-xs"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" /> {t("admin.customers.deleteUser")}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {customers.length === 0 && (
+                <CardContent>
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
-                          {t("admin.customers.noCustomers")}
-                        </TableCell>
+                        <TableHead>Date / Time</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Package Size</TableHead>
+                        <TableHead>Records</TableHead>
+                        <TableHead>Storage Files</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="payment_settings">
-            <Card>
-              <form onSubmit={handleSaveBankDetails}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-primary" /> Bank Transfer Details
-                  </CardTitle>
-                  <CardDescription>
-                    Configure the platform's bank account information. This will be displayed to businesses when they select Bank Transfer to pay for subscription upgrades.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bankName">Bank Name <span className="text-destructive">*</span></Label>
-                      <Input id="bankName" value={bankDetails.bankName} onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})} required disabled={savingBankDetails} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="accountHolder">Account Holder / Beneficiary <span className="text-destructive">*</span></Label>
-                      <Input id="accountHolder" value={bankDetails.accountHolder} onChange={(e) => setBankDetails({...bankDetails, accountHolder: e.target.value})} required disabled={savingBankDetails} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="accountNumber">Account Number <span className="text-destructive">*</span></Label>
-                      <Input id="accountNumber" value={bankDetails.accountNumber} onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})} required disabled={savingBankDetails} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="iban">IBAN</Label>
-                      <Input id="iban" value={bankDetails.iban} onChange={(e) => setBankDetails({...bankDetails, iban: e.target.value})} disabled={savingBankDetails} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="swiftBic">SWIFT/BIC</Label>
-                      <Input id="swiftBic" value={bankDetails.swiftBic} onChange={(e) => setBankDetails({...bankDetails, swiftBic: e.target.value})} disabled={savingBankDetails} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bankAddress">Bank Address</Label>
-                      <Input id="bankAddress" value={bankDetails.bankAddress} onChange={(e) => setBankDetails({...bankDetails, bankAddress: e.target.value})} disabled={savingBankDetails} />
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="paymentReference">Payment Reference Instructions</Label>
-                    <Input id="paymentReference" placeholder="e.g. Business Name + Invoice Number" value={bankDetails.paymentReference} onChange={(e) => setBankDetails({...bankDetails, paymentReference: e.target.value})} disabled={savingBankDetails} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="additionalInstructions">Additional Payment Instructions</Label>
-                    <textarea 
-                      id="additionalInstructions" 
-                      className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
-                      placeholder="Any other details the client should know..." 
-                      value={bankDetails.additionalInstructions} 
-                      onChange={(e) => setBankDetails({...bankDetails, additionalInstructions: e.target.value})} 
-                      disabled={savingBankDetails} 
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-end gap-2">
-                  <Button type="submit" disabled={savingBankDetails} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                    {savingBankDetails ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
-                    ) : (
-                      <><Save className="h-4 w-4" /> Save Changes</>
-                    )}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="website">
-            <Card>
-              <form onSubmit={handleSaveFooterSettings}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Globe className="h-5 w-5 text-primary" /> Public Website Customization
-                  </CardTitle>
-                  <CardDescription>Edit content displayed on the public Home Page of Aruba Royalty Stamp.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <h3 className="font-heading font-semibold text-lg border-b pb-2 text-foreground">Footer Settings</h3>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="aboutText">Company / Business Description</Label>
-                      <textarea
-                        id="aboutText"
-                        className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-foreground"
-                        placeholder="Describe the company/platform..."
-                        value={footerSettings.aboutText}
-                        onChange={(e) => setFooterSettings({ ...footerSettings, aboutText: e.target.value })}
-                        required
-                        disabled={savingSettings}
-                      />
-                      <p className="text-xs text-muted-foreground">Appears in the left section of the footer on the main Home Page.</p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="copyrightText">Copyright text</Label>
-                      <Input
-                        id="copyrightText"
-                        value={footerSettings.copyrightText}
-                        onChange={(e) => setFooterSettings({ ...footerSettings, copyrightText: e.target.value })}
-                        required
-                        disabled={savingSettings}
-                        placeholder="© 2026 Aruba Royalty Stamp. All rights reserved.Made with Love in Aruba."
-                      />
-                      <p className="text-xs text-muted-foreground">The full copyright text line displayed at the very bottom of the Home Page.</p>
-                    </div>
-
-                    <h3 className="font-heading font-semibold text-lg border-b pb-2 text-foreground mt-8">Legal Pages</h3>
-                    <div className="space-y-4">
-                      {pages.map(page => (
-                        <div key={page.slug} className="flex items-center justify-between p-4 border rounded-lg bg-card">
-                          <div>
-                            <p className="font-semibold">{page.title}</p>
-                            <p className="text-xs text-muted-foreground">/{page.slug}</p>
-                          </div>
-                          <Button type="button" variant="outline" size="sm" onClick={() => setEditingPage(page)}>
-                            Edit Page
-                          </Button>
-                        </div>
-                      ))}
-                      {pages.length === 0 && (
-                        <p className="text-sm text-muted-foreground">No pages found. The database rows might still be initializing.</p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-end gap-2">
-                  <Button type="submit" disabled={savingSettings} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                    {savingSettings ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4" /> Save Footer Settings
-                      </>
-                    )}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="security">
-            <Card className="border-border shadow-sm max-w-3xl">
-              <CardHeader className="bg-muted/10 border-b">
-                <CardTitle className="flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-primary" />
-                  {t("admin.security.title")}
-                </CardTitle>
-                <CardDescription>{t("admin.security.description")}</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-semibold flex items-center gap-2 text-lg">
-                      {t("admin.security.mfaTitle")}
-                      {mfaFactors.length > 0 ? (
-                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-emerald-50 text-emerald-600 border-emerald-200">
-                          {t("admin.security.enabled")}
-                        </span>
-                      ) : pendingFactorId ? (
-                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-amber-50 text-amber-600 border-amber-200">
-                          {t("admin.security.pending")}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-muted text-muted-foreground">
-                          {t("admin.security.disabled")}
-                        </span>
-                      )}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mt-1 max-w-md">{t("admin.security.mfaDescription")}</p>
-                  </div>
-                  <div>
-                    {mfaFactors.length > 0 ? (
-                      <Button variant="destructive" onClick={() => handleDisableMfa(mfaFactors[0].id)} disabled={mfaLoading}>
-                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("admin.security.disable2fa")}
-                      </Button>
-                    ) : pendingFactorId && !isEnrollingMfa ? (
-                      <Button variant="outline" onClick={() => handleCancelPendingSetup()} disabled={mfaLoading}>
-                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("admin.security.cancelPending")}
-                      </Button>
-                    ) : !isEnrollingMfa ? (
-                      <Button onClick={handleEnableMfa} disabled={mfaLoading}>
-                        {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} {t("admin.security.enable2fa")}
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-
-                {isEnrollingMfa && (
-                  <div className="mt-6 p-6 border rounded-lg bg-muted/20 animate-in fade-in slide-in-from-top-4">
-                    <h4 className="font-heading font-bold text-lg mb-4">{t("admin.security.completeSetup")}</h4>
-                    <div className="grid md:grid-cols-2 gap-8">
-                      <div className="space-y-4">
-                        <div className="flex items-start gap-3">
-                          <div className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">1</div>
-                          <p className="text-sm text-muted-foreground">{t("admin.security.scanQr")}</p>
-                        </div>
-                        <div className="bg-white p-4 border rounded-xl inline-block shadow-sm">
-                          <img src={mfaQrCode} alt={t("admin.security.qrAlt")} className="w-40 h-40" />
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground font-medium">{t("admin.security.manualKey")}</p>
-                          <code className="text-xs bg-muted px-2 py-1 rounded block w-max break-all select-all font-mono font-semibold">
-                            {mfaSecret}
-                          </code>
-                        </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex items-start gap-3">
-                          <div className="bg-primary text-white w-6 h-6 rounded-full flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">2</div>
-                          <p className="text-sm text-muted-foreground">{t("admin.security.enterCode")}</p>
-                        </div>
-                        <form onSubmit={handleVerifyMfaSetup} className="space-y-4 pt-2">
-                          <div className="space-y-2">
-                            <Label htmlFor="verificationCode">{t("admin.security.verificationCode")}</Label>
-                            <Input 
-                              id="verificationCode" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={6} placeholder="000 000"
-                              className="font-mono text-lg tracking-[0.25em] text-center"
-                              value={mfaVerifyCode} onChange={(e) => setMfaVerifyCode(e.target.value)} required disabled={mfaLoading}
-                            />
-                          </div>
-                          <div className="flex gap-2 pt-2">
-                            <Button type="button" variant="outline" className="w-full" onClick={() => {
-                              setIsEnrollingMfa(false);
-                              if (mfaFactorId) handleCancelPendingSetup(mfaFactorId);
-                            }} disabled={mfaLoading}>{t("admin.security.cancelSetup")}</Button>
-                            <Button type="submit" className="w-full" disabled={mfaVerifyCode.length < 6 || mfaLoading}>
-                              {mfaLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Key className="h-4 w-4 mr-2" />} {t("admin.security.verifyEnable")}
+                    </TableHeader>
+                    <TableBody>
+                      {backups.map((backup) => (
+                        <TableRow key={backup.id}>
+                          <TableCell className="font-semibold">
+                            {new Date(backup.created_at).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={backup.status === "completed" ? "default" : backup.status === "failed" ? "destructive" : "secondary"}>
+                              {backup.status.toUpperCase()}
+                            </Badge>
+                            {backup.status === "failed" && backup.error_message && (
+                               <p className="text-xs text-destructive mt-1 max-w-[200px] truncate" title={backup.error_message}>{backup.error_message}</p>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {backup.package_size_bytes ? `${(backup.package_size_bytes / 1024 / 1024).toFixed(2)} MB` : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {backup.manifest?.row_counts?.total_rows?.toLocaleString() || "-"}
+                          </TableCell>
+                          <TableCell>
+                            {backup.manifest?.object_counts?.total_objects?.toLocaleString() || "-"}
+                          </TableCell>
+                          <TableCell className="text-right flex items-center justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => setViewingBackup(backup)}>
+                              <Eye className="h-4 w-4" />
                             </Button>
-                          </div>
-                        </form>
-                        <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded text-xs text-amber-700 mt-4 flex gap-2">
-                          <ShieldAlert className="h-4 w-4 shrink-0" />
-                          <p><strong>{t("admin.security.backupOption")}</strong> {t("admin.security.backupText")}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                            {backup.status === "completed" && (
+                              <Button variant="outline" size="sm" onClick={() => handleDownloadBackup(backup.id)}>
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button 
+                              variant="destructive" 
+                              size="sm" 
+                              onClick={() => handleDeleteBackup(backup.id)}
+                              disabled={deletingBackupId === backup.id}
+                            >
+                              {deletingBackupId === backup.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {backups.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                            No backups found.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Backup Details Dialog */}
+      {viewingBackup && (
+        <Dialog open={!!viewingBackup} onOpenChange={(open) => !open && setViewingBackup(null)}>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Backup Details</DialogTitle>
+              <DialogDescription className="font-mono text-xs mt-1">ID: {viewingBackup.id}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                 <div>
+                   <p className="text-xs text-muted-foreground mb-1">Status</p>
+                   <Badge variant={viewingBackup.status === "completed" ? "default" : viewingBackup.status === "failed" ? "destructive" : "secondary"}>
+                     {viewingBackup.status.toUpperCase()}
+                   </Badge>
+                 </div>
+                 <div>
+                   <p className="text-xs text-muted-foreground">Started At</p>
+                   <p className="text-sm font-semibold">{viewingBackup.started_at ? new Date(viewingBackup.started_at).toLocaleString() : "-"}</p>
+                 </div>
+                 <div>
+                   <p className="text-xs text-muted-foreground">Completed At</p>
+                   <p className="text-sm font-semibold">{viewingBackup.completed_at ? new Date(viewingBackup.completed_at).toLocaleString() : "-"}</p>
+                 </div>
+                 <div>
+                   <p className="text-xs text-muted-foreground">Package Size</p>
+                   <p className="text-sm font-semibold">{viewingBackup.package_size_bytes ? `${(viewingBackup.package_size_bytes / 1024 / 1024).toFixed(2)} MB` : "-"}</p>
+                 </div>
+                 <div>
+                   <p className="text-xs text-muted-foreground">Records</p>
+                   <p className="text-sm font-semibold">{viewingBackup.manifest?.row_counts?.total_rows?.toLocaleString() || "-"}</p>
+                 </div>
+                 <div>
+                   <p className="text-xs text-muted-foreground">Files</p>
+                   <p className="text-sm font-semibold">{viewingBackup.manifest?.object_counts?.total_objects?.toLocaleString() || "-"}</p>
+                 </div>
+              </div>
+              
+              {viewingBackup.error_message && (
+                <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm border border-destructive/20">
+                  <span className="font-bold block mb-1">Error Message</span>
+                  {viewingBackup.error_message}
+                </div>
+              )}
+
+              {viewingBackup.manifest && (
+                <div className="space-y-5">
+                  <div>
+                    <h4 className="font-semibold border-b pb-2 mb-3">Database Tables</h4>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      {Object.entries(viewingBackup.manifest.row_counts?.table_counts || {}).map(([table, count]: any) => (
+                         <div key={table} className="flex justify-between border-b border-border/50 pb-1">
+                           <span className="text-muted-foreground truncate" title={table}>{table}</span>
+                           <span className="font-mono">{count.toLocaleString()}</span>
+                         </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-semibold border-b pb-2 mb-3">Storage Buckets</h4>
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                      {Object.entries(viewingBackup.manifest.object_counts?.bucket_counts || {}).map(([bucket, data]: any) => (
+                         <div key={bucket} className="flex justify-between border-b border-border/50 pb-1">
+                           <span className="text-muted-foreground truncate" title={bucket}>{bucket}</span>
+                           <span className="font-mono text-right">{data.count.toLocaleString()} files<br/><span className="text-[10px] text-muted-foreground">({(data.bytes / 1024 / 1024).toFixed(2)} MB)</span></span>
+                         </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setViewingBackup(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Delete Confirmation Dialog */}
       {customerToDelete && (
