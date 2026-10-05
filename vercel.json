@@ -1,5 +1,13 @@
 {
   "framework": "nextjs",
+  "functions": {
+    "src/pages/api/admin/backups/run.ts": {
+      "maxDuration": 300
+    },
+    "src/pages/api/admin/backups/daily.ts": {
+      "maxDuration": 300
+    }
+  },
   "redirects": [
     {
       "source": "/old-path",

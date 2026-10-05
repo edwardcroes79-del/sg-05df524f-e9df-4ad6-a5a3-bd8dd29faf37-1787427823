@@ -3,6 +3,7 @@ import { createBackupPackage } from "@/lib/server/backupEngine";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
 
 export const config = {
+  maxDuration: 300,
   api: {
     responseLimit: false,
   },

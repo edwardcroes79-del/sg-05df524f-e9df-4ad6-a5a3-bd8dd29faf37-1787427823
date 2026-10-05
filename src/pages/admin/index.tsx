@@ -2224,9 +2224,19 @@ export default function AdminDashboard() {
 
       const response = await fetch("/api/admin/backups/run", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${session.access_token}` },
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
       });
-      const result = await response.json();
+      const responseText = await response.text();
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Backup endpoint /api/admin/backups/run returned ${response.status} ${response.statusText || ""} with ${contentType || "unknown content type"} instead of JSON.`);
+      }
+
+      const result = JSON.parse(responseText);
       if (!response.ok) throw new Error(result.error || "Backup failed");
 
       toast({ title: "Backup completed", description: "The backup package was created successfully." });
