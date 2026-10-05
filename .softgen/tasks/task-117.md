@@ -16,7 +16,7 @@ Implement production-safe restore using the validated backup system. Scope is re
 - [x] Inspect backup package format, validator, backup engine, Super Admin APIs, and live schema dependencies
 - [x] Design dependency-aware restore order and safety constraints from actual tables/storage buckets
 - [x] Add server-side restore engine with validation-before-write, explicit confirmation, safety backup, database restore, storage restore, and reporting
-- [ ] Add Super Admin restore API and Backup Dashboard restore UI without changing unrelated admin functionality
+- [x] Add Super Admin restore API and Backup Dashboard restore UI without changing unrelated admin functionality
 - [x] Add restore logging and clear success/failure details
 - [ ] Test controlled restore path safely before allowing production restore
 - [ ] Run project validation

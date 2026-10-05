@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle, UploadCloud } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle, UploadCloud, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -131,6 +131,9 @@ export default function AdminDashboard() {
   const [viewingBackup, setViewingBackup] = useState<any | null>(null);
   const [validatingBackup, setValidatingBackup] = useState(false);
   const [backupValidationReport, setBackupValidationReport] = useState<any | null>(null);
+  const [restoreConfirmation, setRestoreConfirmation] = useState("");
+  const [restoringBackup, setRestoringBackup] = useState<"dry_run" | "restore" | null>(null);
+  const [restoreReport, setRestoreReport] = useState<any | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -2326,6 +2329,73 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRestoreBackupUpload = async (event: React.ChangeEvent<HTMLInputElement>, mode: "dry_run" | "restore") => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.name.endsWith(".tar.gz")) {
+      toast({ title: "Invalid file type", description: "Upload a Royalty Stamp .tar.gz backup package.", variant: "destructive" });
+      return;
+    }
+
+    const confirmationPhrase = "RESTORE ROYALTY STAMP BACKUP";
+    if (mode === "restore" && restoreConfirmation !== confirmationPhrase) {
+      toast({
+        title: "Restore confirmation required",
+        description: `Type ${confirmationPhrase} exactly before restoring production data.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (mode === "restore" && !window.confirm("This will restore production database records and Storage files from the uploaded backup after creating a safety backup. Continue?")) {
+      return;
+    }
+
+    try {
+      setRestoringBackup(mode);
+      setRestoreReport(null);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/backups/restore-upload", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/gzip",
+          "X-Backup-Filename": encodeURIComponent(file.name),
+          "X-Restore-Mode": mode,
+          "X-Restore-Confirmation": encodeURIComponent(mode === "restore" ? restoreConfirmation : confirmationPhrase),
+        },
+        body: file,
+      });
+
+      const result = await response.json();
+      if (!response.ok && !result.report) throw new Error(result.error || "Backup restore failed");
+
+      setRestoreReport(result.report);
+      toast({
+        title: result.report?.valid ? (mode === "restore" ? "Restore completed" : "Dry run completed") : "Restore blocked",
+        description: result.report?.valid
+          ? mode === "restore"
+            ? "Production restore completed and was logged."
+            : "The backup passed restore validation without modifying production data."
+          : "The backup was rejected before production data was modified.",
+        variant: result.report?.valid ? "default" : "destructive",
+      });
+
+      if (mode === "restore" && result.report?.valid) {
+        setRestoreConfirmation("");
+        await fetchAdminData();
+      }
+    } catch (err: any) {
+      toast({ title: mode === "restore" ? "Restore failed" : "Dry run failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRestoringBackup(null);
+    }
+  };
+
   if (loading || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -3014,6 +3084,164 @@ export default function AdminDashboard() {
                               <p className="mt-1 text-xs text-muted-foreground">{check.details}</p>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-destructive/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="h-5 w-5" /> Safe Restore
+                  </CardTitle>
+                  <CardDescription>
+                    Run a restore dry run first, then restore only after explicit confirmation. Every restore validates the backup again before writing and creates a safety backup when technically possible.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p className="font-semibold">Production safety rules</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5">
+                      <li>Dry run validates and reports restore impact without modifying production data.</li>
+                      <li>Production restore requires the exact confirmation phrase.</li>
+                      <li>Authentication credentials and secrets are not restored from uploaded backups.</li>
+                    </ul>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div className="rounded-xl border bg-background p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                          <ShieldCheck className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold">Restore dry run</p>
+                          <p className="mt-1 text-sm text-muted-foreground">Validate restore order, database records, Storage files, manifest, and checksums without modifying production.</p>
+                          <Label className="mt-4 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-muted">
+                            {restoringBackup === "dry_run" ? (
+                              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking...</span>
+                            ) : (
+                              <span className="flex items-center gap-2"><UploadCloud className="h-4 w-4" /> Upload for Dry Run</span>
+                            )}
+                            <Input
+                              type="file"
+                              accept=".tar.gz,application/gzip,application/x-gzip"
+                              className="hidden"
+                              disabled={Boolean(restoringBackup)}
+                              onChange={(event) => handleRestoreBackupUpload(event, "dry_run")}
+                            />
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-lg bg-destructive/10 p-2 text-destructive">
+                          <AlertTriangle className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <p className="font-semibold text-destructive">Production restore</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Creates a safety backup, then restores database records and Storage files from the uploaded package.</p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="restore-confirmation">Type RESTORE ROYALTY STAMP BACKUP</Label>
+                            <Input
+                              id="restore-confirmation"
+                              value={restoreConfirmation}
+                              onChange={(event) => setRestoreConfirmation(event.target.value)}
+                              placeholder="RESTORE ROYALTY STAMP BACKUP"
+                              disabled={Boolean(restoringBackup)}
+                            />
+                          </div>
+                          <Label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive/90">
+                            {restoringBackup === "restore" ? (
+                              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Restoring...</span>
+                            ) : (
+                              <span className="flex items-center gap-2"><UploadCloud className="h-4 w-4" /> Upload & Restore</span>
+                            )}
+                            <Input
+                              type="file"
+                              accept=".tar.gz,application/gzip,application/x-gzip"
+                              className="hidden"
+                              disabled={Boolean(restoringBackup) || restoreConfirmation !== "RESTORE ROYALTY STAMP BACKUP"}
+                              onChange={(event) => handleRestoreBackupUpload(event, "restore")}
+                            />
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {restoreReport && (
+                    <div className={`rounded-xl border p-4 ${restoreReport.valid ? "border-emerald-200 bg-emerald-50" : "border-destructive/30 bg-destructive/5"}`}>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            {restoreReport.valid ? <ShieldCheck className="h-5 w-5 text-emerald-600" /> : <ShieldAlert className="h-5 w-5 text-destructive" />}
+                            <h3 className="font-heading text-lg font-semibold">{restoreReport.valid ? "Restore report" : "Restore blocked"}</h3>
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">Job ID: {restoreReport.restore_job_id}</p>
+                          {restoreReport.safety_backup_job_id && (
+                            <p className="mt-1 text-sm text-muted-foreground">Safety backup: {restoreReport.safety_backup_job_id}</p>
+                          )}
+                        </div>
+                        <Badge variant={restoreReport.valid ? "default" : "destructive"}>{restoreReport.restore_mode}</Badge>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <div className="rounded-lg bg-background/70 p-3">
+                          <p className="text-xs text-muted-foreground">Records restored</p>
+                          <p className="font-mono text-sm font-semibold">{Number(restoreReport.restored_records || 0).toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-lg bg-background/70 p-3">
+                          <p className="text-xs text-muted-foreground">Files restored</p>
+                          <p className="font-mono text-sm font-semibold">{Number(restoreReport.restored_files || 0).toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-lg bg-background/70 p-3">
+                          <p className="text-xs text-muted-foreground">Tables checked</p>
+                          <p className="font-mono text-sm font-semibold">{Number(restoreReport.table_results?.length || 0).toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-lg bg-background/70 p-3">
+                          <p className="text-xs text-muted-foreground">Buckets checked</p>
+                          <p className="font-mono text-sm font-semibold">{Number(restoreReport.storage_results?.length || 0).toLocaleString()}</p>
+                        </div>
+                      </div>
+
+                      {restoreReport.errors?.length > 0 && (
+                        <div className="mt-4 rounded-lg border border-destructive/20 bg-background/70 p-3">
+                          <p className="mb-2 text-sm font-semibold text-destructive">Restore errors</p>
+                          <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                            {restoreReport.errors.map((error: string) => <li key={error}>{error}</li>)}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                        <div>
+                          <p className="mb-2 text-sm font-semibold text-foreground">Database restore plan</p>
+                          <div className="max-h-56 overflow-y-auto rounded-lg border bg-background/70">
+                            {restoreReport.table_results?.map((table: any) => (
+                              <div key={table.table} className="flex items-center justify-between border-b px-3 py-2 text-sm last:border-b-0">
+                                <span className="truncate text-muted-foreground">{table.table}</span>
+                                <span className="font-mono">{Number(table.records_restored || table.records_seen || 0).toLocaleString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-2 text-sm font-semibold text-foreground">Storage restore plan</p>
+                          <div className="max-h-56 overflow-y-auto rounded-lg border bg-background/70">
+                            {restoreReport.storage_results?.map((bucket: any) => (
+                              <div key={bucket.bucket} className="flex items-center justify-between border-b px-3 py-2 text-sm last:border-b-0">
+                                <span className="truncate text-muted-foreground">{bucket.bucket}</span>
+                                <span className="font-mono">{Number(bucket.files_restored || bucket.files_seen || 0).toLocaleString()} files</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
