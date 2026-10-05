@@ -6,6 +6,13 @@ export type BackupFileEntry = {
   source_name: string;
 };
 
+export type BackupPackagePart = {
+  part_number: number;
+  storage_path: string;
+  size: number;
+  sha256: string;
+};
+
 export type TableManifest = {
   table: string;
   path: string;
@@ -45,12 +52,14 @@ export type BackupManifest = {
   total_storage_bytes: number;
   file_list: BackupFileEntry[];
   sha256_checksums: Record<string, string>;
+  package_parts?: BackupPackagePart[];
   auth_notice: string;
 };
 
 export const backupVersion = "2026-10-05.phase2";
 export const tablePageSize = 1000;
 export const backupBucketName = "system-backups";
+export const maxBackupObjectBytes = 45 * 1024 * 1024;
 
 export const requiredTables = [
   "subscription_plans",

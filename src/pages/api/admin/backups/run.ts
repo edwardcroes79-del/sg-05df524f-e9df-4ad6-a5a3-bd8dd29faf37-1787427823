@@ -53,6 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         object_counts: result.manifest.object_counts,
         included_tables: result.manifest.tables.map((table) => table.table),
         included_buckets: result.manifest.buckets.map((bucket) => bucket.bucket),
+        package_part_count: result.packageParts.length,
       },
     });
   } catch (err: any) {

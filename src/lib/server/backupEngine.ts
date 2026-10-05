@@ -9,11 +9,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   backupBucketName,
   backupVersion,
+  maxBackupObjectBytes,
   requiredBuckets,
   requiredTables,
   tablePageSize,
   type BackupFileEntry,
   type BackupManifest,
+  type BackupPackagePart,
   type StorageObjectManifest,
   type TableManifest,
 } from "@/lib/server/backupConfig";
@@ -122,6 +124,66 @@ async function updateJob(admin: SupabaseClient, jobId: string, payload: Record<s
   if (error) throw error;
 }
 
+async function hashFileSlice(filePath: string, start: number, end: number) {
+  const hash = crypto.createHash("sha256");
+  const stream = fs.createReadStream(filePath, { start, end });
+
+  for await (const chunk of stream) {
+    hash.update(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+
+  return hash.digest("hex");
+}
+
+async function uploadBackupPackage(admin: SupabaseClient, backupId: string, packagePath: string, packageName: string, packageSize: number) {
+  if (packageSize <= maxBackupObjectBytes) {
+    const storagePath = `${backupId}/${packageName}`;
+    const { error } = await admin.storage
+      .from(backupBucketName)
+      .upload(storagePath, fs.createReadStream(packagePath) as any, { contentType: "application/gzip", upsert: false });
+
+    if (error) throw error;
+
+    return {
+      packagePath: storagePath,
+      parts: [] as BackupPackagePart[],
+    };
+  }
+
+  const parts: BackupPackagePart[] = [];
+  let offset = 0;
+  let partNumber = 1;
+
+  while (offset < packageSize) {
+    const end = Math.min(offset + maxBackupObjectBytes, packageSize) - 1;
+    const partSize = end - offset + 1;
+    const partPath = `${backupId}/${packageName}.part-${String(partNumber).padStart(4, "0")}`;
+    const partSha256 = await hashFileSlice(packagePath, offset, end);
+    const partStream = fs.createReadStream(packagePath, { start: offset, end });
+
+    const { error } = await admin.storage
+      .from(backupBucketName)
+      .upload(partPath, partStream as any, { contentType: "application/octet-stream", upsert: false });
+
+    if (error) throw error;
+
+    parts.push({
+      part_number: partNumber,
+      storage_path: partPath,
+      size: partSize,
+      sha256: partSha256,
+    });
+
+    offset = end + 1;
+    partNumber += 1;
+  }
+
+  return {
+    packagePath: `${backupId}/${packageName}.parts`,
+    parts,
+  };
+}
+
 function buildManifest(
   backupId: string,
   startedAt: string,
@@ -222,25 +284,29 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
 
     const packageStats = await fs.promises.stat(packagePath);
     const packageSha256 = packageHash.digest("hex");
-    const storagePath = `${backupId}/${packageName}`;
-    const packageStream = fs.createReadStream(packagePath);
-
-    const { error: uploadError } = await admin.storage
-      .from(backupBucketName)
-      .upload(storagePath, packageStream as any, { contentType: "application/gzip", upsert: false });
-
-    if (uploadError) throw uploadError;
+    const uploadedPackage = await uploadBackupPackage(admin, backupId, packagePath, packageName, packageStats.size);
+    const storedManifest = uploadedPackage.parts.length > 0
+      ? { ...manifest, package_parts: uploadedPackage.parts }
+      : manifest;
 
     await updateJob(admin, backupId, {
       status: "completed",
-      package_path: storagePath,
+      package_path: uploadedPackage.packagePath,
       package_sha256: packageSha256,
       package_size_bytes: packageStats.size,
-      manifest,
+      manifest: storedManifest,
       completed_at: new Date().toISOString(),
     });
 
-    return { backupId, packagePath: storagePath, packageName, packageSizeBytes: packageStats.size, packageSha256, manifest };
+    return {
+      backupId,
+      packagePath: uploadedPackage.packagePath,
+      packageName,
+      packageSizeBytes: packageStats.size,
+      packageSha256,
+      packageParts: uploadedPackage.parts,
+      manifest: storedManifest,
+    };
   } catch (error: any) {
     await updateJob(admin, backupId, { status: "failed", error_message: error.message || "Backup failed", completed_at: new Date().toISOString() });
     throw error;
