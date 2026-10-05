@@ -75,6 +75,54 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_jobs: {
+        Row: {
+          backup_version: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          id: string
+          manifest: Json | null
+          package_path: string | null
+          package_sha256: string | null
+          package_size_bytes: number | null
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          backup_version?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          manifest?: Json | null
+          package_path?: string | null
+          package_sha256?: string | null
+          package_size_bytes?: number | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          backup_version?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          id?: string
+          manifest?: Json | null
+          package_path?: string | null
+          package_sha256?: string | null
+          package_size_bytes?: number | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_addon_subscriptions: {
         Row: {
           addon_id: string

@@ -13,11 +13,11 @@ position: 113
 Implement Phase 2 backup engine only, based on the completed Phase 1 audit. Build server-side backup creation for real production Supabase data and required Storage buckets. Include database JSONL exports, Storage files, manifest, version, timestamp, counts, checksums, compression, secure Super Admin-only triggering/access, private backup storage, and success/failure logging. Do not implement restore, dashboard UI, or automatic scheduling. Do not modify existing production app data except backup metadata/log records and backup artifact storage required for this phase. Do not weaken RLS/security or expose service-role credentials to the browser.
 
 ## Checklist
-- [ ] Inspect existing privileged admin API patterns, dependencies, schema, and backup audit report
-- [ ] Add secure server-side backup engine utilities for table export, Storage export, manifest/checksums, compression, and logging
-- [ ] Add Super Admin-only backup trigger API without restore, dashboard, or scheduling
+- [x] Inspect existing privileged admin API patterns, dependencies, schema, and backup audit report
+- [x] Add secure server-side backup engine utilities for table export, Storage export, manifest/checksums, compression, and logging
+- [x] Add Super Admin-only backup trigger API without restore, dashboard, or scheduling
 - [ ] Add Super Admin-only backup listing/download metadata API if required for secure access
-- [ ] Ensure private backup bucket/table setup is safe and idempotent
+- [x] Ensure private backup bucket/table setup is safe and idempotent
 - [ ] Verify package format, manifest, table counts, Storage counts, and checksums against real structure where possible
 - [ ] Run project validation
 
