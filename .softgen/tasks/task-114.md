@@ -1,6 +1,6 @@
 ---
 title: Daily automatic backups
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [backup, scheduler, retention, admin]
@@ -16,7 +16,7 @@ Scheduler method: Vercel Cron calls `/api/admin/backups/daily` daily at 03:00 UT
 
 Retention behavior: configurable with `BACKUP_RETENTION_DAYS` defaulting to 30 and `BACKUP_RETENTION_MIN_COMPLETED` defaulting to 7. Retention removes completed backup package objects and metadata only when backups exceed the minimum retained count and are older than the retention window, and it never deletes the only completed backup.
 
-Smoke test result: forced scheduled backup completed with job `5a3ff5d7-d4b7-44a9-a056-fb1acb15242e`, package path `5a3ff5d7-d4b7-44a9-a056-fb1acb15242e/royalty-stamp-backup-2026-10-05T17-01-33-731Z-5a3ff5d7-d4b7-44a9-a056-fb1acb15242e.tar.gz.parts`, package size `59,334,833` bytes, SHA-256 `3ecb72f3f7613034ae01eb055baba85b53d34eceef6e7e815b6dec066d2f6d90`, 2 package parts, 25 tables, 2 buckets, manifest checksums present. Second scheduler run returned `skipped_recent`, confirming 24-hour duplicate prevention. Retention preserved 2 completed backups and pruned 0.
+Smoke test result: forced scheduled backup completed with job `5a3ff5d7-d4b7-44a9-a056-fb1acb15242e`, package path `5a3ff5d7-d4b7-44a9-a056-fb1acb15242e/royalty-stamp-backup-2026-10-05T17-01-33-731Z-5a3ff5d7-d4b7-44a9-a056-fb1acb15242e.tar.gz.parts`, package size `59,334,833` bytes, SHA-256 `3ecb72f3f7613034ae01eb055baba85b53d34eceef6e7e815b6dec066d2f6d90`, 2 package parts, 25 tables, 2 buckets, manifest checksums present. Second scheduler run returned `skipped_recent`, confirming 24-hour duplicate prevention. Retention preserved 2 completed backups and pruned 0. Final project validation passed with no CSS, linting, TypeScript, or server errors.
 
 ## Checklist
 - [x] Inspect existing backup engine, backup APIs, schema, package scripts, and deployment scheduler configuration
@@ -25,7 +25,7 @@ Smoke test result: forced scheduled backup completed with job `5a3ff5d7-d4b7-44a
 - [x] Add server-side daily scheduler endpoint with secure invocation
 - [x] Add configurable retention behavior that never deletes the only available backup
 - [x] Verify scheduled backup execution path and failure logging
-- [ ] Run project validation
+- [x] Run project validation
 
 ## Acceptance
 Automatic backups can run once every 24 hours without a browser.
