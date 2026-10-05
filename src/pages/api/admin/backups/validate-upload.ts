@@ -100,9 +100,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const report = await validateBackupArchive(tempPath, fileName, fileSizeBytes);
+    const firstError = report.errors[0];
+    const failedChecks = report.checks.filter((check) => check.status === "failed");
+    const failureSummary = firstError || failedChecks[0]?.details || "Backup validation failed.";
+
+    if (!report.valid) {
+      console.warn("Backup upload validation rejected", {
+        file_name: fileName,
+        file_size_bytes: fileSizeBytes,
+        backup_version: report.backup_version,
+        errors: report.errors,
+        failed_checks: failedChecks.map((check) => ({
+          name: check.name,
+          details: check.details,
+        })),
+      });
+    }
 
     return res.status(report.valid ? 200 : 422).json({
       success: report.valid,
+      error: report.valid ? undefined : failureSummary,
       report,
     });
   } catch (err: any) {

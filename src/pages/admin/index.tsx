@@ -118,6 +118,24 @@ function getBackupUploadContentType(file: File) {
   return allowedTypes.has(normalizedType) ? (normalizedType || "application/octet-stream") : "application/octet-stream";
 }
 
+function summarizeBackupValidationFailure(report: any, fallback = "Backup validation failed.") {
+  const errors = Array.isArray(report?.errors) ? report.errors.filter(Boolean) : [];
+  if (errors.length > 0) return errors.slice(0, 3).join(" ");
+
+  const failedChecks = Array.isArray(report?.checks)
+    ? report.checks.filter((check: any) => check?.status === "failed")
+    : [];
+
+  if (failedChecks.length > 0) {
+    return failedChecks
+      .slice(0, 3)
+      .map((check: any) => `${check.name}: ${check.details}`)
+      .join(" ");
+  }
+
+  return fallback;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -2351,13 +2369,21 @@ export default function AdminDashboard() {
         },
         body: file,
       });
-      const result = await response.json();
+      const responseText = await response.text();
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Backup validation endpoint returned ${response.status} ${response.statusText || ""} with ${contentType || "unknown content type"} instead of JSON.`);
+      }
+
+      const result = JSON.parse(responseText);
       if (!response.ok && !result.report) throw new Error(result.error || "Backup validation failed");
 
       setBackupValidationReport(result.report);
+      const validationFailureSummary = summarizeBackupValidationFailure(result.report, result.error || "The uploaded backup failed validation.");
       toast({
-        title: result.report?.valid ? "Backup validated" : "Backup rejected",
-        description: result.report?.valid ? "The uploaded backup is compatible and intact. Restore is not implemented yet." : "The uploaded backup failed validation and was not restored.",
+        title: result.report?.valid ? "Validated — Ready to Restore" : "Backup rejected",
+        description: result.report?.valid ? "The uploaded backup is compatible, intact, and ready for a restore dry run. Restore was not started." : validationFailureSummary,
         variant: result.report?.valid ? "default" : "destructive",
       });
     } catch (err: any) {
@@ -3073,12 +3099,12 @@ export default function AdminDashboard() {
                         <div>
                           <div className="flex items-center gap-2">
                             {backupValidationReport.valid ? <ShieldCheck className="h-5 w-5 text-emerald-600" /> : <ShieldAlert className="h-5 w-5 text-destructive" />}
-                            <h3 className="font-heading text-lg font-semibold">{backupValidationReport.valid ? "Backup is valid" : "Backup rejected"}</h3>
+                            <h3 className="font-heading text-lg font-semibold">{backupValidationReport.valid ? "Validated — Ready to Restore" : "Backup rejected"}</h3>
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">{backupValidationReport.file_name}</p>
                         </div>
                         <Badge variant={backupValidationReport.valid ? "default" : "destructive"}>
-                          {backupValidationReport.valid ? "Compatible" : "Blocked"}
+                          {backupValidationReport.valid ? "Ready to Restore" : "Blocked"}
                         </Badge>
                       </div>
 

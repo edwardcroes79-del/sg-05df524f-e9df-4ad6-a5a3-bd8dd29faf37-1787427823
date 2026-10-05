@@ -26,8 +26,8 @@ Evidence captured from a real generated Royalty Stamp backup:
 - [x] Inspect backup generator, manifest/checksum format, archive packaging, upload route, validator, and UI validation report handling
 - [x] Reproduce validation against an actual generated Royalty Stamp backup and capture the exact failing check/errors
 - [x] Compare current generator output with validator expectations and identify whether generator or validator is incorrect
-- [ ] Apply the smallest safe backup-system fix while preserving manifest, checksum, version, safe-path, and Super Admin protections
-- [ ] Ensure Super Admin sees specific validation errors instead of only generic rejection
+- [x] Apply the smallest safe backup-system fix while preserving manifest, checksum, version, safe-path, and Super Admin protections
+- [x] Ensure Super Admin sees specific validation errors instead of only generic rejection
 - [ ] Test a real generated backup passes validation and is marked ready to restore
 - [ ] Run project validation
 - [ ] Report exact failure, root cause, files changed, and actual test results
