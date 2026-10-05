@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle, UploadCloud } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -129,6 +129,8 @@ export default function AdminDashboard() {
   const [runningBackup, setRunningBackup] = useState(false);
   const [deletingBackupId, setDeletingBackupId] = useState<string | null>(null);
   const [viewingBackup, setViewingBackup] = useState<any | null>(null);
+  const [validatingBackup, setValidatingBackup] = useState(false);
+  const [backupValidationReport, setBackupValidationReport] = useState<any | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -2283,6 +2285,47 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleValidateBackupUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.name.endsWith(".tar.gz")) {
+      toast({ title: "Invalid file type", description: "Upload a Royalty Stamp .tar.gz backup package.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setValidatingBackup(true);
+      setBackupValidationReport(null);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/backups/validate-upload", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/gzip",
+          "X-Backup-Filename": encodeURIComponent(file.name),
+        },
+        body: file,
+      });
+      const result = await response.json();
+      if (!response.ok && !result.report) throw new Error(result.error || "Backup validation failed");
+
+      setBackupValidationReport(result.report);
+      toast({
+        title: result.report?.valid ? "Backup validated" : "Backup rejected",
+        description: result.report?.valid ? "The uploaded backup is compatible and intact. Restore is not implemented yet." : "The uploaded backup failed validation and was not restored.",
+        variant: result.report?.valid ? "default" : "destructive",
+      });
+    } catch (err: any) {
+      toast({ title: "Validation failed", description: err.message, variant: "destructive" });
+    } finally {
+      setValidatingBackup(false);
+    }
+  };
+
   if (loading || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -2881,6 +2924,100 @@ export default function AdminDashboard() {
                       )}
                     </TableBody>
                   </Table>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Upload & Validate Backup</CardTitle>
+                  <CardDescription>Validate a previously downloaded Royalty Stamp .tar.gz package before any future restore. This does not modify production data.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col gap-3 rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-lg bg-primary/10 p-2 text-primary">
+                        <UploadCloud className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground">Validate backup package</p>
+                        <p className="text-sm text-muted-foreground">Checks version, manifest, required exports, safe paths, and SHA-256 checksums. Restore remains disabled.</p>
+                      </div>
+                    </div>
+                    <Label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
+                      {validatingBackup ? (
+                        <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Validating...</span>
+                      ) : (
+                        <span className="flex items-center gap-2"><UploadCloud className="h-4 w-4" /> Upload Backup</span>
+                      )}
+                      <Input
+                        type="file"
+                        accept=".tar.gz,application/gzip,application/x-gzip"
+                        className="hidden"
+                        disabled={validatingBackup}
+                        onChange={handleValidateBackupUpload}
+                      />
+                    </Label>
+                  </div>
+
+                  {backupValidationReport && (
+                    <div className={`rounded-xl border p-4 ${backupValidationReport.valid ? "border-emerald-200 bg-emerald-50" : "border-destructive/30 bg-destructive/5"}`}>
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            {backupValidationReport.valid ? <ShieldCheck className="h-5 w-5 text-emerald-600" /> : <ShieldAlert className="h-5 w-5 text-destructive" />}
+                            <h3 className="font-heading text-lg font-semibold">{backupValidationReport.valid ? "Backup is valid" : "Backup rejected"}</h3>
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">{backupValidationReport.file_name}</p>
+                        </div>
+                        <Badge variant={backupValidationReport.valid ? "default" : "destructive"}>
+                          {backupValidationReport.valid ? "Compatible" : "Blocked"}
+                        </Badge>
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                        <div className="rounded-lg bg-background/70 p-3">
+                          <p className="text-xs text-muted-foreground">Version</p>
+                          <p className="font-mono text-sm font-semibold">{backupValidationReport.backup_version || "-"}</p>
+                        </div>
+                        <div className="rounded-lg bg-background/70 p-3">
+                          <p className="text-xs text-muted-foreground">Records</p>
+                          <p className="font-mono text-sm font-semibold">{Number(backupValidationReport.total_records || 0).toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-lg bg-background/70 p-3">
+                          <p className="text-xs text-muted-foreground">Files</p>
+                          <p className="font-mono text-sm font-semibold">{Number(backupValidationReport.total_files || 0).toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-lg bg-background/70 p-3">
+                          <p className="text-xs text-muted-foreground">Package</p>
+                          <p className="font-mono text-sm font-semibold">{(Number(backupValidationReport.file_size_bytes || 0) / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                      </div>
+
+                      {backupValidationReport.errors?.length > 0 && (
+                        <div className="mt-4 rounded-lg border border-destructive/20 bg-background/70 p-3">
+                          <p className="mb-2 text-sm font-semibold text-destructive">Validation errors</p>
+                          <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                            {backupValidationReport.errors.map((error: string) => <li key={error}>{error}</li>)}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="mt-4 space-y-2">
+                        <p className="text-sm font-semibold text-foreground">Validation checks</p>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {backupValidationReport.checks?.map((check: any) => (
+                            <div key={`${check.name}-${check.details}`} className="rounded-lg border bg-background/70 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm font-semibold">{check.name}</p>
+                                <Badge variant={check.status === "passed" ? "default" : check.status === "warning" ? "secondary" : "destructive"}>{check.status}</Badge>
+                              </div>
+                              <p className="mt-1 text-xs text-muted-foreground">{check.details}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
