@@ -26,6 +26,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Backup not found" });
     }
 
+    const { data: restoreJobs, error: restoreJobsError } = await admin
+      .from("restore_jobs")
+      .select("id, status, restore_mode")
+      .or(`backup_id.eq.${backupId},safety_backup_job_id.eq.${backupId}`)
+      .limit(10);
+
+    if (restoreJobsError) throw restoreJobsError;
+
+    const activeRestoreJob = (restoreJobs || []).find((job: any) => !["completed", "failed", "cancelled"].includes(job.status));
+    if (activeRestoreJob) {
+      return res.status(409).json({
+        error: `Backup is currently used by restore job ${activeRestoreJob.id} (${activeRestoreJob.status}).`,
+      });
+    }
+
     if (backup.status === "running") {
       return res.status(409).json({ error: "A running backup cannot be deleted. Cancel it first, then delete it after cleanup completes." });
     }
