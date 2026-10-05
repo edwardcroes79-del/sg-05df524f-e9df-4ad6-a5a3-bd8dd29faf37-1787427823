@@ -307,6 +307,7 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
     await assertBackupCanContinue(admin, backupId);
     await markJobHeartbeat(admin, backupId);
     const uploadedPackage = await uploadBackupPackage(admin, backupId, packagePath, packageName, packageStats.size);
+    await assertBackupCanContinue(admin, backupId);
     const storedManifest = uploadedPackage.parts.length > 0
       ? { ...manifest, package_parts: uploadedPackage.parts }
       : manifest;
