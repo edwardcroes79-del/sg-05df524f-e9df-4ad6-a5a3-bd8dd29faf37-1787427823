@@ -36,7 +36,8 @@ export async function requireSuperAdmin(req: NextApiRequest) {
     throw new Error("Not authenticated");
   }
 
-  const { data: profile, error: profileError } = await userClient
+  const admin = createServiceClient();
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("is_super_admin, role")
     .eq("id", userData.user.id)

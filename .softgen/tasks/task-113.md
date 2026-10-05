@@ -16,7 +16,7 @@ Implement Phase 2 backup engine only, based on the completed Phase 1 audit. Buil
 - [x] Inspect existing privileged admin API patterns, dependencies, schema, and backup audit report
 - [x] Add secure server-side backup engine utilities for table export, Storage export, manifest/checksums, compression, and logging
 - [x] Add Super Admin-only backup trigger API without restore, dashboard, or scheduling
-- [ ] Add Super Admin-only backup listing/download metadata API if required for secure access
+- [x] Add Super Admin-only backup listing/download metadata API if required for secure access
 - [x] Ensure private backup bucket/table setup is safe and idempotent
 - [ ] Verify package format, manifest, table counts, Storage counts, and checksums against real structure where possible
 - [ ] Run project validation
