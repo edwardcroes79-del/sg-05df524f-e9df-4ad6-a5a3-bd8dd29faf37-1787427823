@@ -24,6 +24,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Backup not found" });
     }
 
+    if (backup.status === "running") {
+      return res.status(409).json({ error: "A running backup cannot be deleted." });
+    }
+
+    if (backup.status === "completed") {
+      const { count, error: countError } = await admin
+        .from("backup_jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "completed");
+
+      if (countError) throw countError;
+      if ((count || 0) <= 1) {
+        return res.status(409).json({ error: "Cannot delete the only completed backup." });
+      }
+    }
+
     // Delete from storage if package exists
     if (backup.package_path) {
       const packageParts = Array.isArray((backup.manifest as any)?.package_parts)
