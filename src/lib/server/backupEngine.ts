@@ -213,7 +213,7 @@ function buildManifest(
   } satisfies BackupManifest;
 }
 
-export async function createBackupPackage(admin: SupabaseClient, createdBy: string) {
+export async function createBackupPackage(admin: SupabaseClient, createdBy: string | null) {
   const startedAt = new Date().toISOString();
   const { data: job, error: jobError } = await (admin as any)
     .from("backup_jobs")
@@ -273,7 +273,7 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
       });
     }
 
-    const manifest = buildManifest(backupId, startedAt, createdBy, tableManifests, bucketManifests, fileList, checksums);
+    const manifest = buildManifest(backupId, startedAt, createdBy ?? "system:scheduler", tableManifests, bucketManifests, fileList, checksums);
     const manifestBuffer = Buffer.from(JSON.stringify(manifest, null, 2));
     const manifestSha256 = sha256Buffer(manifestBuffer);
     await addBufferToTar(gzip, "manifest.json", manifestBuffer);

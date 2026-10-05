@@ -57,6 +57,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
   } catch (err: any) {
+    if (err?.code === "23505") {
+      return res.status(409).json({ error: "A backup job is already running. Try again after it completes." });
+    }
+
     if (admin && adminUserId) {
       await admin.from("audit_logs").insert({
         admin_user_id: adminUserId,

@@ -22,6 +22,10 @@
     {
       "path": "/api/admin/process-contract-reminders",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/admin/backups/daily",
+      "schedule": "0 3 * * *"
     }
   ],
   "cleanUrls": true,
