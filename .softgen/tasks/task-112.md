@@ -13,8 +13,8 @@ position: 112
 Audit the existing Royalty Stamp application before any implementation. Do not modify production data, schema, RLS, storage, or existing features. Inspect Supabase tables and relationships, storage buckets and uploaded assets, business/customer/staff data, loyalty programs, stamps, rewards, transactions, auth dependencies, RLS/security requirements, and design a production-safe backup/restore architecture. Report proposed architecture, included tables/buckets, scheduling method, storage strategy, restore strategy, manifest/checksum approach, authorization model, and compatibility/corruption checks. Stop after audit.
 
 ## Checklist
-- [ ] Inspect database schema, relationships, RLS-sensitive tables, and auth dependencies
-- [ ] Inspect Storage bucket usage and uploaded asset references
+- [x] Inspect database schema, relationships, RLS-sensitive tables, and auth dependencies
+- [x] Inspect Storage bucket usage and uploaded asset references
 - [ ] Identify business/customer/staff/loyalty/stamp/reward/payment data that must be included
 - [ ] Identify backup security, authorization, integrity, and restore constraints
 - [ ] Produce audit report and proposed backup/restore architecture
