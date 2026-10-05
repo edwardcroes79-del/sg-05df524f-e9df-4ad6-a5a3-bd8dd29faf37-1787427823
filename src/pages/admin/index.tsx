@@ -2318,19 +2318,38 @@ export default function AdminDashboard() {
 
       const response = await fetch(`/api/admin/backups/${id}/download`, {
         method: "GET",
-        headers: { "Authorization": `Bearer ${session.access_token}` },
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/gzip",
+        },
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Download failed");
 
-      if (result.download_parts) {
-        toast({ title: "Multi-part Backup", description: "Downloading multiple parts..." });
-        for (const part of result.download_parts) {
-          window.open(part.download_url, "_blank");
-        }
-      } else if (result.download_url) {
-        window.open(result.download_url, "_blank");
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        const errorBody = contentType.includes("application/json")
+          ? await response.json().catch(() => ({}))
+          : { error: await response.text().catch(() => "Download failed") };
+        throw new Error(errorBody.error || "Download failed");
       }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("gzip") && !contentType.includes("octet-stream")) {
+        throw new Error(`Backup download returned ${contentType || "unknown content type"} instead of a .tar.gz archive.`);
+      }
+
+      const disposition = response.headers.get("content-disposition") || "";
+      const fileNameMatch = disposition.match(/filename="([^"]+)"/);
+      const fileName = fileNameMatch?.[1] || `royalty-stamp-backup-${id}.tar.gz`;
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast({ title: "Backup downloaded", description: `${fileName} is ready to upload and validate.` });
     } catch (err: any) {
       toast({ title: "Download failed", description: err.message, variant: "destructive" });
     }
