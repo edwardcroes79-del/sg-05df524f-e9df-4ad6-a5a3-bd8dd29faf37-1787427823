@@ -8,8 +8,10 @@ import { requireSuperAdmin } from "@/lib/server/adminAuth";
 import { validateBackupArchive } from "@/lib/server/backupValidator";
 
 export const config = {
+  maxDuration: 300,
   api: {
     bodyParser: false,
+    responseLimit: false,
   },
 };
 
@@ -19,6 +21,21 @@ function getFileName(req: NextApiRequest) {
   const rawName = req.headers["x-backup-filename"];
   const name = Array.isArray(rawName) ? rawName[0] : rawName;
   return decodeURIComponent(String(name || "uploaded-backup.tar.gz")).replace(/[^\w.\-() ]/g, "_");
+}
+
+function isPlausibleBackupFileName(fileName: string) {
+  return decodeURIComponent(fileName || "").trim().toLowerCase().includes(".tar.gz");
+}
+
+function isAllowedUploadContentType(contentType: string) {
+  const normalized = contentType.toLowerCase();
+  return (
+    normalized === "" ||
+    normalized.includes("gzip") ||
+    normalized.includes("octet-stream") ||
+    normalized.includes("x-tar") ||
+    normalized.includes("tar")
+  );
 }
 
 async function writeRequestToTempFile(req: NextApiRequest, filePath: string) {
@@ -53,8 +70,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await requireSuperAdmin(req);
 
     const contentType = String(req.headers["content-type"] || "");
-    if (!contentType.includes("gzip") && !contentType.includes("octet-stream") && !contentType.includes("x-tar")) {
-      return res.status(400).json({ error: "Upload must be a gzip/tar backup file." });
+    if (!isPlausibleBackupFileName(fileName)) {
+      return res.status(400).json({
+        error: "Upload must be a Royalty Stamp .tar.gz backup file.",
+        file: {
+          name: fileName,
+          content_type: contentType || "empty",
+          client_type: decodeURIComponent(String(req.headers["x-backup-client-type"] || "")),
+          client_size: String(req.headers["x-backup-client-size"] || ""),
+        },
+      });
+    }
+
+    if (!isAllowedUploadContentType(contentType)) {
+      return res.status(400).json({
+        error: "Upload content type is not allowed for backup validation.",
+        file: {
+          name: fileName,
+          content_type: contentType || "empty",
+          client_type: decodeURIComponent(String(req.headers["x-backup-client-type"] || "")),
+          client_size: String(req.headers["x-backup-client-size"] || ""),
+        },
+      });
     }
 
     const fileSizeBytes = await writeRequestToTempFile(req, tempPath);

@@ -98,6 +98,26 @@ function getAddonDisplayMetric(addon: any, quantity = 1, t: ReturnType<typeof us
   return t("admin.addons.customerCapacityMetric", { count: (Number(addon?.capacity_amount || 0) * Number(quantity || 1)).toLocaleString() });
 }
 
+function getBackupUploadFileInfo(file: File) {
+  return {
+    name: file.name || "unknown",
+    type: file.type || "empty",
+    size: file.size,
+    extension: file.name?.includes(".") ? file.name.slice(file.name.lastIndexOf(".")).toLowerCase() : "none",
+  };
+}
+
+function isRoyaltyStampBackupUploadName(name: string) {
+  const normalized = decodeURIComponent(name || "").trim().toLowerCase();
+  return normalized.includes(".tar.gz");
+}
+
+function getBackupUploadContentType(file: File) {
+  const normalizedType = (file.type || "").toLowerCase();
+  const allowedTypes = new Set(["application/gzip", "application/x-gzip", "application/octet-stream", "application/x-tar", ""]);
+  return allowedTypes.has(normalizedType) ? (normalizedType || "application/octet-stream") : "application/octet-stream";
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -2303,8 +2323,13 @@ export default function AdminDashboard() {
     event.target.value = "";
     if (!file) return;
 
-    if (!file.name.endsWith(".tar.gz")) {
-      toast({ title: "Invalid file type", description: "Upload a Royalty Stamp .tar.gz backup package.", variant: "destructive" });
+    const fileInfo = getBackupUploadFileInfo(file);
+    if (!isRoyaltyStampBackupUploadName(file.name)) {
+      toast({
+        title: "Invalid file type",
+        description: `Upload a Royalty Stamp .tar.gz backup package. Received name="${fileInfo.name}", type="${fileInfo.type}", size=${fileInfo.size} bytes, extension="${fileInfo.extension}".`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -2314,12 +2339,15 @@ export default function AdminDashboard() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
+      const uploadContentType = getBackupUploadContentType(file);
       const response = await fetch("/api/admin/backups/validate-upload", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${session.access_token}`,
-          "Content-Type": "application/gzip",
+          "Content-Type": uploadContentType,
           "X-Backup-Filename": encodeURIComponent(file.name),
+          "X-Backup-Client-Type": encodeURIComponent(file.type || ""),
+          "X-Backup-Client-Size": String(file.size),
         },
         body: file,
       });

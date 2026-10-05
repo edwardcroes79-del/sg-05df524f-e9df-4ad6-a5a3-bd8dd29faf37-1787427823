@@ -188,17 +188,21 @@ function parseManifest(manifestBuffer: Buffer | null) {
   }
 }
 
+function isRoyaltyStampBackupFileName(fileName: string) {
+  return decodeURIComponent(fileName || "").trim().toLowerCase().includes(".tar.gz");
+}
+
 export async function validateBackupArchive(filePath: string, fileName: string, fileSizeBytes: number): Promise<BackupValidationReport> {
   const checks: BackupValidationCheck[] = [];
   const errors: string[] = [];
   const warnings: string[] = [];
 
   try {
-    if (!fileName.endsWith(".tar.gz")) {
-      errors.push("Backup file must be a .tar.gz archive.");
+    if (!isRoyaltyStampBackupFileName(fileName)) {
+      errors.push("Backup file name must identify a .tar.gz archive.");
     }
 
-    addCheck(checks, "File type", fileName.endsWith(".tar.gz"), fileName.endsWith(".tar.gz") ? "Archive extension is .tar.gz." : "Only .tar.gz backup archives are accepted.");
+    addCheck(checks, "File type", isRoyaltyStampBackupFileName(fileName), isRoyaltyStampBackupFileName(fileName) ? "Archive file name identifies a .tar.gz backup." : "Only Royalty Stamp .tar.gz backup archives are accepted.");
 
     const { entries, manifestBuffer, unsafePaths } = await readArchiveEntries(filePath);
     const manifest = parseManifest(manifestBuffer);
