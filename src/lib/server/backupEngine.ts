@@ -20,8 +20,9 @@ import {
   type TableManifest,
 } from "@/lib/server/backupConfig";
 import { addBufferToTar, addFileToTar, finishTar, safeArchivePath, sha256Buffer, writeChunk } from "@/lib/server/backupTar";
+import { BackupCancelledError, assertBackupCanContinue, markJobHeartbeat } from "@/lib/server/backupLifecycle";
 
-async function exportTable(admin: SupabaseClient, table: string, tempDir: string) {
+async function exportTable(admin: SupabaseClient, table: string, tempDir: string, backupId: string) {
   const filePath = path.join(tempDir, `${table}.jsonl`);
   const stream = fs.createWriteStream(filePath);
   const hash = crypto.createHash("sha256");
@@ -31,6 +32,9 @@ async function exportTable(admin: SupabaseClient, table: string, tempDir: string
 
   try {
     while (true) {
+      await assertBackupCanContinue(admin, backupId);
+      await markJobHeartbeat(admin, backupId);
+
       const { data, error } = await (admin as any)
         .from(table)
         .select("*")
@@ -65,7 +69,9 @@ async function exportTable(admin: SupabaseClient, table: string, tempDir: string
   };
 }
 
-async function listBucketObjects(admin: SupabaseClient, bucket: string, prefix = ""): Promise<string[]> {
+async function listBucketObjects(admin: SupabaseClient, bucket: string, backupId: string, prefix = ""): Promise<string[]> {
+  await assertBackupCanContinue(admin, backupId);
+  await markJobHeartbeat(admin, backupId);
   const objectPaths: string[] = [];
   let offset = 0;
 
@@ -84,7 +90,7 @@ async function listBucketObjects(admin: SupabaseClient, bucket: string, prefix =
       const isFolder = !entry.id && !entry.metadata;
 
       if (isFolder) {
-        objectPaths.push(...await listBucketObjects(admin, bucket, objectPath));
+        objectPaths.push(...await listBucketObjects(admin, bucket, backupId, objectPath));
       } else {
         objectPaths.push(objectPath);
       }
@@ -97,7 +103,9 @@ async function listBucketObjects(admin: SupabaseClient, bucket: string, prefix =
   return objectPaths;
 }
 
-async function downloadStorageObject(admin: SupabaseClient, bucket: string, objectPath: string) {
+async function downloadStorageObject(admin: SupabaseClient, bucket: string, objectPath: string, backupId: string) {
+  await assertBackupCanContinue(admin, backupId);
+  await markJobHeartbeat(admin, backupId);
   const { data, error } = await admin.storage.from(bucket).download(objectPath);
   if (error) throw error;
   const buffer = Buffer.from(await data.arrayBuffer());
@@ -136,6 +144,9 @@ async function hashFileSlice(filePath: string, start: number, end: number) {
 }
 
 async function uploadBackupPackage(admin: SupabaseClient, backupId: string, packagePath: string, packageName: string, packageSize: number) {
+  await assertBackupCanContinue(admin, backupId);
+  await markJobHeartbeat(admin, backupId);
+
   if (packageSize <= maxBackupObjectBytes) {
     const storagePath = `${backupId}/${packageName}`;
     const { error } = await admin.storage
@@ -155,6 +166,9 @@ async function uploadBackupPackage(admin: SupabaseClient, backupId: string, pack
   let partNumber = 1;
 
   while (offset < packageSize) {
+    await assertBackupCanContinue(admin, backupId);
+    await markJobHeartbeat(admin, backupId);
+
     const end = Math.min(offset + maxBackupObjectBytes, packageSize) - 1;
     const partSize = end - offset + 1;
     const partPath = `${backupId}/${packageName}.part-${String(partNumber).padStart(4, "0")}`;
@@ -240,7 +254,9 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
 
   try {
     for (const table of requiredTables) {
-      const exported = await exportTable(admin, table, tempDir);
+      await assertBackupCanContinue(admin, backupId);
+      await markJobHeartbeat(admin, backupId);
+      const exported = await exportTable(admin, table, tempDir, backupId);
       await addFileToTar(gzip, exported.archivePath, exported.tempPath, exported.bytes);
       checksums[exported.archivePath] = exported.sha256;
       tableManifests.push({ table, path: exported.archivePath, record_count: exported.recordCount, bytes: exported.bytes, sha256: exported.sha256 });
@@ -248,11 +264,13 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
     }
 
     for (const bucket of requiredBuckets) {
-      const objects = await listBucketObjects(admin, bucket);
+      await assertBackupCanContinue(admin, backupId);
+      await markJobHeartbeat(admin, backupId);
+      const objects = await listBucketObjects(admin, bucket, backupId);
       const objectManifests: StorageObjectManifest[] = [];
 
       for (const objectPath of objects) {
-        const downloaded = await downloadStorageObject(admin, bucket, objectPath);
+        const downloaded = await downloadStorageObject(admin, bucket, objectPath, backupId);
         await addBufferToTar(gzip, downloaded.manifest.archive_path, downloaded.buffer);
         checksums[downloaded.manifest.archive_path] = downloaded.manifest.sha256;
         objectManifests.push(downloaded.manifest);
@@ -274,6 +292,8 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
     }
 
     const manifest = buildManifest(backupId, startedAt, createdBy ?? "system:scheduler", tableManifests, bucketManifests, fileList, checksums);
+    await assertBackupCanContinue(admin, backupId);
+    await markJobHeartbeat(admin, backupId);
     const manifestBuffer = Buffer.from(JSON.stringify(manifest, null, 2));
     const manifestSha256 = sha256Buffer(manifestBuffer);
     await addBufferToTar(gzip, "manifest.json", manifestBuffer);
@@ -284,6 +304,8 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
 
     const packageStats = await fs.promises.stat(packagePath);
     const packageSha256 = packageHash.digest("hex");
+    await assertBackupCanContinue(admin, backupId);
+    await markJobHeartbeat(admin, backupId);
     const uploadedPackage = await uploadBackupPackage(admin, backupId, packagePath, packageName, packageStats.size);
     const storedManifest = uploadedPackage.parts.length > 0
       ? { ...manifest, package_parts: uploadedPackage.parts }
@@ -308,6 +330,16 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
       manifest: storedManifest,
     };
   } catch (error: any) {
+    if (error instanceof BackupCancelledError || error?.name === "BackupCancelledError") {
+      await updateJob(admin, backupId, {
+        status: "cancelled",
+        error_message: error.message || "Backup cancelled.",
+        completed_at: new Date().toISOString(),
+        cancelled_at: new Date().toISOString(),
+      });
+      throw error;
+    }
+
     await updateJob(admin, backupId, { status: "failed", error_message: error.message || "Backup failed", completed_at: new Date().toISOString() });
     throw error;
   } finally {

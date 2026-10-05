@@ -78,10 +78,14 @@ export type Database = {
       backup_jobs: {
         Row: {
           backup_version: string
+          cancellation_requested_at: string | null
+          cancelled_at: string | null
+          cleanup_completed_at: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
           error_message: string | null
+          heartbeat_at: string
           id: string
           manifest: Json | null
           package_path: string | null
@@ -93,10 +97,14 @@ export type Database = {
         }
         Insert: {
           backup_version?: string
+          cancellation_requested_at?: string | null
+          cancelled_at?: string | null
+          cleanup_completed_at?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
           error_message?: string | null
+          heartbeat_at?: string
           id?: string
           manifest?: Json | null
           package_path?: string | null
@@ -108,10 +116,14 @@ export type Database = {
         }
         Update: {
           backup_version?: string
+          cancellation_requested_at?: string | null
+          cancelled_at?: string | null
+          cleanup_completed_at?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
           error_message?: string | null
+          heartbeat_at?: string
           id?: string
           manifest?: Json | null
           package_path?: string | null
