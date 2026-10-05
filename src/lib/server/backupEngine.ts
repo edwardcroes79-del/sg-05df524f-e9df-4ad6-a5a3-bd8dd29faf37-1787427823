@@ -223,11 +223,11 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
     const packageStats = await fs.promises.stat(packagePath);
     const packageSha256 = packageHash.digest("hex");
     const storagePath = `${backupId}/${packageName}`;
-    const packageBuffer = await fs.promises.readFile(packagePath);
+    const packageStream = fs.createReadStream(packagePath);
 
     const { error: uploadError } = await admin.storage
       .from(backupBucketName)
-      .upload(storagePath, packageBuffer, { contentType: "application/gzip", upsert: false });
+      .upload(storagePath, packageStream as any, { contentType: "application/gzip", upsert: false });
 
     if (uploadError) throw uploadError;
 
