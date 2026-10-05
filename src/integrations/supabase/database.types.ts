@@ -882,6 +882,65 @@ export type Database = {
           },
         ]
       }
+      restore_jobs: {
+        Row: {
+          backup_id: string | null
+          backup_version: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          manifest: Json | null
+          performed_by: string | null
+          report: Json | null
+          restore_mode: string
+          safety_backup_job_id: string | null
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          backup_id?: string | null
+          backup_version?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          manifest?: Json | null
+          performed_by?: string | null
+          report?: Json | null
+          restore_mode?: string
+          safety_backup_job_id?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          backup_id?: string | null
+          backup_version?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          manifest?: Json | null
+          performed_by?: string | null
+          report?: Json | null
+          restore_mode?: string
+          safety_backup_job_id?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restore_jobs_safety_backup_job_id_fkey"
+            columns: ["safety_backup_job_id"]
+            isOneToOne: false
+            referencedRelation: "backup_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_qr_tokens: {
         Row: {
           business_id: string
