@@ -2518,7 +2518,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-background">
       <Head>
         <title>{t("admin.seoTitle")}</title>
       </Head>
@@ -3612,6 +3612,6 @@ export default function AdminDashboard() {
           </DialogContent>
         </Dialog>
       )}
-    </>
+    </div>
   );
 }
