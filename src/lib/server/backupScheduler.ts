@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { backupBucketName } from "@/lib/server/backupConfig";
 import { createBackupPackage } from "@/lib/server/backupEngine";
-import { markStaleBackupJobs } from "@/lib/server/backupLifecycle";
+import { getBackupStaleTimeoutMs, markStaleBackupJobs } from "@/lib/server/backupLifecycle";
 
 const defaultRetentionDays = 30;
 const defaultMinCompletedBackups = 7;
@@ -200,9 +200,13 @@ export async function runScheduledBackup(admin: SupabaseClient, options: { force
     };
   } catch (error: any) {
     if (error?.code === "23505") {
+      await markStaleBackupJobs(admin);
+      const runningBackup = await getRunningBackup(admin);
       return {
         status: "skipped_running" as const,
         reason: "A backup job is already running.",
+        running_backup_id: runningBackup?.id,
+        stale_timeout_ms: getBackupStaleTimeoutMs(),
       };
     }
 

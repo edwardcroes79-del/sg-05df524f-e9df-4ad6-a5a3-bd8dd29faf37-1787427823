@@ -348,6 +348,12 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
     }
 
     await updateJob(admin, backupId, { status: "failed", error_message: error.message || "Backup failed", completed_at: new Date().toISOString() });
+    await cleanupBackupArtifacts(admin, {
+      id: backupId,
+      status: "failed",
+      package_path: null,
+      manifest: null,
+    });
     throw error;
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true });

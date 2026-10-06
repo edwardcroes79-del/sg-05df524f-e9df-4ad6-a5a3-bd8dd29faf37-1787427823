@@ -1,7 +1,43 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createBackupPackage } from "@/lib/server/backupEngine";
-import { markStaleBackupJobs } from "@/lib/server/backupLifecycle";
+import { getBackupStaleTimeoutMs, markStaleBackupJobs } from "@/lib/server/backupLifecycle";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
+
+async function getCurrentRunningBackup(admin: ReturnType<typeof createServiceClient>) {
+  const { data, error } = await admin
+    .from("backup_jobs")
+    .select("id, started_at, heartbeat_at, updated_at")
+    .eq("status", "running")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data;
+}
+
+async function createBackupWithStaleLockRecovery(admin: ReturnType<typeof createServiceClient>, adminUserId: string) {
+  await markStaleBackupJobs(admin);
+
+  try {
+    return await createBackupPackage(admin, adminUserId);
+  } catch (error: any) {
+    if (error?.code !== "23505") throw error;
+
+    await markStaleBackupJobs(admin);
+    try {
+      return await createBackupPackage(admin, adminUserId);
+    } catch (retryError: any) {
+      if (retryError?.code !== "23505") throw retryError;
+
+      const runningBackup = await getCurrentRunningBackup(admin);
+      const lockError = new Error("A backup job is already running. Try again after it completes.");
+      (lockError as any).code = "BACKUP_ALREADY_RUNNING";
+      (lockError as any).runningBackup = runningBackup;
+      throw lockError;
+    }
+  }
+}
 
 export const config = {
   maxDuration: 300,
@@ -24,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     admin = createServiceClient();
     await markStaleBackupJobs(admin);
 
-    const result = await createBackupPackage(admin, adminUserId);
+    const result = await createBackupWithStaleLockRecovery(admin, adminUserId);
 
     await admin.from("audit_logs").insert({
       admin_user_id: adminUserId,
@@ -60,8 +96,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
     });
   } catch (err: any) {
-    if (err?.code === "23505") {
-      return res.status(409).json({ error: "A backup job is already running. Try again after it completes." });
+    if (err?.code === "23505" || err?.code === "BACKUP_ALREADY_RUNNING") {
+      return res.status(409).json({
+        error: "A backup job is already running. Try again after it completes.",
+        running_backup: err?.runningBackup || null,
+        stale_timeout_ms: getBackupStaleTimeoutMs(),
+      });
     }
 
     if (admin && adminUserId) {

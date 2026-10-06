@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { backupBucketName } from "@/lib/server/backupConfig";
 
-const defaultStaleTimeoutMs = 30 * 60 * 1000;
+const defaultStaleTimeoutMs = 60 * 60 * 1000;
 
 export class BackupCancelledError extends Error {
   constructor(message = "Backup job was cancelled.") {
@@ -19,7 +19,11 @@ type BackupJobForCleanup = {
 
 function getStaleTimeoutMs() {
   const minutes = Number(process.env.BACKUP_STALE_TIMEOUT_MINUTES);
-  return Number.isFinite(minutes) && minutes >= 5 ? Math.floor(minutes * 60 * 1000) : defaultStaleTimeoutMs;
+  return Number.isFinite(minutes) && minutes >= 15 ? Math.floor(minutes * 60 * 1000) : defaultStaleTimeoutMs;
+}
+
+export function getBackupStaleTimeoutMs() {
+  return getStaleTimeoutMs();
 }
 
 function getManifestStoragePaths(manifest: any, packagePath: string | null) {
@@ -119,11 +123,11 @@ export async function markStaleBackupJobs(admin: SupabaseClient) {
 
   if (error) throw error;
 
-  const staleJobs = (data || []) as BackupJobForCleanup[];
+  const staleJobs = (data || []) as Array<BackupJobForCleanup & { heartbeat_at: string | null; started_at: string | null }>;
   const results = [];
 
   for (const job of staleJobs) {
-    const { error: updateError } = await (admin as any)
+    let updateQuery = (admin as any)
       .from("backup_jobs")
       .update({
         status: "abandoned",
@@ -134,9 +138,18 @@ export async function markStaleBackupJobs(admin: SupabaseClient) {
       .eq("id", job.id)
       .eq("status", "running");
 
-    if (updateError) throw updateError;
+    updateQuery = job.heartbeat_at
+      ? updateQuery.eq("heartbeat_at", job.heartbeat_at)
+      : updateQuery.is("heartbeat_at", null).lt("started_at", cutoff);
 
-    const cleanup = await cleanupBackupArtifacts(admin, { ...job, status: "abandoned" });
+    const { data: updatedRows, error: updateError } = await updateQuery
+      .select("id, status, package_path, manifest")
+      .maybeSingle();
+
+    if (updateError) throw updateError;
+    if (!updatedRows) continue;
+
+    const cleanup = await cleanupBackupArtifacts(admin, { ...updatedRows, status: "abandoned" });
 
     await (admin as any).from("audit_logs").insert({
       admin_user_id: null,
@@ -145,6 +158,9 @@ export async function markStaleBackupJobs(admin: SupabaseClient) {
       target_id: job.id,
       metadata: {
         stale_cutoff: cutoff,
+        stale_timeout_ms: getStaleTimeoutMs(),
+        previous_heartbeat_at: job.heartbeat_at,
+        previous_started_at: job.started_at,
         cleanup,
       },
     });
