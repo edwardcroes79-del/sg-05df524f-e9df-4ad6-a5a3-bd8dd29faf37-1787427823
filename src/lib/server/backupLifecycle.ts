@@ -86,7 +86,17 @@ export async function assertBackupCanContinue(admin: SupabaseClient, backupId: s
 }
 
 export async function cleanupBackupArtifacts(admin: SupabaseClient, backup: BackupJobForCleanup) {
-  if (backup.status === "completed") {
+  const { data: currentBackup, error: currentBackupError } = await (admin as any)
+    .from("backup_jobs")
+    .select("id, status, package_path, manifest")
+    .eq("id", backup.id)
+    .maybeSingle();
+
+  if (currentBackupError) throw currentBackupError;
+
+  const cleanupTarget = currentBackup || backup;
+
+  if (cleanupTarget.status === "completed") {
     return {
       skipped: true,
       reason: "Completed backups are not cleaned by lifecycle cleanup.",
@@ -94,14 +104,14 @@ export async function cleanupBackupArtifacts(admin: SupabaseClient, backup: Back
     };
   }
 
-  const manifestPaths = getManifestStoragePaths(backup.manifest, backup.package_path);
-  const prefixPaths = await listStoragePathsByPrefix(admin, backup.id);
+  const manifestPaths = getManifestStoragePaths(cleanupTarget.manifest, cleanupTarget.package_path);
+  const prefixPaths = await listStoragePathsByPrefix(admin, cleanupTarget.id);
   const removed = await removeStoragePaths(admin, [...manifestPaths, ...prefixPaths]);
 
   const { error } = await (admin as any)
     .from("backup_jobs")
     .update({ cleanup_completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-    .eq("id", backup.id)
+    .eq("id", cleanupTarget.id)
     .neq("status", "completed");
 
   if (error) throw error;
@@ -189,7 +199,7 @@ export async function cancelBackupJob(admin: SupabaseClient, backupId: string, a
   }
 
   const now = new Date().toISOString();
-  const { error: updateError } = await (admin as any)
+  const { data: cancelledBackup, error: updateError } = await (admin as any)
     .from("backup_jobs")
     .update({
       status: "cancelled",
@@ -200,11 +210,23 @@ export async function cancelBackupJob(admin: SupabaseClient, backupId: string, a
       updated_at: now,
     })
     .eq("id", backupId)
-    .eq("status", "running");
+    .eq("status", "running")
+    .select("id, status, package_path, manifest")
+    .maybeSingle();
 
   if (updateError) throw updateError;
+  if (!cancelledBackup) {
+    const { data: latestBackup, error: latestError } = await (admin as any)
+      .from("backup_jobs")
+      .select("status")
+      .eq("id", backupId)
+      .maybeSingle();
 
-  const cleanup = await cleanupBackupArtifacts(admin, { ...backup, status: "cancelled" });
+    if (latestError) throw latestError;
+    throw new Error(`Backup could not be cancelled because it is no longer running. Current status: ${latestBackup?.status || "not found"}.`);
+  }
+
+  const cleanup = await cleanupBackupArtifacts(admin, cancelledBackup);
 
   await (admin as any).from("audit_logs").insert({
     admin_user_id: adminUserId,
