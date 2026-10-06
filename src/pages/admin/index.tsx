@@ -344,7 +344,7 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchBackupStatuses = useCallback(async () => {
-    if (backupPollInFlightRef.current) return;
+    if (backupPollInFlightRef.current) return null;
 
     try {
       backupPollInFlightRef.current = true;
@@ -369,8 +369,11 @@ export default function AdminDashboard() {
       if (!hasActiveBackups && Date.now() > backupPollingGraceUntilRef.current) {
         stopBackupPolling();
       }
+
+      return hasActiveBackups;
     } catch (err) {
       console.error("Backup status polling failed:", err);
+      return null;
     } finally {
       backupPollInFlightRef.current = false;
     }
@@ -2355,6 +2358,8 @@ export default function AdminDashboard() {
   };
 
   const handleRunBackup = async () => {
+    let latestActiveStatus: boolean | null = null;
+
     try {
       setRunningBackup(true);
       startBackupPolling(15000);
@@ -2379,12 +2384,14 @@ export default function AdminDashboard() {
       if (!response.ok) throw new Error(result.error || "Backup failed");
 
       toast({ title: "Backup completed", description: "The backup package was created successfully." });
-      await fetchBackupStatuses();
+      latestActiveStatus = await fetchBackupStatuses();
     } catch (err: any) {
       toast({ title: "Backup failed", description: err.message, variant: "destructive" });
-      await fetchBackupStatuses();
+      latestActiveStatus = await fetchBackupStatuses();
     } finally {
-      setRunningBackup(false);
+      if (latestActiveStatus === false) {
+        setRunningBackup(false);
+      }
     }
   };
 
