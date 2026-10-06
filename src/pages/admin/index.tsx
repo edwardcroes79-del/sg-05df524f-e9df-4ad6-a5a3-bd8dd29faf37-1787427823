@@ -2523,193 +2523,195 @@ export default function AdminDashboard() {
         <title>{t("admin.seoTitle")}</title>
       </Head>
 
-      <div className="min-h-screen bg-background p-6 md:p-12 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
-          <div>
-            <div className="flex items-center gap-2 text-primary font-semibold text-sm mb-1 uppercase tracking-wider">
-              <Shield className="h-4 w-4" /> {t("admin.portal")}
+      <div className="min-h-screen bg-background p-4 md:p-12">
+        <div className="mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-[1600px] flex-col space-y-8 overflow-x-hidden md:min-h-[calc(100vh-6rem)]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
+            <div>
+              <div className="flex items-center gap-2 text-primary font-semibold text-sm mb-1 uppercase tracking-wider">
+                <Shield className="h-4 w-4" /> {t("admin.portal")}
+              </div>
+              <h1 className="text-4xl font-heading font-bold text-foreground">{t("admin.title")}</h1>
+              <p className="text-muted-foreground mt-1">{t("admin.description")}</p>
             </div>
-            <h1 className="text-4xl font-heading font-bold text-foreground">{t("admin.title")}</h1>
-            <p className="text-muted-foreground mt-1">{t("admin.description")}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="relative"
-                onClick={handleToggleNotificationPanel}
-                aria-label={t("admin.notifications.open")}
-              >
-                <Bell className="h-5 w-5" />
-                {unreadNotificationCount > 0 && (
-                  <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
-                    {unreadNotificationCount}
-                  </span>
-                )}
-              </Button>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="relative"
+                  onClick={handleToggleNotificationPanel}
+                  aria-label={t("admin.notifications.open")}
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadNotificationCount > 0 && (
+                    <span className="absolute -right-2 -top-2 flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                      {unreadNotificationCount}
+                    </span>
+                  )}
+                </Button>
 
-              {notificationPanelOpen && (
-                <div className="absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border bg-card p-3 shadow-2xl">
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <div>
-                      <p className="font-heading font-semibold text-foreground">{t("admin.notifications.title")}</p>
-                      <p className="text-xs text-muted-foreground">{t("admin.notifications.unreadPending", { count: unreadNotificationCount, plural: unreadNotificationCount === 1 ? "" : "s" })}</p>
-                    </div>
-                    <Badge variant="secondary">{t("admin.notifications.count", { count: superAdminNotifications.length })}</Badge>
-                  </div>
-                  <div className="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1">
-                    {superAdminNotifications.length === 0 ? (
-                      <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                        {t("admin.notifications.empty")}
+                {notificationPanelOpen && (
+                  <div className="absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border bg-card p-3 shadow-2xl">
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <div>
+                        <p className="font-heading font-semibold text-foreground">{t("admin.notifications.title")}</p>
+                        <p className="text-xs text-muted-foreground">{t("admin.notifications.unreadPending", { count: unreadNotificationCount, plural: unreadNotificationCount === 1 ? "" : "s" })}</p>
                       </div>
-                    ) : (
-                      superAdminNotifications.slice(0, 12).map((notification) => {
-                        const isUnread = notification.status === "pending" && !notificationReads[notification.id];
-                        const statusIcon = notification.status === "pending" ? Clock : notification.status === "approved" ? CheckCircle : XCircle;
-                        const StatusIcon = statusIcon;
+                      <Badge variant="secondary">{t("admin.notifications.count", { count: superAdminNotifications.length })}</Badge>
+                    </div>
+                    <div className="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1">
+                      {superAdminNotifications.length === 0 ? (
+                        <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                          {t("admin.notifications.empty")}
+                        </div>
+                      ) : (
+                        superAdminNotifications.slice(0, 12).map((notification) => {
+                          const isUnread = notification.status === "pending" && !notificationReads[notification.id];
+                          const statusIcon = notification.status === "pending" ? Clock : notification.status === "approved" ? CheckCircle : XCircle;
+                          const StatusIcon = statusIcon;
 
-                        return (
-                          <div
-                            key={notification.id}
-                            className={`rounded-lg border p-3 ${isUnread ? "border-primary/40 bg-primary/5" : "bg-background"}`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className={`mt-0.5 rounded-full p-1.5 ${notification.status === "pending" ? "bg-amber-100 text-amber-700" : notification.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-destructive/10 text-destructive"}`}>
-                                <StatusIcon className="h-4 w-4" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-sm font-semibold text-foreground">{notification.type}</p>
-                                  {isUnread && <span className="h-2 w-2 rounded-full bg-destructive" aria-label={t("admin.notifications.unread")} />}
+                          return (
+                            <div
+                              key={notification.id}
+                              className={`rounded-lg border p-3 ${isUnread ? "border-primary/40 bg-primary/5" : "bg-background"}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`mt-0.5 rounded-full p-1.5 ${notification.status === "pending" ? "bg-amber-100 text-amber-700" : notification.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-destructive/10 text-destructive"}`}>
+                                  <StatusIcon className="h-4 w-4" />
                                 </div>
-                                <p className="text-sm text-muted-foreground">
-                                  <span className="font-medium text-foreground">{notification.businessName}</span> {notification.description}
-                                </p>
-                                <p className="mt-1 text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleString(locale)}</p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-foreground">{notification.type}</p>
+                                    {isUnread && <span className="h-2 w-2 rounded-full bg-destructive" aria-label={t("admin.notifications.unread")} />}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    <span className="font-medium text-foreground">{notification.businessName}</span> {notification.description}
+                                  </p>
+                                  <p className="mt-1 text-xs text-muted-foreground">{new Date(notification.createdAt).toLocaleString(locale)}</p>
+                                </div>
+                              </div>
+                              <div className="mt-3 flex items-center justify-between gap-2">
+                                <Badge variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"} className="text-[10px] uppercase">
+                                  {notification.sourceType === "contract_reminder" ? t("admin.notifications.actionRequired") : notification.status === "pending" ? t("admin.notifications.pendingReview") : notification.status}
+                                </Badge>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={notification.status === "pending" ? "default" : "outline"}
+                                  onClick={() => handleReviewNotification(notification)}
+                                >
+                                  {t("admin.notifications.review")}
+                                </Button>
                               </div>
                             </div>
-                            <div className="mt-3 flex items-center justify-between gap-2">
-                              <Badge variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"} className="text-[10px] uppercase">
-                                {notification.sourceType === "contract_reminder" ? t("admin.notifications.actionRequired") : notification.status === "pending" ? t("admin.notifications.pendingReview") : notification.status}
-                              </Badge>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={notification.status === "pending" ? "default" : "outline"}
-                                onClick={() => handleReviewNotification(notification)}
-                              >
-                                {t("admin.notifications.review")}
-                              </Button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+              <Link href="/dashboard">
+                <Button variant="outline">{t("admin.backToMerchant")}</Button>
+              </Link>
+              <Button variant="destructive" onClick={handleLogout} className="gap-2">
+                <LogOut className="h-4 w-4" /> {t("common.signOut")}
+              </Button>
+              <LanguageSelector compact />
             </div>
-            <Link href="/dashboard">
-              <Button variant="outline">{t("admin.backToMerchant")}</Button>
-            </Link>
-            <Button variant="destructive" onClick={handleLogout} className="gap-2">
-              <LogOut className="h-4 w-4" /> {t("common.signOut")}
-            </Button>
-            <LanguageSelector compact />
           </div>
-        </div>
 
-        {/* Global Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalMerchants")}</CardTitle>
-              <Building2 className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{globalStats.totalBusinesses}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.activeSubscriptions")}</CardTitle>
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{globalStats.activeSubscribers}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalCustomers")}</CardTitle>
-              <Users className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{globalStats.totalCustomers}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalStampsIssued")}</CardTitle>
-              <CreditCard className="h-4 w-4 text-amber-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{globalStats.totalStamps}</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} className="space-y-6">
-          <TabsList className="bg-muted p-1 rounded-lg flex-wrap h-auto">
-            <TabsTrigger value="merchants">{t("admin.tabs.merchants")}</TabsTrigger>
-            <TabsTrigger value="payments">{t("admin.tabs.payments")}</TabsTrigger>
-            <TabsTrigger value="plans">{t("admin.tabs.plans")}</TabsTrigger>
-            <TabsTrigger value="addons">{t("admin.tabs.addons")}</TabsTrigger>
-            <TabsTrigger value="customers">{t("admin.tabs.customers")}</TabsTrigger>
-            <TabsTrigger value="payment_settings">{t("admin.tabs.paymentSettings")}</TabsTrigger>
-            <TabsTrigger value="website">{t("admin.tabs.website")}</TabsTrigger>
-            <TabsTrigger value="security">{t("admin.tabs.security")}</TabsTrigger>
-            <TabsTrigger value="backups">Backups</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="merchants">
+          {/* Global Statistics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle>{t("admin.merchants.title")}</CardTitle>
-                <CardDescription>
-                  {t("admin.merchants.description")}
-                  <div className="flex gap-4 mt-3 font-medium text-sm">
-                    <span className="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 flex items-center gap-2">
-                      <Clock className="h-4 w-4" /> {t("admin.merchants.activeTrials")} {globalStats.activeTrials}
-                    </span>
-                    <span className="text-destructive bg-destructive/10 px-2.5 py-1 rounded-md border border-destructive/20 flex items-center gap-2">
-                      <Ban className="h-4 w-4" /> {t("admin.merchants.expiredTrials")} {globalStats.expiredTrials}
-                    </span>
-                  </div>
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalMerchants")}</CardTitle>
+                <Building2 className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("admin.merchants.businessName")}</TableHead>
-                      <TableHead>{t("admin.merchants.created")}</TableHead>
-                      <TableHead>{t("admin.merchants.status")}</TableHead>
-                      <TableHead>{t("admin.merchants.plan")}</TableHead>
-                      <TableHead>{t("admin.merchants.contractTerm")}</TableHead>
-                      <TableHead>{t("admin.merchants.contractDates")}</TableHead>
-                      <TableHead>{t("admin.merchants.contractStatus")}</TableHead>
-                      <TableHead>{t("admin.merchants.planPrice")}</TableHead>
-                      <TableHead>{t("admin.merchants.activeAddons")}</TableHead>
-                      <TableHead>{t("admin.merchants.addonTotal")}</TableHead>
-                      <TableHead>{t("admin.merchants.totalSubscription")}</TableHead>
-                      <TableHead className="text-right">{t("admin.merchants.actions")}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {businesses.map((biz) => {
+                <div className="text-3xl font-bold">{globalStats.totalBusinesses}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.activeSubscriptions")}</CardTitle>
+                <CheckCircle className="h-4 w-4 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{globalStats.activeSubscribers}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalCustomers")}</CardTitle>
+                <Users className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{globalStats.totalCustomers}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalStampsIssued")}</CardTitle>
+                <CreditCard className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{globalStats.totalStamps}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Tabs value={activeAdminTab} onValueChange={setActiveAdminTab} className="flex min-h-0 flex-1 flex-col space-y-6">
+            <TabsList className="bg-muted p-1 rounded-lg flex-wrap h-auto shrink-0 overflow-x-auto">
+              <TabsTrigger value="merchants">{t("admin.tabs.merchants")}</TabsTrigger>
+              <TabsTrigger value="payments">{t("admin.tabs.payments")}</TabsTrigger>
+              <TabsTrigger value="plans">{t("admin.tabs.plans")}</TabsTrigger>
+              <TabsTrigger value="addons">{t("admin.tabs.addons")}</TabsTrigger>
+              <TabsTrigger value="customers">{t("admin.tabs.customers")}</TabsTrigger>
+              <TabsTrigger value="payment_settings">{t("admin.tabs.paymentSettings")}</TabsTrigger>
+              <TabsTrigger value="website">{t("admin.tabs.website")}</TabsTrigger>
+              <TabsTrigger value="security">{t("admin.tabs.security")}</TabsTrigger>
+              <TabsTrigger value="backups">Backups</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="merchants" className="min-h-0">
+              <div className="overflow-x-auto overscroll-contain">
+                <Card className="min-w-[1100px] md:min-w-0">
+                  <CardHeader>
+                    <CardTitle>{t("admin.merchants.title")}</CardTitle>
+                    <CardDescription>
+                      {t("admin.merchants.description")}
+                      <div className="flex gap-4 mt-3 font-medium text-sm">
+                        <span className="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100 flex items-center gap-2">
+                          <Clock className="h-4 w-4" /> {t("admin.merchants.activeTrials")} {globalStats.activeTrials}
+                        </span>
+                        <span className="text-destructive bg-destructive/10 px-2.5 py-1 rounded-md border border-destructive/20 flex items-center gap-2">
+                          <Ban className="h-4 w-4" /> {t("admin.merchants.expiredTrials")} {globalStats.expiredTrials}
+                        </span>
+                      </div>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>{t("admin.merchants.businessName")}</TableHead>
+                          <TableHead>{t("admin.merchants.created")}</TableHead>
+                          <TableHead>{t("admin.merchants.status")}</TableHead>
+                          <TableHead>{t("admin.merchants.plan")}</TableHead>
+                          <TableHead>{t("admin.merchants.contractTerm")}</TableHead>
+                          <TableHead>{t("admin.merchants.contractDates")}</TableHead>
+                          <TableHead>{t("admin.merchants.contractStatus")}</TableHead>
+                          <TableHead>{t("admin.merchants.planPrice")}</TableHead>
+                          <TableHead>{t("admin.merchants.activeAddons")}</TableHead>
+                          <TableHead>{t("admin.merchants.addonTotal")}</TableHead>
+                          <TableHead>{t("admin.merchants.totalSubscription")}</TableHead>
+                          <TableHead className="text-right">{t("admin.merchants.actions")}</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {businesses.map((biz) => {
   const bizPlan = plans.find((p) => p.id === biz.subscription_plan);
   const planPrice = Number(bizPlan?.price_awg || 0);
   const emailLogs = Array.isArray(biz.email_logs) ? biz.email_logs : [];
@@ -2976,10 +2978,11 @@ export default function AdminDashboard() {
                 </Table>
               </CardContent>
             </Card>
+            </div>
           </TabsContent>
 
-          <TabsContent value="backups">
-            <div className="space-y-6">
+          <TabsContent value="backups" className="min-h-0">
+            <div className="space-y-6 pb-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
