@@ -14,7 +14,9 @@ Fix the Super Admin navigation/page scrolling issue on mobile. Merchants & Subsc
 
 Root cause identified: the Super Admin route used a plain document/body scroll layout while long tab sections include wide tables, wrapped tab triggers, cards, and nested flex/table containers. On mobile browsers, especially Samsung Browser, selected tab content could become the effective touch target/scroll container even though it did not own a reliable vertical scroll area. Wide table content also forced horizontal overflow inside the page, increasing the chance of vertical scroll gestures being trapped. Backups and Merchants appeared usable because their content had stronger natural page height and horizontal table behavior, while other selected sections could stop scrolling before lower forms/buttons.
 
-Fix in progress: added a mobile-safe Super Admin scroll root using dynamic viewport height, explicit `min-h-0` flex containment for the tabs area, horizontal containment for the tab list, and horizontal containment around the wide Merchants table without hiding vertical overflow or using a fixed cut-off height.
+Additional source finding: validation exposed a malformed JSX tree after the layout edit because the outer Super Admin page container was missing a closing `</div>` after the Tabs block. Current source also shows tab triggers for payments, plans, add-ons, customers, payment settings, website, and security but only matching `TabsContent` panels for merchants and backups. That mismatch must be handled after restoring a valid JSX tree so every selectable Super Admin section has a scrollable panel.
+
+Fix in progress: added a mobile-safe Super Admin scroll root using dynamic viewport height, explicit `min-h-0` flex containment for the tabs area, horizontal containment for the tab list, horizontal containment around the wide Merchants table, and restored the missing outer container closing tag. This does not hide vertical overflow or use a fixed cut-off height.
 
 ## Checklist
 - [x] Inspect Super Admin responsive layout, selected-section rendering, mobile navigation, and overflow/height/flex containers
