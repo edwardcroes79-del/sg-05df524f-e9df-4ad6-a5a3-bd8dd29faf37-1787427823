@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -112,6 +112,19 @@ function isRoyaltyStampBackupUploadName(name: string) {
   return normalized.includes(".tar.gz");
 }
 
+const activeBackupStatuses = new Set(["queued", "running"]);
+
+function hasActiveBackupJobs(backups: any[]) {
+  return backups.some((backup) => activeBackupStatuses.has(String(backup?.status || "").toLowerCase()));
+}
+
+function getBackupStatusBadgeVariant(status: string) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "completed") return "default";
+  if (normalized === "failed" || normalized === "abandoned") return "destructive";
+  return "secondary";
+}
+
 function getBackupUploadContentType(file: File) {
   const normalizedType = (file.type || "").toLowerCase();
   const allowedTypes = new Set(["application/gzip", "application/x-gzip", "application/octet-stream", "application/x-tar", ""]);
@@ -165,6 +178,11 @@ export default function AdminDashboard() {
   // Backups states
   const [backups, setBackups] = useState<any[]>([]);
   const [runningBackup, setRunningBackup] = useState(false);
+  const [backupPolling, setBackupPolling] = useState(false);
+  const [lastBackupPollAt, setLastBackupPollAt] = useState<string | null>(null);
+  const backupPollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const backupPollInFlightRef = useRef(false);
+  const backupPollingGraceUntilRef = useRef(0);
   const [deletingBackupId, setDeletingBackupId] = useState<string | null>(null);
   const [downloadingBackupId, setDownloadingBackupId] = useState<string | null>(null);
   const [cancellingBackupId, setCancellingBackupId] = useState<string | null>(null);
@@ -315,6 +333,81 @@ export default function AdminDashboard() {
   useEffect(() => {
     checkAdmin();
   }, []);
+
+  const stopBackupPolling = useCallback(() => {
+    if (backupPollingIntervalRef.current) {
+      clearInterval(backupPollingIntervalRef.current);
+      backupPollingIntervalRef.current = null;
+    }
+    backupPollingGraceUntilRef.current = 0;
+    setBackupPolling(false);
+  }, []);
+
+  const fetchBackupStatuses = useCallback(async () => {
+    if (backupPollInFlightRef.current) return;
+
+    try {
+      backupPollInFlightRef.current = true;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Super Admin session is required to poll backup status.");
+
+      const response = await fetch("/api/admin/backups", {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Failed to refresh backup status.");
+
+      const nextBackups = result.backups || [];
+      const hasActiveBackups = hasActiveBackupJobs(nextBackups);
+      setBackups(nextBackups);
+      setRunningBackup(hasActiveBackups);
+      setLastBackupPollAt(new Date().toISOString());
+
+      if (!hasActiveBackups && Date.now() > backupPollingGraceUntilRef.current) {
+        stopBackupPolling();
+      }
+    } catch (err) {
+      console.error("Backup status polling failed:", err);
+    } finally {
+      backupPollInFlightRef.current = false;
+    }
+  }, [stopBackupPolling]);
+
+  const startBackupPolling = useCallback((graceMs = 0) => {
+    if (graceMs > 0) {
+      backupPollingGraceUntilRef.current = Math.max(backupPollingGraceUntilRef.current, Date.now() + graceMs);
+    }
+
+    if (backupPollingIntervalRef.current) return;
+
+    setBackupPolling(true);
+    void fetchBackupStatuses();
+    backupPollingIntervalRef.current = setInterval(() => {
+      void fetchBackupStatuses();
+    }, 4000);
+  }, [fetchBackupStatuses]);
+
+  useEffect(() => {
+    if (isAdmin !== true) return;
+
+    if (hasActiveBackupJobs(backups)) {
+      startBackupPolling();
+      return;
+    }
+
+    if (Date.now() > backupPollingGraceUntilRef.current) {
+      stopBackupPolling();
+    }
+  }, [backups, isAdmin, startBackupPolling, stopBackupPolling]);
+
+  useEffect(() => {
+    return () => {
+      stopBackupPolling();
+    };
+  }, [stopBackupPolling]);
 
   const checkAdmin = async () => {
     try {
@@ -671,6 +764,11 @@ export default function AdminDashboard() {
         }
       }
       setBackups(backupsData);
+      const activeBackups = hasActiveBackupJobs(backupsData);
+      setRunningBackup(activeBackups);
+      if (activeBackups) {
+        startBackupPolling();
+      }
 
     } catch (err) {
       console.error("Error fetching admin data:", err);
@@ -2259,6 +2357,7 @@ export default function AdminDashboard() {
   const handleRunBackup = async () => {
     try {
       setRunningBackup(true);
+      startBackupPolling(15000);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
@@ -2280,9 +2379,10 @@ export default function AdminDashboard() {
       if (!response.ok) throw new Error(result.error || "Backup failed");
 
       toast({ title: "Backup completed", description: "The backup package was created successfully." });
-      await fetchAdminData();
+      await fetchBackupStatuses();
     } catch (err: any) {
       toast({ title: "Backup failed", description: err.message, variant: "destructive" });
+      await fetchBackupStatuses();
     } finally {
       setRunningBackup(false);
     }
@@ -2330,7 +2430,7 @@ export default function AdminDashboard() {
       if (!response.ok) throw new Error(result.error || "Cancel failed");
 
       toast({ title: "Backup cancelled", description: "The backup job was stopped and incomplete files were cleaned up." });
-      await fetchAdminData();
+      await fetchBackupStatuses();
     } catch (err: any) {
       toast({ title: "Cancel failed", description: err.message, variant: "destructive" });
     } finally {
@@ -3561,7 +3661,20 @@ export default function AdminDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle>Backup History</CardTitle>
-                  <CardDescription>View, download, and manage system backups.</CardDescription>
+                  <CardDescription>
+                    View, download, and manage system backups.
+                    {backupPolling && (
+                      <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Auto-checking status every 4 seconds
+                      </span>
+                    )}
+                    {!backupPolling && lastBackupPollAt && (
+                      <span className="ml-2 text-muted-foreground">
+                        Last checked {new Date(lastBackupPollAt).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Table>
@@ -3582,8 +3695,8 @@ export default function AdminDashboard() {
                             {new Date(backup.created_at).toLocaleString()}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={backup.status === "completed" ? "default" : backup.status === "failed" || backup.status === "abandoned" ? "destructive" : "secondary"}>
-                              {backup.status.toUpperCase()}
+                            <Badge variant={getBackupStatusBadgeVariant(backup.status)}>
+                              {String(backup.status || "unknown").toUpperCase()}
                             </Badge>
                             {(backup.status === "failed" || backup.status === "cancelled" || backup.status === "abandoned") && backup.error_message && (
                                <p className="text-xs text-destructive mt-1 max-w-[200px] truncate" title={backup.error_message}>{backup.error_message}</p>
