@@ -2981,6 +2981,523 @@ export default function AdminDashboard() {
             </div>
           </TabsContent>
 
+          <TabsContent value="payments" className="min-h-0 space-y-6 pb-8">
+            {reviewingPayment && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader>
+                  <CardTitle>Review payment request</CardTitle>
+                  <CardDescription>
+                    {reviewingPayment.businesses?.business_name || "Selected business"} · {reviewingPayment.provider || "provider"} · AWG {Number(reviewingPayment.amount || 0).toFixed(2)}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-lg bg-background p-3">
+                      <p className="text-xs text-muted-foreground">Status</p>
+                      <p className="font-semibold uppercase">{reviewingPayment.status}</p>
+                    </div>
+                    <div className="rounded-lg bg-background p-3">
+                      <p className="text-xs text-muted-foreground">Plan</p>
+                      <p className="font-semibold">{reviewingPayment.metadata?.requested_plan_name || reviewingPayment.plan_id || "-"}</p>
+                    </div>
+                    <div className="rounded-lg bg-background p-3">
+                      <p className="text-xs text-muted-foreground">Created</p>
+                      <p className="font-semibold">{new Date(reviewingPayment.created_at).toLocaleString(locale)}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-notes">Admin notes</Label>
+                    <textarea
+                      id="admin-notes"
+                      className="min-h-24 w-full rounded-md border border-input bg-background p-3 text-sm text-foreground"
+                      value={adminNotes}
+                      onChange={(event) => setAdminNotes(event.target.value)}
+                      placeholder="Add approval or rejection notes"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {reviewingPayment.payment_proof_url && (
+                      <Button type="button" variant="outline" onClick={() => handleOpenAdminPaymentProof(reviewingPayment)}>
+                        <Eye className="mr-2 h-4 w-4" /> Open proof
+                      </Button>
+                    )}
+                    <Button type="button" onClick={() => handleApprovePayment(reviewingPayment)} disabled={processing}>
+                      {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                      Approve
+                    </Button>
+                    <Button type="button" variant="destructive" onClick={() => handleRejectPayment(reviewingPayment)} disabled={processing}>
+                      {processing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                      Reject
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => { setReviewingPayment(null); setAdminNotes(""); }}>
+                      Cancel
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("admin.payments.title")}</CardTitle>
+                <CardDescription>Review real subscription and add-on payment records from Supabase.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto overscroll-contain">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Business</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Provider</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.map((payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-semibold">{payment.businesses?.business_name || payment.metadata?.business_name || "Unknown business"}</TableCell>
+                          <TableCell>{payment.metadata?.change_type || payment.metadata?.kind || payment.payment_type || "-"}</TableCell>
+                          <TableCell>{payment.provider || "-"}</TableCell>
+                          <TableCell>AWG {Number(payment.amount || 0).toFixed(2)}</TableCell>
+                          <TableCell>
+                            <Badge variant={payment.status === "approved" ? "default" : payment.status === "rejected" ? "destructive" : "secondary"}>
+                              {String(payment.status || "pending").toUpperCase()}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{new Date(payment.created_at).toLocaleString(locale)}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              {payment.payment_proof_url && (
+                                <Button type="button" variant="outline" size="sm" onClick={() => handleOpenAdminPaymentProof(payment)}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button type="button" size="sm" onClick={() => { setReviewingPayment(payment); setAdminNotes(payment.admin_notes || ""); }}>
+                                Review
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {payments.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No payment records available yet.</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="plans" className="min-h-0 space-y-6 pb-8">
+            <Card>
+              <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle>Subscription Plans & Limits</CardTitle>
+                  <CardDescription>Manage database-backed plan prices, limits, and feature entitlements.</CardDescription>
+                </div>
+                <Button type="button" onClick={handleCreatePlanClick}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Create plan
+                </Button>
+              </CardHeader>
+              {(editingPlan || isCreatingPlan) && (
+                <CardContent>
+                  <form onSubmit={handleSavePlan} className="grid gap-4 rounded-xl border bg-muted/30 p-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Plan ID</Label>
+                      <Input value={planFormData.id} onChange={(event) => setPlanFormData((current) => ({ ...current, id: event.target.value }))} disabled={Boolean(editingPlan)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Name</Label>
+                      <Input value={planFormData.name} onChange={(event) => setPlanFormData((current) => ({ ...current, name: event.target.value }))} />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Description</Label>
+                      <Input value={planFormData.description} onChange={(event) => setPlanFormData((current) => ({ ...current, description: event.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Monthly price AWG</Label>
+                      <Input type="number" value={planFormData.price_awg} onChange={(event) => setPlanFormData((current) => ({ ...current, price_awg: Number(event.target.value) }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Annual price AWG</Label>
+                      <Input type="number" value={planFormData.annual_price_awg} onChange={(event) => setPlanFormData((current) => ({ ...current, annual_price_awg: event.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Max loyalty programs</Label>
+                      <Input type="number" value={planFormData.max_loyalty_programs} onChange={(event) => setPlanFormData((current) => ({ ...current, max_loyalty_programs: Number(event.target.value) }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Max customers</Label>
+                      <Input type="number" value={planFormData.max_customers} onChange={(event) => setPlanFormData((current) => ({ ...current, max_customers: Number(event.target.value) }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Max staff</Label>
+                      <Input type="number" value={planFormData.max_staff} onChange={(event) => setPlanFormData((current) => ({ ...current, max_staff: Number(event.target.value) }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={planFormData.status} onChange={(event) => setPlanFormData((current) => ({ ...current, status: event.target.value }))}>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="archived">Archived</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Features</Label>
+                      <Input value={planFormData.features.join(", ")} onChange={(event) => setPlanFormData((current) => ({ ...current, features: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) }))} placeholder="Comma-separated feature list" />
+                    </div>
+                    <div className="flex flex-wrap gap-4 md:col-span-2">
+                      {availablePlanEntitlements.map((feature) => (
+                        <label key={feature.key} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(planFormData.entitlements[feature.key as keyof typeof planFormData.entitlements])}
+                            onChange={(event) => setPlanFormData((current) => ({
+                              ...current,
+                              entitlements: { ...current.entitlements, [feature.key]: event.target.checked },
+                            }))}
+                          />
+                          {feature.label}
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 md:col-span-2">
+                      <Button type="submit" disabled={savingPlan}>{savingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save plan</Button>
+                      <Button type="button" variant="outline" onClick={() => { setEditingPlan(null); setIsCreatingPlan(false); setPlanFormData(emptyPlanFormData); }}>Cancel</Button>
+                    </div>
+                  </form>
+                </CardContent>
+              )}
+              <CardContent>
+                <div className="overflow-x-auto overscroll-contain">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Limits</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {plans.map((plan) => (
+                        <TableRow key={plan.id}>
+                          <TableCell>
+                            <div className="font-semibold">{plan.name}</div>
+                            <div className="text-xs text-muted-foreground">{plan.id}</div>
+                          </TableCell>
+                          <TableCell>AWG {Number(plan.price_awg || 0).toFixed(2)}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{plan.max_customers} customers · {plan.max_loyalty_programs} programs · {plan.max_staff || 1} staff</TableCell>
+                          <TableCell><Badge variant={(plan.status || (plan.is_active ? "active" : "inactive")) === "active" ? "default" : "secondary"}>{plan.status || (plan.is_active ? "active" : "inactive")}</Badge></TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleEditPlanClick(plan)}><Edit2 className="h-4 w-4" /></Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "active")}>Activate</Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "inactive")}>Disable</Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {plans.length === 0 && (
+                        <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No plans available yet.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="addons" className="min-h-0 space-y-6 pb-8">
+            <Card>
+              <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle>Customer Capacity Add-ons</CardTitle>
+                  <CardDescription>Manage real add-ons and business add-on subscriptions.</CardDescription>
+                </div>
+                <Button type="button" onClick={handleCreateAddonClick}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Create add-on
+                </Button>
+              </CardHeader>
+              {(editingAddon || isCreatingAddon) && (
+                <CardContent>
+                  <form onSubmit={handleSaveAddon} className="grid gap-4 rounded-xl border bg-muted/30 p-4 md:grid-cols-2">
+                    <div className="space-y-2"><Label>Name</Label><Input value={addonFormData.name} onChange={(event) => setAddonFormData((current) => ({ ...current, name: event.target.value }))} /></div>
+                    <div className="space-y-2"><Label>Slug</Label><Input value={addonFormData.slug} onChange={(event) => setAddonFormData((current) => ({ ...current, slug: event.target.value }))} /></div>
+                    <div className="space-y-2 md:col-span-2"><Label>Description</Label><Input value={addonFormData.description} onChange={(event) => setAddonFormData((current) => ({ ...current, description: event.target.value }))} /></div>
+                    <div className="space-y-2"><Label>Type</Label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={addonFormData.addon_type} onChange={(event) => setAddonFormData((current) => ({ ...current, addon_type: event.target.value }))}><option value="customer_capacity">Customer capacity</option><option value="quick_stamp_qr">Quick Stamp QR</option></select></div>
+                    <div className="space-y-2"><Label>Capacity amount</Label><Input type="number" value={addonFormData.capacity_amount} onChange={(event) => setAddonFormData((current) => ({ ...current, capacity_amount: Number(event.target.value) }))} /></div>
+                    <div className="space-y-2"><Label>Monthly price AWG</Label><Input type="number" value={addonFormData.monthly_price_awg} onChange={(event) => setAddonFormData((current) => ({ ...current, monthly_price_awg: Number(event.target.value) }))} /></div>
+                    <div className="space-y-2"><Label>Status</Label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={addonFormData.status} onChange={(event) => setAddonFormData((current) => ({ ...current, status: event.target.value }))}><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select></div>
+                    <div className="flex gap-2 md:col-span-2">
+                      <Button type="submit" disabled={savingAddon}>{savingAddon ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save add-on</Button>
+                      <Button type="button" variant="outline" onClick={() => { setEditingAddon(null); setIsCreatingAddon(false); setAddonFormData(emptyAddonFormData); }}>Cancel</Button>
+                    </div>
+                  </form>
+                </CardContent>
+              )}
+              <CardContent>
+                <div className="overflow-x-auto overscroll-contain">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Add-on</TableHead><TableHead>Metric</TableHead><TableHead>Price</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {addons.map((addon) => (
+                        <TableRow key={addon.id}>
+                          <TableCell><div className="font-semibold">{addon.name}</div><div className="text-xs text-muted-foreground">{addon.slug || addon.id}</div></TableCell>
+                          <TableCell>{getAddonDisplayMetric(addon, 1, t)}</TableCell>
+                          <TableCell>AWG {Number(addon.monthly_price_awg || 0).toFixed(2)}</TableCell>
+                          <TableCell><Badge variant={addon.status === "active" ? "default" : "secondary"}>{addon.status}</Badge></TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleEditAddonClick(addon)}><Edit2 className="h-4 w-4" /></Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleUpdateAddonStatus(addon, "active")}>Activate</Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleUpdateAddonStatus(addon, "inactive")}>Disable</Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {addons.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No add-ons available yet.</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Assign add-on to business</CardTitle>
+                <CardDescription>Assign only active real add-ons to real businesses.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleAssignBusinessAddon} className="grid gap-4 md:grid-cols-4">
+                  <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={businessAddonFormData.business_id} onChange={(event) => setBusinessAddonFormData((current) => ({ ...current, business_id: event.target.value }))}>
+                    <option value="">Select business</option>
+                    {businesses.map((business) => <option key={business.id} value={business.id}>{business.business_name}</option>)}
+                  </select>
+                  <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={businessAddonFormData.addon_id} onChange={(event) => setBusinessAddonFormData((current) => ({ ...current, addon_id: event.target.value }))}>
+                    <option value="">Select add-on</option>
+                    {addons.filter((addon) => addon.status === "active").map((addon) => <option key={addon.id} value={addon.id}>{addon.name}</option>)}
+                  </select>
+                  <Input type="number" min={1} value={businessAddonFormData.quantity} onChange={(event) => setBusinessAddonFormData((current) => ({ ...current, quantity: Number(event.target.value) }))} />
+                  <Button type="submit" disabled={assigningBusinessAddon}>{assigningBusinessAddon ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />} Assign</Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Business add-on subscriptions</CardTitle><CardDescription>Approve, reject, or schedule cancellation for real add-on subscriptions.</CardDescription></CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto overscroll-contain">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Business</TableHead><TableHead>Add-on</TableHead><TableHead>Status</TableHead><TableHead>Payment</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {businessAddonSubscriptions.map((subscription) => {
+                        const addon = Array.isArray(subscription.subscription_addons) ? subscription.subscription_addons[0] : subscription.subscription_addons;
+                        const business = Array.isArray(subscription.businesses) ? subscription.businesses[0] : subscription.businesses;
+                        return (
+                          <TableRow key={subscription.id}>
+                            <TableCell className="font-semibold">{business?.business_name || "Unknown business"}</TableCell>
+                            <TableCell>{addon?.name || subscription.addon_id}</TableCell>
+                            <TableCell><Badge variant={subscription.status === "active" ? "default" : "secondary"}>{subscription.status}</Badge></TableCell>
+                            <TableCell><Badge variant={subscription.payment_status === "approved" ? "default" : subscription.payment_status === "failed" ? "destructive" : "secondary"}>{subscription.payment_status}</Badge></TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                {subscription.status === "inactive" && subscription.payment_status === "pending" && (
+                                  <>
+                                    <Button type="button" size="sm" onClick={() => handleApproveAddonRequest(subscription)} disabled={reviewingAddonRequestId === subscription.id}>Approve</Button>
+                                    <Button type="button" variant="destructive" size="sm" onClick={() => handleRejectAddonRequest(subscription)} disabled={reviewingAddonRequestId === subscription.id}>Reject</Button>
+                                  </>
+                                )}
+                                {subscription.status === "active" && (
+                                  <Button type="button" variant="outline" size="sm" onClick={() => handleCancelBusinessAddon(subscription)} disabled={cancellingBusinessAddonId === subscription.id}>Cancel</Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {businessAddonSubscriptions.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No business add-ons available yet.</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="customers" className="min-h-0 space-y-6 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("admin.customers.title")}</CardTitle>
+                <CardDescription>Real customer accounts currently stored in Supabase.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto overscroll-contain">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Phone</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {customers.map((customer) => (
+                        <TableRow key={customer.id}>
+                          <TableCell className="font-semibold">{customer.name || "Unnamed customer"}</TableCell>
+                          <TableCell>{customer.email || "-"}</TableCell>
+                          <TableCell>{customer.phone || "-"}</TableCell>
+                          <TableCell>{new Date(customer.created_at).toLocaleString(locale)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button type="button" variant="destructive" size="sm" onClick={() => setCustomerToDelete(customer)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {customers.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No customers available yet.</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payment_settings" className="min-h-0 space-y-6 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Settings</CardTitle>
+                <CardDescription>Bank transfer instructions shown to businesses during subscription payment flows.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSaveBankDetails} className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2"><Label>Bank name</Label><Input value={bankDetails.bankName} onChange={(event) => setBankDetails((current) => ({ ...current, bankName: event.target.value }))} /></div>
+                  <div className="space-y-2"><Label>Account holder</Label><Input value={bankDetails.accountHolder} onChange={(event) => setBankDetails((current) => ({ ...current, accountHolder: event.target.value }))} /></div>
+                  <div className="space-y-2"><Label>Account number</Label><Input value={bankDetails.accountNumber} onChange={(event) => setBankDetails((current) => ({ ...current, accountNumber: event.target.value }))} /></div>
+                  <div className="space-y-2"><Label>IBAN</Label><Input value={bankDetails.iban} onChange={(event) => setBankDetails((current) => ({ ...current, iban: event.target.value }))} /></div>
+                  <div className="space-y-2"><Label>SWIFT/BIC</Label><Input value={bankDetails.swiftBic} onChange={(event) => setBankDetails((current) => ({ ...current, swiftBic: event.target.value }))} /></div>
+                  <div className="space-y-2"><Label>Payment reference</Label><Input value={bankDetails.paymentReference} onChange={(event) => setBankDetails((current) => ({ ...current, paymentReference: event.target.value }))} /></div>
+                  <div className="space-y-2 md:col-span-2"><Label>Bank address</Label><Input value={bankDetails.bankAddress} onChange={(event) => setBankDetails((current) => ({ ...current, bankAddress: event.target.value }))} /></div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Additional instructions</Label>
+                    <textarea className="min-h-28 w-full rounded-md border border-input bg-background p-3 text-sm" value={bankDetails.additionalInstructions} onChange={(event) => setBankDetails((current) => ({ ...current, additionalInstructions: event.target.value }))} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Button type="submit" disabled={savingBankDetails}>{savingBankDetails ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save payment settings</Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="website" className="min-h-0 space-y-6 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Website Settings</CardTitle>
+                <CardDescription>Update public website footer copy and editable legal/content pages.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSaveFooterSettings} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Footer about text</Label>
+                    <textarea className="min-h-28 w-full rounded-md border border-input bg-background p-3 text-sm" value={footerSettings.aboutText} onChange={(event) => setFooterSettings((current) => ({ ...current, aboutText: event.target.value }))} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Copyright text</Label>
+                    <Input value={footerSettings.copyrightText} onChange={(event) => setFooterSettings((current) => ({ ...current, copyrightText: event.target.value }))} />
+                  </div>
+                  <Button type="submit" disabled={savingSettings}>{savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save website settings</Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Website pages</CardTitle><CardDescription>Edit existing public content pages.</CardDescription></CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto overscroll-contain">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Slug</TableHead><TableHead>Updated</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {pages.map((page) => (
+                        <TableRow key={page.slug}>
+                          <TableCell className="font-semibold">{page.title}</TableCell>
+                          <TableCell>/{page.slug}</TableCell>
+                          <TableCell>{page.updated_at ? new Date(page.updated_at).toLocaleString(locale) : "-"}</TableCell>
+                          <TableCell className="text-right"><Button type="button" variant="outline" size="sm" onClick={() => setEditingPage(page)}><Edit2 className="mr-2 h-4 w-4" /> Edit</Button></TableCell>
+                        </TableRow>
+                      ))}
+                      {pages.length === 0 && <TableRow><TableCell colSpan={4} className="py-6 text-center text-muted-foreground">No editable pages available yet.</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="security" className="min-h-0 space-y-6 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Security</CardTitle>
+                <CardDescription>Manage Super Admin multi-factor authentication.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="rounded-xl border bg-muted/30 p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-semibold">Verified MFA factors</p>
+                      <p className="text-sm text-muted-foreground">{mfaFactors.length > 0 ? `${mfaFactors.length} verified factor(s) enabled.` : "No verified MFA factor is enabled yet."}</p>
+                    </div>
+                    <Button type="button" onClick={handleEnableMfa} disabled={mfaLoading || isEnrollingMfa}>
+                      {mfaLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Key className="mr-2 h-4 w-4" />}
+                      Enroll TOTP
+                    </Button>
+                  </div>
+                </div>
+
+                {isEnrollingMfa && (
+                  <form onSubmit={handleVerifyMfaSetup} className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                    <div>
+                      <p className="font-semibold">Verify new authenticator app</p>
+                      <p className="text-sm text-muted-foreground">Scan the QR code, then enter the 6-digit verification code.</p>
+                    </div>
+                    {mfaQrCode && <img src={mfaQrCode} alt="MFA QR code" className="h-48 w-48 rounded-lg border bg-white p-2" />}
+                    {mfaSecret && <p className="break-all rounded-md bg-background p-2 font-mono text-xs">{mfaSecret}</p>}
+                    <div className="space-y-2">
+                      <Label>Verification code</Label>
+                      <Input value={mfaVerifyCode} onChange={(event) => setMfaVerifyCode(event.target.value)} inputMode="numeric" />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button type="submit" disabled={mfaLoading}>{mfaLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />} Verify</Button>
+                      <Button type="button" variant="outline" onClick={() => handleCancelPendingSetup()} disabled={mfaLoading}>Cancel setup</Button>
+                    </div>
+                  </form>
+                )}
+
+                <div className="space-y-3">
+                  {mfaFactors.map((factor) => (
+                    <div key={factor.id} className="flex flex-col gap-3 rounded-xl border p-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-semibold">{factor.friendly_name || factor.factor_type || "TOTP factor"}</p>
+                        <p className="text-sm text-muted-foreground">Status: {factor.status}</p>
+                      </div>
+                      <Button type="button" variant="destructive" onClick={() => handleDisableMfa(factor.id)} disabled={mfaLoading}>Disable</Button>
+                    </div>
+                  ))}
+                  {pendingFactorId && !isEnrollingMfa && (
+                    <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-semibold text-amber-900">Pending MFA setup</p>
+                        <p className="text-sm text-amber-800">An unfinished MFA enrollment is waiting to be cancelled or completed.</p>
+                      </div>
+                      <Button type="button" variant="outline" onClick={() => handleCancelPendingSetup()} disabled={mfaLoading}>Cancel pending setup</Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="backups" className="min-h-0">
             <div className="space-y-6 pb-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

@@ -10,20 +10,20 @@ position: 125
 ---
 
 ## Notes
-Fix the Super Admin navigation/page scrolling issue on mobile. Merchants & Subscriptions and Backups currently scroll correctly, but other sections such as Subscription Plans & Limits, Customer Capacity Add-ons, Customers, Payment Settings, Website Settings, Account Security, and other Super Admin sections can become trapped or stop scrolling vertically. Must identify the root cause, make the smallest safe layout fix, preserve desktop layout and selected-section behavior, avoid hiding overflow, avoid fixed heights that cut off content, and avoid changes to database logic, permissions, RLS, authentication, backup logic, or unrelated functionality.
+Fix the Super Admin section rendering and scrolling issue. Desktop and mobile both showed blank content for sections such as Payment Review because the tab state changed correctly but the selected content panel was missing. Must preserve existing database queries, RLS, authentication, permissions, backup logic, and all Super Admin actions.
 
-Root cause identified: the Super Admin route used a plain document/body scroll layout while long tab sections include wide tables, wrapped tab triggers, cards, and nested flex/table containers. On mobile browsers, especially Samsung Browser, selected tab content could become the effective touch target/scroll container even though it did not own a reliable vertical scroll area. Wide table content also forced horizontal overflow inside the page, increasing the chance of vertical scroll gestures being trapped.
+Confirmed root cause: `src/pages/admin/index.tsx` had 9 `TabsTrigger` values, but only `TabsContent` panels for `merchants` and `backups`. Selecting `payments`, `plans`, `addons`, `customers`, `payment_settings`, `website`, or `security` made the tab active but Radix/shadcn Tabs had no matching content component to mount, so the area below the tab list was blank. This also made the earlier mobile symptom look like a scroll problem because several selected sections had no content height at all.
 
-Fix applied: added a mobile-safe Super Admin scroll root using dynamic viewport height, explicit `min-h-0` flex containment for the tabs area, horizontal containment for the tab list, and horizontal containment around the wide Merchants table without hiding vertical overflow or using a fixed cut-off height. Also restored the missing wrapper closing tag after the Tabs block so the JSX tree is valid.
+Fix applied: restored real data-backed `TabsContent` panels for Payment Review, Subscription Plans & Limits, Customer Capacity Add-ons, Customers, Payment Settings, Website Settings, and Account Security inside the existing `Tabs` parent. Panels use existing state, handlers, Supabase-backed data, and mobile-safe overflow wrappers. Merchants and Backups content remains in place.
 
 ## Checklist
 - [x] Inspect Super Admin responsive layout, selected-section rendering, mobile navigation, and overflow/height/flex containers
-- [x] Identify the exact root cause of mobile scroll trapping for affected sections
-- [x] Apply the smallest safe layout fix so every Super Admin section can scroll vertically on mobile
+- [x] Identify the exact root cause of blank/inaccessible sections
+- [x] Apply the smallest safe layout/rendering fix so every Super Admin tab has matching real content
 - [x] Preserve desktop scrolling/layout and existing navigation/selected-section behavior
-- [ ] Test all Super Admin sections for top-to-bottom scrolling and section switching behavior
-- [ ] Run project validation
-- [ ] Report root cause, files changed, and testing performed
+- [ ] Test all Super Admin sections for content rendering, top-to-bottom scrolling, and section switching behavior
+- [ ] Run project validation and production build validation
+- [ ] Report root cause, files changed, desktop/mobile test coverage, and build result
 
 ## Acceptance
 Every Super Admin section can scroll from top to bottom on mobile without trapped content.
