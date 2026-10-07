@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 
 type AnalyticsPayload = {
+  business_id?: string;
   business_name: string;
   overview: Record<string, number>;
   customer_analytics: Record<string, number>;
@@ -46,6 +47,7 @@ export default function CorporateAnalyticsPage() {
   const [locationId, setLocationId] = useState("all");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [hasSyncedActiveLocation, setHasSyncedActiveLocation] = useState(false);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -94,6 +96,35 @@ export default function CorporateAnalyticsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const handleActiveLocationChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ businessId?: string; locationId?: string }>).detail;
+      if (!detail?.locationId) return;
+
+      setHasSyncedActiveLocation(true);
+      setLocationId(detail.locationId);
+    };
+
+    window.addEventListener("royalty-active-location-change", handleActiveLocationChange);
+
+    return () => {
+      window.removeEventListener("royalty-active-location-change", handleActiveLocationChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hasSyncedActiveLocation || !analytics?.business_id || typeof window === "undefined") return;
+
+    const storedLocationId = window.localStorage.getItem(`active_location_${analytics.business_id}`) || "";
+    const storedLocationIsAvailable = storedLocationId && locations.some((location) => location.id === storedLocationId);
+
+    if (storedLocationIsAvailable) {
+      setLocationId(storedLocationId);
+    }
+
+    setHasSyncedActiveLocation(true);
+  }, [analytics?.business_id, hasSyncedActiveLocation, locations]);
 
   useEffect(() => {
     if (range === "custom" && (!customStart || !customEnd)) {

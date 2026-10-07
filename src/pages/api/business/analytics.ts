@@ -129,7 +129,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(status).json({ error: message });
     }
 
-    return res.status(200).json({ analytics: data });
+    return res.status(200).json({
+      analytics: {
+        ...(data && typeof data === "object" && !Array.isArray(data) ? data : {}),
+        business_id: businessId,
+      },
+    });
   } catch (err: any) {
     const message = err.message || "Failed to load Corporate Advanced Analytics.";
     const status = message.includes("authenticated") ? 401 : message.includes("not enabled") || message.includes("access") ? 403 : 400;

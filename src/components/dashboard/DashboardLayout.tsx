@@ -235,7 +235,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           const nextLocationId = availableLocations.some((location) => location.id === storedLocationId)
             ? storedLocationId
             : availableLocations[0].id;
-          window.localStorage.setItem(`active_location_${resolvedBusiness.id}`, nextLocationId);
+          publishActiveLocationChange(resolvedBusiness.id, nextLocationId);
           setActiveLocationId(nextLocationId);
         }
       } else {
@@ -274,9 +274,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     router.push("/");
   };
 
+  const publishActiveLocationChange = (businessId: string, locationId: string) => {
+    window.localStorage.setItem(`active_location_${businessId}`, locationId);
+    window.dispatchEvent(new CustomEvent("royalty-active-location-change", {
+      detail: { businessId, locationId },
+    }));
+  };
+
   const handleActiveLocationChange = (locationId: string) => {
     if (!business?.id) return;
-    window.localStorage.setItem(`active_location_${business.id}`, locationId);
+    publishActiveLocationChange(business.id, locationId);
     setActiveLocationId(locationId);
   };
 
