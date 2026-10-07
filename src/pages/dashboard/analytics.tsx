@@ -19,6 +19,7 @@ type AnalyticsPayload = {
   cross_location: Record<string, any>;
   trends: Array<Record<string, any>>;
   insights: Array<{ type: string; message: string }>;
+  location_options?: Array<Record<string, any>>;
 };
 
 const ranges = [
@@ -43,6 +44,7 @@ function maxValue(rows: Array<Record<string, any>>, key: string) {
 
 export default function CorporateAnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
+  const [availableLocations, setAvailableLocations] = useState<Array<Record<string, any>>>([]);
   const [range, setRange] = useState("30d");
   const [locationId, setLocationId] = useState("all");
   const [customStart, setCustomStart] = useState("");
@@ -88,7 +90,9 @@ export default function CorporateAnalyticsPage() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "Failed to load Corporate Advanced Analytics.");
 
-      setAnalytics(result.analytics);
+      const nextAnalytics = result.analytics as AnalyticsPayload;
+      setAnalytics(nextAnalytics);
+      setAvailableLocations(Array.isArray(nextAnalytics.location_options) ? nextAnalytics.location_options : []);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to load Corporate Advanced Analytics.");
       setAnalytics(null);
@@ -117,14 +121,14 @@ export default function CorporateAnalyticsPage() {
     if (hasSyncedActiveLocation || !analytics?.business_id || typeof window === "undefined") return;
 
     const storedLocationId = window.localStorage.getItem(`active_location_${analytics.business_id}`) || "";
-    const storedLocationIsAvailable = storedLocationId && locations.some((location) => location.id === storedLocationId);
+    const storedLocationIsAvailable = storedLocationId && availableLocations.some((location) => location.id === storedLocationId);
 
     if (storedLocationIsAvailable) {
       setLocationId(storedLocationId);
     }
 
     setHasSyncedActiveLocation(true);
-  }, [analytics?.business_id, hasSyncedActiveLocation, locations]);
+  }, [analytics?.business_id, hasSyncedActiveLocation, availableLocations]);
 
   useEffect(() => {
     if (range === "custom" && (!customStart || !customEnd)) {
@@ -207,7 +211,7 @@ export default function CorporateAnalyticsPage() {
             )}
             <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={locationId} onChange={(event) => handleLocationScopeChange(event.target.value)}>
               <option value="all">Corporate-wide</option>
-              {locations.map((location) => (
+              {availableLocations.map((location) => (
                 <option key={location.id} value={location.id}>{location.name}</option>
               ))}
             </select>

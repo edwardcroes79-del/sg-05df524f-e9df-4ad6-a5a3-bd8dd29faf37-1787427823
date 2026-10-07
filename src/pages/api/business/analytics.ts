@@ -97,6 +97,23 @@ async function resolveBusinessForUser(authorization: string) {
   };
 }
 
+async function fetchPermittedLocationOptions(authorization: string, businessId: string) {
+  const userClient = createUserClient(authorization);
+
+  const { data, error } = await (userClient as any)
+    .from("business_locations")
+    .select("id, name, status")
+    .eq("business_id", businessId)
+    .neq("status", "inactive")
+    .order("name", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Array.isArray(data) ? data : [];
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -113,6 +130,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId, businessId } = await resolveBusinessForUser(authorization);
     const { startAt, endAt } = parseDateRange(req);
     const locationId = typeof req.query.location_id === "string" && req.query.location_id !== "all" ? req.query.location_id : null;
+    const locationOptions = await fetchPermittedLocationOptions(authorization, businessId);
+
+    if (locationId && !locationOptions.some((location: any) => location.id === locationId)) {
+      return res.status(403).json({ error: "Location analytics access denied." });
+    }
+
     const admin = createServiceClient();
 
     const { data, error } = await (admin as any).rpc("get_corporate_advanced_analytics", {
@@ -133,6 +156,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       analytics: {
         ...(data && typeof data === "object" && !Array.isArray(data) ? data : {}),
         business_id: businessId,
+        location_options: locationOptions,
       },
     });
   } catch (err: any) {
