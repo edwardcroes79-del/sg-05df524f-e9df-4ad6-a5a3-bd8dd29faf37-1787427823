@@ -10,14 +10,14 @@ position: 135
 ---
 
 ## Notes
-Fix only the missing Corporate Admin location management UI. The user reports Corporate phases are complete but no visible “Create Location” feature exists. First inspect the existing Corporate backend/location implementation and dashboard placement. Use the existing Phase 2 location architecture if present; do not create duplicate tables, APIs, or systems. Preserve Trial, Starter, Business, Professional pricing, limits, add-ons, Quick QR behavior, billing, and dashboard behavior. Corporate Admin must be able to view/create/edit/deactivate locations, view status, and select/switch active location. Location Managers/Staff must not receive Corporate Admin location-management permissions. Server-side/RLS enforcement must remain the source of truth.
+Fix only the missing Corporate Admin location management UI. The existing backend already has `business_locations`, `business_user_locations`, `loyalty_program_locations`, nullable location attribution, RLS policies, and `/api/business/locations` for list/create/edit/deactivate. Inspection found the visible Business Dashboard location management UI was missing. Inspection also found the existing create endpoint did not write the required `business_locations.slug` field, so creating a real location from UI would fail against the live schema. The fix uses the existing Phase 2 location architecture and does not create duplicate tables, APIs, or location systems.
 
 ## Checklist
-- [ ] Inspect existing `business_locations` backend/table/API and confirm create/edit/deactivate support
-- [ ] Inspect dashboard navigation/layout to determine where Corporate location management should appear
-- [ ] Add Corporate-only Locations menu/section without exposing it to lower plans
-- [ ] Add Corporate Admin UI for list, create, edit, deactivate, status, and active-location selection using real API data
-- [ ] Preserve existing lower-plan behavior and avoid unrelated Corporate changes
+- [x] Inspect existing `business_locations` backend/table/API and confirm create/edit/deactivate support
+- [x] Inspect dashboard navigation/layout to determine where Corporate location management should appear
+- [x] Add Corporate-only Locations menu/section without exposing it to lower plans
+- [x] Add Corporate Admin UI for list, create, edit, deactivate, status, and active-location selection using real API data
+- [x] Preserve existing lower-plan behavior and avoid unrelated Corporate changes
 - [ ] Validate with project checks and report files changed, backend found, security, database changes, and test results
 
 ## Acceptance

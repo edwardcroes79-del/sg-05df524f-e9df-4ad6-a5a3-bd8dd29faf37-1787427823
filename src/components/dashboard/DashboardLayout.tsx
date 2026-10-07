@@ -20,6 +20,7 @@ import {
   Bell,
   Zap,
   BarChart3,
+  MapPin,
   type LucideIcon
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -59,6 +60,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isExpiredContract, setIsExpiredContract] = useState(false);
   const [quickStampQrEnabled, setQuickStampQrEnabled] = useState(false);
   const [advancedAnalyticsEnabled, setAdvancedAnalyticsEnabled] = useState(false);
+  const [locationsManagementEnabled, setLocationsManagementEnabled] = useState(false);
   
   // Trial states
   const [isExpiredTrial, setIsExpiredTrial] = useState(false);
@@ -203,6 +205,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       setQuickStampQrEnabled(Boolean(hasQuickStampAddon));
       setAdvancedAnalyticsEnabled(resolvedBusiness.subscription_plan === "mega_plan");
+      setLocationsManagementEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
 
       // Fetch Plan data to check for trial status
       const { data: planData } = await supabase
@@ -238,6 +241,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navItems: DashboardNavItem[] = [
     { nameKey: "dashboard.nav.overview", href: "/dashboard", icon: LayoutDashboard },
     ...(advancedAnalyticsEnabled ? [{ name: "Advanced Analytics", href: "/dashboard/analytics", icon: BarChart3 }] : []),
+    ...(locationsManagementEnabled ? [{ name: "Locations", href: "/dashboard/locations", icon: MapPin }] : []),
     {
       nameKey: "dashboard.nav.stampsRewards",
       href: "/dashboard/scan",
@@ -467,7 +471,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             }
 
             return (
-              <Link key={item.nameKey} href={item.href}>
+              <Link key={item.href} href={item.href}>
                 <span className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
                   ${isActive 

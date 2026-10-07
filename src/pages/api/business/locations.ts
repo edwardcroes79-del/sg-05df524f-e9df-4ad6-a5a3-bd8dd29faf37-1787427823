@@ -158,6 +158,41 @@ function sanitizeStatus(status: unknown) {
   return "active";
 }
 
+function slugifyLocationName(name: string) {
+  const slug = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+
+  return slug || `location-${Date.now()}`;
+}
+
+async function createUniqueLocationSlug(admin: any, businessId: string, name: string) {
+  const baseSlug = slugifyLocationName(name);
+  let candidate = baseSlug;
+  let suffix = 2;
+
+  while (suffix < 100) {
+    const { data, error } = await admin
+      .from("business_locations")
+      .select("id")
+      .eq("business_id", businessId)
+      .eq("slug", candidate)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return candidate;
+
+    candidate = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+
+  return `${baseSlug}-${Date.now()}`;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const admin = createServiceClient();
@@ -216,17 +251,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(403).json({ error: `Corporate location limit reached. This plan allows up to ${maxLocations} active locations.` });
       }
 
+      const status = sanitizeStatus(payload.status);
+      const slug = await createUniqueLocationSlug(admin, business.id, name);
+
       const { data: location, error } = await admin
         .from("business_locations")
         .insert({
           business_id: business.id,
           name,
+          slug,
           address: payload.address || null,
           phone: payload.phone || null,
           email: payload.email || null,
           manager_name: payload.manager_name || null,
-          status: sanitizeStatus(payload.status),
+          status,
           metadata: payload.metadata || {},
+          created_by: user.id,
+          updated_by: user.id,
+          deactivated_at: status === "inactive" ? new Date().toISOString() : null,
         })
         .select("*")
         .single();
@@ -249,12 +291,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       if (manageError) throw manageError;
-      if (!canManage) {
-        return res.status(403).json({ error: "You are not authorized to manage this location" });
+      if (!isOwner) {
+        return res.status(403).json({ error: "Only the Corporate Admin can edit or deactivate locations" });
       }
 
       const updates: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
+        updated_by: user.id,
       };
 
       if (typeof payload.name === "string") {
@@ -270,7 +313,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if ("email" in payload) updates.email = payload.email || null;
       if ("manager_name" in payload) updates.manager_name = payload.manager_name || null;
       if ("metadata" in payload) updates.metadata = payload.metadata || {};
-      if ("status" in payload) updates.status = sanitizeStatus(payload.status);
+      if ("status" in payload) {
+        const nextStatus = sanitizeStatus(payload.status);
+        updates.status = nextStatus;
+        updates.deactivated_at = nextStatus === "inactive" ? new Date().toISOString() : null;
+      }
 
       const { data: location, error } = await admin
         .from("business_locations")
