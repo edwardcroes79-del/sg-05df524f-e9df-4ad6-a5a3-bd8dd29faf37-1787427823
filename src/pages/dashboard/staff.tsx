@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { StaffLocationAssignments } from "@/components/dashboard/StaffLocationAssignments";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ export default function StaffPage() {
   const [plan, setPlan] = useState<any>(null);
   const [staff, setStaff] = useState<any[]>([]);
   const [isOwner, setIsOwner] = useState(false);
+  const [isCorporate, setIsCorporate] = useState(false);
   
   // Add Staff Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -51,6 +53,7 @@ export default function StaffPage() {
       if (biz) {
         setIsOwner(true);
         setBusiness(biz);
+        setIsCorporate(biz.subscription_plan === "mega_plan");
 
         // Fetch plan limits
         const { data: planData } = await supabase
@@ -364,6 +367,10 @@ export default function StaffPage() {
             ))
           )}
         </div>
+
+        {isCorporate && business?.id ? (
+          <StaffLocationAssignments businessId={business.id} staff={staff} />
+        ) : null}
       </div>
 
       {/* Add Staff Modal */}

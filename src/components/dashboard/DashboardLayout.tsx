@@ -37,6 +37,12 @@ type DashboardNavItem = {
   children?: DashboardNavItem[];
 };
 
+type DashboardLocation = {
+  id: string;
+  name: string;
+  status: string;
+};
+
 function isContractExpiredForDashboard(businessRecord: any) {
   if (!businessRecord?.contract_end_date) return false;
 
@@ -61,6 +67,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [quickStampQrEnabled, setQuickStampQrEnabled] = useState(false);
   const [advancedAnalyticsEnabled, setAdvancedAnalyticsEnabled] = useState(false);
   const [locationsManagementEnabled, setLocationsManagementEnabled] = useState(false);
+  const [dashboardLocations, setDashboardLocations] = useState<DashboardLocation[]>([]);
+  const [activeLocationId, setActiveLocationId] = useState("");
   
   // Trial states
   const [isExpiredTrial, setIsExpiredTrial] = useState(false);
@@ -207,6 +215,34 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setAdvancedAnalyticsEnabled(resolvedBusiness.subscription_plan === "mega_plan");
       setLocationsManagementEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
 
+      if (resolvedBusiness.subscription_plan === "mega_plan") {
+        const { data: locationRows, error: locationError } = await (supabase as any)
+          .from("business_locations")
+          .select("id, name, status")
+          .eq("business_id", resolvedBusiness.id)
+          .neq("status", "inactive")
+          .order("name", { ascending: true });
+
+        if (locationError) {
+          console.error("Dashboard location switcher error:", locationError);
+        }
+
+        const availableLocations = (locationRows || []) as DashboardLocation[];
+        setDashboardLocations(availableLocations);
+
+        if (typeof window !== "undefined" && availableLocations.length > 0) {
+          const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
+          const nextLocationId = availableLocations.some((location) => location.id === storedLocationId)
+            ? storedLocationId
+            : availableLocations[0].id;
+          window.localStorage.setItem(`active_location_${resolvedBusiness.id}`, nextLocationId);
+          setActiveLocationId(nextLocationId);
+        }
+      } else {
+        setDashboardLocations([]);
+        setActiveLocationId("");
+      }
+
       // Fetch Plan data to check for trial status
       const { data: planData } = await supabase
         .from("subscription_plans")
@@ -238,10 +274,33 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     router.push("/");
   };
 
+  const handleActiveLocationChange = (locationId: string) => {
+    if (!business?.id) return;
+    window.localStorage.setItem(`active_location_${business.id}`, locationId);
+    setActiveLocationId(locationId);
+  };
+
+  const activeLocationSwitcher = dashboardLocations.length > 0 ? (
+    <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+      <MapPin className="h-4 w-4 text-primary" />
+      <span className="hidden xl:inline">{t("dashboard.locationSwitcher.label" as TranslationKey)}</span>
+      <select
+        className="h-9 max-w-[210px] rounded-md border border-input bg-background px-2 text-sm font-medium text-foreground"
+        value={activeLocationId}
+        onChange={(event) => handleActiveLocationChange(event.target.value)}
+        aria-label={t("dashboard.locationSwitcher.label" as TranslationKey)}
+      >
+        {dashboardLocations.map((location) => (
+          <option key={location.id} value={location.id}>{location.name}</option>
+        ))}
+      </select>
+    </label>
+  ) : null;
+
   const navItems: DashboardNavItem[] = [
     { nameKey: "dashboard.nav.overview", href: "/dashboard", icon: LayoutDashboard },
     ...(advancedAnalyticsEnabled ? [{ name: "Advanced Analytics", href: "/dashboard/analytics", icon: BarChart3 }] : []),
-    ...(locationsManagementEnabled ? [{ name: "Locations", href: "/dashboard/locations", icon: MapPin }] : []),
+    ...(locationsManagementEnabled ? [{ nameKey: "dashboard.nav.locations" as TranslationKey, href: "/dashboard/locations", icon: MapPin }] : []),
     {
       nameKey: "dashboard.nav.stampsRewards",
       href: "/dashboard/scan",
@@ -501,6 +560,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-4 shrink-0">
             <LanguageSelector compact />
+            {activeLocationSwitcher}
             <button onClick={handleOpenWhatsNew} className="relative">
               <Bell className={`h-5 w-5 text-foreground ${!hasReadWhatsNew ? 'animate-bell-shake' : ''}`} />
               {!hasReadWhatsNew && (
@@ -531,6 +591,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               )}
             </Button>
             <LanguageSelector compact />
+            {activeLocationSwitcher}
             <Button
               variant="ghost"
               className="flex items-center gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
