@@ -17,7 +17,6 @@ type QuickStampToken = {
   expiresAt: string;
   businessId: string;
   loyaltyProgramId: string;
-  locationId?: string | null;
   ttlSeconds: number;
 };
 
@@ -45,8 +44,6 @@ export default function QuickStampQrPage() {
   const { t } = useI18n();
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState("Royalty Stamp");
-  const [isCorporateBusiness, setIsCorporateBusiness] = useState(false);
-  const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
   const [programs, setPrograms] = useState<LoyaltyProgramOption[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [tokenData, setTokenData] = useState<QuickStampToken | null>(null);
@@ -68,7 +65,7 @@ export default function QuickStampQrPage() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=520x520&margin=14&data=${encodeURIComponent(qrUrl)}`;
   }, [qrUrl]);
 
-  const refreshToken = useCallback(async (resolvedBusinessId: string, programId: string, locationId?: string | null) => {
+  const refreshToken = useCallback(async (resolvedBusinessId: string, programId: string) => {
     if (!programId) {
       setTokenData(null);
       setSecondsRemaining(0);
@@ -81,16 +78,10 @@ export default function QuickStampQrPage() {
     setErrorMessage("");
 
     try {
-      const rpcArgs: Record<string, string> = {
+      const { data, error } = await (supabase as any).rpc("generate_quick_stamp_qr_token", {
         p_business_id: resolvedBusinessId,
         p_loyalty_program_id: programId,
-      };
-
-      if (locationId) {
-        rpcArgs.p_location_id = locationId;
-      }
-
-      const { data, error } = await (supabase as any).rpc("generate_quick_stamp_qr_token", rpcArgs);
+      });
 
       if (error) throw error;
       if (!data?.success) {
@@ -102,7 +93,6 @@ export default function QuickStampQrPage() {
         expiresAt: data.expires_at,
         businessId: data.business_id,
         loyaltyProgramId: data.loyalty_program_id,
-        locationId: data.location_id ?? locationId ?? null,
         ttlSeconds: Number(data.ttl_seconds || 60),
       });
       setSecondsRemaining(getSecondsRemaining(data.expires_at));
@@ -154,38 +144,9 @@ export default function QuickStampQrPage() {
 
       const activePrograms = (programRows || []) as LoyaltyProgramOption[];
       const firstProgram = activePrograms[0];
-      const isCorporate = resolvedBusiness.subscription_plan === "mega_plan";
-      let resolvedLocationId: string | null = null;
-
-      if (isCorporate && typeof window !== "undefined") {
-        const { data: locationRows, error: locationError } = await (supabase as any)
-          .from("business_locations")
-          .select("id, status")
-          .eq("business_id", resolvedBusiness.id)
-          .neq("status", "inactive")
-          .order("name", { ascending: true });
-
-        if (locationError) {
-          setErrorMessage(locationError.message);
-          setLoading(false);
-          return;
-        }
-
-        const locations = (locationRows || []) as Array<{ id: string; status: string }>;
-        const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
-        resolvedLocationId = locations.some((location) => location.id === storedLocationId)
-          ? storedLocationId
-          : locations[0]?.id || null;
-
-        if (resolvedLocationId) {
-          window.localStorage.setItem(`active_location_${resolvedBusiness.id}`, resolvedLocationId);
-        }
-      }
 
       setBusinessId(resolvedBusiness.id);
       setBusinessName(resolvedBusiness.business_name || "Royalty Stamp");
-      setIsCorporateBusiness(isCorporate);
-      setActiveLocationId(resolvedLocationId);
       setPrograms(activePrograms);
 
       if (!firstProgram) {
@@ -195,7 +156,7 @@ export default function QuickStampQrPage() {
       }
 
       setSelectedProgramId(firstProgram.id);
-      await refreshToken(resolvedBusiness.id, firstProgram.id, resolvedLocationId);
+      await refreshToken(resolvedBusiness.id, firstProgram.id);
     };
 
     void loadBusiness();
@@ -213,45 +174,24 @@ export default function QuickStampQrPage() {
       setSecondsRemaining(remaining);
 
       if (remaining <= 0) {
-        void refreshToken(businessId, selectedProgramId, isCorporateBusiness ? activeLocationId : null);
+        void refreshToken(businessId, selectedProgramId);
       }
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, [activeLocationId, businessId, isCorporateBusiness, refreshToken, selectedProgramId, tokenData?.expiresAt]);
-
-  useEffect(() => {
-    if (!businessId || !isCorporateBusiness) return;
-
-    const handleActiveLocationChange = (event: Event) => {
-      const customEvent = event as CustomEvent<{ businessId?: string; locationId?: string }>;
-      const nextLocationId = customEvent.detail?.locationId || "";
-
-      if (customEvent.detail?.businessId !== businessId || !nextLocationId) return;
-
-      setActiveLocationId(nextLocationId);
-      setTokenData(null);
-
-      if (selectedProgramId) {
-        void refreshToken(businessId, selectedProgramId, nextLocationId);
-      }
-    };
-
-    window.addEventListener("royalty-active-location-change", handleActiveLocationChange);
-    return () => window.removeEventListener("royalty-active-location-change", handleActiveLocationChange);
-  }, [businessId, isCorporateBusiness, refreshToken, selectedProgramId]);
+  }, [businessId, refreshToken, selectedProgramId, tokenData?.expiresAt]);
 
   const handleProgramChange = async (programId: string) => {
     setSelectedProgramId(programId);
     setTokenData(null);
     if (businessId) {
-      await refreshToken(businessId, programId, isCorporateBusiness ? activeLocationId : null);
+      await refreshToken(businessId, programId);
     }
   };
 
   const handleManualRefresh = async () => {
     if (!businessId || !selectedProgramId) return;
-    await refreshToken(businessId, selectedProgramId, isCorporateBusiness ? activeLocationId : null);
+    await refreshToken(businessId, selectedProgramId);
     toast({
       title: t("dashboard.quickStamp.refreshedTitle"),
       description: t("dashboard.quickStamp.refreshedDescription"),

@@ -9,36 +9,13 @@ STABLE
 SECURITY DEFINER
 SET search_path TO 'public'
 AS $function$
-DECLARE
-  v_program_active boolean := false;
-  v_subscription_plan text;
 BEGIN
-  SELECT EXISTS (
+  RETURN EXISTS (
     SELECT 1
     FROM public.loyalty_programs lp
     WHERE lp.id = p_loyalty_program_id
       AND lp.business_id = p_business_id
       AND lp.active = true
-  )
-  INTO v_program_active;
-
-  IF NOT v_program_active THEN
-    RETURN false;
-  END IF;
-
-  SELECT b.subscription_plan
-  INTO v_subscription_plan
-  FROM public.businesses b
-  WHERE b.id = p_business_id;
-
-  IF p_location_id IS NULL OR v_subscription_plan IS DISTINCT FROM 'mega_plan' THEN
-    RETURN true;
-  END IF;
-
-  RETURN public.can_use_program_at_location(
-    p_business_id,
-    p_loyalty_program_id,
-    p_location_id
   );
 END;
 $function$;
