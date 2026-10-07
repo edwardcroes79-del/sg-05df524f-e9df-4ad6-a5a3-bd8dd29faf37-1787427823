@@ -25,15 +25,16 @@ Production verification limitations:
 Database source-vs-production verification and safe SQL fixes can be performed in this environment. Real deployed-app login, real customer phone scan, and real stamp issuance require access to live Corporate Admin/customer accounts and the deployed application.
 
 ## Checklist
-- [ ] Trace every Quick QR frontend/API/RPC path used by admin generation and customer scan
-- [ ] List every Quick QR-related RPC/function referenced in source code and migrations
-- [ ] Compare source migrations/functions against actual production Supabase pg_proc signatures and return types
-- [ ] Verify required functions exist with exact names, parameters, return types, permissions, RLS compatibility, and PostgREST accessibility
-- [ ] Identify missing or incompatible production migrations/functions
-- [ ] Apply only required safe database fixes, preserving existing entitlement, location, and RLS security behavior
-- [ ] Refresh/reload schema cache if database functions are added or changed
+- [x] Trace every Quick QR frontend/API/RPC path used by admin generation and customer scan
+- [x] List every Quick QR-related RPC/function referenced in source code and migrations
+- [x] Compare source migrations/functions against actual production Supabase pg_proc signatures and return types
+- [x] Verify required functions exist with exact names, parameters, return types, permissions, RLS compatibility, and PostgREST accessibility
+- [x] Identify missing or incompatible production migrations/functions
+- [x] Apply only required safe database fixes, preserving existing entitlement, location, and RLS security behavior
+- [x] Refresh/reload schema cache if database functions are added or changed
+- [ ] Wire active Corporate location into Quick QR token generation without changing lower-plan behavior
 - [ ] Run app validation and targeted database verification
-- [ ] Report RPCs/functions found, production status, migrations applied, schema cache status, security status, production/scan test status, and remaining errors
+- [ ] Report RPCs/functions found, production status, migrations applied, schema cache status, security status, development scan test status, and remaining errors
 
 ## Acceptance
 Quick QR RPCs required by admin QR generation and customer scan exist in production with compatible signatures.
