@@ -32,7 +32,7 @@ Database source-vs-production verification and safe SQL fixes can be performed i
 - [x] Identify missing or incompatible production migrations/functions
 - [x] Apply only required safe database fixes, preserving existing entitlement, location, and RLS security behavior
 - [x] Refresh/reload schema cache if database functions are added or changed
-- [ ] Wire active Corporate location into Quick QR token generation without changing lower-plan behavior
+- [x] Wire active Corporate location into Quick QR token generation without changing lower-plan behavior
 - [ ] Run app validation and targeted database verification
 - [ ] Report RPCs/functions found, production status, migrations applied, schema cache status, security status, development scan test status, and remaining errors
 
