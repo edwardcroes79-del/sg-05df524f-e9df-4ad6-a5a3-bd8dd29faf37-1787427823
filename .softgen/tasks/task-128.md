@@ -13,7 +13,7 @@ position: 128
 Phase 1 is audit and architecture only for a new Corporate plan. Do not implement code, create tables, modify production data, create mock data, or change existing plans/add-ons/pricing/permissions/billing behavior. Inspect existing production architecture, database, RLS, roles, businesses, staff, customers, loyalty programs, stamps, rewards, redemptions, QR system, Quick QR Stamp, plan entitlements, analytics, and performance constraints. Corporate must be isolated through existing plan/entitlement architecture and must not affect Trial, Starter, Business, Professional, Enterprise, lower-plan Quick QR add-on behavior, existing add-ons, or existing limits.
 
 ## Checklist
-- [ ] Inspect existing database schema, plan/entitlement tables, RLS-relevant relationships, and indexes
+- [x] Inspect existing database schema, plan/entitlement tables, RLS-relevant relationships, and indexes
 - [ ] Inspect existing code paths for billing/plans/add-ons, Quick QR, QR codes, staff roles, customers, stamp issuance, rewards, analytics, and Super Admin plan management
 - [ ] Identify existing Quick QR entitlement behavior and how Corporate can include it without add-on records or duplicate entitlements
 - [ ] Design Corporate location, staff-location, program-location, transaction-location, QR-location, analytics, audit, and security architecture
