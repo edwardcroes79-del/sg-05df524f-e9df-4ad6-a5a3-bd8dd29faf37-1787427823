@@ -1,6 +1,6 @@
 ---
 title: Corporate location-aware loyalty backend
-status: todo
+status: done
 priority: high
 type: feature
 tags: [corporate-plan, qr, quick-qr, stamps, rewards]
@@ -18,8 +18,8 @@ Add Corporate location attribution to existing loyalty operations without redesi
 - [x] Update Quick QR token/stamp backend flow to support optional location and Corporate plan entitlement
 - [x] Record earned/redeemed location where applicable while preserving shared customer balances
 - [x] Ensure Corporate downgrade recalculates Quick QR through existing add-on/plan entitlement rules
-- [ ] Test Corporate Quick QR without add-on and lower-plan Quick QR add-on behavior unchanged
-- [ ] Run validation and regression checks for Trial, Starter, Business, Professional, and Corporate
+- [x] Test Corporate Quick QR without add-on and lower-plan Quick QR add-on behavior unchanged
+- [x] Run validation and regression checks for Trial, Starter, Business, Professional, and Corporate
 
 ## Acceptance
 Location-aware QR, manual stamps, Quick QR stamps, and reward redemption are supported for Corporate.

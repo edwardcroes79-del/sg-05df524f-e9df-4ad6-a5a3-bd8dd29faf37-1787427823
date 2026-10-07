@@ -1,6 +1,6 @@
 ---
 title: Corporate multi-location database
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [corporate-plan, database, rls, locations]
@@ -20,7 +20,7 @@ Implement Phase 2 Corporate-only backend foundation from the approved Phase 1 au
 - [x] Add SECURITY DEFINER helpers for Corporate admin, location access, location management, stamp access, and program-location availability
 - [x] Ensure RLS preserves business isolation, customer isolation, Super Admin access, and lower-plan behavior
 - [x] Generate updated Supabase types after schema changes
-- [ ] Validate no existing lower-plan limits/prices/add-ons are modified
+- [x] Validate no existing lower-plan limits/prices/add-ons are modified
 
 ## Acceptance
 Corporate has secure location-capable backend schema and entitlements.

@@ -1,6 +1,6 @@
 ---
 title: Corporate location backend APIs
-status: todo
+status: done
 priority: high
 type: feature
 tags: [corporate-plan, locations, api, staff]
@@ -18,7 +18,7 @@ Build backend API/service surfaces for Corporate location management only after 
 - [x] Preserve existing staff creation behavior for all current plans
 - [x] Ensure Location Manager and Staff access is enforced server-side, not only in UI
 - [x] Add safe service helpers for listing accessible locations without loading unrelated tenant data
-- [ ] Validate Super Admin/business isolation and lower-plan regression behavior
+- [x] Validate Super Admin/business isolation and lower-plan regression behavior
 
 ## Acceptance
 Corporate Admin can manage locations and staff-location assignments through secure backend endpoints.
