@@ -306,7 +306,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const navItems: DashboardNavItem[] = [
     { nameKey: "dashboard.nav.overview", href: "/dashboard", icon: LayoutDashboard },
-    ...(advancedAnalyticsEnabled ? [{ name: "Advanced Analytics", href: "/dashboard/analytics", icon: BarChart3 }] : []),
+    ...(advancedAnalyticsEnabled ? [{ nameKey: "dashboard.nav.advancedAnalytics" as TranslationKey, href: "/dashboard/analytics", icon: BarChart3 }] : []),
     ...(locationsManagementEnabled ? [{ nameKey: "dashboard.nav.locations" as TranslationKey, href: "/dashboard/locations", icon: MapPin }] : []),
     {
       nameKey: "dashboard.nav.stampsRewards",
