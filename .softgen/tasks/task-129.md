@@ -13,7 +13,7 @@ position: 129
 Implement Phase 2 Corporate-only backend foundation from the approved Phase 1 audit. Use existing Corporate plan `mega_plan`; do not change Trial, Starter, Business, Professional, lower-plan pricing, limits, add-ons, Quick QR behavior, billing behavior, customer behavior, loyalty behavior, permissions, or existing non-Corporate flows. Add location schema, Corporate entitlements, RLS/security helpers, audit hooks, and location attribution columns while preserving current data and existing QR/stamp/reward behavior.
 
 ## Checklist
-- [ ] Refresh live Supabase schema before database changes
+- [x] Refresh live Supabase schema before database changes
 - [ ] Add Corporate-only entitlements for `mega_plan`: `quick_stamp_qr`, `advanced_analytics`, `max_locations`
 - [ ] Add `business_locations`, `business_user_locations`, and `loyalty_program_locations` with RLS, constraints, indexes, and audit fields
 - [ ] Add nullable location attribution columns to stamp, reward, and QR tables without breaking historical rows
