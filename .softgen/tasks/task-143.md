@@ -25,9 +25,9 @@ Do not work on Corporate Quick QR, location-specific QR, Advanced Analytics, Loc
 - [x] Identify Corporate/location dependency that regressed existing plans
 - [x] Restore admin Quick QR token generation to original non-location RPC arguments
 - [x] Restore compatibility RPC to original active-program ownership validation for existing Quick QR
-- [ ] Apply database restore to connected development Supabase and reload PostgREST schema
-- [ ] Verify Quick QR RPCs exist with compatible signatures and execute permissions
-- [ ] Run app validation
+- [x] Apply database restore to connected development Supabase and reload PostgREST schema
+- [x] Verify Quick QR RPCs exist with compatible signatures and execute permissions
+- [x] Run app validation
 - [ ] Verify existing non-Corporate Quick QR scan flow with a real enabled business/customer session
 - [ ] Report root cause, restored behavior, database/RPC changes, files changed, security/RLS impact, and test result
 
