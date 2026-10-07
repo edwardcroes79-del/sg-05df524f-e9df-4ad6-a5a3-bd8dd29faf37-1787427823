@@ -135,6 +135,22 @@ export default function CorporateAnalyticsPage() {
     void fetchAnalytics();
   }, [range, locationId, customStart, customEnd]);
 
+  const handleLocationScopeChange = (nextLocationId: string) => {
+    setLocationId(nextLocationId);
+
+    if (!analytics?.business_id || typeof window === "undefined") return;
+
+    if (nextLocationId === "all") {
+      window.localStorage.removeItem(`active_location_${analytics.business_id}`);
+      return;
+    }
+
+    window.localStorage.setItem(`active_location_${analytics.business_id}`, nextLocationId);
+    window.dispatchEvent(new CustomEvent("royalty-active-location-change", {
+      detail: { businessId: analytics.business_id, locationId: nextLocationId },
+    }));
+  };
+
   const overviewCards = [
     { label: "Total customers", value: analytics?.overview?.total_customers, icon: Users },
     { label: "Active customers", value: analytics?.overview?.active_customers, icon: Activity },
@@ -189,7 +205,7 @@ export default function CorporateAnalyticsPage() {
                 />
               </>
             )}
-            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={locationId} onChange={(event) => setLocationId(event.target.value)}>
+            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={locationId} onChange={(event) => handleLocationScopeChange(event.target.value)}>
               <option value="all">Corporate-wide</option>
               {locations.map((location) => (
                 <option key={location.id} value={location.id}>{location.name}</option>
