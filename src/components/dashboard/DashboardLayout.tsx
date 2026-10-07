@@ -19,6 +19,7 @@ import {
   CreditCard,
   Bell,
   Zap,
+  BarChart3,
   type LucideIcon
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -28,7 +29,8 @@ import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 
 type DashboardNavItem = {
-  nameKey: TranslationKey;
+  nameKey?: TranslationKey;
+  name?: string;
   href: string;
   icon: LucideIcon;
   children?: DashboardNavItem[];
@@ -56,6 +58,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [hasNoBusiness, setHasNoBusiness] = useState(false);
   const [isExpiredContract, setIsExpiredContract] = useState(false);
   const [quickStampQrEnabled, setQuickStampQrEnabled] = useState(false);
+  const [advancedAnalyticsEnabled, setAdvancedAnalyticsEnabled] = useState(false);
   
   // Trial states
   const [isExpiredTrial, setIsExpiredTrial] = useState(false);
@@ -199,6 +202,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       }
 
       setQuickStampQrEnabled(Boolean(hasQuickStampAddon));
+      setAdvancedAnalyticsEnabled(resolvedBusiness.subscription_plan === "mega_plan");
 
       // Fetch Plan data to check for trial status
       const { data: planData } = await supabase
@@ -233,6 +237,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const navItems: DashboardNavItem[] = [
     { nameKey: "dashboard.nav.overview", href: "/dashboard", icon: LayoutDashboard },
+    ...(advancedAnalyticsEnabled ? [{ name: "Advanced Analytics", href: "/dashboard/analytics", icon: BarChart3 }] : []),
     {
       nameKey: "dashboard.nav.stampsRewards",
       href: "/dashboard/scan",
@@ -433,7 +438,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"}
                     `}>
                       <Icon className="h-5 w-5" />
-                      {t(item.nameKey)}
+                      {item.nameKey ? t(item.nameKey) : item.name}
                     </span>
                   </Link>
 
@@ -451,7 +456,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"}
                           `}>
                             <ChildIcon className="h-4 w-4" />
-                            {t(child.nameKey)}
+                            {child.nameKey ? t(child.nameKey) : child.name}
                           </span>
                         </Link>
                       );
@@ -470,7 +475,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"}
                 `}>
                   <Icon className="h-5 w-5" />
-                  {t(item.nameKey)}
+                  {item.nameKey ? t(item.nameKey) : item.name}
                 </span>
               </Link>
             );

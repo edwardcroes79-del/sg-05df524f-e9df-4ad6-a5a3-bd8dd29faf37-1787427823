@@ -25,6 +25,7 @@ const ranges = [
   { value: "30d", label: "30 days" },
   { value: "90d", label: "90 days" },
   { value: "12m", label: "12 months" },
+  { value: "custom", label: "Custom" },
 ];
 
 function formatNumber(value: number | string | null | undefined) {
@@ -43,6 +44,8 @@ export default function CorporateAnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const [range, setRange] = useState("30d");
   const [locationId, setLocationId] = useState("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -61,6 +64,17 @@ export default function CorporateAnalyticsPage() {
       }
 
       const params = new URLSearchParams({ range });
+      if (range === "custom") {
+        if (!customStart || !customEnd) {
+          setLoading(false);
+          setErrorMessage("Choose a custom start and end date to load analytics.");
+          return;
+        }
+
+        params.set("start", customStart);
+        params.set("end", customEnd);
+      }
+
       if (locationId !== "all") params.set("location_id", locationId);
 
       const response = await fetch(`/api/business/analytics?${params.toString()}`, {
@@ -82,8 +96,13 @@ export default function CorporateAnalyticsPage() {
   };
 
   useEffect(() => {
+    if (range === "custom" && (!customStart || !customEnd)) {
+      setLoading(false);
+      return;
+    }
+
     void fetchAnalytics();
-  }, [range, locationId]);
+  }, [range, locationId, customStart, customEnd]);
 
   const overviewCards = [
     { label: "Total customers", value: analytics?.overview?.total_customers, icon: Users },
@@ -121,6 +140,24 @@ export default function CorporateAnalyticsPage() {
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
             </select>
+            {range === "custom" && (
+              <>
+                <input
+                  type="date"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={customStart}
+                  onChange={(event) => setCustomStart(event.target.value)}
+                  aria-label="Custom analytics start date"
+                />
+                <input
+                  type="date"
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  value={customEnd}
+                  onChange={(event) => setCustomEnd(event.target.value)}
+                  aria-label="Custom analytics end date"
+                />
+              </>
+            )}
             <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={locationId} onChange={(event) => setLocationId(event.target.value)}>
               <option value="all">Corporate-wide</option>
               {locations.map((location) => (
@@ -283,6 +320,43 @@ export default function CorporateAnalyticsPage() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Cross-location analytics</CardTitle>
+                <CardDescription>Real customer movement and activity distribution across permitted locations.</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4 lg:grid-cols-[260px_1fr]">
+                <div className="rounded-xl border bg-muted/20 p-5">
+                  <p className="text-sm font-medium text-muted-foreground">Multi-location customers</p>
+                  <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">
+                    {formatNumber(analytics.cross_location?.customers_visiting_multiple_locations)}
+                  </p>
+                </div>
+                <div className="space-y-3">
+                  {Array.isArray(analytics.cross_location?.distribution) && analytics.cross_location.distribution.length ? (
+                    analytics.cross_location.distribution.map((location: Record<string, any>) => (
+                      <div key={location.id} className="rounded-xl border p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold text-foreground">{location.name}</span>
+                          <span className="text-sm tabular-nums text-muted-foreground">{formatNumber(location.customers)} customers</span>
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full rounded-full bg-primary"
+                            style={{
+                              width: `${Math.min(100, (Number(location.customers || 0) / Math.max(1, Number(analytics.overview?.active_customers || 0))) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No cross-location data available yet.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
