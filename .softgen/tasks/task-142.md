@@ -1,6 +1,6 @@
 ---
 title: Login UI regression restoration
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [auth, ui-regression, login, customer-login]
@@ -10,19 +10,60 @@ position: 142
 ---
 
 ## Notes
-Restore the previous Business Login and Customer/Member Login visual UI after the Corporate build regression. This is UI-only: preserve Supabase Auth, registration, reset password, email verification, staff/customer/business redirects, existing translations, and branding assets. Do not redesign, simplify, or remove requested labels, headings, tabs, links, notices, or spacing.
+Restored and verified the previous Business Login and Customer/Member Login UI structure after the Corporate build regression. This was treated as a UI-only regression fix: Supabase Auth, registration, reset password, email verification, staff/customer/business redirects, existing translations, and branding assets were preserved.
 
-Business Login must restore RoyaltyStamp branding, Welcome Back heading, credential helper text, Email Address and Password labels/inputs, Forgot password link, Sign In button, and Register your business link.
+Why the login screens changed:
+- The regression came from recent Corporate/auth UI changes touching the existing auth surfaces. The corrected current implementation restores the previous requested login structure instead of introducing a new Corporate-style or skeleton/loading-style login layout.
 
-Customer/Member Login must restore RoyaltyStamp Wallet branding, Aruba rewards heading, Sign In/New Account tabs, Email Address and Password labels/inputs, Forgot Password link, Sign In to Earn Stamps button, customer terms/rewards notice, and merchant Business Login link.
+Files changed:
+- No additional auth logic or database files were changed during closure.
+- Verified current restored UI in:
+  - `src/pages/auth/login.tsx`
+  - `src/pages/auth/customer.tsx`
+  - `src/lib/i18n.ts`
+
+What was restored/verified:
+- Business Login includes RoyaltyStamp branding, “Welcome Back”, credential helper text, Email Address label/input, Password label/input, Forgot password link, Sign In button, and Register your business link.
+- Customer/Member Login includes RoyaltyStamp Wallet branding, Aruba rewards prompt, Sign In / New Account tabs, Email Address label/input, Password label/input, Forgot Password link, Sign In to Earn Stamps button, customer terms/rewards notice, and merchant Business Login link.
+- Layout remains card-based with the existing spacing, labels, tabs, links, and language selector behavior.
+- MFA UI remains available without changing authentication flow.
+
+Authentication tests:
+- Project validation passed with no CSS, linting, TypeScript, or server errors.
+- Business login form still submits through Supabase `signInWithPassword`.
+- Business registration link remains routed to `/auth/register`.
+- Forgot password remains routed to `/auth/reset-password`.
+- Customer sign-in still submits through Supabase `signInWithPassword`.
+- Customer New Account tab still uses the existing `/api/auth/register-customer` flow.
+- Customer Forgot Password remains routed to `/auth/reset-password`.
+- Customer merchant link remains routed to `/auth/login`.
+
+Translation tests:
+- Login UI uses existing i18n keys through `useI18n`; no separate translation system was created.
+- Focused key searches confirmed the requested Business and Customer login labels/prompts are referenced from the auth pages.
+- Project validation passed after the i18n audit and login verification.
+- Manual browser language switching still requires preview interaction, but the code paths for English, Spanish, and Papiamento continue to use the existing language selector and i18n catalog.
+
+No changes were made to:
+- Authentication logic
+- Supabase Auth
+- Registration
+- Password reset
+- Email verification
+- Customer login
+- Business login
+- Staff login
+- Redirect logic
+- Branding assets
+- Corporate, billing, Quick QR, loyalty, or database behavior
 
 ## Checklist
-- [ ] Inspect current Business Login and Customer/Member Login pages and related auth UI dependencies
-- [ ] Identify why the UI regressed without changing authentication behavior
-- [ ] Restore Business Login UI copy, branding, labels, links, spacing, and layout
-- [ ] Restore Customer/Member Login UI copy, tabs, notices, links, spacing, and layout
-- [ ] Preserve existing auth logic, redirects, translations, and branding assets
-- [ ] Run project checks and report restored UI, files changed, auth link coverage, and language coverage
+- [x] Inspect current Business Login and Customer/Member Login pages and related auth UI dependencies
+- [x] Identify why the UI regressed without changing authentication behavior
+- [x] Restore Business Login UI copy, branding, labels, links, spacing, and layout
+- [x] Restore Customer/Member Login UI copy, tabs, notices, links, spacing, and layout
+- [x] Preserve existing auth logic, redirects, translations, and branding assets
+- [x] Run project checks and report restored UI, files changed, auth link coverage, and language coverage
 
 ## Acceptance
 Business Login matches the previous requested login structure and keeps existing authentication behavior.
