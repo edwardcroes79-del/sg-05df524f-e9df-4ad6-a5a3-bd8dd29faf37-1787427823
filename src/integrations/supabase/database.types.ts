@@ -1743,6 +1743,16 @@ export type Database = {
         Args: { p_business_id: string; p_fallback?: number; p_key: string }
         Returns: number
       }
+      get_corporate_advanced_analytics: {
+        Args: {
+          p_actor_user_id: string
+          p_business_id: string
+          p_end_at: string
+          p_location_id?: string
+          p_start_at: string
+        }
+        Returns: Json
+      }
       get_plan_entitlement_bool: {
         Args: { p_fallback?: boolean; p_key: string; p_plan_id: string }
         Returns: boolean
