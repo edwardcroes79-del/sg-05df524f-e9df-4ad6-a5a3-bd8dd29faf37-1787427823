@@ -1,6 +1,6 @@
 ---
 title: Corporate staff location assignment UI
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [corporate-plan, staff, locations, ui, i18n]
@@ -10,7 +10,25 @@ position: 137
 ---
 
 ## Notes
-Build the actual Corporate Admin Staff → Location Assignment functionality using the existing Phase 1 backend/RLS architecture. Do not create duplicate staff accounts, duplicate location tables, duplicate assignment APIs, or a second location system. Corporate Admin must assign existing staff to one or multiple locations, remove assignments, set default/active locations, and assign location-manager role to authorized locations. Staff and Location Managers must remain restricted server-side to assigned locations. Add a location switcher if the existing Corporate architecture needs active-location selection. All new UI text must use the existing i18n system in English, Spanish, and Papiamento. Do not change Trial, Starter, Business, Professional, pricing, limits, billing, Quick QR, Corporate Analytics, or existing Locations functionality.
+Built the actual Corporate Admin Staff → Location Assignment functionality using the existing Phase 1 backend/RLS architecture. No duplicate staff accounts, duplicate location tables, duplicate assignment APIs, or second location system were created. Corporate Admin can assign existing staff to one or multiple Corporate locations, remove assignments, set default/active locations, and assign per-location `staff` or `location_manager` roles. Staff and Location Managers remain restricted server-side through the Phase 1 assigned-location RLS. Added an active-location switcher to the Business Dashboard header for Corporate workspaces. All new UI text uses the existing i18n system in English, Spanish, and Papiamento. Final implementation report: `.softgen/corporate-staff-location-assignment-implementation.md`.
+
+Files changed:
+- `src/components/dashboard/StaffLocationAssignments.tsx`
+- `src/pages/dashboard/staff.tsx`
+- `src/components/dashboard/DashboardLayout.tsx`
+- `src/lib/i18n.ts`
+
+Database changes:
+- None in this implementation phase.
+
+RLS/security changes:
+- None in this implementation phase; uses Phase 1 RLS/security changes already applied to `business_locations` and `business_user_locations`.
+
+Test results:
+- Project validation passed with no CSS, linting, TypeScript, or server errors.
+- Database evidence query was run for Corporate entitlements, lower-plan location entitlement isolation, assignment counts, default assignments, and Location Manager assignments.
+- UI actions use authenticated real API calls only; no mock assignments or fake success states were introduced.
+- Interactive browser testing requires live Corporate Admin and staff credentials.
 
 ## Checklist
 - [x] Inspect existing Staff Management, Locations page, staff-location API response shape, DashboardLayout active-location behavior, and i18n structure
@@ -19,7 +37,7 @@ Build the actual Corporate Admin Staff → Location Assignment functionality usi
 - [x] Add authorized active-location switcher if needed, with Corporate Admin seeing all locations and staff seeing assigned locations only
 - [x] Add English, Spanish, and Papiamento translations for all new user-facing UI
 - [x] Preserve lower-plan behavior and avoid unrelated Corporate changes
-- [ ] Validate with project checks and write final implementation report
+- [x] Validate with project checks and write final implementation report
 
 ## Acceptance
 Corporate Admin can assign and remove existing staff across Corporate locations without duplicate staff accounts.
