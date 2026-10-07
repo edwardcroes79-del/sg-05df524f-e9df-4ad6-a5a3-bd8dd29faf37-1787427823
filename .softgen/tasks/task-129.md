@@ -14,12 +14,12 @@ Implement Phase 2 Corporate-only backend foundation from the approved Phase 1 au
 
 ## Checklist
 - [x] Refresh live Supabase schema before database changes
-- [x] Add Corporate-only entitlements for `mega_plan`: `quick_stamp_qr`, `advanced_analytics`, `max_locations`
-- [x] Add `business_locations`, `business_user_locations`, and `loyalty_program_locations` with RLS, constraints, indexes, and audit fields
-- [x] Add nullable location attribution columns to stamp, reward, and QR tables without breaking historical rows
-- [x] Add SECURITY DEFINER helpers for Corporate admin, location access, location management, stamp access, and program-location availability
-- [x] Ensure RLS preserves business isolation, customer isolation, Super Admin access, and lower-plan behavior
-- [x] Generate updated Supabase types after schema changes
+- [ ] Add Corporate-only entitlements for `mega_plan`: `quick_stamp_qr`, `advanced_analytics`, `max_locations`
+- [ ] Add `business_locations`, `business_user_locations`, and `loyalty_program_locations` with RLS, constraints, indexes, and audit fields
+- [ ] Add nullable location attribution columns to stamp, reward, and QR tables without breaking historical rows
+- [ ] Add SECURITY DEFINER helpers for Corporate admin, location access, location management, stamp access, and program-location availability
+- [ ] Ensure RLS preserves business isolation, customer isolation, Super Admin access, and lower-plan behavior
+- [ ] Generate updated Supabase types after schema changes
 - [ ] Validate no existing lower-plan limits/prices/add-ons are modified
 
 ## Acceptance

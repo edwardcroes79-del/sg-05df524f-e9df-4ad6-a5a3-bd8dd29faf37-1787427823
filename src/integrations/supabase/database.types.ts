@@ -201,6 +201,135 @@ export type Database = {
           },
         ]
       }
+      business_locations: {
+        Row: {
+          address: string | null
+          business_id: string
+          created_at: string
+          created_by: string | null
+          deactivated_at: string | null
+          email: string | null
+          id: string
+          manager_name: string | null
+          metadata: Json
+          name: string
+          phone: string | null
+          slug: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          email?: string | null
+          id?: string
+          manager_name?: string | null
+          metadata?: Json
+          name: string
+          phone?: string | null
+          slug: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          email?: string | null
+          id?: string
+          manager_name?: string | null
+          metadata?: Json
+          name?: string
+          phone?: string | null
+          slug?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_locations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_user_locations: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          business_id: string
+          business_user_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          location_id: string
+          removed_at: string | null
+          role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          business_id: string
+          business_user_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          location_id: string
+          removed_at?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          business_id?: string
+          business_user_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          location_id?: string
+          removed_at?: string | null
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_user_locations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_user_locations_business_user_id_fkey"
+            columns: ["business_user_id"]
+            isOneToOne: false
+            referencedRelation: "business_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_user_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_users: {
         Row: {
           business_id: string | null
@@ -542,6 +671,64 @@ export type Database = {
           },
         ]
       }
+      loyalty_program_locations: {
+        Row: {
+          availability: string
+          business_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          location_id: string | null
+          loyalty_program_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          availability?: string
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id?: string | null
+          loyalty_program_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          availability?: string
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_id?: string | null
+          loyalty_program_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_program_locations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_program_locations_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_program_locations_loyalty_program_id_fkey"
+            columns: ["loyalty_program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loyalty_programs: {
         Row: {
           active: boolean | null
@@ -811,6 +998,7 @@ export type Database = {
           code: string
           created_at: string | null
           id: string
+          location_id: string | null
           loyalty_program_id: string | null
           type: string
         }
@@ -820,6 +1008,7 @@ export type Database = {
           code: string
           created_at?: string | null
           id?: string
+          location_id?: string | null
           loyalty_program_id?: string | null
           type: string
         }
@@ -829,6 +1018,7 @@ export type Database = {
           code?: string
           created_at?: string | null
           id?: string
+          location_id?: string | null
           loyalty_program_id?: string | null
           type?: string
         }
@@ -838,6 +1028,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
             referencedColumns: ["id"]
           },
           {
@@ -854,6 +1051,7 @@ export type Database = {
           business_id: string
           created_at: string
           expires_at: string
+          location_id: string | null
           loyalty_program_id: string | null
           staff_user_id: string
           token: string
@@ -863,6 +1061,7 @@ export type Database = {
           business_id: string
           created_at?: string
           expires_at?: string
+          location_id?: string | null
           loyalty_program_id?: string | null
           staff_user_id: string
           token?: string
@@ -872,6 +1071,7 @@ export type Database = {
           business_id?: string
           created_at?: string
           expires_at?: string
+          location_id?: string | null
           loyalty_program_id?: string | null
           staff_user_id?: string
           token?: string
@@ -883,6 +1083,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quick_stamp_qr_tokens_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
             referencedColumns: ["id"]
           },
           {
@@ -1007,11 +1214,13 @@ export type Database = {
           business_id: string | null
           customer_id: string | null
           earned_at: string | null
+          earned_location_id: string | null
           expires_at: string | null
           id: string
           loyalty_program_id: string | null
           redeemed_at: string | null
           redeemed_by: string | null
+          redeemed_location_id: string | null
           reward_code: string
           reward_title: string
           status: string | null
@@ -1021,11 +1230,13 @@ export type Database = {
           business_id?: string | null
           customer_id?: string | null
           earned_at?: string | null
+          earned_location_id?: string | null
           expires_at?: string | null
           id?: string
           loyalty_program_id?: string | null
           redeemed_at?: string | null
           redeemed_by?: string | null
+          redeemed_location_id?: string | null
           reward_code: string
           reward_title: string
           status?: string | null
@@ -1035,11 +1246,13 @@ export type Database = {
           business_id?: string | null
           customer_id?: string | null
           earned_at?: string | null
+          earned_location_id?: string | null
           expires_at?: string | null
           id?: string
           loyalty_program_id?: string | null
           redeemed_at?: string | null
           redeemed_by?: string | null
+          redeemed_location_id?: string | null
           reward_code?: string
           reward_title?: string
           status?: string | null
@@ -1061,10 +1274,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "rewards_earned_location_id_fkey"
+            columns: ["earned_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rewards_loyalty_program_id_fkey"
             columns: ["loyalty_program_id"]
             isOneToOne: false
             referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rewards_redeemed_location_id_fkey"
+            columns: ["redeemed_location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
             referencedColumns: ["id"]
           },
         ]
@@ -1075,6 +1302,7 @@ export type Database = {
           created_at: string | null
           customer_id: string | null
           id: string
+          location_id: string | null
           loyalty_card_id: string | null
           loyalty_program_id: string | null
           staff_user_id: string | null
@@ -1087,6 +1315,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string | null
           id?: string
+          location_id?: string | null
           loyalty_card_id?: string | null
           loyalty_program_id?: string | null
           staff_user_id?: string | null
@@ -1099,6 +1328,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string | null
           id?: string
+          location_id?: string | null
           loyalty_card_id?: string | null
           loyalty_program_id?: string | null
           staff_user_id?: string | null
@@ -1119,6 +1349,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stamp_transactions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "business_locations"
             referencedColumns: ["id"]
           },
           {
@@ -1420,6 +1657,22 @@ export type Database = {
             Args: { p_customer_id: string; p_user_id?: string }
             Returns: boolean
           }
+      can_manage_business_location: {
+        Args: {
+          target_business_id: string
+          target_location_id: string
+          target_user_id?: string
+        }
+        Returns: boolean
+      }
+      can_use_program_at_location: {
+        Args: {
+          target_business_id: string
+          target_location_id: string
+          target_program_id: string
+        }
+        Returns: boolean
+      }
       can_view_loyalty_program: {
         Args: {
           p_business_id: string
@@ -1507,12 +1760,24 @@ export type Database = {
         Args: { p_business_id: string }
         Returns: boolean
       }
+      is_business_member: {
+        Args: { target_business_id: string; target_user_id?: string }
+        Returns: boolean
+      }
       is_business_operator:
         | { Args: { p_business_id: string }; Returns: boolean }
         | {
             Args: { p_business_id: string; p_user_id?: string }
             Returns: boolean
           }
+      is_corporate_admin_for_business: {
+        Args: { target_business_id: string; target_user_id?: string }
+        Returns: boolean
+      }
+      is_corporate_business: {
+        Args: { target_business_id: string }
+        Returns: boolean
+      }
       is_super_admin_user: { Args: { p_user_id?: string }; Returns: boolean }
       issue_stamp: {
         Args: {
@@ -1571,6 +1836,14 @@ export type Database = {
           name: string
           phone: string
         }[]
+      }
+      user_has_business_location_access: {
+        Args: {
+          target_business_id: string
+          target_location_id: string
+          target_user_id?: string
+        }
+        Returns: boolean
       }
     }
     Enums: {
