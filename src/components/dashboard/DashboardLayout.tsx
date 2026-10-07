@@ -211,7 +211,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         console.error("Quick Issue Stamp access error:", quickStampAccessError);
       }
 
-      setQuickStampQrEnabled(Boolean(hasQuickStampAddon));
+      setQuickStampQrEnabled(Boolean(hasQuickStampAddon) || resolvedBusiness.subscription_plan === "mega_plan");
       setAdvancedAnalyticsEnabled(resolvedBusiness.subscription_plan === "mega_plan");
       setLocationsManagementEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
 
@@ -308,7 +308,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       children: [
         { nameKey: "dashboard.nav.issueStamp", href: "/dashboard/scan", icon: ScanLine },
         { nameKey: "dashboard.nav.redeemReward", href: "/dashboard/scan", icon: Gift },
-        ...(quickStampQrEnabled ? [{ nameKey: "dashboard.nav.quickIssueStamp" as TranslationKey, href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
+        ...(quickStampQrEnabled ? [{ nameKey: "dashboard.nav.quickQr" as TranslationKey, href: "/dashboard/quick-stamp-qr", icon: Zap }] : []),
       ],
     },
     { nameKey: "dashboard.nav.loyaltyPrograms", href: "/dashboard/programs", icon: Gift },

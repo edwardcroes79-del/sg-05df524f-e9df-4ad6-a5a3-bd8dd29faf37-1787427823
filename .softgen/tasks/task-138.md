@@ -13,11 +13,11 @@ position: 138
 Fix only the missing Quick QR item in the Corporate Business Dashboard navigation. Corporate businesses must see Quick QR automatically and must not require the AWG 10 Quick QR add-on. Lower plans must keep their existing Quick QR add-on behavior unchanged. Use the existing Quick QR route and implementation. Do not create duplicate routes, entitlements, QR systems, or mock UI. Preserve active/selected location architecture and backend/RLS authorization.
 
 ## Checklist
-- [ ] Inspect Business Dashboard navigation and Quick QR menu filtering logic
-- [ ] Inspect Quick QR route and permission checks
-- [ ] Inspect Corporate plan identifier and Quick QR entitlement/add-on logic
-- [ ] Fix the actual navigation condition so Corporate sees Quick QR while lower plans remain unchanged
-- [ ] Ensure new/exposed menu text uses existing i18n for English, Spanish, and Papiamento
+- [x] Inspect Business Dashboard navigation and Quick QR menu filtering logic
+- [x] Inspect Quick QR route and permission checks
+- [x] Inspect Corporate plan identifier and Quick QR entitlement/add-on logic
+- [x] Fix the actual navigation condition so Corporate sees Quick QR while lower plans remain unchanged
+- [x] Ensure new/exposed menu text uses existing i18n for English, Spanish, and Papiamento
 - [ ] Validate project checks and record entitlement/menu/route test results
 
 ## Acceptance
