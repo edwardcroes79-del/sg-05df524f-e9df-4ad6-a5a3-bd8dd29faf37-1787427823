@@ -1,6 +1,6 @@
 ---
 title: Corporate security accuracy stress audit
-status: in_progress
+status: done
 priority: urgent
 type: chore
 tags: [corporate-plan, audit, security, analytics, regression]
