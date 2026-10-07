@@ -1701,6 +1701,14 @@ export type Database = {
             Args: { p_business_id: string; p_loyalty_program_id?: string }
             Returns: Json
           }
+        | {
+            Args: {
+              p_business_id: string
+              p_location_id: string
+              p_loyalty_program_id: string
+            }
+            Returns: Json
+          }
       generate_reward_qr_token: {
         Args: { p_reward_id: string }
         Returns: string
@@ -1797,14 +1805,24 @@ export type Database = {
         }
         Returns: Json
       }
-      issue_stamp_tx: {
-        Args: {
-          p_business_id: string
-          p_customer_id: string
-          p_loyalty_program_id: string
-        }
-        Returns: Json
-      }
+      issue_stamp_tx:
+        | {
+            Args: {
+              p_business_id: string
+              p_customer_id: string
+              p_loyalty_program_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_business_id: string
+              p_customer_id: string
+              p_location_id: string
+              p_loyalty_program_id: string
+            }
+            Returns: Json
+          }
       quick_stamp_qr_issue_stamp: { Args: { p_token: string }; Returns: Json }
       redeem_reward: {
         Args: { p_business_id: string; p_reward_code: string }
@@ -1814,10 +1832,19 @@ export type Database = {
         Args: { p_business_id: string; p_token: string }
         Returns: Json
       }
-      redeem_reward_tx: {
-        Args: { p_business_id: string; p_reward_code: string }
-        Returns: Json
-      }
+      redeem_reward_tx:
+        | {
+            Args: { p_business_id: string; p_reward_code: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_business_id: string
+              p_location_id: string
+              p_reward_code: string
+            }
+            Returns: Json
+          }
       refresh_expired_business_contracts: { Args: never; Returns: number }
       review_subscription_plan_change: {
         Args: { p_action: string; p_admin_notes?: string; p_payment_id: string }

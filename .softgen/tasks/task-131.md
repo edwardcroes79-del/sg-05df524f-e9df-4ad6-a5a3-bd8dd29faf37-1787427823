@@ -13,11 +13,11 @@ position: 131
 Add Corporate location attribution to existing loyalty operations without redesigning the UI or changing unrelated behavior. Preserve existing program QR, Quick QR add-on behavior for lower plans, stamp issuance, reward redemption, customer loyalty balances, and printed QR compatibility. Corporate Quick QR must work through plan entitlement without an add-on record.
 
 ## Checklist
-- [ ] Extend location-specific QR support without breaking existing QR rows/routes
-- [ ] Update manual stamp backend flow to accept optional location and enforce assigned-location access
-- [ ] Update Quick QR token/stamp backend flow to support optional location and Corporate plan entitlement
-- [ ] Record earned/redeemed location where applicable while preserving shared customer balances
-- [ ] Ensure Corporate downgrade recalculates Quick QR through existing add-on/plan entitlement rules
+- [x] Extend location-specific QR support without breaking existing QR rows/routes
+- [x] Update manual stamp backend flow to accept optional location and enforce assigned-location access
+- [x] Update Quick QR token/stamp backend flow to support optional location and Corporate plan entitlement
+- [x] Record earned/redeemed location where applicable while preserving shared customer balances
+- [x] Ensure Corporate downgrade recalculates Quick QR through existing add-on/plan entitlement rules
 - [ ] Test Corporate Quick QR without add-on and lower-plan Quick QR add-on behavior unchanged
 - [ ] Run validation and regression checks for Trial, Starter, Business, Professional, and Corporate
 
