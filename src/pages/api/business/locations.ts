@@ -266,8 +266,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           manager_name: payload.manager_name || null,
           status,
           metadata: payload.metadata || {},
-          created_by: user.id,
-          updated_by: user.id,
           deactivated_at: status === "inactive" ? new Date().toISOString() : null,
         })
         .select("*")
@@ -297,7 +295,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const updates: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
-        updated_by: user.id,
       };
 
       if (typeof payload.name === "string") {

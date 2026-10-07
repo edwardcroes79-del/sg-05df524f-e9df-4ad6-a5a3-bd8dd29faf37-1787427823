@@ -172,18 +172,44 @@ export default function LocationsPage() {
   };
 
   const deactivateLocation = async (location: BusinessLocation) => {
-    setEditingId(location.id);
-    setForm({
-      name: location.name,
-      address: location.address || "",
-      phone: location.phone || "",
-      email: location.email || "",
-      manager_name: location.manager_name || "",
-      status: "inactive",
-    });
-    window.setTimeout(() => {
-      document.getElementById("location-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    if (!businessId) return;
+
+    try {
+      setSaving(true);
+      const authorization = await getAuthHeader();
+      const response = await fetch("/api/business/locations", {
+        method: "PATCH",
+        headers: {
+          Authorization: authorization,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: location.id,
+          business_id: businessId,
+          status: "inactive",
+        }),
+      });
+      const body = await response.json();
+
+      if (!response.ok) throw new Error(body.error || "Failed to deactivate location");
+
+      if (activeLocationId === location.id) {
+        window.localStorage.removeItem(`active_location_${businessId}`);
+        setActiveLocationId("");
+      }
+
+      toast({
+        title: "Location deactivated",
+        description: `${body.location.name} is inactive. Historical activity remains preserved.`,
+      });
+
+      resetForm();
+      await fetchLocations();
+    } catch (error: any) {
+      toast({ title: "Location deactivation failed", description: error.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectActiveLocation = (location: BusinessLocation) => {
@@ -315,7 +341,7 @@ export default function LocationsPage() {
                 <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={() => selectActiveLocation(location)} disabled={location.status === "inactive"}>Select active</Button>
                   <Button variant="outline" size="sm" onClick={() => editLocation(location)} className="gap-2"><Edit3 className="h-4 w-4" /> Edit</Button>
-                  {location.status !== "inactive" && <Button variant="destructive" size="sm" onClick={() => void deactivateLocation(location)}>Deactivate</Button>}
+                  {location.status !== "inactive" && <Button variant="destructive" size="sm" onClick={() => void deactivateLocation(location)} disabled={saving}>Deactivate</Button>}
                 </div>
               </div>
             ))}
