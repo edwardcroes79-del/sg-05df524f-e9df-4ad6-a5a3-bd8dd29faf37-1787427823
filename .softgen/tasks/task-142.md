@@ -22,10 +22,10 @@ Do not change authentication logic, Supabase Auth, registration, password reset,
 ## Checklist
 - [x] Inspect current Business Login and Customer/Member Login pages and related auth UI dependencies
 - [x] Identify why the first fix did not change the rendered UI
-- [ ] Trace actual rendered Business Login route, page component, imports, and conditional UI states
-- [ ] Trace actual rendered Customer/Member Login route, page component, imports, tabs, and conditional UI states
-- [ ] Restore the rendered Business Login UI with required previous design elements
-- [ ] Restore the rendered Customer/Member Login UI with required previous design elements
+- [x] Trace actual rendered Business Login route, page component, imports, and conditional UI states
+- [x] Trace actual rendered Customer/Member Login route, page component, imports, tabs, and conditional UI states
+- [x] Restore the rendered Business Login UI with required previous design elements
+- [x] Restore the rendered Customer/Member Login UI with required previous design elements
 - [ ] Verify visible rendered UI for desktop/mobile and language paths as far as the environment allows
 - [ ] Run project checks and report actual rendered route/component, root cause, files changed, restored UI, and verification result
 
