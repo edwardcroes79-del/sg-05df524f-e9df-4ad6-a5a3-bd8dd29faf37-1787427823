@@ -300,14 +300,18 @@ export default function CustomerAuth() {
 
             <div>
               <h1 className="text-2xl font-bold font-heading text-foreground">
-                {businessName ? t("auth.customer.businessRewardsTitle", { businessName }) : t("auth.customer.walletTitle")}
+                {t("auth.customer.walletTitle")}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                {programName 
-                  ? t("auth.customer.programPrompt", { programName }) 
-                  : t("auth.customer.defaultPrompt")
-                }
+                {t("auth.customer.defaultPrompt")}
               </p>
+              {(businessName || programName) && (
+                <p className="mt-2 text-xs font-medium text-muted-foreground">
+                  {businessName ? t("auth.customer.businessRewardsTitle", { businessName }) : null}
+                  {businessName && programName ? " · " : null}
+                  {programName ? t("auth.customer.programPrompt", { programName }) : null}
+                </p>
+              )}
             </div>
           </div>
 
