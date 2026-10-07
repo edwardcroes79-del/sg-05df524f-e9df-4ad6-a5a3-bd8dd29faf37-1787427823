@@ -15,7 +15,7 @@ Audit and fix all newly created or modified Corporate build UI text so English, 
 ## Checklist
 - [x] Audit Corporate pages/components/menus/modals for hardcoded user-facing strings
 - [x] Add or complete English, Spanish, and Papiamento keys in the existing i18n system
-- [ ] Replace hardcoded Corporate UI strings with existing i18n lookups
+- [x] Replace hardcoded Corporate UI strings with existing i18n lookups
 - [ ] Verify nested dialogs/forms/loading/empty/error/success states use translations
 - [ ] Preserve business logic and existing lower-plan behavior
 - [ ] Run project checks and record final translation audit report

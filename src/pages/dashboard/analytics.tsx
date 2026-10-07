@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 
 type AnalyticsPayload = {
   business_id?: string;
@@ -22,13 +23,23 @@ type AnalyticsPayload = {
   location_options?: Array<Record<string, any>>;
 };
 
-const ranges = [
-  { value: "7d", label: "7 days" },
-  { value: "30d", label: "30 days" },
-  { value: "90d", label: "90 days" },
-  { value: "12m", label: "12 months" },
-  { value: "custom", label: "Custom" },
+const ranges: Array<{ value: string; labelKey: TranslationKey }> = [
+  { value: "7d", labelKey: "dashboard.analytics.range.7d" },
+  { value: "30d", labelKey: "dashboard.analytics.range.30d" },
+  { value: "90d", labelKey: "dashboard.analytics.range.90d" },
+  { value: "12m", labelKey: "dashboard.analytics.range.12m" },
+  { value: "custom", labelKey: "dashboard.analytics.range.custom" },
 ];
+
+const customerMetricLabels: Record<string, TranslationKey> = {
+  total_cards: "dashboard.analytics.customerMetric.totalCards",
+  active_cards: "dashboard.analytics.customerMetric.activeCards",
+  inactive_cards: "dashboard.analytics.customerMetric.inactiveCards",
+  customers_with_rewards: "dashboard.analytics.customerMetric.customersWithRewards",
+  avg_stamps_per_customer: "dashboard.analytics.customerMetric.averageStampsPerCustomer",
+  repeat_customers: "dashboard.analytics.customerMetric.repeatCustomers",
+  one_time_customers: "dashboard.analytics.customerMetric.oneTimeCustomers",
+};
 
 function formatNumber(value: number | string | null | undefined) {
   return Number(value || 0).toLocaleString();
@@ -43,6 +54,7 @@ function maxValue(rows: Array<Record<string, any>>, key: string) {
 }
 
 export default function CorporateAnalyticsPage() {
+  const { t } = useI18n();
   const [analytics, setAnalytics] = useState<AnalyticsPayload | null>(null);
   const [availableLocations, setAvailableLocations] = useState<Array<Record<string, any>>>([]);
   const [range, setRange] = useState("30d");
@@ -57,6 +69,11 @@ export default function CorporateAnalyticsPage() {
   const trends = analytics?.trends || [];
   const maxTrendStamps = useMemo(() => maxValue(trends, "stamps"), [trends]);
 
+  const getCustomerMetricLabel = (key: string) => {
+    const translationKey = customerMetricLabels[key];
+    return translationKey ? t(translationKey) : key.replaceAll("_", " ");
+  };
+
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
@@ -64,14 +81,14 @@ export default function CorporateAnalyticsPage() {
 
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) {
-        throw new Error("Please sign in to view Corporate Advanced Analytics.");
+        throw new Error(t("dashboard.analytics.signInRequired"));
       }
 
       const params = new URLSearchParams({ range });
       if (range === "custom") {
         if (!customStart || !customEnd) {
           setLoading(false);
-          setErrorMessage("Choose a custom start and end date to load analytics.");
+          setErrorMessage(t("dashboard.analytics.customDateRequired"));
           return;
         }
 
@@ -88,13 +105,13 @@ export default function CorporateAnalyticsPage() {
       });
 
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.error || "Failed to load Corporate Advanced Analytics.");
+      if (!response.ok) throw new Error(result.error || t("dashboard.analytics.loadFailed"));
 
       const nextAnalytics = result.analytics as AnalyticsPayload;
       setAnalytics(nextAnalytics);
       setAvailableLocations(Array.isArray(nextAnalytics.location_options) ? nextAnalytics.location_options : []);
     } catch (err: any) {
-      setErrorMessage(err.message || "Failed to load Corporate Advanced Analytics.");
+      setErrorMessage(err.message || t("dashboard.analytics.loadFailed"));
       setAnalytics(null);
     } finally {
       setLoading(false);
@@ -156,39 +173,38 @@ export default function CorporateAnalyticsPage() {
   };
 
   const overviewCards = [
-    { label: "Total customers", value: analytics?.overview?.total_customers, icon: Users },
-    { label: "Active customers", value: analytics?.overview?.active_customers, icon: Activity },
-    { label: "New customers", value: analytics?.overview?.new_customers, icon: TrendingUp },
-    { label: "Returning customers", value: analytics?.overview?.returning_customers, icon: Users },
-    { label: "Stamps issued", value: analytics?.overview?.stamps_issued, icon: Stamp },
-    { label: "Rewards earned", value: analytics?.overview?.rewards_earned, icon: Gift },
-    { label: "Rewards redeemed", value: analytics?.overview?.rewards_redeemed, icon: Gift },
-    { label: "Redemption rate", value: formatPercent(analytics?.overview?.redemption_rate), icon: BarChart3, formatted: true },
+    { labelKey: "dashboard.analytics.totalCustomers" as TranslationKey, value: analytics?.overview?.total_customers, icon: Users },
+    { labelKey: "dashboard.analytics.activeCustomers" as TranslationKey, value: analytics?.overview?.active_customers, icon: Activity },
+    { labelKey: "dashboard.analytics.newCustomers" as TranslationKey, value: analytics?.overview?.new_customers, icon: TrendingUp },
+    { labelKey: "dashboard.analytics.returningCustomers" as TranslationKey, value: analytics?.overview?.returning_customers, icon: Users },
+    { labelKey: "dashboard.analytics.stampsIssued" as TranslationKey, value: analytics?.overview?.stamps_issued, icon: Stamp },
+    { labelKey: "dashboard.analytics.rewardsEarned" as TranslationKey, value: analytics?.overview?.rewards_earned, icon: Gift },
+    { labelKey: "dashboard.analytics.rewardsRedeemed" as TranslationKey, value: analytics?.overview?.rewards_redeemed, icon: Gift },
+    { labelKey: "dashboard.analytics.redemptionRate" as TranslationKey, value: formatPercent(analytics?.overview?.redemption_rate), icon: BarChart3, formatted: true },
   ];
 
   return (
     <DashboardLayout>
       <Head>
-        <title>Corporate Advanced Analytics | Aruba Royalty Stamp</title>
+        <title>{t("dashboard.analytics.seoTitle")}</title>
       </Head>
 
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex flex-col gap-4 border-b border-border pb-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <Badge variant="outline" className="mb-3 gap-2 border-primary/30 bg-primary/5 text-primary">
-              <BarChart3 className="h-3.5 w-3.5" />
-              Corporate only
+              {t("dashboard.analytics.badge")}
             </Badge>
-            <h1 className="font-heading text-3xl font-bold text-foreground">Advanced Analytics</h1>
+            <h1 className="font-heading text-3xl font-bold text-foreground">{t("dashboard.analytics.title")}</h1>
             <p className="mt-1 max-w-2xl text-muted-foreground">
-              Real customer, stamp, reward, location, program, and Quick QR metrics for {analytics?.business_name || "your Corporate workspace"}.
+              {t("dashboard.analytics.description", { businessName: analytics?.business_name || t("dashboard.analytics.workspaceFallback") })}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={range} onChange={(event) => setRange(event.target.value)}>
               {ranges.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
+                <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
               ))}
             </select>
             {range === "custom" && (
@@ -198,26 +214,26 @@ export default function CorporateAnalyticsPage() {
                   className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                   value={customStart}
                   onChange={(event) => setCustomStart(event.target.value)}
-                  aria-label="Custom analytics start date"
+                  aria-label={t("dashboard.analytics.customStartLabel")}
                 />
                 <input
                   type="date"
                   className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                   value={customEnd}
                   onChange={(event) => setCustomEnd(event.target.value)}
-                  aria-label="Custom analytics end date"
+                  aria-label={t("dashboard.analytics.customEndLabel")}
                 />
               </>
             )}
             <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={locationId} onChange={(event) => handleLocationScopeChange(event.target.value)}>
-              <option value="all">Corporate-wide</option>
+              <option value="all">{t("dashboard.analytics.corporateWide")}</option>
               {availableLocations.map((location) => (
                 <option key={location.id} value={location.id}>{location.name}</option>
               ))}
             </select>
             <Button type="button" variant="outline" className="gap-2" onClick={() => void fetchAnalytics()} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Refresh
+              {t("dashboard.analytics.refresh")}
             </Button>
           </div>
         </div>
@@ -226,13 +242,13 @@ export default function CorporateAnalyticsPage() {
           <div className="flex min-h-96 items-center justify-center rounded-2xl border bg-card">
             <div className="flex flex-col items-center gap-3 text-muted-foreground">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              Loading real Corporate analytics...
+              {t("dashboard.analytics.loading")}
             </div>
           </div>
         ) : errorMessage ? (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Analytics unavailable</AlertTitle>
+            <AlertTitle>{t("dashboard.analytics.unavailableTitle")}</AlertTitle>
             <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         ) : analytics ? (
@@ -241,10 +257,10 @@ export default function CorporateAnalyticsPage() {
               {overviewCards.map((card) => {
                 const Icon = card.icon;
                 return (
-                  <Card key={card.label}>
+                  <Card key={card.labelKey}>
                     <CardContent className="flex items-center justify-between p-5">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
+                        <p className="text-sm font-medium text-muted-foreground">{t(card.labelKey)}</p>
                         <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">
                           {card.formatted ? card.value : formatNumber(card.value)}
                         </p>
@@ -261,13 +277,13 @@ export default function CorporateAnalyticsPage() {
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <Card>
                 <CardHeader>
-                  <CardTitle>Customer analytics</CardTitle>
-                  <CardDescription>Real customer behavior calculated from loyalty cards and stamp activity.</CardDescription>
+                  <CardTitle>{t("dashboard.analytics.customerAnalytics")}</CardTitle>
+                  <CardDescription>{t("dashboard.analytics.customerAnalyticsDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-3 sm:grid-cols-2">
                   {Object.entries(analytics.customer_analytics || {}).map(([key, value]) => (
                     <div key={key} className="rounded-xl border bg-muted/20 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{key.replaceAll("_", " ")}</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{getCustomerMetricLabel(key)}</p>
                       <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">{formatNumber(value)}</p>
                     </div>
                   ))}
@@ -276,8 +292,8 @@ export default function CorporateAnalyticsPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Royalty insights</CardTitle>
-                  <CardDescription>Observations generated only from calculated metrics.</CardDescription>
+                  <CardTitle>{t("dashboard.analytics.royaltyInsights")}</CardTitle>
+                  <CardDescription>{t("dashboard.analytics.royaltyInsightsDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {analytics.insights?.length ? analytics.insights.map((insight) => (
@@ -285,7 +301,7 @@ export default function CorporateAnalyticsPage() {
                       {insight.message}
                     </div>
                   )) : (
-                    <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No data available yet.</p>
+                    <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("dashboard.analytics.noData")}</p>
                   )}
                 </CardContent>
               </Card>
@@ -293,21 +309,21 @@ export default function CorporateAnalyticsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Location performance</CardTitle>
-                <CardDescription>Corporate-wide and assigned-location metrics.</CardDescription>
+                <CardTitle>{t("dashboard.analytics.locationPerformance")}</CardTitle>
+                <CardDescription>{t("dashboard.analytics.locationPerformanceDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="overflow-x-auto">
                 {locations.length ? (
                   <table className="w-full min-w-[760px] text-sm">
                     <thead>
                       <tr className="border-b text-left text-muted-foreground">
-                        <th className="py-3 pr-4">Location</th>
-                        <th className="py-3 pr-4">Customers</th>
-                        <th className="py-3 pr-4">Active</th>
-                        <th className="py-3 pr-4">Stamps</th>
-                        <th className="py-3 pr-4">Rewards</th>
-                        <th className="py-3 pr-4">Redemptions</th>
-                        <th className="py-3 pr-4">Retention</th>
+                        <th className="py-3 pr-4">{t("dashboard.analytics.table.location")}</th>
+                        <th className="py-3 pr-4">{t("dashboard.analytics.table.customers")}</th>
+                        <th className="py-3 pr-4">{t("dashboard.analytics.table.active")}</th>
+                        <th className="py-3 pr-4">{t("dashboard.analytics.table.stamps")}</th>
+                        <th className="py-3 pr-4">{t("dashboard.analytics.table.rewards")}</th>
+                        <th className="py-3 pr-4">{t("dashboard.analytics.table.redemptions")}</th>
+                        <th className="py-3 pr-4">{t("dashboard.analytics.table.retention")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -325,7 +341,7 @@ export default function CorporateAnalyticsPage() {
                     </tbody>
                   </table>
                 ) : (
-                  <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No location data available yet.</p>
+                  <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("dashboard.analytics.noLocationData")}</p>
                 )}
               </CardContent>
             </Card>
@@ -333,40 +349,40 @@ export default function CorporateAnalyticsPage() {
             <div className="grid gap-6 lg:grid-cols-2">
               <Card>
                 <CardHeader>
-                  <CardTitle>Program performance</CardTitle>
-                  <CardDescription>Members, stamps, completion, rewards, and redemption rate by loyalty program.</CardDescription>
+                  <CardTitle>{t("dashboard.analytics.programPerformance")}</CardTitle>
+                  <CardDescription>{t("dashboard.analytics.programPerformanceDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {analytics.programs?.length ? analytics.programs.map((program) => (
                     <div key={program.id} className="rounded-xl border p-4">
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-semibold text-foreground">{program.name}</p>
-                        <Badge variant={program.active ? "default" : "secondary"}>{program.active ? "Active" : "Inactive"}</Badge>
+                        <Badge variant={program.active ? "default" : "secondary"}>{program.active ? t("dashboard.analytics.status.active") : t("dashboard.analytics.status.inactive")}</Badge>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
-                        <span>Members: <b>{formatNumber(program.members)}</b></span>
-                        <span>Stamps: <b>{formatNumber(program.stamps)}</b></span>
-                        <span>Completion: <b>{formatPercent(program.completion_rate)}</b></span>
-                        <span>Earned: <b>{formatNumber(program.rewards_earned)}</b></span>
-                        <span>Redeemed: <b>{formatPercent(program.redemption_rate)}</b></span>
+                        <span>{t("dashboard.analytics.members")}: <b>{formatNumber(program.members)}</b></span>
+                        <span>{t("dashboard.analytics.table.stamps")}: <b>{formatNumber(program.stamps)}</b></span>
+                        <span>{t("dashboard.analytics.completion")}: <b>{formatPercent(program.completion_rate)}</b></span>
+                        <span>{t("dashboard.analytics.earned")}: <b>{formatNumber(program.rewards_earned)}</b></span>
+                        <span>{t("dashboard.analytics.redeemed")}: <b>{formatPercent(program.redemption_rate)}</b></span>
                       </div>
                     </div>
                   )) : (
-                    <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No program data available yet.</p>
+                    <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("dashboard.analytics.noProgramData")}</p>
                   )}
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Quick QR analytics</CardTitle>
-                  <CardDescription>Included Corporate Quick QR activity from real tokens and stamp transactions.</CardDescription>
+                  <CardTitle>{t("dashboard.analytics.quickQrAnalytics")}</CardTitle>
+                  <CardDescription>{t("dashboard.analytics.quickQrAnalyticsDescription")}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border bg-muted/20 p-4"><QrCode className="mb-2 h-4 w-4 text-primary" /><p className="text-xs text-muted-foreground">Tokens</p><p className="text-2xl font-bold">{formatNumber(analytics.quick_qr?.tokens_generated)}</p></div>
-                    <div className="rounded-xl border bg-muted/20 p-4"><QrCode className="mb-2 h-4 w-4 text-primary" /><p className="text-xs text-muted-foreground">Used</p><p className="text-2xl font-bold">{formatNumber(analytics.quick_qr?.tokens_used)}</p></div>
-                    <div className="rounded-xl border bg-muted/20 p-4"><Stamp className="mb-2 h-4 w-4 text-primary" /><p className="text-xs text-muted-foreground">Stamps</p><p className="text-2xl font-bold">{formatNumber(analytics.quick_qr?.stamps_generated)}</p></div>
+                    <div className="rounded-xl border bg-muted/20 p-4"><QrCode className="mb-2 h-4 w-4 text-primary" /><p className="text-xs text-muted-foreground">{t("dashboard.analytics.tokens")}</p><p className="text-2xl font-bold">{formatNumber(analytics.quick_qr?.tokens_generated)}</p></div>
+                    <div className="rounded-xl border bg-muted/20 p-4"><QrCode className="mb-2 h-4 w-4 text-primary" /><p className="text-xs text-muted-foreground">{t("dashboard.analytics.used")}</p><p className="text-2xl font-bold">{formatNumber(analytics.quick_qr?.tokens_used)}</p></div>
+                    <div className="rounded-xl border bg-muted/20 p-4"><Stamp className="mb-2 h-4 w-4 text-primary" /><p className="text-xs text-muted-foreground">{t("dashboard.analytics.table.stamps")}</p><p className="text-2xl font-bold">{formatNumber(analytics.quick_qr?.stamps_generated)}</p></div>
                   </div>
                 </CardContent>
               </Card>
@@ -374,12 +390,12 @@ export default function CorporateAnalyticsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Cross-location analytics</CardTitle>
-                <CardDescription>Real customer movement and activity distribution across permitted locations.</CardDescription>
+                <CardTitle>{t("dashboard.analytics.crossLocationAnalytics")}</CardTitle>
+                <CardDescription>{t("dashboard.analytics.crossLocationAnalyticsDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 lg:grid-cols-[260px_1fr]">
                 <div className="rounded-xl border bg-muted/20 p-5">
-                  <p className="text-sm font-medium text-muted-foreground">Multi-location customers</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t("dashboard.analytics.multiLocationCustomers")}</p>
                   <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">
                     {formatNumber(analytics.cross_location?.customers_visiting_multiple_locations)}
                   </p>
@@ -390,7 +406,7 @@ export default function CorporateAnalyticsPage() {
                       <div key={location.id} className="rounded-xl border p-4">
                         <div className="flex items-center justify-between gap-3">
                           <span className="font-semibold text-foreground">{location.name}</span>
-                          <span className="text-sm tabular-nums text-muted-foreground">{formatNumber(location.customers)} customers</span>
+                          <span className="text-sm tabular-nums text-muted-foreground">{t("dashboard.analytics.customerCount", { count: formatNumber(location.customers) })}</span>
                         </div>
                         <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                           <div
@@ -403,7 +419,7 @@ export default function CorporateAnalyticsPage() {
                       </div>
                     ))
                   ) : (
-                    <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No cross-location data available yet.</p>
+                    <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("dashboard.analytics.noCrossLocationData")}</p>
                   )}
                 </div>
               </CardContent>
@@ -411,21 +427,21 @@ export default function CorporateAnalyticsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Activity trends</CardTitle>
-                <CardDescription>Daily real activity for the selected period.</CardDescription>
+                <CardTitle>{t("dashboard.analytics.activityTrends")}</CardTitle>
+                <CardDescription>{t("dashboard.analytics.activityTrendsDescription")}</CardDescription>
               </CardHeader>
               <CardContent>
                 {trends.length ? (
                   <div className="flex h-56 items-end gap-1 overflow-x-auto rounded-xl border bg-muted/20 p-4">
                     {trends.map((row) => (
                       <div key={row.date} className="flex min-w-8 flex-1 flex-col items-center gap-2">
-                        <div className="w-full rounded-t bg-primary" style={{ height: `${Math.max(4, (Number(row.stamps || 0) / maxTrendStamps) * 180)}px` }} title={`${row.date}: ${row.stamps} stamps`} />
+                        <div className="w-full rounded-t bg-primary" style={{ height: `${Math.max(4, (Number(row.stamps || 0) / maxTrendStamps) * 180)}px` }} title={t("dashboard.analytics.trendTitle", { date: row.date, stamps: row.stamps })} />
                         <span className="hidden text-[10px] text-muted-foreground sm:block">{String(row.date).slice(5)}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">No trend data available yet.</p>
+                  <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("dashboard.analytics.noTrendData")}</p>
                 )}
               </CardContent>
             </Card>
