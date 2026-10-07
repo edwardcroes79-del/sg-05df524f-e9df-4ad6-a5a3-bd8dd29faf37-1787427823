@@ -9,6 +9,7 @@ type StaffLocationPayload = {
   business_id?: string;
   business_user_id?: string;
   location_id?: string;
+  role?: "location_manager" | "staff";
   is_default?: boolean;
   status?: "active" | "inactive";
 };
@@ -82,6 +83,11 @@ async function audit(admin: any, userId: string, action: string, targetId: strin
     target_id: targetId,
     metadata,
   });
+}
+
+function sanitizeAssignmentRole(role: unknown) {
+  if (role === "location_manager") return "location_manager";
+  return "staff";
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -169,6 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           business_id: payload.business_id,
           business_user_id: payload.business_user_id,
           location_id: payload.location_id,
+          role: sanitizeAssignmentRole(payload.role),
           is_default: Boolean(payload.is_default),
           status: payload.status || "active",
           assigned_by: user.id,
@@ -182,6 +189,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         business_id: payload.business_id,
         business_user_id: payload.business_user_id,
         location_id: payload.location_id,
+        role: sanitizeAssignmentRole(payload.role),
         is_default: Boolean(payload.is_default),
         status: payload.status || "active",
       });
@@ -212,8 +220,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
 
+      if (payload.role === "location_manager" || payload.role === "staff") {
+        updates.role = payload.role;
+      }
+
       if (payload.status === "active" || payload.status === "inactive") {
         updates.status = payload.status;
+        if (payload.status === "inactive") {
+          updates.removed_at = new Date().toISOString();
+          updates.is_default = false;
+        }
       }
 
       const { data: assignment, error } = await admin
