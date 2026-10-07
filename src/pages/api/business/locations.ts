@@ -12,7 +12,7 @@ type LocationPayload = {
   address?: string | null;
   phone?: string | null;
   email?: string | null;
-  contact_name?: string | null;
+  manager_name?: string | null;
   status?: "active" | "temporarily_closed" | "inactive";
   metadata?: Record<string, unknown>;
 };
@@ -224,7 +224,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           address: payload.address || null,
           phone: payload.phone || null,
           email: payload.email || null,
-          contact_name: payload.contact_name || null,
+          manager_name: payload.manager_name || null,
           status: sanitizeStatus(payload.status),
           metadata: payload.metadata || {},
           created_by: user.id,
@@ -271,7 +271,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if ("address" in payload) updates.address = payload.address || null;
       if ("phone" in payload) updates.phone = payload.phone || null;
       if ("email" in payload) updates.email = payload.email || null;
-      if ("contact_name" in payload) updates.contact_name = payload.contact_name || null;
+      if ("manager_name" in payload) updates.manager_name = payload.manager_name || null;
       if ("metadata" in payload) updates.metadata = payload.metadata || {};
       if ("status" in payload) updates.status = sanitizeStatus(payload.status);
 

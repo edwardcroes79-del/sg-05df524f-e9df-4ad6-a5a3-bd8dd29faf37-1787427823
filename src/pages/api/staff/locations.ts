@@ -156,7 +156,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (payload.is_default) {
         const { error: defaultError } = await admin
           .from("business_user_locations")
-          .update({ is_default: false, updated_at: new Date().toISOString(), updated_by: user.id })
+          .update({ is_default: false, updated_at: new Date().toISOString() })
           .eq("business_id", payload.business_id)
           .eq("business_user_id", payload.business_user_id);
 
@@ -171,8 +171,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           location_id: payload.location_id,
           is_default: Boolean(payload.is_default),
           status: payload.status || "active",
-          created_by: user.id,
-          updated_by: user.id,
+          assigned_by: user.id,
           updated_at: new Date().toISOString(),
         }, { onConflict: "business_user_id,location_id" })
         .select("*")
@@ -196,7 +195,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const updates: Record<string, unknown> = {
-        updated_by: user.id,
         updated_at: new Date().toISOString(),
       };
 
@@ -206,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (payload.is_default) {
           const { error: defaultError } = await admin
             .from("business_user_locations")
-            .update({ is_default: false, updated_at: new Date().toISOString(), updated_by: user.id })
+            .update({ is_default: false, updated_at: new Date().toISOString() })
             .eq("business_id", payload.business_id)
             .eq("business_user_id", payload.business_user_id);
 
@@ -250,7 +248,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .update({
           status: "inactive",
           is_default: false,
-          updated_by: user.id,
+          removed_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq("business_id", payload.business_id)
