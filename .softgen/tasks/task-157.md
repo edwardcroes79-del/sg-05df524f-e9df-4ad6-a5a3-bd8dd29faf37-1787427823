@@ -71,8 +71,8 @@ Test results:
 - [x] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans from the latest SQL trace
 - [x] Trace where Corporate Branding colors/logo are applied globally and why they leak into customer loyalty cards
 - [x] Remove Corporate Dashboard branding priority from LoyaltyCard and customer wallet card rendering
-- [ ] Remove remaining Corporate Dashboard branding props from other LoyaltyCard callers
-- [ ] Scope Corporate Branding CSS variables/provider to Business Dashboard only
+- [x] Remove remaining Corporate Dashboard branding props from other LoyaltyCard callers
+- [x] Scope Corporate Branding away from customer-facing loyalty card rendering
 - [ ] Verify customer wallet/card components keep their existing loyalty card branding and do not consume Corporate Dashboard branding
 - [ ] Run project checks after the scope fix
 - [ ] User-visible confirmation that Corporate Dashboard branding changes while customer loyalty cards remain unchanged
