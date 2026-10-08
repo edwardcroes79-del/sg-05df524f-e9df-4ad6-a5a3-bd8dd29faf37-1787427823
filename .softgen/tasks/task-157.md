@@ -12,7 +12,7 @@ position: 157
 ## Notes
 REOPENED: User confirms Corporate Branding is still NOT visible in the actual Corporate Business Dashboard. The Settings menu is present but there is no Corporate Branding section, tab, logo upload, color controls, or branding configuration. This must be fixed before marking complete.
 
-Confirmed backend root cause: the real Corporate business `3ea7dd04-371d-4e61-aa57-3c38c2abcc65` is `subscription_plan = mega_plan`, but `public.get_business_boolean_entitlement(business_id, 'corporate_branding', false)` returned `false`. The API correctly returned 403 because the existing entitlement resolver did not see Corporate Branding enabled for the existing Corporate plan identifier. Repair is to add/update the existing `plan_entitlements` row for `plan_id = mega_plan`, `key = corporate_branding`, `boolean_value = true`. No duplicate entitlement system, API, table, or bypass is added.
+Confirmed backend root cause after deep trace: business `3ea7dd04-371d-4e61-aa57-3c38c2abcc65` is `Royalty Stamp (Demo)` with `subscription_plan = mega_plan`, `subscription_status = active`, `business_status = active`, `contract_status = active`, joined plan `mega_plan / Corporate`, `subscription_plans.status = active`, `subscription_plans.is_active = true`, and `plan_entitlements.corporate_branding.boolean_value = true`. However, `public.get_business_boolean_entitlement(business_id, 'corporate_branding', false)` returned `false` because the function filters the business row with `auth.uid()`. The API calls that RPC through the service-role client after authenticating the user separately, so `auth.uid()` inside the RPC is not the authenticated dashboard user. That made `v_plan_id` null and returned the fallback `false`, producing the 403. The fix is not to bypass authorization: the API still authenticates the user and verifies business owner/active membership access first, then resolves the existing `subscription_plans` + `plan_entitlements` row directly with the service-role client for server-side authorization.
 
 Fix the critical regression where Corporate Branding exists in code but is not visibly accessible or usable from the Business Dashboard for a Corporate business. Do not rebuild from scratch or create duplicate branding systems. Restore the actual functional Branding page/navigation using the existing Corporate Branding context, page, API, storage, database fields, i18n keys, and server-side entitlement protection. Preserve the Settings i18n regression fix and do not allow raw `dashboard.settings.*` keys to return.
 
@@ -58,10 +58,11 @@ Test results:
 - [x] Identify exact route/path: `/dashboard/corporate-branding`
 - [x] Identify exact controls: logo upload/preview/remove, primary color picker, secondary color picker, live preview, save, reset confirmation
 - [x] Identify current subscription plan for the failing business: `mega_plan`
-- [x] Identify current Corporate Branding entitlement value for the failing business: `false`
-- [x] Repair the existing Corporate plan entitlement so `mega_plan` includes `corporate_branding = true`
+- [x] Identify current Corporate Branding entitlement row for the failing business: `true`
+- [x] Identify why the API still returned 403: the auth.uid()-dependent entitlement RPC returned fallback false when called through the service-role API client
+- [x] Fix API entitlement resolution to use the existing active subscription plan and plan_entitlements source of truth after server-side user/business access is verified
 - [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
-- [ ] Verify the repaired entitlement returns true for the real Corporate business and remains false for lower plans
+- [ ] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans
 - [ ] Run project checks and report exact cause, files changed, database/entitlement changes, and API test result
 
 ## Acceptance

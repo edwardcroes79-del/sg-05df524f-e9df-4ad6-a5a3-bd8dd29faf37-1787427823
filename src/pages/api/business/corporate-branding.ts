@@ -49,14 +49,32 @@ async function getAuthenticatedUser(req: NextApiRequest) {
 }
 
 async function hasCorporateBrandingEntitlement(admin: ReturnType<typeof createServiceClient>, business: { id: string; subscription_plan: string | null }) {
-  const { data, error } = await admin.rpc("get_business_boolean_entitlement", {
-    p_business_id: business.id,
-    p_key: "corporate_branding",
-    p_fallback: false,
-  });
+  if (!business.subscription_plan) {
+    return false;
+  }
 
-  if (error) throw error;
-  return Boolean(data);
+  const { data: plan, error: planError } = await admin
+    .from("subscription_plans")
+    .select("id, status, is_active")
+    .eq("id", business.subscription_plan)
+    .maybeSingle();
+
+  if (planError) throw planError;
+
+  if (!plan || plan.status !== "active" || plan.is_active !== true) {
+    return false;
+  }
+
+  const { data: entitlement, error: entitlementError } = await admin
+    .from("plan_entitlements")
+    .select("boolean_value")
+    .eq("plan_id", business.subscription_plan)
+    .eq("key", "corporate_branding")
+    .eq("value_type", "boolean")
+    .maybeSingle();
+
+  if (entitlementError) throw entitlementError;
+  return entitlement?.boolean_value === true;
 }
 
 async function userCanManageCorporateBranding(admin: ReturnType<typeof createServiceClient>, business: { id: string; owner_id: string | null }, userId: string) {
