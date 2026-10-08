@@ -1,6 +1,6 @@
 ---
 title: Corporate Branding Settings UI
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [corporate, branding, frontend, settings]
@@ -21,4 +21,4 @@ Protected by Corporate entitlement. Requires i18n (English, Spanish, Papiamento)
 - [x] Integrate into dashboard routing (e.g., new tab in Settings or separate page)
 - [x] Wire up API calls using Phase 1 backend endpoints
 - [x] Enforce frontend Corporate entitlement check
-- [ ] Validate implementation and run project error checks
+- [x] Validate implementation and run project error checks
