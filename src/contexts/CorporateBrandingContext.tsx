@@ -18,6 +18,11 @@ type CorporateBrandingContextValue = {
   branding: CorporateBrandingSettings | null;
 };
 
+export type CorporateBrandingFetchResult = {
+  status: "available" | "unavailable";
+  branding: CorporateBrandingSettings;
+};
+
 const CorporateBrandingContext = createContext<CorporateBrandingContextValue>({
   branding: null,
 });
@@ -74,6 +79,13 @@ function hexToHslTriple(hexColor: string) {
   return `${Math.round(hue * 360)} ${Math.round(saturation * 100)}% ${Math.round(lightness * 100)}%`;
 }
 
+export function getDefaultCorporateBranding(businessId = ""): CorporateBrandingSettings {
+  return {
+    ...DEFAULT_CORPORATE_BRANDING,
+    business_id: businessId,
+  };
+}
+
 export function getCorporateBrandingStyle(branding: CorporateBrandingSettings | null) {
   if (!branding) return undefined;
 
@@ -84,7 +96,20 @@ export function getCorporateBrandingStyle(branding: CorporateBrandingSettings | 
   } as React.CSSProperties;
 }
 
-export async function fetchCorporateBranding(businessId: string, accessToken: string) {
+async function readErrorMessage(response: Response) {
+  try {
+    const body = await response.json();
+    return typeof body?.error === "string" ? body.error : response.statusText;
+  } catch {
+    return response.statusText;
+  }
+}
+
+function isFeatureUnavailableResponse(response: Response, message: string) {
+  return response.status === 403 && message === "Corporate Branding is not available for this business";
+}
+
+export async function fetchCorporateBranding(businessId: string, accessToken: string): Promise<CorporateBrandingFetchResult> {
   const response = await fetch(`/api/business/corporate-branding?business_id=${businessId}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -92,9 +117,21 @@ export async function fetchCorporateBranding(businessId: string, accessToken: st
   });
 
   if (!response.ok) {
-    throw new Error("Corporate Branding is not available for this business");
+    const message = await readErrorMessage(response);
+
+    if (isFeatureUnavailableResponse(response, message)) {
+      return {
+        status: "unavailable",
+        branding: getDefaultCorporateBranding(businessId),
+      };
+    }
+
+    throw new Error(message || "Unable to load Corporate Branding");
   }
 
   const result = await response.json();
-  return result.branding as CorporateBrandingSettings;
+  return {
+    status: "available",
+    branding: (result.branding as CorporateBrandingSettings) || getDefaultCorporateBranding(businessId),
+  };
 }

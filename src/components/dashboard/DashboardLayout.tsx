@@ -33,6 +33,7 @@ import {
   CorporateBrandingProvider,
   fetchCorporateBranding,
   getCorporateBrandingStyle,
+  getDefaultCorporateBranding,
   type CorporateBrandingSettings,
 } from "@/contexts/CorporateBrandingContext";
 
@@ -227,12 +228,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       if (resolvedBusiness.subscription_plan === "mega_plan") {
         try {
-          const savedBranding = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
-          setCorporateBranding(savedBranding);
-          setCorporateBrandingEnabled(resolvedBusiness.owner_id === session.user.id);
+          const brandingResult = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
+          setCorporateBranding(brandingResult.branding);
+          setCorporateBrandingEnabled(brandingResult.status === "available" && resolvedBusiness.owner_id === session.user.id);
         } catch (brandingError) {
           console.error("Corporate branding load error:", brandingError);
-          setCorporateBranding(null);
+          setCorporateBranding(getDefaultCorporateBranding(resolvedBusiness.id));
           setCorporateBrandingEnabled(false);
         }
 
