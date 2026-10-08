@@ -9,6 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 
+type AnalyticsInsight = {
+  type: string;
+  message?: string;
+  message_key?: TranslationKey;
+  values?: Record<string, string | number>;
+};
+
 type AnalyticsPayload = {
   business_id?: string;
   business_name: string;
@@ -19,7 +26,7 @@ type AnalyticsPayload = {
   quick_qr: Record<string, any>;
   cross_location: Record<string, any>;
   trends: Array<Record<string, any>>;
-  insights: Array<{ type: string; message: string }>;
+  insights: AnalyticsInsight[];
   location_options?: Array<Record<string, any>>;
 };
 
@@ -72,6 +79,14 @@ export default function CorporateAnalyticsPage() {
   const getCustomerMetricLabel = (key: string) => {
     const translationKey = customerMetricLabels[key];
     return translationKey ? t(translationKey) : key.replaceAll("_", " ");
+  };
+
+  const getInsightMessage = (insight: AnalyticsInsight) => {
+    if (insight.message_key) {
+      return t(insight.message_key, insight.values || {});
+    }
+
+    return insight.message || t("dashboard.analytics.insights.genericFallback");
   };
 
   const fetchAnalytics = async () => {
@@ -297,8 +312,8 @@ export default function CorporateAnalyticsPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {analytics.insights?.length ? analytics.insights.map((insight) => (
-                    <div key={`${insight.type}-${insight.message}`} className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
-                      {insight.message}
+                    <div key={`${insight.type}-${insight.message_key || insight.message}`} className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
+                      {getInsightMessage(insight)}
                     </div>
                   )) : (
                     <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{t("dashboard.analytics.noData")}</p>
