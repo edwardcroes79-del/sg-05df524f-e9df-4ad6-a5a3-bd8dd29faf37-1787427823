@@ -10,8 +10,16 @@ export type CorporateBrandingPayload = {
   logo_base64?: string | null;
   logo_mime_type?: string | null;
   logo_file_name?: string | null;
+  logo?: {
+    data?: string | null;
+    type?: string | null;
+    name?: string | null;
+  } | null;
+  logoUrl?: string | null;
   primary_color?: string | null;
   secondary_color?: string | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
 };
 
 export type ValidatedLogoUpload = {
@@ -102,22 +110,24 @@ function hasValidMagicNumber(buffer: Buffer, mimeType: string) {
 export function sanitizeBrandingPayload(payload: CorporateBrandingPayload) {
   return {
     businessId: typeof payload.business_id === "string" ? payload.business_id : undefined,
-    primaryColor: normalizeHexColor(payload.primary_color),
-    secondaryColor: normalizeHexColor(payload.secondary_color),
+    primaryColor: normalizeHexColor(payload.primary_color || payload.primaryColor),
+    secondaryColor: normalizeHexColor(payload.secondary_color || payload.secondaryColor),
   };
 }
 
 export function validateLogoUpload(payload: CorporateBrandingPayload): ValidatedLogoUpload | null {
-  if (!payload.logo_base64) {
+  const logoBase64 = payload.logo_base64 || payload.logo?.data;
+
+  if (!logoBase64) {
     return null;
   }
 
-  const mimeType = String(payload.logo_mime_type || "").toLowerCase();
+  const mimeType = String(payload.logo_mime_type || payload.logo?.type || "").toLowerCase();
   if (!ALLOWED_LOGO_TYPES.has(mimeType)) {
     throw new Error("Logo must be PNG, JPG, or WEBP");
   }
 
-  const buffer = decodeBase64Logo(payload.logo_base64);
+  const buffer = decodeBase64Logo(logoBase64);
   if (buffer.byteLength > MAX_LOGO_BYTES) {
     throw new Error("Logo file must be 1MB or smaller");
   }

@@ -64,7 +64,8 @@ Test results:
 - [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
 - [x] Identify likely logo save JSON parse root cause: valid base64 logo payloads can exceed Next API's default 1MB parser limit before the handler returns JSON
 - [x] Increase the Corporate Branding API parser limit to accept validated logo payloads
-- [ ] Update the Corporate Branding frontend to validate logo size before upload and safely parse non-JSON responses
+- [x] Update the Corporate Branding frontend to validate logo size before upload and safely parse non-JSON responses
+- [x] Fix the frontend/API payload mismatch so logo and color fields use the Corporate Branding service contract
 - [ ] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans
 - [ ] Run project checks and report exact cause, files changed, database/entitlement changes, upload limits, and API test result
 

@@ -10,6 +10,9 @@ import { useI18n } from "@/contexts/I18nProvider";
 import { getDefaultCorporateBranding } from "@/contexts/CorporateBrandingContext";
 import { Image as ImageIcon, Loader2, RotateCcw, Save, Trash2 } from "lucide-react";
 
+const MAX_LOGO_BYTES = 1024 * 1024;
+const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
 type CorporateBrandingBusiness = {
   id: string;
   business_name?: string | null;
@@ -56,25 +59,49 @@ export function CorporateBrandingSettingsPanel({ business, onSaved }: CorporateB
 
   const currentLogoDisplay = logoPreviewUrl || logoUrl;
 
+  const parseApiResponse = async (response: Response) => {
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+      return response.json().catch(() => ({}));
+    }
+
+    const text = await response.text().catch(() => "");
+    return {
+      error: text || t("dashboard.corporateBranding.saveFailed"),
+    };
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
 
     const file = event.target.files[0];
 
-    if (!file.type.includes("png") && !file.type.includes("jpeg") && !file.type.includes("jpg")) {
+    if (!ALLOWED_LOGO_TYPES.has(file.type)) {
       toast({
         title: t("dashboard.corporateBranding.invalidFileType"),
         variant: "destructive",
       });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > MAX_LOGO_BYTES) {
       toast({
         title: t("dashboard.corporateBranding.fileTooLarge"),
+        description: t("dashboard.corporateBranding.fileTooLargeDescription"),
         variant: "destructive",
       });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       return;
+    }
+
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl);
     }
 
     setLogoFile(file);
@@ -134,22 +161,22 @@ export function CorporateBrandingSettingsPanel({ business, onSaved }: CorporateB
 
       const payload: {
         business_id: string;
-        primaryColor: string;
-        secondaryColor: string;
-        logo?: { name: string; type: string; data: string };
+        primary_color: string;
+        secondary_color: string;
+        logo_base64?: string;
+        logo_mime_type?: string;
+        logo_file_name?: string;
         logoUrl?: null;
       } = {
         business_id: business.id,
-        primaryColor,
-        secondaryColor,
+        primary_color: primaryColor,
+        secondary_color: secondaryColor,
       };
 
       if (base64Image && logoFile) {
-        payload.logo = {
-          name: logoFile.name,
-          type: logoFile.type,
-          data: base64Image,
-        };
+        payload.logo_base64 = base64Image;
+        payload.logo_mime_type = logoFile.type;
+        payload.logo_file_name = logoFile.name;
       } else if (logoUrl === null) {
         payload.logoUrl = null;
       }
@@ -163,7 +190,7 @@ export function CorporateBrandingSettingsPanel({ business, onSaved }: CorporateB
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const result = await parseApiResponse(response);
 
       if (!response.ok) {
         throw new Error(result.error || t("dashboard.corporateBranding.saveFailed"));
@@ -204,13 +231,13 @@ export function CorporateBrandingSettingsPanel({ business, onSaved }: CorporateB
         },
         body: JSON.stringify({
           business_id: business.id,
-          primaryColor: DEFAULT_BRANDING.primary_color,
-          secondaryColor: DEFAULT_BRANDING.secondary_color,
+          primary_color: DEFAULT_BRANDING.primary_color,
+          secondary_color: DEFAULT_BRANDING.secondary_color,
           logoUrl: null,
         }),
       });
 
-      const result = await response.json();
+      const result = await parseApiResponse(response);
 
       if (!response.ok) {
         throw new Error(result.error || t("dashboard.corporateBranding.saveFailed"));
@@ -277,7 +304,7 @@ export function CorporateBrandingSettingsPanel({ business, onSaved }: CorporateB
                     <Input
                       id="corporate_logo_upload"
                       type="file"
-                      accept="image/png, image/jpeg"
+                      accept="image/png, image/jpeg, image/webp"
                       onChange={handleFileChange}
                       ref={fileInputRef}
                       className="cursor-pointer file:mr-4 file:cursor-pointer file:rounded file:border-0 file:bg-primary file:px-4 file:py-1 file:text-primary-foreground hover:border-primary"
