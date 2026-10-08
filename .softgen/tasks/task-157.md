@@ -69,7 +69,9 @@ Test results:
 - [x] Align Corporate Branding logo upload labels/errors with PNG/JPG/WEBP under 1MB and add the missing translated size-description key
 - [x] Run project checks successfully after the logo upload and translation fixes
 - [x] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans from the latest SQL trace
-- [ ] Trace where Corporate Branding colors/logo are applied globally and why they leak into customer loyalty cards
+- [x] Trace where Corporate Branding colors/logo are applied globally and why they leak into customer loyalty cards
+- [x] Remove Corporate Dashboard branding priority from LoyaltyCard and customer wallet card rendering
+- [ ] Remove remaining Corporate Dashboard branding props from other LoyaltyCard callers
 - [ ] Scope Corporate Branding CSS variables/provider to Business Dashboard only
 - [ ] Verify customer wallet/card components keep their existing loyalty card branding and do not consume Corporate Dashboard branding
 - [ ] Run project checks after the scope fix
