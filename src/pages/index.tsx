@@ -28,13 +28,20 @@ import {
 } from "lucide-react";
 import { homeConfig } from "@/lib/homeConfig";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/contexts/I18nProvider";
+import {
+  formatPublicPlanFeatures,
+  publicSubscriptionPlanSelect,
+  type PublicSubscriptionPlan,
+} from "@/lib/publicPlanDisplay";
 
 export default function Home() {
   const { pricing, faq, footer: defaultFooter } = homeConfig;
+  const { t } = useI18n();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [dbPlans, setDbPlans] = useState<any[]>([]);
+  const [dbPlans, setDbPlans] = useState<PublicSubscriptionPlan[]>([]);
   
   // Explicitly type the footer state to allow the optional database-driven copyrightText
   const [footer, setFooter] = useState<{
@@ -78,13 +85,14 @@ export default function Home() {
       try {
         const { data, error } = await supabase
           .from("subscription_plans")
-          .select("*")
+          .select(publicSubscriptionPlanSelect)
           .eq("status", "active")
           .eq("is_active", true)
-          .order("display_order", { ascending: true });
+          .order("display_order", { ascending: true })
+          .order("price_awg", { ascending: true });
         
         if (data && !error) {
-          setDbPlans(data);
+          setDbPlans(data as PublicSubscriptionPlan[]);
         }
       } catch (err) {
         console.error("Error loading dynamic plans:", err);
@@ -102,6 +110,34 @@ export default function Home() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const homepagePlans = dbPlans.length > 0
+    ? dbPlans.map((plan) => ({
+        id: plan.id,
+        name: plan.name,
+        description: plan.description,
+        price: `AWG ${Number(plan.price_awg || 0).toFixed(2)}`,
+        annualPrice: Number(plan.annual_price_awg || 0) > 0
+          ? t("publicPricing.annualPrice", { amount: Number(plan.annual_price_awg || 0).toFixed(2) })
+          : "",
+        features: formatPublicPlanFeatures(plan, t),
+        ctaText: t("publicPricing.startFreeTrial"),
+        ctaHref: "/auth/register",
+        isPopular: plan.badge?.toLowerCase() === "popular" || plan.badge?.toLowerCase() === "most popular",
+        badge: plan.badge || "Most Popular",
+      }))
+    : (pricing?.plans || []).map((plan, index) => ({
+        id: `static-${index}`,
+        name: plan.name,
+        description: plan.description,
+        price: plan.price,
+        annualPrice: "",
+        features: plan.features || [],
+        ctaText: plan.ctaText,
+        ctaHref: plan.ctaHref || "/auth/register",
+        isPopular: Boolean(plan.isPopular),
+        badge: "Most Popular",
+      }));
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20 overflow-x-hidden">
@@ -770,39 +806,31 @@ export default function Home() {
             </div>
             
             <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {(dbPlans.length > 0 ? dbPlans : (pricing?.plans || [])).map((plan, i) => {
-                const isDbPlan = dbPlans.length > 0;
-                const isPopular = isDbPlan ? (plan.badge?.toLowerCase() === 'popular' || plan.badge?.toLowerCase() === 'most popular') : plan.isPopular;
-                const features = isDbPlan ? [
-                  `${plan.max_loyalty_programs === 9999 ? "Unlimited" : (plan.max_loyalty_programs ?? "Unlimited")} Loyalty Programs`,
-                  `${plan.max_customers === 999999 ? "Unlimited" : (plan.max_customers?.toLocaleString() ?? "Unlimited")} Loyalty Members`,
-                  `${plan.max_staff || 1} Staff Accounts`,
-                  plan.includes_premium_templates ? "Premium Design Presets" : null,
-                  ...(Array.isArray(plan.features) ? plan.features : [])
-                ].filter(Boolean) : (plan.features || []);
-
-                return (
-                <Card key={i} className={cn(
+              {homepagePlans.map((plan) => (
+                <Card key={plan.id} className={cn(
                   "border-border/50 shadow-xl flex flex-col relative rounded-3xl overflow-hidden transition-transform hover:-translate-y-1 bg-card", 
-                  isPopular ? "border-primary shadow-2xl shadow-primary/10 scale-105 md:-translate-y-4" : ""
+                  plan.isPopular ? "border-primary shadow-2xl shadow-primary/10 scale-105 md:-translate-y-4" : ""
                 )}>
-                  {isPopular && (
+                  {plan.isPopular && (
                     <div className="bg-primary text-primary-foreground py-2 text-center text-sm font-bold uppercase tracking-wider">
-                      {isDbPlan ? (plan.badge || "Most Popular") : "Most Popular"}
+                      {plan.badge}
                     </div>
                   )}
                   <CardHeader className="p-8 pb-6">
                     <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
                     <CardDescription className="text-base mt-2">{plan.description}</CardDescription>
                     <div className="mt-6 font-heading flex items-baseline gap-2">
-                      <span className="text-5xl font-extrabold">{isDbPlan ? `AWG ${Number(plan.price_awg || 0).toFixed(2)}` : plan.price}</span>
+                      <span className="text-5xl font-extrabold">{plan.price}</span>
                       <span className="text-lg text-muted-foreground font-medium">/ month</span>
                     </div>
+                    {plan.annualPrice && (
+                      <p className="mt-2 text-sm font-semibold text-muted-foreground">{plan.annualPrice}</p>
+                    )}
                   </CardHeader>
                   <CardContent className="flex-1 p-8 pt-0">
                     <ul className="space-y-4">
-                      {features.map((item: string, idx: number) => (
-                        <li key={idx} className="flex items-start text-base font-medium text-foreground">
+                      {plan.features.map((item: string, idx: number) => (
+                        <li key={`${item}-${idx}`} className="flex items-start text-base font-medium text-foreground">
                           <CheckCircle2 className="w-5 h-5 text-primary mr-3 flex-shrink-0 mt-0.5" /> 
                           <span>{item}</span>
                         </li>
@@ -810,17 +838,17 @@ export default function Home() {
                     </ul>
                   </CardContent>
                   <CardFooter className="p-8 pt-0">
-                    <Link href={isDbPlan ? "/auth/register" : (plan.ctaHref || "/auth/register")} className="w-full">
+                    <Link href={plan.ctaHref} className="w-full">
                       <Button 
                         size="lg"
-                        className={cn("w-full text-lg font-bold rounded-full h-14", isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
+                        className={cn("w-full text-lg font-bold rounded-full h-14", plan.isPopular ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20" : "bg-secondary text-secondary-foreground hover:bg-secondary/80")}
                       >
-                        {isDbPlan ? "Start Free Trial" : plan.ctaText}
+                        {plan.ctaText}
                       </Button>
                     </Link>
                   </CardFooter>
                 </Card>
-              )})}
+              ))}
             </div>
           </div>
         </section>
