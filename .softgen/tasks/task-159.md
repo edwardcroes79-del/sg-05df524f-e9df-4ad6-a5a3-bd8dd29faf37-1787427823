@@ -1,6 +1,6 @@
 ---
 title: Public pricing plan synchronization
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [pricing, homepage, admin, plans, i18n]
@@ -21,7 +21,7 @@ The homepage now reads active public-safe `subscription_plans` with nested `plan
 - [x] Update the homepage pricing cards to render dynamic plan data without duplicate features
 - [x] Map entitlement identifiers to customer-facing labels through the existing i18n system with safe fallbacks
 - [x] Verify cache behavior does not require deployment for plan feature changes
-- [ ] Run checks and report changed files, queries, translations, and test coverage
+- [x] Run checks and report changed files, queries, translations, and test coverage
 
 ## Acceptance
 The public homepage pricing cards match the active database-backed Super Admin plan configuration.
