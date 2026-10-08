@@ -66,6 +66,7 @@ Test results:
 - [x] Increase the Corporate Branding API parser limit to accept validated logo payloads
 - [x] Update the Corporate Branding frontend to validate logo size before upload and safely parse non-JSON responses
 - [x] Fix the frontend/API payload mismatch so logo and color fields use the Corporate Branding service contract
+- [x] Align Corporate Branding logo upload labels/errors with PNG/JPG/WEBP under 1MB and add the missing translated size-description key
 - [ ] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans
 - [ ] Run project checks and report exact cause, files changed, database/entitlement changes, upload limits, and API test result
 
