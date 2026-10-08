@@ -12,6 +12,8 @@ position: 157
 ## Notes
 REOPENED: User confirms Corporate Branding is still NOT visible in the actual Corporate Business Dashboard. The Settings menu is present but there is no Corporate Branding section, tab, logo upload, color controls, or branding configuration. This must be fixed before marking complete.
 
+Confirmed backend root cause: the real Corporate business `3ea7dd04-371d-4e61-aa57-3c38c2abcc65` is `subscription_plan = mega_plan`, but `public.get_business_boolean_entitlement(business_id, 'corporate_branding', false)` returned `false`. The API correctly returned 403 because the existing entitlement resolver did not see Corporate Branding enabled for the existing Corporate plan identifier. Repair is to add/update the existing `plan_entitlements` row for `plan_id = mega_plan`, `key = corporate_branding`, `boolean_value = true`. No duplicate entitlement system, API, table, or bypass is added.
+
 Fix the critical regression where Corporate Branding exists in code but is not visibly accessible or usable from the Business Dashboard for a Corporate business. Do not rebuild from scratch or create duplicate branding systems. Restore the actual functional Branding page/navigation using the existing Corporate Branding context, page, API, storage, database fields, i18n keys, and server-side entitlement protection. Preserve the Settings i18n regression fix and do not allow raw `dashboard.settings.*` keys to return.
 
 Where the actual Branding UI was found:
@@ -55,13 +57,12 @@ Test results:
 - [x] Identify exact Branding page/component: `src/pages/dashboard/corporate-branding.tsx` and shared controls in `src/components/dashboard/CorporateBrandingSettingsPanel.tsx`
 - [x] Identify exact route/path: `/dashboard/corporate-branding`
 - [x] Identify exact controls: logo upload/preview/remove, primary color picker, secondary color picker, live preview, save, reset confirmation
-- [x] Actually make the Corporate Branding navigation item visible to entitled Corporate users in the dashboard
-- [x] Reconnect the existing Corporate Branding page into Business Dashboard Settings for Corporate users
-- [x] Embed the real Corporate Branding controls directly inside Business Dashboard Settings for Corporate users
+- [x] Identify current subscription plan for the failing business: `mega_plan`
+- [x] Identify current Corporate Branding entitlement value for the failing business: `false`
+- [x] Repair the existing Corporate plan entitlement so `mega_plan` includes `corporate_branding = true`
 - [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
-- [x] Prevent normal lower-plan dashboard/settings loads from calling the Corporate-only Branding API and producing expected 403 network errors
-- [x] Verify non-Corporate businesses cannot access Corporate Branding through normal dashboard/settings loading and dashboard loading remains normal
-- [ ] User-visible confirmation that the Corporate Branding controls are physically visible in the Corporate dashboard preview
+- [ ] Verify the repaired entitlement returns true for the real Corporate business and remains false for lower plans
+- [ ] Run project checks and report exact cause, files changed, database/entitlement changes, and API test result
 
 ## Acceptance
 Corporate businesses can see and open Corporate Branding from the Business Dashboard navigation.
