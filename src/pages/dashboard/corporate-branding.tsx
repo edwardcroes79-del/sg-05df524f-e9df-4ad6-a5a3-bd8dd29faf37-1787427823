@@ -92,7 +92,7 @@ export default function CorporateBrandingPage() {
     
     const file = e.target.files[0];
     
-    if (!file.type.includes('png') && !file.type.includes('jpeg') && !file.type.includes('jpg')) {
+    if (!file.type.includes("png") && !file.type.includes("jpeg") && !file.type.includes("jpg")) {
       toast({
         title: t("dashboard.corporateBranding.invalidFileType"),
         variant: "destructive",
@@ -130,7 +130,7 @@ export default function CorporateBrandingPage() {
     
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("dashboard.corporateBranding.notAuthenticated"));
 
       let base64Image: string | undefined;
 
@@ -138,7 +138,10 @@ export default function CorporateBrandingPage() {
         setUploading(true);
         base64Image = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
+          reader.onload = () => {
+            const base64Data = String(reader.result || "").split(",")[1] || "";
+            resolve(base64Data);
+          };
           reader.onerror = reject;
           reader.readAsDataURL(logoFile);
         });
@@ -213,7 +216,7 @@ export default function CorporateBrandingPage() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error(t("dashboard.corporateBranding.notAuthenticated"));
 
       const response = await fetch("/api/business/corporate-branding", {
         method: "PUT",
@@ -303,7 +306,7 @@ export default function CorporateBrandingPage() {
                     {currentLogoDisplay ? (
                       <img 
                         src={currentLogoDisplay} 
-                        alt="Business Logo" 
+                        alt={t("dashboard.corporateBranding.logoAlt")} 
                         className="w-full h-full object-contain p-2"
                       />
                     ) : (
@@ -428,7 +431,7 @@ export default function CorporateBrandingPage() {
                     >
                       {currentLogoDisplay ? (
                         <div className="w-16 h-16 bg-white rounded-full p-2 shadow-md mb-2 flex items-center justify-center relative z-10">
-                          <img src={currentLogoDisplay} alt="Logo" className="max-w-full max-h-full object-contain" />
+                          <img src={currentLogoDisplay} alt={t("dashboard.corporateBranding.logoAlt")} className="max-w-full max-h-full object-contain" />
                         </div>
                       ) : (
                         <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full mb-2 flex items-center justify-center border-2 border-white/40 shadow-sm relative z-10">
@@ -449,7 +452,7 @@ export default function CorporateBrandingPage() {
                     <div className="p-6 text-center space-y-6">
                       <div className="space-y-1">
                         <h3 className="font-bold text-slate-800">
-                          {t("dashboard.corporateBranding.previewCardTitle", { businessName: business?.business_name || "Business" })}
+                          {t("dashboard.corporateBranding.previewCardTitle", { businessName: business?.business_name || t("dashboard.corporateBranding.previewBusinessFallback") })}
                         </h3>
                         <p className="text-xs text-slate-500">
                           {t("dashboard.corporateBranding.previewCardDescription")}
@@ -476,9 +479,9 @@ export default function CorporateBrandingPage() {
                       <div className="pt-2">
                         <Button 
                           className="w-full shadow-sm"
-                          style={{ backgroundColor: primaryColor, color: 'white' }}
+                          style={{ backgroundColor: primaryColor, color: "white" }}
                         >
-                          Join Program
+                          {t("dashboard.corporateBranding.previewJoinProgram")}
                         </Button>
                       </div>
                     </div>
