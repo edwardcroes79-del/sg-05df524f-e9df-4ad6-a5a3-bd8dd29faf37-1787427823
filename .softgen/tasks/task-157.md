@@ -62,8 +62,11 @@ Test results:
 - [x] Identify why the API still returned 403: the auth.uid()-dependent entitlement RPC returned fallback false when called through the service-role API client
 - [x] Fix API entitlement resolution to use the existing active subscription plan and plan_entitlements source of truth after server-side user/business access is verified
 - [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
+- [x] Identify likely logo save JSON parse root cause: valid base64 logo payloads can exceed Next API's default 1MB parser limit before the handler returns JSON
+- [x] Increase the Corporate Branding API parser limit to accept validated logo payloads
+- [ ] Update the Corporate Branding frontend to validate logo size before upload and safely parse non-JSON responses
 - [ ] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans
-- [ ] Run project checks and report exact cause, files changed, database/entitlement changes, and API test result
+- [ ] Run project checks and report exact cause, files changed, database/entitlement changes, upload limits, and API test result
 
 ## Acceptance
 Corporate businesses can see and open Corporate Branding from the Business Dashboard navigation.

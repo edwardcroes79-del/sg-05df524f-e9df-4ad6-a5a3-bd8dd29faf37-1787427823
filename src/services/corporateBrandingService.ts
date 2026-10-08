@@ -34,9 +34,9 @@ export const ROYALTY_STAMP_DEFAULT_BRANDING = {
   secondary_color: "#0F766E",
 } as const;
 
-const MAX_LOGO_BYTES = 1024 * 1024;
-const MAX_OPTIMIZED_LOGO_BYTES = 512 * 1024;
-const MAX_LOGO_DIMENSION = 512;
+export const MAX_LOGO_BYTES = 1024 * 1024;
+export const MAX_OPTIMIZED_LOGO_BYTES = 512 * 1024;
+export const MAX_LOGO_DIMENSION = 512;
 const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 export function normalizeHexColor(value: string | null | undefined) {

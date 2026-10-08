@@ -14,6 +14,14 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const bucketName = "loyalty-assets";
 
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "2mb",
+    },
+  },
+};
+
 function createServiceClient() {
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Supabase server configuration is incomplete");
