@@ -15,10 +15,10 @@ Corporate admins can upload logo, select primary/secondary colors, see a live pr
 Protected by Corporate entitlement. Requires i18n (English, Spanish, Papiamento) and responsive UI.
 
 ## Checklist
-- [ ] Audit dashboard settings layout and i18n for branding integration
-- [ ] Add i18n translation keys for branding settings (EN, ES, PAP)
-- [ ] Create UI component for Corporate Branding Settings with color pickers, logo upload, and live preview
-- [ ] Integrate into dashboard routing (e.g., new tab in Settings or separate page)
-- [ ] Wire up API calls using Phase 1 backend endpoints
-- [ ] Enforce frontend Corporate entitlement check
+- [x] Audit dashboard settings layout and i18n for branding integration
+- [x] Add i18n translation keys for branding settings (EN, ES, PAP)
+- [x] Create UI component for Corporate Branding Settings with color pickers, logo upload, and live preview
+- [x] Integrate into dashboard routing (e.g., new tab in Settings or separate page)
+- [x] Wire up API calls using Phase 1 backend endpoints
+- [x] Enforce frontend Corporate entitlement check
 - [ ] Validate implementation and run project error checks

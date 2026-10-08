@@ -21,6 +21,7 @@ import {
   Zap,
   BarChart3,
   MapPin,
+  Palette,
   type LucideIcon
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -67,6 +68,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [quickStampQrEnabled, setQuickStampQrEnabled] = useState(false);
   const [advancedAnalyticsEnabled, setAdvancedAnalyticsEnabled] = useState(false);
   const [locationsManagementEnabled, setLocationsManagementEnabled] = useState(false);
+  const [corporateBrandingEnabled, setCorporateBrandingEnabled] = useState(false);
   const [dashboardLocations, setDashboardLocations] = useState<DashboardLocation[]>([]);
   const [activeLocationId, setActiveLocationId] = useState("");
   
@@ -214,6 +216,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setQuickStampQrEnabled(Boolean(hasQuickStampAddon) || resolvedBusiness.subscription_plan === "mega_plan");
       setAdvancedAnalyticsEnabled(resolvedBusiness.subscription_plan === "mega_plan");
       setLocationsManagementEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
+      setCorporateBrandingEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
 
       if (resolvedBusiness.subscription_plan === "mega_plan") {
         const { data: locationRows, error: locationError } = await (supabase as any)
@@ -309,6 +312,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { nameKey: "dashboard.nav.overview", href: "/dashboard", icon: LayoutDashboard },
     ...(advancedAnalyticsEnabled ? [{ nameKey: "dashboard.nav.advancedAnalytics" as TranslationKey, href: "/dashboard/analytics", icon: BarChart3 }] : []),
     ...(locationsManagementEnabled ? [{ nameKey: "dashboard.nav.locations" as TranslationKey, href: "/dashboard/locations", icon: MapPin }] : []),
+    ...(corporateBrandingEnabled ? [{ nameKey: "dashboard.nav.corporateBranding" as TranslationKey, href: "/dashboard/corporate-branding", icon: Palette }] : []),
     {
       nameKey: "dashboard.nav.stampsRewards",
       href: "/dashboard/scan",
