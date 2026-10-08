@@ -1516,7 +1516,7 @@ export default function AdminDashboard() {
         trial_days: Number(plan.trial_days || 14),
         includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
         features: Array.isArray(plan.features) ? plan.features : [],
-        entitlements: buildPlanEntitlementPayload(entitlementState, statusPlanData),
+        entitlements: entitlementState,
       });
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -1544,7 +1544,7 @@ export default function AdminDashboard() {
           trial_days: Number(plan.trial_days || 14),
           includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
           features: Array.isArray(plan.features) ? plan.features : [],
-          entitlements: buildPlanEntitlementPayload(),
+          entitlements: buildPlanEntitlementPayload(entitlementState, statusPlanData),
         }),
       });
 
