@@ -10,13 +10,15 @@ position: 162
 ---
 
 ## Notes
-The live production Issue Stamp flow now fails with `function min(uuid) does not exist`. This must be traced from the stamp RPC/database functions, fixed at the SQL source, and kept compatible with the Corporate multi-location attribution work. Do not change pricing, lower-plan behavior, customer ownership, or duplicate stamp records. Preserve server-side location authorization and location-specific analytics behavior.
+The live production Issue Stamp flow failed with `function min(uuid) does not exist`. Inspection found the exact invalid SQL in `public.resolve_stamp_issue_location(uuid, uuid, uuid)`: `SELECT count(DISTINCT bul.location_id)::integer, min(bul.location_id)` attempted to aggregate UUID values with `min()`. This resolver is called by both `issue_stamp_tx` overloads and the 2-argument Quick QR token generator before stamps are issued, so the error surfaced during stamp issuance.
+
+The targeted fix replaces `min(bul.location_id)` with a deterministic ordered selection from the assigned location set: order by business location name and UUID text, then limit 1. The function still only returns an inferred location when the staff member has exactly one active assigned location. Requested location IDs are still validated through `user_can_access_business_location`, preserving the Corporate multi-location authorization work. No stamp records, customer ownership, plan settings, or analytics queries were changed.
 
 ## Checklist
-- [ ] Inspect the connected database schema and current stamp/location RPC definitions before changing SQL
-- [ ] Identify the exact function/query calling `min(uuid)`
-- [ ] Replace the invalid UUID aggregate with a deterministic UUID-safe selection
-- [ ] Preserve server-side location resolution and unauthorized location rejection
+- [x] Inspect the connected database schema and current stamp/location RPC definitions before changing SQL
+- [x] Identify the exact function/query calling `min(uuid)`
+- [x] Replace the invalid UUID aggregate with a deterministic UUID-safe selection
+- [x] Preserve server-side location resolution and unauthorized location rejection
 - [ ] Verify the repaired stamp RPC definitions in the connected environment
 - [ ] Run project checks
 - [ ] Report root cause, changed database function/file, and production-verification limits
