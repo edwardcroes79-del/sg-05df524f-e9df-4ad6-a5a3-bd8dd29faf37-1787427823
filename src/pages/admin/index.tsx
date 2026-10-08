@@ -271,6 +271,84 @@ export default function AdminDashboard() {
     entitlements: { ...defaultPlanEntitlements },
   };
 
+  type PlanFormData = typeof emptyPlanFormData;
+
+  const buildPlanEntitlementState = (plan: any): Record<PlanEntitlementKey, boolean | number> => {
+    const entitlementRows = Array.isArray(plan?.entitlements) ? plan.entitlements : [];
+    const entitlementMap = entitlementRows.reduce((acc: Record<string, boolean | number>, entitlement: any) => {
+      if (entitlement.value_type === "boolean") {
+        acc[entitlement.key] = Boolean(entitlement.boolean_value);
+      }
+
+      if (entitlement.value_type === "number") {
+        acc[entitlement.key] = Number(entitlement.number_value || 0);
+      }
+
+      return acc;
+    }, {});
+
+    return {
+      ...defaultPlanEntitlements,
+      premium_templates: Boolean(entitlementMap.premium_templates ?? plan?.includes_premium_templates),
+      reward_expiration: Boolean(entitlementMap.reward_expiration ?? true),
+      custom_card_branding: Boolean(entitlementMap.custom_card_branding ?? plan?.includes_premium_templates),
+      advanced_analytics: Boolean(entitlementMap.advanced_analytics),
+      quick_stamp_qr: Boolean(entitlementMap.quick_stamp_qr),
+      location_management: Boolean(entitlementMap.location_management ?? entitlementMap.max_locations),
+      multi_location_management: Boolean(entitlementMap.multi_location_management ?? entitlementMap.max_locations),
+      staff_location_assignment: Boolean(entitlementMap.staff_location_assignment ?? entitlementMap.max_locations),
+      location_manager: Boolean(entitlementMap.location_manager ?? entitlementMap.max_locations),
+      location_analytics: Boolean(entitlementMap.location_analytics ?? entitlementMap.advanced_analytics),
+      cross_location_analytics: Boolean(entitlementMap.cross_location_analytics ?? entitlementMap.advanced_analytics),
+      location_leaderboard: Boolean(entitlementMap.location_leaderboard ?? entitlementMap.advanced_analytics),
+      corporate_branding: Boolean(entitlementMap.corporate_branding ?? entitlementMap.custom_card_branding),
+      location_specific_quick_qr: Boolean(entitlementMap.location_specific_quick_qr ?? entitlementMap.quick_stamp_qr),
+      max_locations: Number(entitlementMap.max_locations || 0),
+    };
+  };
+
+  const getSelectedPlanFeatureLabels = (plan: any) => {
+    const entitlementState = buildPlanEntitlementState(plan);
+
+    return availablePlanEntitlements
+      .filter((feature) => {
+        const value = entitlementState[feature.key];
+        return feature.valueType === "boolean" ? Boolean(value) : Number(value || 0) > 0;
+      })
+      .map((feature) => feature.valueType === "number" ? `${feature.label}: ${Number(entitlementState[feature.key] || 0)}` : feature.label);
+  };
+
+  const buildPlanEntitlementPayload = (
+    entitlementState: Record<PlanEntitlementKey, boolean | number> = planFormData.entitlements,
+    formData: Pick<PlanFormData, "max_loyalty_programs" | "max_customers" | "max_staff"> = planFormData
+  ) => [
+    ...booleanPlanEntitlements.map((feature) => ({
+      key: feature.key,
+      value_type: "boolean",
+      boolean_value: Boolean(entitlementState[feature.key]),
+    })),
+    ...numberPlanEntitlements.map((feature) => ({
+      key: feature.key,
+      value_type: "number",
+      number_value: Number(entitlementState[feature.key] || 0),
+    })),
+    {
+      key: "max_loyalty_programs",
+      value_type: "number",
+      number_value: Number(formData.max_loyalty_programs),
+    },
+    {
+      key: "max_customers",
+      value_type: "number",
+      number_value: Number(formData.max_customers),
+    },
+    {
+      key: "max_staff",
+      value_type: "number",
+      number_value: Number(formData.max_staff),
+    },
+  ];
+
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
@@ -1416,6 +1494,11 @@ export default function AdminDashboard() {
       setSavingPlan(true);
 
       const entitlementState = buildPlanEntitlementState(plan);
+      const statusPlanData = {
+        max_loyalty_programs: Number(plan.max_loyalty_programs || 1),
+        max_customers: Number(plan.max_customers || 300),
+        max_staff: Number(plan.max_staff || 1),
+      };
 
       setPlanFormData({
         id: plan.id,
@@ -1426,14 +1509,14 @@ export default function AdminDashboard() {
         status: nextStatus,
         display_order: Number(plan.display_order || 100),
         badge: plan.badge || "",
-        max_loyalty_programs: plan.max_loyalty_programs,
-        max_customers: plan.max_customers,
-        max_staff: plan.max_staff || 1,
-        is_trial: plan.is_trial || false,
-        trial_days: plan.trial_days || 14,
+        max_loyalty_programs: Number(plan.max_loyalty_programs),
+        max_customers: Number(plan.max_customers),
+        max_staff: Number(plan.max_staff),
+        is_trial: Boolean(plan.is_trial),
+        trial_days: Number(plan.trial_days || 14),
         includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
         features: Array.isArray(plan.features) ? plan.features : [],
-        entitlements: entitlementState,
+        entitlements: buildPlanEntitlementPayload(entitlementState, statusPlanData),
       });
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -3240,23 +3323,53 @@ export default function AdminDashboard() {
                       </select>
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <Label>Features</Label>
-                      <Input value={planFormData.features.join(", ")} onChange={(event) => setPlanFormData((current) => ({ ...current, features: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) }))} placeholder="Comma-separated feature list" />
+                      <Label>Display feature text</Label>
+                      <Input value={planFormData.features.join(", ")} onChange={(event) => setPlanFormData((current) => ({ ...current, features: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) }))} placeholder="Optional comma-separated marketing feature list" />
+                      <p className="text-xs text-muted-foreground">This text is only for display. Real access is controlled by the database entitlements below.</p>
                     </div>
-                    <div className="flex flex-wrap gap-4 md:col-span-2">
-                      {availablePlanEntitlements.map((feature) => (
-                        <label key={feature.key} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(planFormData.entitlements[feature.key as keyof typeof planFormData.entitlements])}
-                            onChange={(event) => setPlanFormData((current) => ({
-                              ...current,
-                              entitlements: { ...current.entitlements, [feature.key]: event.target.checked },
-                            }))}
-                          />
-                          {feature.label}
-                        </label>
-                      ))}
+                    <div className="space-y-4 rounded-xl border bg-background p-4 md:col-span-2">
+                      <div>
+                        <Label>Database-backed feature entitlements</Label>
+                        <p className="text-xs text-muted-foreground">These structured feature codes are saved to Supabase plan_entitlements and are the source of truth for server-side access.</p>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {booleanPlanEntitlements.map((feature) => (
+                          <label key={feature.key} className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+                            <input
+                              type="checkbox"
+                              className="mt-1"
+                              checked={Boolean(planFormData.entitlements[feature.key])}
+                              onChange={(event) => setPlanFormData((current) => ({
+                                ...current,
+                                entitlements: { ...current.entitlements, [feature.key]: event.target.checked },
+                              }))}
+                            />
+                            <span>
+                              <span className="block font-semibold text-foreground">{feature.label}</span>
+                              <span className="block font-mono text-[11px] text-muted-foreground">{feature.key}</span>
+                              <span className="mt-1 block text-xs text-muted-foreground">{feature.description}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {numberPlanEntitlements.map((feature) => (
+                          <div key={feature.key} className="space-y-2 rounded-lg border bg-muted/30 p-3">
+                            <Label>{feature.label}</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={Number(planFormData.entitlements[feature.key] || 0)}
+                              onChange={(event) => setPlanFormData((current) => ({
+                                ...current,
+                                entitlements: { ...current.entitlements, [feature.key]: Number(event.target.value) },
+                              }))}
+                            />
+                            <p className="font-mono text-[11px] text-muted-foreground">{feature.key}</p>
+                            <p className="text-xs text-muted-foreground">{feature.description}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div className="flex gap-2 md:col-span-2">
                       <Button type="submit" disabled={savingPlan}>{savingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save plan</Button>
@@ -3283,6 +3396,14 @@ export default function AdminDashboard() {
                           <TableCell>
                             <div className="font-semibold">{plan.name}</div>
                             <div className="text-xs text-muted-foreground">{plan.id}</div>
+                            <div className="mt-2 flex max-w-xl flex-wrap gap-1">
+                              {getSelectedPlanFeatureLabels(plan).slice(0, 6).map((featureLabel) => (
+                                <Badge key={featureLabel} variant="secondary" className="text-[10px]">{featureLabel}</Badge>
+                              ))}
+                              {getSelectedPlanFeatureLabels(plan).length > 6 && (
+                                <Badge variant="outline" className="text-[10px]">+{getSelectedPlanFeatureLabels(plan).length - 6} more</Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>AWG {Number(plan.price_awg || 0).toFixed(2)}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{plan.max_customers} customers · {plan.max_loyalty_programs} programs · {plan.max_staff || 1} staff</TableCell>
