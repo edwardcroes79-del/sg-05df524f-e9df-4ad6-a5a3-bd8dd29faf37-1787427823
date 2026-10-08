@@ -104,7 +104,7 @@ async function resolveCorporateBusiness(admin: ReturnType<typeof createServiceCl
 
   const canUseCorporateBranding = await hasCorporateBrandingEntitlement(admin, business);
   if (!canUseCorporateBranding) {
-    throw new Error("Corporate Branding is available for Corporate businesses only");
+    throw new Error("Corporate Branding is not available for this business");
   }
 
   return business;

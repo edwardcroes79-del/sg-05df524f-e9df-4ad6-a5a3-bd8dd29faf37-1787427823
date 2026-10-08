@@ -106,7 +106,10 @@ async function readErrorMessage(response: Response) {
 }
 
 function isFeatureUnavailableResponse(response: Response, message: string) {
-  return response.status === 403 && message === "Corporate Branding is not available for this business";
+  return response.status === 403 && (
+    message === "Corporate Branding is not available for this business" ||
+    message === "Corporate Branding is available for Corporate businesses only"
+  );
 }
 
 export async function fetchCorporateBranding(businessId: string, accessToken: string): Promise<CorporateBrandingFetchResult> {

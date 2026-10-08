@@ -16,7 +16,7 @@ Fix the runtime crash where Corporate Branding entitlement denial is treated as 
 - [x] Inspect Corporate Branding context, dashboard loader, and backend API behavior for entitlement-denied responses
 - [x] Separate feature-unavailable responses from real server/security failures in the frontend fetch helper
 - [x] Update DashboardLayout so Corporate Branding does not block normal dashboard loading or expose UI for unavailable plans
-- [ ] Verify API entitlement protection remains server-side and lower plans are handled gracefully
+- [x] Verify API entitlement protection remains server-side and lower plans are handled gracefully
 - [ ] Run project checks and report root cause, files changed, and test results
 
 ## Acceptance
