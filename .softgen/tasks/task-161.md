@@ -10,14 +10,18 @@ position: 161
 ---
 
 ## Notes
-Staff assigned to a Corporate location can issue stamps successfully, and Corporate-wide analytics includes the stamps, but location-specific analytics does not. This indicates the underlying stamp transaction is likely missing or mis-recording `location_id`. The fix must trace the complete issue-stamp flow from UI to server/database function, resolve authorized staff/admin location context server-side, record the correct location on the stamp transaction, preserve historical stamps, keep Corporate-wide aggregation intact, keep lower-plan behavior unchanged, and ensure staff cannot submit unauthorized `location_id` manually. Quick QR location attribution must remain correct.
+Audit evidence found `stamp_transactions.location_id` is the storage column used by Corporate Advanced Analytics location filters. Recent stamp rows were persisted with `location_id = NULL`, so Corporate-wide analytics counted them while location-specific analytics did not.
+
+Root cause: the dashboard scanner called `issue_stamp_tx(p_customer_id, p_business_id, p_loyalty_program_id)` without a location argument, and that 3-argument wrapper passed `NULL::uuid` into `issue_stamp_core_tx`. Quick QR generation called `generate_quick_stamp_qr_token(p_business_id, p_loyalty_program_id)`, which inserted tokens without `location_id`, so `quick_stamp_qr_issue_stamp` also wrote NULL location transactions. The canonical core function already supports `p_location_id` and writes it to `stamp_transactions.location_id` plus `rewards.earned_location_id`; the loss happened in wrappers/callers.
+
+Fix applied in `supabase/migrations/20261008191500_staff_stamp_location_attribution.sql` and connected Supabase: added `resolve_stamp_issue_location`, rewired both `issue_stamp_tx` wrappers to resolve/validate server-side location before calling `issue_stamp_core_tx`, and rewired the 2-argument Quick QR token wrapper to resolve a server-side default location. UI scanner and Quick QR pages now pass the active Corporate location when selected, but the database still rejects unauthorized location IDs and can infer a single assigned staff location when no browser selection is provided. Historical stamps are unchanged.
 
 ## Checklist
-- [ ] Audit database schema for stamp transaction location storage, staff-location assignment tables, stamp RPCs, and analytics RPCs
-- [ ] Trace UI and API callers for staff/admin Issue Stamp, Corporate selected location issuance, and Quick QR issuance
-- [ ] Identify where location context is lost or trusted incorrectly
-- [ ] Apply the smallest database/function and application fix so new stamp transactions store the authorized location_id
-- [ ] Ensure staff cannot manually submit an unauthorized location_id
+- [x] Audit database schema for stamp transaction location storage, staff-location assignment tables, stamp RPCs, and analytics RPCs
+- [x] Trace UI and API callers for staff/admin Issue Stamp, Corporate selected location issuance, and Quick QR issuance
+- [x] Identify where location context is lost or trusted incorrectly
+- [x] Apply the smallest database/function and application fix so new stamp transactions store the authorized location_id
+- [x] Ensure staff cannot manually submit an unauthorized location_id
 - [ ] Verify Corporate-wide analytics still aggregates all locations
 - [ ] Verify location-specific analytics filters by recorded transaction location
 - [ ] Verify Quick QR records the token/location context correctly

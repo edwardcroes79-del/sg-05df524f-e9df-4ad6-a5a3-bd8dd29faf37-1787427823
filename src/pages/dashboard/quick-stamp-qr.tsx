@@ -17,6 +17,7 @@ type QuickStampToken = {
   expiresAt: string;
   businessId: string;
   loyaltyProgramId: string;
+  locationId: string | null;
   ttlSeconds: number;
 };
 
@@ -46,6 +47,7 @@ export default function QuickStampQrPage() {
   const [businessName, setBusinessName] = useState("Royalty Stamp");
   const [programs, setPrograms] = useState<LoyaltyProgramOption[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState("");
+  const [activeLocationId, setActiveLocationId] = useState("");
   const [tokenData, setTokenData] = useState<QuickStampToken | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -78,10 +80,20 @@ export default function QuickStampQrPage() {
     setErrorMessage("");
 
     try {
-      const { data, error } = await (supabase as any).rpc("generate_quick_stamp_qr_token", {
+      const tokenParams: {
+        p_business_id: string;
+        p_loyalty_program_id: string;
+        p_location_id?: string;
+      } = {
         p_business_id: resolvedBusinessId,
         p_loyalty_program_id: programId,
-      });
+      };
+
+      if (activeLocationId) {
+        tokenParams.p_location_id = activeLocationId;
+      }
+
+      const { data, error } = await (supabase as any).rpc("generate_quick_stamp_qr_token", tokenParams);
 
       if (error) throw error;
       if (!data?.success) {
@@ -93,6 +105,7 @@ export default function QuickStampQrPage() {
         expiresAt: data.expires_at,
         businessId: data.business_id,
         loyaltyProgramId: data.loyalty_program_id,
+        locationId: data.location_id || null,
         ttlSeconds: Number(data.ttl_seconds || 60),
       });
       setSecondsRemaining(getSecondsRemaining(data.expires_at));
@@ -103,7 +116,7 @@ export default function QuickStampQrPage() {
       setRefreshing(false);
       setLoading(false);
     }
-  }, [t]);
+  }, [activeLocationId, t]);
 
   useEffect(() => {
     let mounted = true;
@@ -147,6 +160,12 @@ export default function QuickStampQrPage() {
 
       setBusinessId(resolvedBusiness.id);
       setBusinessName(resolvedBusiness.business_name || "Royalty Stamp");
+
+      if (typeof window !== "undefined") {
+        const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
+        setActiveLocationId(storedLocationId === "all" ? "" : storedLocationId);
+      }
+
       setPrograms(activePrograms);
 
       if (!firstProgram) {
@@ -165,6 +184,28 @@ export default function QuickStampQrPage() {
       mounted = false;
     };
   }, [refreshToken]);
+
+  useEffect(() => {
+    const handleActiveLocationChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ businessId?: string; locationId?: string }>).detail;
+
+      if (!detail?.businessId || detail.businessId !== businessId) return;
+
+      setActiveLocationId(detail.locationId === "all" ? "" : detail.locationId || "");
+    };
+
+    window.addEventListener("royalty-active-location-change", handleActiveLocationChange);
+
+    return () => {
+      window.removeEventListener("royalty-active-location-change", handleActiveLocationChange);
+    };
+  }, [businessId]);
+
+  useEffect(() => {
+    if (!businessId || !selectedProgramId) return;
+
+    void refreshToken(businessId, selectedProgramId);
+  }, [activeLocationId, businessId, refreshToken, selectedProgramId]);
 
   useEffect(() => {
     if (!tokenData?.expiresAt || !businessId || !selectedProgramId) return;

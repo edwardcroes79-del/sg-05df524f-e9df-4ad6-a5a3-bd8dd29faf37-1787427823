@@ -33,6 +33,7 @@ export default function ScanQR() {
   const [programs, setPrograms] = useState<any[]>([]);
   const [customers, setCustomers] = useState<RegisteredCustomer[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
+  const [activeLocationId, setActiveLocationId] = useState<string>("");
   
   // Scanner state - Defaulting to manual so search is immediately visible
   const [scanMode, setScanMode] = useState<"camera" | "manual">("manual");
@@ -278,6 +279,11 @@ export default function ScanQR() {
       if (resolvedBusinessId) {
         // Set the minimal business object needed for the rest of the file
         setBusiness({ id: resolvedBusinessId });
+
+        if (typeof window !== "undefined") {
+          const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusinessId}`) || "";
+          setActiveLocationId(storedLocationId === "all" ? "" : storedLocationId);
+        }
         
         const { data: progs, error: progsError } = await supabase
           .from("loyalty_programs")
@@ -328,6 +334,22 @@ export default function ScanQR() {
       setCustomerSearchLoading(false);
     }
   };
+
+  useEffect(() => {
+    const handleActiveLocationChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ businessId?: string; locationId?: string }>).detail;
+
+      if (!detail?.businessId || detail.businessId !== business?.id) return;
+
+      setActiveLocationId(detail.locationId === "all" ? "" : detail.locationId || "");
+    };
+
+    window.addEventListener("royalty-active-location-change", handleActiveLocationChange);
+
+    return () => {
+      window.removeEventListener("royalty-active-location-change", handleActiveLocationChange);
+    };
+  }, [business?.id]);
 
   // Always keep the ref updated with the latest function closure
   useEffect(() => {
@@ -617,11 +639,22 @@ export default function ScanQR() {
         throw new Error(t("dashboard.scan.missingProgram"));
       }
 
-      const { data, error } = await (supabase.rpc as any)("issue_stamp_tx", {
+      const issueStampParams: {
+        p_customer_id: string;
+        p_business_id: string;
+        p_loyalty_program_id: string;
+        p_location_id?: string;
+      } = {
         p_customer_id: customerId,
         p_business_id: business.id,
-        p_loyalty_program_id: selectedProgramId
-      });
+        p_loyalty_program_id: selectedProgramId,
+      };
+
+      if (activeLocationId) {
+        issueStampParams.p_location_id = activeLocationId;
+      }
+
+      const { data, error } = await (supabase.rpc as any)("issue_stamp_tx", issueStampParams);
 
       if (error) throw error;
 
