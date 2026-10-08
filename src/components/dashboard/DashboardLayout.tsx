@@ -223,15 +223,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setQuickStampQrEnabled(Boolean(hasQuickStampAddon) || resolvedBusiness.subscription_plan === "mega_plan");
       setAdvancedAnalyticsEnabled(resolvedBusiness.subscription_plan === "mega_plan");
       setLocationsManagementEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
-      setCorporateBrandingEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
+      setCorporateBrandingEnabled(false);
 
       if (resolvedBusiness.subscription_plan === "mega_plan") {
         try {
           const savedBranding = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
           setCorporateBranding(savedBranding);
+          setCorporateBrandingEnabled(resolvedBusiness.owner_id === session.user.id);
         } catch (brandingError) {
           console.error("Corporate branding load error:", brandingError);
           setCorporateBranding(null);
+          setCorporateBrandingEnabled(false);
         }
 
         const { data: locationRows, error: locationError } = await (supabase as any)
@@ -258,6 +260,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         }
       } else {
         setCorporateBranding(null);
+        setCorporateBrandingEnabled(false);
         setDashboardLocations([]);
         setActiveLocationId("");
       }

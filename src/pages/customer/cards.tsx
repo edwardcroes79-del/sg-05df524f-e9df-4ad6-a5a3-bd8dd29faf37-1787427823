@@ -234,7 +234,14 @@ export default function MyCardsPage() {
               card_bg_image_url,
               card_banner_url
             ),
-            businesses (business_name, primary_color, address)
+            businesses (
+              business_name,
+              subscription_plan,
+              logo,
+              primary_color,
+              secondary_color,
+              address
+            )
           `)
           .eq("customer_id", customerData.id);
         
@@ -281,6 +288,13 @@ export default function MyCardsPage() {
               const prog = card.loyalty_programs || {};
               const programDescription = typeof prog.description === "string" ? prog.description.trim() : "";
               const rewardDescription = typeof prog.reward_description === "string" ? prog.reward_description.trim() : "";
+              const corporateBranding = card.businesses?.subscription_plan === "mega_plan"
+                ? {
+                    logo_url: card.businesses.logo || null,
+                    primary_color: card.businesses.primary_color || "#F87171",
+                    secondary_color: card.businesses.secondary_color || "#0F766E",
+                  }
+                : undefined;
 
               return (
                 <LoyaltyCard
@@ -306,6 +320,7 @@ export default function MyCardsPage() {
                     card_bg_image_url: prog.card_bg_image_url,
                     card_banner_url: prog.card_banner_url
                   }}
+                  corporateBranding={corporateBranding}
                 />
               );
             })}
