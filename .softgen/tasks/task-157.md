@@ -52,9 +52,10 @@ Test results:
 ## Checklist
 - [x] Inspect CorporateBrandingContext, dashboard layout/navigation, Branding route/page, API, i18n keys, and entitlement gating to find why the UI is not visible
 - [x] Inspect the actual Corporate Branding page/form implementation and identify why the real controls are missing or inaccessible
-- [ ] Actually make the Corporate Branding navigation item visible to entitled Corporate users in the dashboard
-- [ ] Verify the complete functional Branding controls render: logo upload, logo preview, replace/remove logo, primary color picker, secondary/accent picker, live preview, save, reset, and saved reload
-- [ ] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
+- [x] Actually make the Corporate Branding navigation item visible to entitled Corporate users in the dashboard
+- [x] Reconnect the existing Corporate Branding page into Business Dashboard Settings for entitled Corporate users
+- [x] Verify the complete functional Branding controls render: logo upload, logo preview, replace/remove logo, primary color picker, secondary/accent picker, live preview, save, reset, and saved reload
+- [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
 - [ ] Verify non-Corporate businesses cannot access Corporate Branding and dashboard loading remains normal
 - [ ] Run project checks and physically confirm the Corporate Branding UI is now visible in the dashboard
 

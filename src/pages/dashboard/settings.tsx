@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -9,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, ShieldCheck, ShieldAlert, Key } from "lucide-react";
+import { Loader2, Save, ShieldCheck, ShieldAlert, Key, Palette } from "lucide-react";
 import { useI18n } from "@/contexts/I18nProvider";
+import { fetchCorporateBranding } from "@/contexts/CorporateBrandingContext";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -20,6 +22,7 @@ export default function SettingsPage() {
   const [isStaff, setIsStaff] = useState(false);
   const [saving, setSaving] = useState(false);
   const [business, setBusiness] = useState<any>(null);
+  const [corporateBrandingAvailable, setCorporateBrandingAvailable] = useState(false);
 
   // 2FA States
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
@@ -84,6 +87,14 @@ export default function SettingsPage() {
       website: data.website || "",
       address: data.address || ""
     });
+
+    try {
+      const brandingResult = await fetchCorporateBranding(data.id, session.access_token);
+      setCorporateBrandingAvailable(brandingResult.status === "available" && brandingResult.can_manage);
+    } catch (brandingError) {
+      console.error("Corporate branding settings access error:", brandingError);
+      setCorporateBrandingAvailable(false);
+    }
 
     await fetchMfaFactors();
     setLoading(false);
@@ -374,6 +385,31 @@ export default function SettingsPage() {
             </CardFooter>
           </Card>
         </form>
+
+        {corporateBrandingAvailable && (
+          <Card className="border-primary/20 shadow-sm">
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="w-5 h-5 text-primary" />
+                {t("dashboard.corporateBranding.title")}
+              </CardTitle>
+              <CardDescription>{t("dashboard.corporateBranding.description")}</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="text-sm text-muted-foreground">
+                  {t("dashboard.corporateBranding.settingsEntryDescription")}
+                </div>
+                <Link href="/dashboard/corporate-branding">
+                  <Button type="button" className="w-full sm:w-auto">
+                    <Palette className="mr-2 h-4 w-4" />
+                    {t("dashboard.corporateBranding.openSettings")}
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Account Security Card (2FA) */}
         <Card className="border-border shadow-sm">
