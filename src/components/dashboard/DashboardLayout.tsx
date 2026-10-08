@@ -231,16 +231,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         const canUseCorporateBranding = brandingResult.status === "available";
         setCorporateBranding(canUseCorporateBranding ? brandingResult.branding : null);
         setCorporateBrandingEnabled(canUseCorporateBranding && brandingResult.can_manage);
-        
-        console.log("Corporate Branding Debug:", {
-          business_id: resolvedBusiness.id,
-          subscription_plan: resolvedBusiness.subscription_plan,
-          owner_id: resolvedBusiness.owner_id,
-          current_user_id: session.user.id,
-          branding_status: brandingResult.status,
-          can_manage: brandingResult.can_manage,
-          enabled: canUseCorporateBranding && brandingResult.can_manage,
-        });
       } catch (brandingError) {
         console.error("Corporate branding load error:", brandingError);
         setCorporateBranding(null);
