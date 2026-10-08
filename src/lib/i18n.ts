@@ -24,6 +24,17 @@ export const translations = {
     "common.new": "NEW",
     "common.comingSoon": "Coming Soon",
 
+    "admin.common.currentPlan": "current plan",
+    "admin.common.unknownBusiness": "Unknown business",
+    "admin.notifications.addonRequest": "Add-on request",
+    "admin.notifications.quickStampRequested": "requested Quick QR access.",
+    "admin.notifications.customersRequested": "requested +{count} customer capacity.",
+    "admin.notifications.downgradeRequest": "Downgrade request",
+    "admin.notifications.upgradeRequest": "Upgrade request",
+    "admin.notifications.planChangeRequested": "requested a plan change from {currentPlan} to {requestedPlan}.",
+    "admin.notifications.businessRegistration": "Business registration",
+    "admin.notifications.awaitingApproval": "is awaiting approval.",
+
     "auth.login.seoTitle": "Business Login | Royalty Stamp",
     "auth.login.seoDescription": "Sign in to access your Royalty Stamp business dashboard.",
     "auth.login.welcome": "Welcome Back",
@@ -1148,6 +1159,17 @@ export const translations = {
     "common.gotIt": "Entendido",
     "common.new": "NUEVO",
     "common.comingSoon": "Próximamente",
+
+    "admin.common.currentPlan": "plan actual",
+    "admin.common.unknownBusiness": "Negocio desconocido",
+    "admin.notifications.addonRequest": "Solicitud de add-on",
+    "admin.notifications.quickStampRequested": "solicitó acceso a Quick QR.",
+    "admin.notifications.customersRequested": "solicitó +{count} de capacidad de clientes.",
+    "admin.notifications.downgradeRequest": "Solicitud de downgrade",
+    "admin.notifications.upgradeRequest": "Solicitud de upgrade",
+    "admin.notifications.planChangeRequested": "solicitó un cambio de plan de {currentPlan} a {requestedPlan}.",
+    "admin.notifications.businessRegistration": "Registro de negocio",
+    "admin.notifications.awaitingApproval": "está esperando aprobación.",
 
     "auth.login.seoTitle": "Inicio de sesión de negocio | Royalty Stamp",
     "auth.login.seoDescription": "Inicia sesión para acceder a tu panel de negocio de Royalty Stamp.",
@@ -2280,6 +2302,17 @@ const papiamentoOverrides: Partial<TranslationDictionary> = {
   "common.new": "NOBO",
   "common.comingSoon": "Pronto",
 
+  "admin.common.currentPlan": "plan actual",
+  "admin.common.unknownBusiness": "Negoshi desconoci",
+  "admin.notifications.addonRequest": "Solicitud di add-on",
+  "admin.notifications.quickStampRequested": "a solicita acceso na Quick QR.",
+  "admin.notifications.customersRequested": "a solicita +{count} capacidad di cliente.",
+  "admin.notifications.downgradeRequest": "Solicitud di downgrade",
+  "admin.notifications.upgradeRequest": "Solicitud di upgrade",
+  "admin.notifications.planChangeRequested": "a solicita cambio di plan for di {currentPlan} pa {requestedPlan}.",
+  "admin.notifications.businessRegistration": "Registracion di negoshi",
+  "admin.notifications.awaitingApproval": "ta wardando aprobacion.",
+
   "auth.login.seoTitle": "Login di negoshi | Royalty Stamp",
   "auth.login.seoDescription": "Login pa haya acceso na bo dashboard di negoshi di Royalty Stamp.",
   "auth.login.welcome": "Bon bini bek",
@@ -3407,7 +3440,14 @@ const translationCatalog: Record<LanguageCode, TranslationDictionary> = {
 };
 
 export function translate(language: LanguageCode, key: TranslationKey, values?: Record<string, string | number>) {
-  const template = translationCatalog[language][key] || translationCatalog[defaultLanguage][key];
+  const dictionary = translationCatalog[language] || translationCatalog[defaultLanguage];
+  const selectedTemplate = dictionary[key];
+  const defaultTemplate = translationCatalog[defaultLanguage][key];
+  const template = typeof selectedTemplate === "string"
+    ? selectedTemplate
+    : typeof defaultTemplate === "string"
+      ? defaultTemplate
+      : key;
 
   if (!values) return template;
 
