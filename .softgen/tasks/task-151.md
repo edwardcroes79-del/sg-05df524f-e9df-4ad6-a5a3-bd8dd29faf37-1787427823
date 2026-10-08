@@ -1,6 +1,6 @@
 ---
 title: Corporate Branding Backend Foundation
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [corporate, branding, backend, storage, supabase]
@@ -20,8 +20,8 @@ Build Phase 1 backend/storage only for Corporate Branding. Corporate businesses 
 - [x] Implement backend endpoints/services to save and read logo URL, primary brand color, and secondary/accent color without UI changes
 - [x] Validate uploaded logo files for type, size, and ownership; optimize/compress where appropriate within the existing stack
 - [x] Provide safe default Royalty Stamp branding when no Corporate custom branding exists
-- [ ] Verify non-Corporate businesses cannot use Corporate Branding backend functionality and another business cannot access branding
-- [ ] Run project checks and report files, database/storage changes, RLS, and tests
+- [x] Verify non-Corporate businesses cannot use Corporate Branding backend functionality and another business cannot access branding
+- [x] Run project checks and report files, database/storage changes, RLS, and tests
 
 ## Acceptance
 Corporate businesses can persist and reload logo, primary color, and secondary/accent color through backend functionality.
