@@ -232,8 +232,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         if (typeof window !== "undefined" && availableLocations.length > 0) {
           const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
-          const nextLocationId = availableLocations.some((location) => location.id === storedLocationId)
-            ? storedLocationId
+          const nextLocationId = storedLocationId === "all" || availableLocations.some((location) => location.id === storedLocationId)
+            ? storedLocationId || "all"
             : availableLocations[0].id;
           publishActiveLocationChange(resolvedBusiness.id, nextLocationId);
           setActiveLocationId(nextLocationId);
@@ -297,6 +297,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         onChange={(event) => handleActiveLocationChange(event.target.value)}
         aria-label={t("dashboard.locationSwitcher.label" as TranslationKey)}
       >
+        <option value="all">{t("dashboard.analytics.corporateWide" as TranslationKey)}</option>
         {dashboardLocations.map((location) => (
           <option key={location.id} value={location.id}>{location.name}</option>
         ))}

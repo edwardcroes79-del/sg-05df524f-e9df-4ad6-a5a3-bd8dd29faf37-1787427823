@@ -13,11 +13,11 @@ position: 148
 Remove the duplicate location selector from Advanced Analytics while keeping the global top-right dashboard location selector as the single source of truth. Advanced Analytics must automatically use the global active location for data requests, refresh when it changes, and keep date range plus refresh controls. Do not change pricing, plan limits, billing, entitlements, Quick QR functionality, customer data, staff permissions, location management, or existing translations except verifying the remaining global location selector labels.
 
 ## Checklist
-- [ ] Inspect the global dashboard location selector state/context and Advanced Analytics local selector state
-- [ ] Remove only the duplicate Advanced Analytics location dropdown
-- [ ] Ensure Advanced Analytics requests use the global active location id
-- [ ] Ensure changing the global selector automatically refetches Advanced Analytics data
-- [ ] Keep Corporate-wide/all-locations behavior through the existing active-location architecture
+- [x] Inspect the global dashboard location selector state/context and Advanced Analytics local selector state
+- [x] Remove only the duplicate Advanced Analytics location dropdown
+- [x] Ensure Advanced Analytics requests use the global active location id
+- [x] Ensure changing the global selector automatically refetches Advanced Analytics data
+- [x] Keep Corporate-wide/all-locations behavior through the existing active-location architecture
 - [ ] Verify global location selector labels resolve in English, Spanish, and Papiamento
 - [ ] Run validation and targeted checks
 

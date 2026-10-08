@@ -153,7 +153,7 @@ export default function CorporateAnalyticsPage() {
     if (hasSyncedActiveLocation || !analytics?.business_id || typeof window === "undefined") return;
 
     const storedLocationId = window.localStorage.getItem(`active_location_${analytics.business_id}`) || "";
-    const storedLocationIsAvailable = storedLocationId && availableLocations.some((location) => location.id === storedLocationId);
+    const storedLocationIsAvailable = storedLocationId === "all" || availableLocations.some((location) => location.id === storedLocationId);
 
     if (storedLocationIsAvailable) {
       setLocationId(storedLocationId);
@@ -185,6 +185,14 @@ export default function CorporateAnalyticsPage() {
     window.dispatchEvent(new CustomEvent("royalty-active-location-change", {
       detail: { businessId: analytics.business_id, locationId: nextLocationId },
     }));
+  };
+
+  const activeLocationLabel = locationId === "all"
+    ? t("dashboard.analytics.corporateWide")
+    : availableLocations.find((location) => location.id === locationId)?.name || t("dashboard.analytics.corporateWide");
+
+  const handleManualRefresh = () => {
+    void fetchAnalytics();
   };
 
   const overviewCards = [
@@ -240,13 +248,11 @@ export default function CorporateAnalyticsPage() {
                 />
               </>
             )}
-            <select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={locationId} onChange={(event) => handleLocationScopeChange(event.target.value)}>
-              <option value="all">{t("dashboard.analytics.corporateWide")}</option>
-              {availableLocations.map((location) => (
-                <option key={location.id} value={location.id}>{location.name}</option>
-              ))}
-            </select>
-            <Button type="button" variant="outline" className="gap-2" onClick={() => void fetchAnalytics()} disabled={loading}>
+            <div className="flex items-center rounded-md border border-input bg-muted/40 px-3 text-sm text-muted-foreground">
+              <MapPin className="mr-2 h-4 w-4 text-primary" />
+              {activeLocationLabel}
+            </div>
+            <Button type="button" variant="outline" className="gap-2" onClick={handleManualRefresh} disabled={loading}>
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               {t("dashboard.analytics.refresh")}
             </Button>
