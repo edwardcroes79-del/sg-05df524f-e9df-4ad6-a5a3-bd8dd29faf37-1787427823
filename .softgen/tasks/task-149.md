@@ -13,11 +13,11 @@ position: 149
 The Corporate Advanced Analytics Royalty Insights section is displaying raw translation keys such as `dashboard.analytics.insights.topLocation` and `dashboard.analytics.insights.topProgram`. The fix must keep the existing i18n system as the source of user-facing text, dynamically substitute real analytics values such as location name, program name, and stamp count, and provide friendly no-data messages in English, Spanish, and Aruba Papiamento. Do not change analytics calculations, database logic, location selection, Quick QR, entitlements, pricing, billing, or unrelated features.
 
 ## Checklist
-- [ ] Inspect the active i18n catalog and current Royalty Insights rendering
-- [ ] Add missing English, Spanish, and Papiamento insight translations
-- [ ] Ensure raw `dashboard.analytics.*` keys are never displayed in Royalty Insights
-- [ ] Preserve dynamic value substitution for location, program, stamp count, and selected period
-- [ ] Verify translated title and description resolve correctly
+- [x] Inspect the active i18n catalog and current Royalty Insights rendering
+- [x] Add missing English, Spanish, and Papiamento insight translations
+- [x] Ensure raw `dashboard.analytics.*` keys are never displayed in Royalty Insights
+- [x] Preserve dynamic value substitution for location, program, stamp count, and selected period
+- [x] Verify translated title and description resolve correctly
 - [ ] Run targeted translation checks and project validation
 
 ## Acceptance

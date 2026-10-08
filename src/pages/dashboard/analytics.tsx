@@ -82,11 +82,40 @@ export default function CorporateAnalyticsPage() {
   };
 
   const getInsightMessage = (insight: AnalyticsInsight) => {
-    if (insight.message_key) {
-      return t(insight.message_key, insight.values || {});
+    const values = insight.values || {};
+    const count = Number(values.count || values.stamps || 0);
+
+    if (insight.message_key === "dashboard.analytics.insights.topLocation") {
+      const location = typeof values.location === "string" ? values.location.trim() : "";
+
+      if (!location || count <= 0) {
+        return t("dashboard.analytics.insights.noTopLocation");
+      }
     }
 
-    return insight.message || t("dashboard.analytics.insights.genericFallback");
+    if (insight.message_key === "dashboard.analytics.insights.topProgram") {
+      const program = typeof values.program === "string" ? values.program.trim() : "";
+
+      if (!program || count <= 0) {
+        return t("dashboard.analytics.insights.noTopProgram");
+      }
+    }
+
+    if (insight.message_key) {
+      const translatedMessage = t(insight.message_key, values);
+
+      if (translatedMessage === insight.message_key || translatedMessage.startsWith("dashboard.analytics.")) {
+        return t("dashboard.analytics.insights.genericFallback");
+      }
+
+      return translatedMessage;
+    }
+
+    if (insight.message && !insight.message.startsWith("dashboard.analytics.")) {
+      return insight.message;
+    }
+
+    return t("dashboard.analytics.insights.genericFallback");
   };
 
   const fetchAnalytics = async () => {
