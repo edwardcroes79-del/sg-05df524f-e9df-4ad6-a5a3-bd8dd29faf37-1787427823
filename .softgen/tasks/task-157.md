@@ -1,6 +1,6 @@
 ---
 title: Corporate Branding visibility regression
-status: done
+status: in_progress
 priority: urgent
 type: bug
 tags: [corporate, branding, regression, dashboard]
@@ -10,6 +10,8 @@ position: 157
 ---
 
 ## Notes
+REOPENED: User confirms Corporate Branding is still NOT visible in the actual Corporate Business Dashboard. The Settings menu is present but there is no Corporate Branding section, tab, logo upload, color controls, or branding configuration. This must be fixed before marking complete.
+
 Fix the critical regression where Corporate Branding exists in code but is not visibly accessible or usable from the Business Dashboard for a Corporate business. Do not rebuild from scratch or create duplicate branding systems. Restore the actual functional Branding page/navigation using the existing Corporate Branding context, page, API, storage, database fields, i18n keys, and server-side entitlement protection. Preserve the Settings i18n regression fix and do not allow raw `dashboard.settings.*` keys to return.
 
 Where the actual Branding UI was found:
@@ -50,13 +52,13 @@ Test results:
 ## Checklist
 - [x] Inspect CorporateBrandingContext, dashboard layout/navigation, Branding route/page, API, i18n keys, and entitlement gating to find why the UI is not visible
 - [x] Inspect the actual Corporate Branding page/form implementation and identify why the real controls are missing or inaccessible
-- [x] Restore a visible Corporate Branding entry for entitled Corporate businesses in the established dashboard location
-- [x] Restore the complete functional Branding controls: logo upload, logo preview, replace/remove logo, primary color picker, secondary/accent picker, live preview, save, reset, and saved reload
-- [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
-- [x] Verify non-Corporate businesses cannot access Corporate Branding and dashboard loading remains normal
-- [x] Run project checks and report exact cause, files changed, database/storage/entitlement changes, and test results
+- [ ] Actually make the Corporate Branding navigation item visible to entitled Corporate users in the dashboard
+- [ ] Verify the complete functional Branding controls render: logo upload, logo preview, replace/remove logo, primary color picker, secondary/accent picker, live preview, save, reset, and saved reload
+- [ ] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
+- [ ] Verify non-Corporate businesses cannot access Corporate Branding and dashboard loading remains normal
+- [ ] Run project checks and physically confirm the Corporate Branding UI is now visible in the dashboard
 
 ## Acceptance
-Corporate businesses can see and open Corporate Branding from the Business Dashboard.
+Corporate businesses can see and open Corporate Branding from the Business Dashboard navigation.
 Corporate Branding controls are visibly present and functional: logo upload, preview, replace/remove, colors, live preview, save, reset, and persistence after refresh.
 Settings and Branding labels translate in English, Spanish, and Papiamento with no raw keys.
