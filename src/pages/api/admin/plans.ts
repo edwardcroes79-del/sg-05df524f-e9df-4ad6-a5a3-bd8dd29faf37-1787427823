@@ -38,9 +38,21 @@ const allowedFeatureKeys = new Set([
   "premium_templates",
   "reward_expiration",
   "custom_card_branding",
+  "advanced_analytics",
+  "quick_stamp_qr",
+  "location_management",
+  "multi_location_management",
+  "staff_location_assignment",
+  "location_manager",
+  "location_analytics",
+  "cross_location_analytics",
+  "location_leaderboard",
+  "corporate_branding",
+  "location_specific_quick_qr",
   "max_loyalty_programs",
   "max_customers",
   "max_staff",
+  "max_locations",
 ]);
 
 function slugifyPlanId(name: string) {
@@ -185,8 +197,32 @@ function normalizeEntitlements(body: PlanInput, payload: ReturnType<typeof build
   const merged = new Map<string, EntitlementInput>();
   baseEntitlements.forEach((entitlement) => merged.set(entitlement.key, entitlement));
   incoming.forEach((entitlement) => {
-    if (allowedFeatureKeys.has(entitlement.key)) {
-      merged.set(entitlement.key, entitlement);
+    if (!allowedFeatureKeys.has(entitlement.key)) return;
+
+    if (entitlement.value_type === "boolean") {
+      merged.set(entitlement.key, {
+        key: entitlement.key,
+        value_type: "boolean",
+        boolean_value: Boolean(entitlement.boolean_value),
+      });
+      return;
+    }
+
+    if (entitlement.value_type === "number") {
+      merged.set(entitlement.key, {
+        key: entitlement.key,
+        value_type: "number",
+        number_value: toNumber(entitlement.number_value, 0),
+      });
+      return;
+    }
+
+    if (entitlement.value_type === "text") {
+      merged.set(entitlement.key, {
+        key: entitlement.key,
+        value_type: "text",
+        text_value: entitlement.text_value || "",
+      });
     }
   });
 

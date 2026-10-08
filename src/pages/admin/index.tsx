@@ -212,10 +212,45 @@ export default function AdminDashboard() {
 
   // Edit states
   const availablePlanEntitlements = [
-    { key: "premium_templates", label: "Premium Templates", description: "Allow premium loyalty card templates." },
-    { key: "reward_expiration", label: "Reward Expiration", description: "Allow businesses to set reward expiration periods." },
-    { key: "custom_card_branding", label: "Custom Card Branding", description: "Allow branded card customization." },
-  ];
+    { key: "premium_templates", label: "Premium Templates", description: "Allow premium loyalty card templates.", valueType: "boolean" },
+    { key: "reward_expiration", label: "Reward Expiration", description: "Allow businesses to set reward expiration periods.", valueType: "boolean" },
+    { key: "custom_card_branding", label: "Custom Card Branding", description: "Allow branded loyalty card customization.", valueType: "boolean" },
+    { key: "advanced_analytics", label: "Corporate Advanced Analytics", description: "Allow advanced corporate analytics dashboards.", valueType: "boolean" },
+    { key: "quick_stamp_qr", label: "Quick QR Included", description: "Include Quick QR through the plan instead of requiring the AWG 10 add-on.", valueType: "boolean" },
+    { key: "location_management", label: "Location Management", description: "Allow location management screens and APIs.", valueType: "boolean" },
+    { key: "multi_location_management", label: "Multi-location Management", description: "Allow Corporate multi-location operations.", valueType: "boolean" },
+    { key: "staff_location_assignment", label: "Staff-location Assignment", description: "Allow assigning staff to business locations.", valueType: "boolean" },
+    { key: "location_manager", label: "Location Manager Role", description: "Allow location manager functionality.", valueType: "boolean" },
+    { key: "location_analytics", label: "Location Analytics", description: "Allow per-location analytics views.", valueType: "boolean" },
+    { key: "cross_location_analytics", label: "Cross-location Analytics", description: "Allow cross-location analytics comparisons.", valueType: "boolean" },
+    { key: "location_leaderboard", label: "Location Leaderboard", description: "Allow Corporate location leaderboard reporting.", valueType: "boolean" },
+    { key: "corporate_branding", label: "Corporate Branding", description: "Allow Corporate-level branding controls.", valueType: "boolean" },
+    { key: "location_specific_quick_qr", label: "Location-specific Quick QR", description: "Allow Quick QR to carry location context.", valueType: "boolean" },
+    { key: "max_locations", label: "Maximum Locations", description: "Server-side limit for active locations.", valueType: "number" },
+  ] as const;
+
+  const booleanPlanEntitlements = availablePlanEntitlements.filter((feature) => feature.valueType === "boolean");
+  const numberPlanEntitlements = availablePlanEntitlements.filter((feature) => feature.valueType === "number");
+
+  type PlanEntitlementKey = typeof availablePlanEntitlements[number]["key"];
+
+  const defaultPlanEntitlements: Record<PlanEntitlementKey, boolean | number> = {
+    premium_templates: false,
+    reward_expiration: true,
+    custom_card_branding: false,
+    advanced_analytics: false,
+    quick_stamp_qr: false,
+    location_management: false,
+    multi_location_management: false,
+    staff_location_assignment: false,
+    location_manager: false,
+    location_analytics: false,
+    cross_location_analytics: false,
+    location_leaderboard: false,
+    corporate_branding: false,
+    location_specific_quick_qr: false,
+    max_locations: 0,
+  };
 
   const emptyPlanFormData = {
     id: "",
@@ -233,11 +268,7 @@ export default function AdminDashboard() {
     trial_days: 14,
     includes_premium_templates: false,
     features: [] as string[],
-    entitlements: {
-      premium_templates: false,
-      reward_expiration: true,
-      custom_card_branding: false,
-    },
+    entitlements: { ...defaultPlanEntitlements },
   };
 
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
@@ -1270,12 +1301,7 @@ export default function AdminDashboard() {
   };
 
   const handleEditPlanClick = (plan: any) => {
-    const entitlementMap = (plan.entitlements || []).reduce((acc: Record<string, boolean>, entitlement: any) => {
-      if (entitlement.value_type === "boolean") {
-        acc[entitlement.key] = Boolean(entitlement.boolean_value);
-      }
-      return acc;
-    }, {});
+    const entitlementState = buildPlanEntitlementState(plan);
 
     setEditingPlan(plan);
     setIsCreatingPlan(false);
@@ -1293,13 +1319,9 @@ export default function AdminDashboard() {
       max_staff: plan.max_staff || 1,
       is_trial: plan.is_trial || false,
       trial_days: plan.trial_days || 14,
-      includes_premium_templates: plan.includes_premium_templates || Boolean(entitlementMap.premium_templates),
+      includes_premium_templates: plan.includes_premium_templates || Boolean(entitlementState.premium_templates),
       features: Array.isArray(plan.features) ? plan.features : [],
-      entitlements: {
-        premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
-        reward_expiration: Boolean(entitlementMap.reward_expiration ?? true),
-        custom_card_branding: Boolean(entitlementMap.custom_card_branding ?? plan.includes_premium_templates),
-      },
+      entitlements: entitlementState,
     });
   };
 
@@ -1313,28 +1335,7 @@ export default function AdminDashboard() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
-    const entitlements = [
-      ...availablePlanEntitlements.map((feature) => ({
-        key: feature.key,
-        value_type: "boolean",
-        boolean_value: Boolean(planFormData.entitlements[feature.key as keyof typeof planFormData.entitlements]),
-      })),
-      {
-        key: "max_loyalty_programs",
-        value_type: "number",
-        number_value: Number(planFormData.max_loyalty_programs),
-      },
-      {
-        key: "max_customers",
-        value_type: "number",
-        number_value: Number(planFormData.max_customers),
-      },
-      {
-        key: "max_staff",
-        value_type: "number",
-        number_value: Number(planFormData.max_staff),
-      },
-    ];
+    const entitlements = buildPlanEntitlementPayload();
 
     const response = await fetch("/api/admin/plans", {
       method,
@@ -1414,12 +1415,7 @@ export default function AdminDashboard() {
     try {
       setSavingPlan(true);
 
-      const entitlementMap = (plan.entitlements || []).reduce((acc: Record<string, boolean>, entitlement: any) => {
-        if (entitlement.value_type === "boolean") {
-          acc[entitlement.key] = Boolean(entitlement.boolean_value);
-        }
-        return acc;
-      }, {});
+      const entitlementState = buildPlanEntitlementState(plan);
 
       setPlanFormData({
         id: plan.id,
@@ -1435,13 +1431,9 @@ export default function AdminDashboard() {
         max_staff: plan.max_staff || 1,
         is_trial: plan.is_trial || false,
         trial_days: plan.trial_days || 14,
-        includes_premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
+        includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
         features: Array.isArray(plan.features) ? plan.features : [],
-        entitlements: {
-          premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
-          reward_expiration: Boolean(entitlementMap.reward_expiration ?? true),
-          custom_card_branding: Boolean(entitlementMap.custom_card_branding ?? plan.includes_premium_templates),
-        },
+        entitlements: entitlementState,
       });
 
       const { data: { session } } = await supabase.auth.getSession();
@@ -1467,18 +1459,9 @@ export default function AdminDashboard() {
           max_staff: Number(plan.max_staff || 1),
           is_trial: Boolean(plan.is_trial),
           trial_days: Number(plan.trial_days || 14),
-          includes_premium_templates: Boolean(entitlementMap.premium_templates ?? plan.includes_premium_templates),
+          includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
           features: Array.isArray(plan.features) ? plan.features : [],
-          entitlements: [
-            ...availablePlanEntitlements.map((feature) => ({
-              key: feature.key,
-              value_type: "boolean",
-              boolean_value: Boolean(entitlementMap[feature.key] ?? (feature.key === "premium_templates" ? plan.includes_premium_templates : feature.key === "reward_expiration")),
-            })),
-            { key: "max_loyalty_programs", value_type: "number", number_value: Number(plan.max_loyalty_programs || 1) },
-            { key: "max_customers", value_type: "number", number_value: Number(plan.max_customers || 300) },
-            { key: "max_staff", value_type: "number", number_value: Number(plan.max_staff || 1) },
-          ],
+          entitlements: buildPlanEntitlementPayload(),
         }),
       });
 
