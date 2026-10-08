@@ -230,7 +230,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         const brandingResult = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
         const canUseCorporateBranding = brandingResult.status === "available";
         setCorporateBranding(canUseCorporateBranding ? brandingResult.branding : null);
-        setCorporateBrandingEnabled(canUseCorporateBranding && resolvedBusiness.owner_id === session.user.id);
+        setCorporateBrandingEnabled(canUseCorporateBranding && brandingResult.can_manage);
       } catch (brandingError) {
         console.error("Corporate branding load error:", brandingError);
         setCorporateBranding(null);

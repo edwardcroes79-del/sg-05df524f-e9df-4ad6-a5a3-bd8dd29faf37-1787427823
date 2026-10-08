@@ -63,7 +63,7 @@ export default function CorporateBrandingPage() {
 
       const brandingResult = await fetchCorporateBranding(businessData.id, session.access_token);
 
-      if (brandingResult.status !== "available") {
+      if (brandingResult.status !== "available" || !brandingResult.can_manage) {
         router.push("/dashboard");
         return;
       }

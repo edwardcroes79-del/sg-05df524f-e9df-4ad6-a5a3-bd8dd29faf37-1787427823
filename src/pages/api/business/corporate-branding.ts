@@ -134,8 +134,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const business = await resolveCorporateBusiness(admin, user.id, businessId);
 
     if (req.method === "GET") {
+      const canManageBranding = await userCanManageCorporateBranding(admin, business.id, user.id);
+
       return res.status(200).json({
         success: true,
+        can_manage: canManageBranding,
         branding: toBrandingSettings(business),
       });
     }
@@ -197,6 +200,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       success: true,
+      can_manage: true,
       branding: toBrandingSettings(updatedBusiness),
     });
   } catch (error: any) {

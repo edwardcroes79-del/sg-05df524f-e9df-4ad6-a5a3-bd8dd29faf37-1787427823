@@ -21,6 +21,7 @@ type CorporateBrandingContextValue = {
 export type CorporateBrandingFetchResult = {
   status: "available" | "unavailable";
   branding: CorporateBrandingSettings;
+  can_manage: boolean;
 };
 
 const CorporateBrandingContext = createContext<CorporateBrandingContextValue>({
@@ -126,6 +127,7 @@ export async function fetchCorporateBranding(businessId: string, accessToken: st
       return {
         status: "unavailable",
         branding: getDefaultCorporateBranding(businessId),
+        can_manage: false,
       };
     }
 
@@ -136,5 +138,6 @@ export async function fetchCorporateBranding(businessId: string, accessToken: st
   return {
     status: "available",
     branding: (result.branding as CorporateBrandingSettings) || getDefaultCorporateBranding(businessId),
+    can_manage: Boolean(result.can_manage),
   };
 }
