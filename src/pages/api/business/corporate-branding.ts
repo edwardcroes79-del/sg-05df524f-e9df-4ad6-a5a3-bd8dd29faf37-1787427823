@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 import {
   buildCorporateLogoPath,
+  optimizeLogoUpload,
   sanitizeBrandingPayload,
   toBrandingSettings,
   validateLogoUpload,
@@ -47,6 +48,29 @@ async function getAuthenticatedUser(req: NextApiRequest) {
   return data.user;
 }
 
+async function hasCorporateBrandingEntitlement(admin: ReturnType<typeof createServiceClient>, business: { id: string; subscription_plan: string | null }) {
+  const { data, error } = await admin
+    .from("plan_entitlements")
+    .select("boolean_value")
+    .eq("plan_id", business.subscription_plan)
+    .eq("key", "corporate_branding")
+    .eq("value_type", "boolean")
+    .maybeSingle();
+
+  if (error) throw error;
+  return Boolean(data?.boolean_value);
+}
+
+async function userCanManageCorporateBranding(admin: ReturnType<typeof createServiceClient>, businessId: string, userId: string) {
+  const { data, error } = await admin.rpc("is_corporate_admin_for_business", {
+    target_business_id: businessId,
+    target_user_id: userId,
+  });
+
+  if (error) throw error;
+  return Boolean(data);
+}
+
 async function resolveCorporateBusiness(admin: ReturnType<typeof createServiceClient>, userId: string, requestedBusinessId?: string) {
   let query = admin
     .from("businesses")
@@ -80,13 +104,7 @@ async function resolveCorporateBusiness(admin: ReturnType<typeof createServiceCl
     }
   }
 
-  const { data: canUseCorporateBranding, error: entitlementError } = await admin.rpc("get_business_boolean_entitlement", {
-    p_business_id: business.id,
-    p_key: "corporate_branding",
-    p_fallback: false,
-  });
-
-  if (entitlementError) throw entitlementError;
+  const canUseCorporateBranding = await hasCorporateBrandingEntitlement(admin, business);
   if (!canUseCorporateBranding) {
     throw new Error("Corporate Branding is available for Corporate businesses only");
   }
@@ -124,16 +142,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
+    const canManageBranding = await userCanManageCorporateBranding(admin, business.id, user.id);
+    if (!canManageBranding) {
+      return res.status(403).json({ error: "Only Corporate admins can update Corporate Branding" });
+    }
+
     const logoUpload = validateLogoUpload(payload);
     let logoUrl = business.logo || null;
     let logoPath: string | null = null;
+    let logoSize: number | null = null;
 
     if (logoUpload) {
-      logoPath = buildCorporateLogoPath(business.id, logoUpload.extension);
+      const optimizedLogo = await optimizeLogoUpload(logoUpload);
+      logoPath = buildCorporateLogoPath(business.id, optimizedLogo.extension);
+      logoSize = optimizedLogo.size;
+
       const { error: uploadError } = await admin.storage
         .from(bucketName)
-        .upload(logoPath, logoUpload.buffer, {
-          contentType: logoUpload.mimeType,
+        .upload(logoPath, optimizedLogo.buffer, {
+          contentType: optimizedLogo.mimeType,
           cacheControl: "31536000",
           upsert: false,
         });
@@ -160,6 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await audit(admin, user.id, business.id, {
       business_id: business.id,
       logo_path: logoPath,
+      logo_size: logoSize,
       has_logo_upload: Boolean(logoUpload),
       primary_color: primaryColor,
       secondary_color: secondaryColor,

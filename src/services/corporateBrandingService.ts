@@ -21,6 +21,13 @@ export type ValidatedLogoUpload = {
   size: number;
 };
 
+export type OptimizedLogoUpload = {
+  buffer: Buffer;
+  mimeType: "image/webp" | "image/svg+xml";
+  extension: "webp" | "svg";
+  size: number;
+};
+
 export const ROYALTY_STAMP_DEFAULT_BRANDING = {
   logo_url: null,
   primary_color: "#F87171",
@@ -28,6 +35,8 @@ export const ROYALTY_STAMP_DEFAULT_BRANDING = {
 } as const;
 
 const MAX_LOGO_BYTES = 1024 * 1024;
+const MAX_OPTIMIZED_LOGO_BYTES = 512 * 1024;
+const MAX_LOGO_DIMENSION = 512;
 const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
 
 function normalizeHexColor(value: string | null | undefined, fallback: string) {
@@ -75,6 +84,27 @@ function extensionFromMimeType(mimeType: string) {
   throw new Error("Unsupported logo file type");
 }
 
+function hasValidMagicNumber(buffer: Buffer, mimeType: string) {
+  if (mimeType === "image/png") {
+    return buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+  }
+
+  if (mimeType === "image/jpeg") {
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+
+  if (mimeType === "image/webp") {
+    return buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP";
+  }
+
+  if (mimeType === "image/svg+xml") {
+    const snippet = buffer.subarray(0, Math.min(buffer.length, 512)).toString("utf8").toLowerCase();
+    return snippet.includes("<svg");
+  }
+
+  return false;
+}
+
 export function sanitizeBrandingPayload(payload: CorporateBrandingPayload) {
   return {
     businessId: typeof payload.business_id === "string" ? payload.business_id : undefined,
@@ -98,7 +128,7 @@ export function validateLogoUpload(payload: CorporateBrandingPayload): Validated
     throw new Error("Logo file must be 1MB or smaller");
   }
 
-  if (buffer.byteLength < 32) {
+  if (buffer.byteLength < 32 || !hasValidMagicNumber(buffer, mimeType)) {
     throw new Error("Logo file is invalid");
   }
 
@@ -110,7 +140,41 @@ export function validateLogoUpload(payload: CorporateBrandingPayload): Validated
   };
 }
 
-export function buildCorporateLogoPath(businessId: string, extension: ValidatedLogoUpload["extension"]) {
+export async function optimizeLogoUpload(upload: ValidatedLogoUpload): Promise<OptimizedLogoUpload> {
+  if (upload.mimeType === "image/svg+xml") {
+    return {
+      buffer: upload.buffer,
+      mimeType: "image/svg+xml",
+      extension: "svg",
+      size: upload.buffer.byteLength,
+    };
+  }
+
+  const sharp = (await import("sharp")).default;
+  const optimized = await sharp(upload.buffer, { animated: false })
+    .rotate()
+    .resize({
+      width: MAX_LOGO_DIMENSION,
+      height: MAX_LOGO_DIMENSION,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: 82, effort: 4 })
+    .toBuffer();
+
+  if (optimized.byteLength > MAX_OPTIMIZED_LOGO_BYTES) {
+    throw new Error("Optimized logo file must be 512KB or smaller");
+  }
+
+  return {
+    buffer: optimized,
+    mimeType: "image/webp",
+    extension: "webp",
+    size: optimized.byteLength,
+  };
+}
+
+export function buildCorporateLogoPath(businessId: string, extension: OptimizedLogoUpload["extension"]) {
   const timestamp = Date.now();
   return `corporate-branding/${businessId}/logo-${timestamp}.${extension}`;
 }
