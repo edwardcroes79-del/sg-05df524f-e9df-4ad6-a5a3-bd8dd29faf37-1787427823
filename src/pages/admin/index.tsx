@@ -2779,7 +2779,7 @@ export default function AdminDashboard() {
               <TabsTrigger value="payment_settings">{t("admin.tabs.paymentSettings")}</TabsTrigger>
               <TabsTrigger value="website">{t("admin.tabs.website")}</TabsTrigger>
               <TabsTrigger value="security">{t("admin.tabs.security")}</TabsTrigger>
-              <TabsTrigger value="backups">Backups</TabsTrigger>
+              <TabsTrigger value="backups">{t("admin.tabs.backups")}</TabsTrigger>
             </TabsList>
 
             <TabsContent value="merchants" className="min-h-0">
