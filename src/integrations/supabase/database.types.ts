@@ -1717,6 +1717,10 @@ export type Database = {
         Args: { p_business_id: string; p_entitlement_key?: string }
         Returns: number
       }
+      get_business_boolean_entitlement: {
+        Args: { p_business_id: string; p_fallback?: boolean; p_key: string }
+        Returns: boolean
+      }
       get_business_dashboard_access_status: {
         Args: { p_user_id?: string }
         Returns: {
@@ -1809,6 +1813,7 @@ export type Database = {
         Args: {
           p_business_id: string
           p_customer_id: string
+          p_location_id?: string
           p_loyalty_program_id: string
           p_staff_user_id: string
           p_verification_method?: string
@@ -1833,6 +1838,14 @@ export type Database = {
             }
             Returns: Json
           }
+      loyalty_program_available_at_location: {
+        Args: {
+          p_business_id: string
+          p_location_id: string
+          p_loyalty_program_id: string
+        }
+        Returns: boolean
+      }
       quick_stamp_qr_issue_stamp: { Args: { p_token: string }; Returns: Json }
       redeem_reward: {
         Args: { p_business_id: string; p_reward_code: string }
@@ -1873,6 +1886,22 @@ export type Database = {
           name: string
           phone: string
         }[]
+      }
+      user_can_access_business_location: {
+        Args: {
+          p_business_id: string
+          p_location_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      user_can_manage_business_location: {
+        Args: {
+          p_business_id: string
+          p_location_id: string
+          p_user_id: string
+        }
+        Returns: boolean
       }
       user_has_business_location_access: {
         Args: {

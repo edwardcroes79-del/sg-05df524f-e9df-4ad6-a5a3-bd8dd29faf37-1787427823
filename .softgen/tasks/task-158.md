@@ -10,7 +10,15 @@ position: 158
 ---
 
 ## Notes
-Fix PostgreSQL RPC ambiguity when issuing a stamp from a Corporate business: `function public.issue_stamp_core(uuid, uuid, uuid, unknown) is not unique`. First audit all existing `public.issue_stamp_core` functions, signatures, definitions, security mode, search path, and grants. Then trace the current application call and identify what the four arguments represent. Do not create another overloaded function. Preserve existing stamp issuance behavior, business isolation, staff permissions, corporate location-aware activity, history, analytics, lower-plan issuance, and Quick QR issuance.
+Connected Supabase audit found no `public.issue_stamp_core` functions in the current project database, but found the same ambiguity class on the active canonical path: two `public.issue_stamp_core_tx` overloads existed:
+- `issue_stamp_core_tx(uuid, uuid, uuid, uuid, text)`
+- `issue_stamp_core_tx(uuid, uuid, uuid, uuid, text, uuid)`
+
+The 6-argument version is canonical because it records `stamp_transactions.location_id` directly and stores reward earned location through `rewards.earned_location_id`. The 5-argument version is obsolete because it cannot record location and overlaps with the 6-argument version that has default arguments. A 5-argument call with an untyped verification-method literal can resolve to both, producing PostgreSQL function ambiguity.
+
+Current app caller: `src/pages/dashboard/scan.tsx` calls `issue_stamp_tx` with customer, business, and loyalty program IDs. Quick QR calls `quick_stamp_qr_issue_stamp`, which already delegates to the 6-argument canonical `issue_stamp_core_tx` with token location.
+
+Applied database fix in migration `supabase/migrations/20261008171000_resolve_stamp_rpc_ambiguity.sql`: rewired both `issue_stamp_tx` wrappers to call the 6-argument canonical `issue_stamp_core_tx` with explicit casts, preserved location authorization/program availability checks, and dropped obsolete `issue_stamp_core_tx(uuid, uuid, uuid, uuid, text)`.
 
 ## Checklist
 - [ ] Audit all `public.issue_stamp_core` functions and report exact signatures, return types, definitions, security mode, search path, and permissions
