@@ -1,6 +1,6 @@
 ---
 title: Production stamp min uuid fix
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [stamps, production, supabase, locations]
@@ -14,14 +14,16 @@ The live production Issue Stamp flow failed with `function min(uuid) does not ex
 
 The targeted fix replaces `min(bul.location_id)` with a deterministic ordered selection from the assigned location set: order by business location name and UUID text, then limit 1. The function still only returns an inferred location when the staff member has exactly one active assigned location. Requested location IDs are still validated through `user_can_access_business_location`, preserving the Corporate multi-location authorization work. No stamp records, customer ownership, plan settings, or analytics queries were changed.
 
+Validation evidence: the connected database verification confirmed `min(bul.location_id)` is no longer present in `public.resolve_stamp_issue_location`. Project checks passed with no CSS, linting, TypeScript, or server errors. Authenticated deployed-app issuance tests still require live staff/admin credentials and real test customers.
+
 ## Checklist
 - [x] Inspect the connected database schema and current stamp/location RPC definitions before changing SQL
 - [x] Identify the exact function/query calling `min(uuid)`
 - [x] Replace the invalid UUID aggregate with a deterministic UUID-safe selection
 - [x] Preserve server-side location resolution and unauthorized location rejection
 - [x] Verify the repaired stamp RPC definitions in the connected environment
-- [ ] Run project checks
-- [ ] Report root cause, changed database function/file, and production-verification limits
+- [x] Run project checks
+- [x] Report root cause, changed database function/file, and production-verification limits
 
 ## Acceptance
 Corporate staff stamp issuance no longer fails with `function min(uuid) does not exist`.
