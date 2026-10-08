@@ -10,7 +10,7 @@ position: 157
 ---
 
 ## Notes
-REOPENED: User confirms Corporate Branding is still NOT visible in the actual Corporate Business Dashboard. The Settings menu is present but there is no Corporate Branding section, tab, logo upload, color controls, or branding configuration. This must be fixed before marking complete.
+REOPENED: User confirms Corporate Branding must be scoped only to the Corporate Business Dashboard. Corporate Dashboard colors/logo must not leak into customer-facing loyalty cards, customer wallet, loyalty card templates, stamps, rewards, program branding, or existing lower-plan Custom Card Branding. Root cause investigation must trace CSS variables, context/provider scope, global style writes, DashboardLayout, CustomerLayout, LoyaltyCard, wallet/card pages, and any component consuming Corporate Branding variables.
 
 Confirmed backend root cause after deep trace: business `3ea7dd04-371d-4e61-aa57-3c38c2abcc65` is `Royalty Stamp (Demo)` with `subscription_plan = mega_plan`, `subscription_status = active`, `business_status = active`, `contract_status = active`, joined plan `mega_plan / Corporate`, `subscription_plans.status = active`, `subscription_plans.is_active = true`, and `plan_entitlements.corporate_branding.boolean_value = true`. However, `public.get_business_boolean_entitlement(business_id, 'corporate_branding', false)` returned `false` because the function filters the business row with `auth.uid()`. The API calls that RPC through the service-role client after authenticating the user separately, so `auth.uid()` inside the RPC is not the authenticated dashboard user. That made `v_plan_id` null and returned the fallback `false`, producing the 403. The fix is not to bypass authorization: the API still authenticates the user and verifies business owner/active membership access first, then resolves the existing `subscription_plans` + `plan_entitlements` row directly with the service-role client for server-side authorization.
 
@@ -69,7 +69,11 @@ Test results:
 - [x] Align Corporate Branding logo upload labels/errors with PNG/JPG/WEBP under 1MB and add the missing translated size-description key
 - [x] Run project checks successfully after the logo upload and translation fixes
 - [x] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans from the latest SQL trace
-- [ ] User-visible confirmation that a real Corporate logo upload/save/refresh/reset works in the browser
+- [ ] Trace where Corporate Branding colors/logo are applied globally and why they leak into customer loyalty cards
+- [ ] Scope Corporate Branding CSS variables/provider to Business Dashboard only
+- [ ] Verify customer wallet/card components keep their existing loyalty card branding and do not consume Corporate Dashboard branding
+- [ ] Run project checks after the scope fix
+- [ ] User-visible confirmation that Corporate Dashboard branding changes while customer loyalty cards remain unchanged
 
 ## Acceptance
 Corporate businesses can see and open Corporate Branding from the Business Dashboard navigation.
