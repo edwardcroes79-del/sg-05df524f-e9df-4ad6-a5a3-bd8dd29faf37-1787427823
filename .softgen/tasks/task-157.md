@@ -16,10 +16,10 @@ Current reopened issue: prior work restored part of the visibility/access gate, 
 
 ## Checklist
 - [x] Inspect CorporateBrandingContext, dashboard layout/navigation, Branding route/page, API, i18n keys, and entitlement gating to find why the UI is not visible
-- [ ] Inspect the actual Corporate Branding page/form implementation and identify why the real controls are missing or inaccessible
-- [ ] Restore a visible Corporate Branding entry for entitled Corporate businesses in the established dashboard location
-- [ ] Restore the complete functional Branding controls: logo upload, logo preview, replace/remove logo, primary color picker, secondary/accent picker, live preview, save, reset, and saved reload
-- [ ] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
+- [x] Inspect the actual Corporate Branding page/form implementation and identify why the real controls are missing or inaccessible
+- [x] Restore a visible Corporate Branding entry for entitled Corporate businesses in the established dashboard location
+- [x] Restore the complete functional Branding controls: logo upload, logo preview, replace/remove logo, primary color picker, secondary/accent picker, live preview, save, reset, and saved reload
+- [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
 - [ ] Verify non-Corporate businesses cannot access Corporate Branding and dashboard loading remains normal
 - [ ] Run project checks and report exact cause, files changed, database/storage/entitlement changes, and test results
 

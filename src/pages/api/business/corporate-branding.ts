@@ -59,9 +59,13 @@ async function hasCorporateBrandingEntitlement(admin: ReturnType<typeof createSe
   return Boolean(data);
 }
 
-async function userCanManageCorporateBranding(admin: ReturnType<typeof createServiceClient>, businessId: string, userId: string) {
+async function userCanManageCorporateBranding(admin: ReturnType<typeof createServiceClient>, business: { id: string; owner_id: string | null }, userId: string) {
+  if (business.owner_id === userId) {
+    return true;
+  }
+
   const { data, error } = await admin.rpc("is_corporate_admin_for_business", {
-    target_business_id: businessId,
+    target_business_id: business.id,
     target_user_id: userId,
   });
 
@@ -134,7 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const business = await resolveCorporateBusiness(admin, user.id, businessId);
 
     if (req.method === "GET") {
-      const canManageBranding = await userCanManageCorporateBranding(admin, business.id, user.id);
+      const canManageBranding = await userCanManageCorporateBranding(admin, business, user.id);
 
       return res.status(200).json({
         success: true,
@@ -143,7 +147,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const canManageBranding = await userCanManageCorporateBranding(admin, business.id, user.id);
+    const canManageBranding = await userCanManageCorporateBranding(admin, business, user.id);
     if (!canManageBranding) {
       return res.status(403).json({ error: "Only Corporate admins can update Corporate Branding" });
     }
