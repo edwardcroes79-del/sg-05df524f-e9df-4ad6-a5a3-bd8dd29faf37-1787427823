@@ -19,7 +19,7 @@ The targeted fix replaces `min(bul.location_id)` with a deterministic ordered se
 - [x] Identify the exact function/query calling `min(uuid)`
 - [x] Replace the invalid UUID aggregate with a deterministic UUID-safe selection
 - [x] Preserve server-side location resolution and unauthorized location rejection
-- [ ] Verify the repaired stamp RPC definitions in the connected environment
+- [x] Verify the repaired stamp RPC definitions in the connected environment
 - [ ] Run project checks
 - [ ] Report root cause, changed database function/file, and production-verification limits
 
