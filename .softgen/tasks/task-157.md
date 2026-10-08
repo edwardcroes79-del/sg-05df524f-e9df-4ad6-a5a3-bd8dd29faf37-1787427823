@@ -59,6 +59,7 @@ Test results:
 - [x] Reconnect the existing Corporate Branding page into Business Dashboard Settings for Corporate users
 - [x] Embed the real Corporate Branding controls directly inside Business Dashboard Settings for Corporate users
 - [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
+- [x] Prevent normal lower-plan dashboard/settings loads from calling the Corporate-only Branding API and producing expected 403 network errors
 - [ ] Verify non-Corporate businesses cannot access Corporate Branding and dashboard loading remains normal
 - [ ] Run project checks and report exact cause, files changed, database/storage/entitlement changes, and test results
 

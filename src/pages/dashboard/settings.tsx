@@ -91,8 +91,12 @@ export default function SettingsPage() {
     });
 
     try {
-      const brandingResult = await fetchCorporateBranding(data.id, session.access_token);
-      setCorporateBrandingAvailable(brandingResult.status === "available" && brandingResult.can_manage);
+      if (data.subscription_plan === "mega_plan") {
+        const brandingResult = await fetchCorporateBranding(data.id, session.access_token);
+        setCorporateBrandingAvailable(brandingResult.status === "available" && brandingResult.can_manage);
+      } else {
+        setCorporateBrandingAvailable(false);
+      }
     } catch (brandingError) {
       console.error("Corporate branding settings access error:", brandingError);
       setCorporateBrandingAvailable(false);
