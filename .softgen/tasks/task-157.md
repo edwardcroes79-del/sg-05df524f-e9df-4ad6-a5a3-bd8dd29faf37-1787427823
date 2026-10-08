@@ -52,11 +52,12 @@ Test results:
 ## Checklist
 - [x] Inspect CorporateBrandingContext, dashboard layout/navigation, Branding route/page, API, i18n keys, and entitlement gating to find why the UI is not visible
 - [x] Inspect the actual Corporate Branding page/form implementation and identify why the real controls are missing or inaccessible
-- [x] Identify exact Branding page/component: `src/pages/dashboard/corporate-branding.tsx`
+- [x] Identify exact Branding page/component: `src/pages/dashboard/corporate-branding.tsx` and shared controls in `src/components/dashboard/CorporateBrandingSettingsPanel.tsx`
 - [x] Identify exact route/path: `/dashboard/corporate-branding`
 - [x] Identify exact controls: logo upload/preview/remove, primary color picker, secondary color picker, live preview, save, reset confirmation
 - [x] Actually make the Corporate Branding navigation item visible to entitled Corporate users in the dashboard
 - [x] Reconnect the existing Corporate Branding page into Business Dashboard Settings for Corporate users
+- [x] Embed the real Corporate Branding controls directly inside Business Dashboard Settings for Corporate users
 - [x] Preserve Settings i18n and Corporate Branding i18n in English, Spanish, and Papiamento
 - [ ] Verify non-Corporate businesses cannot access Corporate Branding and dashboard loading remains normal
 - [ ] Run project checks and report exact cause, files changed, database/storage/entitlement changes, and test results
