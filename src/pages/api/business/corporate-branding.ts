@@ -146,9 +146,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const logoUpload = validateLogoUpload(payload);
+    const shouldClearLogo = !logoUpload && (payload as { logoUrl?: string | null }).logoUrl === null;
     const nextPrimaryColor = primaryColor || business.primary_color || null;
     const nextSecondaryColor = secondaryColor || business.secondary_color || null;
-    let logoUrl = business.logo || null;
+    let logoUrl = shouldClearLogo ? null : business.logo || null;
     let logoPath: string | null = null;
     let logoSize: number | null = null;
 
@@ -162,7 +163,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .upload(logoPath, optimizedLogo.buffer, {
           contentType: optimizedLogo.mimeType,
           cacheControl: "31536000",
-          upsert: false,
+          upsert: true,
         });
 
       if (uploadError) throw uploadError;
@@ -189,6 +190,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       logo_path: logoPath,
       logo_size: logoSize,
       has_logo_upload: Boolean(logoUpload),
+      cleared_logo: shouldClearLogo,
       primary_color: nextPrimaryColor,
       secondary_color: nextSecondaryColor,
     });

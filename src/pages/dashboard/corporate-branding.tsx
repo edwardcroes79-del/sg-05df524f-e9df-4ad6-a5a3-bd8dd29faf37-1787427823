@@ -154,14 +154,12 @@ export default function CorporateBrandingPage() {
       };
 
       if (base64Image) {
-        const [mimeType, base64Data] = base64Image.split(',');
         payload.logo = {
           name: logoFile!.name,
           type: logoFile!.type,
-          data: base64Data,
+          data: base64Image,
         };
       } else if (logoUrl === null) {
-        // Explictly clear logo
         payload.logoUrl = null;
       }
 
@@ -441,7 +439,7 @@ export default function CorporateBrandingPage() {
                       
                       {/* Contrast text color helper logic based on primary bg */}
                       <span className="font-bold text-white relative z-10 text-center text-sm shadow-sm drop-shadow-md">
-                        {business?.business_name || "Business Name"}
+                        {business?.business_name || t("dashboard.corporateBranding.previewBusinessFallback")}
                       </span>
                       
                       {/* Subtle pattern overlay */}

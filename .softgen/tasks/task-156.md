@@ -15,8 +15,8 @@ Restore the previously implemented Corporate Branding functionality without reve
 ## Checklist
 - [x] Inspect Corporate Branding context, API, dashboard navigation, route page, and i18n catalog to identify what was removed or reverted
 - [x] Restore missing Corporate Branding Settings page/navigation/functionality using the existing backend and i18n keys
-- [ ] Preserve the Settings page i18n fix and verify no raw `dashboard.settings.*` keys remain
-- [ ] Verify Corporate-only access, lower-plan graceful dashboard loading, and server-side entitlement protection
+- [x] Preserve the Settings page i18n fix and verify no raw `dashboard.settings.*` keys remain
+- [x] Verify Corporate-only access, lower-plan graceful dashboard loading, and server-side entitlement protection
 - [ ] Run project checks and report cause, files changed, restored functionality, and test results
 
 ## Acceptance
