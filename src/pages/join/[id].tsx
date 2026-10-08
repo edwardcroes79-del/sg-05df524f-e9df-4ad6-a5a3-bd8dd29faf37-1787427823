@@ -43,7 +43,11 @@ export default function JoinProgramSimplified() {
               id,
               business_name,
               slug,
-              status
+              status,
+              subscription_plan,
+              logo,
+              primary_color,
+              secondary_color
             )
           `)
           .eq("id", programId)
@@ -165,6 +169,13 @@ export default function JoinProgramSimplified() {
 
   // Extract the business object for easy access
   const business = Array.isArray(program.businesses) ? program.businesses[0] : program.businesses;
+  const corporateBranding = business.subscription_plan === "mega_plan"
+    ? {
+        logo_url: business.logo || null,
+        primary_color: business.primary_color || "#F87171",
+        secondary_color: business.secondary_color || "#0F766E",
+      }
+    : undefined;
 
   return (
     <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
@@ -202,6 +213,7 @@ export default function JoinProgramSimplified() {
               card_bg_image_url: program.card_bg_image_url,
               card_banner_url: program.card_banner_url
             }}
+            corporateBranding={corporateBranding}
           />
         </div>
 

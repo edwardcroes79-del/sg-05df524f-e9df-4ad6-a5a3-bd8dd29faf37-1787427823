@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/contexts/I18nProvider";
+import { useCorporateBranding } from "@/contexts/CorporateBrandingContext";
 
 export default function LoyaltyPrograms() {
   const [programs, setPrograms] = useState<any[]>([]);
@@ -17,6 +18,7 @@ export default function LoyaltyPrograms() {
   const [isOwner, setIsOwner] = useState(false);
   const { toast } = useToast();
   const { t } = useI18n();
+  const { branding } = useCorporateBranding();
 
   useEffect(() => {
     fetchPrograms();
@@ -157,7 +159,14 @@ export default function LoyaltyPrograms() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {programs.map((program) => (
-              <Card key={program.id} className="flex flex-col">
+              <Card
+                key={program.id}
+                className="flex flex-col overflow-hidden"
+                style={branding ? { borderColor: `${branding.secondary_color}55` } : undefined}
+              >
+                {branding && (
+                  <div className="h-1 w-full" style={{ backgroundColor: branding.primary_color }} />
+                )}
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-xl font-heading">{program.name}</CardTitle>
@@ -189,6 +198,7 @@ export default function LoyaltyPrograms() {
                     <Button 
                       variant={program.active ? "destructive" : "default"} 
                       className="flex-1 gap-2"
+                      style={branding && !program.active ? { backgroundColor: branding.primary_color, borderColor: branding.primary_color } : undefined}
                       onClick={() => toggleStatus(program.id, program.active)}
                     >
                       {program.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}

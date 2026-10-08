@@ -29,6 +29,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
+import {
+  CorporateBrandingProvider,
+  fetchCorporateBranding,
+  getCorporateBrandingStyle,
+  type CorporateBrandingSettings,
+} from "@/contexts/CorporateBrandingContext";
 
 type DashboardNavItem = {
   nameKey?: TranslationKey;
@@ -69,6 +75,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [advancedAnalyticsEnabled, setAdvancedAnalyticsEnabled] = useState(false);
   const [locationsManagementEnabled, setLocationsManagementEnabled] = useState(false);
   const [corporateBrandingEnabled, setCorporateBrandingEnabled] = useState(false);
+  const [corporateBranding, setCorporateBranding] = useState<CorporateBrandingSettings | null>(null);
   const [dashboardLocations, setDashboardLocations] = useState<DashboardLocation[]>([]);
   const [activeLocationId, setActiveLocationId] = useState("");
   
@@ -219,6 +226,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setCorporateBrandingEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
 
       if (resolvedBusiness.subscription_plan === "mega_plan") {
+        try {
+          const savedBranding = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
+          setCorporateBranding(savedBranding);
+        } catch (brandingError) {
+          console.error("Corporate branding load error:", brandingError);
+          setCorporateBranding(null);
+        }
+
         const { data: locationRows, error: locationError } = await (supabase as any)
           .from("business_locations")
           .select("id, name, status")
@@ -242,6 +257,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           setActiveLocationId(nextLocationId);
         }
       } else {
+        setCorporateBranding(null);
         setDashboardLocations([]);
         setActiveLocationId("");
       }
@@ -330,6 +346,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { nameKey: "dashboard.nav.staff", href: "/dashboard/staff", icon: Users },
     { nameKey: "dashboard.nav.settings", href: "/dashboard/settings", icon: Settings },
   ];
+
+  const corporateBrandingStyle = getCorporateBrandingStyle(corporateBranding);
+  const corporateLogoUrl = corporateBranding?.logo_url || "";
+  const corporatePrimaryColor = corporateBranding?.primary_color || undefined;
 
   if (loading) {
     return (
@@ -442,501 +462,515 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Mobile Sidebar Overlay */}
-      {isMobileOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out flex flex-col
-        lg:relative lg:translate-x-0
-        ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
-      `}>
-        <div className="p-6 flex items-center justify-between border-b border-border">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl shrink-0">
-              {business?.business_name?.charAt(0) || "A"}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-heading font-semibold text-foreground truncate block">
-                {business?.business_name}
-              </span>
-              {business?.subscription_plan === 'business' && (
-                <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded w-max mt-0.5 tracking-wider uppercase">
-                  {t("dashboard.plan.business")}
-                </span>
-              )}
-              {business?.subscription_plan === 'enterprise' && (
-                <span className="text-[9px] font-bold text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded w-max mt-0.5 tracking-wider uppercase border border-amber-500/20 font-serif">
-                  ★ {t("dashboard.plan.enterprise")}
-                </span>
-              )}
-            </div>
-          </Link>
-          <button className="lg:hidden" onClick={() => setIsMobileOpen(false)}>
-            <X className="h-5 w-5 text-muted-foreground" />
-          </button>
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {isSuperAdmin && (
-            <Link href="/admin">
-              <span className={`
-                flex items-center gap-3 px-3 py-2.5 mb-4 rounded-md text-sm font-semibold transition-colors bg-amber-500/10 text-amber-600 hover:bg-amber-500/20
-              `}>
-                <ShieldAlert className="h-5 w-5" />
-                {t("dashboard.nav.superAdminPanel")}
-              </span>
-            </Link>
-          )}
-
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = router.pathname === item.href || router.pathname.startsWith(`${item.href}/`);
-            const children = "children" in item ? item.children : undefined;
-
-            if (children?.length) {
-              const isGroupActive = isActive || children.some((child) => router.pathname === child.href || router.pathname.startsWith(`${child.href}/`));
-
-              return (
-                <div key={item.nameKey} className="space-y-1">
-                  <Link href={item.href}>
-                    <span className={`
-                      flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
-                      ${isGroupActive 
-                        ? "bg-primary/10 text-primary" 
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"}
-                    `}>
-                      <Icon className="h-5 w-5" />
-                      {item.nameKey ? t(item.nameKey) : item.name}
-                    </span>
-                  </Link>
-
-                  <div className="ml-4 space-y-1 border-l border-border pl-3">
-                    {children.map((child) => {
-                      const ChildIcon = child.icon;
-                      const isChildActive = router.pathname === child.href || router.pathname.startsWith(`${child.href}/`);
-
-                      return (
-                        <Link key={child.nameKey} href={child.href}>
-                          <span className={`
-                            flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors
-                            ${isChildActive 
-                              ? "bg-primary/10 text-primary" 
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground"}
-                          `}>
-                            <ChildIcon className="h-4 w-4" />
-                            {child.nameKey ? t(child.nameKey) : child.name}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            }
-
-            return (
-              <Link key={item.href} href={item.href}>
-                <span className={`
-                  flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
-                  ${isActive 
-                    ? "bg-primary/10 text-primary" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"}
-                `}>
-                  <Icon className="h-5 w-5" />
-                  {item.nameKey ? t(item.nameKey) : item.name}
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Top Header Mobile */}
-        <header className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-card">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl shrink-0">
-              {business?.business_name?.charAt(0) || "A"}
-            </div>
-            <span className="font-heading font-semibold text-foreground truncate">
-              {business?.business_name}
-            </span>
-          </div>
-          <div className="flex items-center gap-4 shrink-0">
-            <LanguageSelector compact />
-            {activeLocationSwitcher}
-            <button onClick={handleOpenWhatsNew} className="relative">
-              <Bell className={`h-5 w-5 text-foreground ${!hasReadWhatsNew ? 'animate-bell-shake' : ''}`} />
-              {!hasReadWhatsNew && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
-              )}
-            </button>
-            <button onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
-              <LogOut className="h-5 w-5" />
-            </button>
-            <button onClick={() => setIsMobileOpen(true)}>
-              <Menu className="h-6 w-6 text-foreground" />
-            </button>
-          </div>
-        </header>
-
-        {/* Top Header Desktop */}
-        <header className="hidden lg:flex items-center justify-end p-4 border-b border-border bg-card">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              className="relative flex items-center gap-2 text-muted-foreground hover:text-foreground"
-              onClick={handleOpenWhatsNew}
-            >
-              <Bell className={`h-4 w-4 ${!hasReadWhatsNew ? 'animate-bell-shake text-primary' : ''}`} />
-              <span className="text-sm font-medium">{t("dashboard.whatsNew")}</span>
-              {!hasReadWhatsNew && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
-              )}
-            </Button>
-            <LanguageSelector compact />
-            {activeLocationSwitcher}
-            <Button
-              variant="ghost"
-              className="flex items-center gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4" />
-              <span className="text-sm font-medium">{t("common.signOut")}</span>
-            </Button>
-          </div>
-        </header>
-
-        {isTrial && !isExpiredTrial && (
-          <div className="bg-indigo-600 px-4 py-2.5 flex items-center justify-between text-indigo-50 shadow-sm z-10">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Gift className="h-4 w-4" /> 
-              {t("dashboard.trial.endsSoon")} <span className="font-bold">{t("dashboard.trial.daysRemaining", { days: trialDaysLeft })}</span>
-            </div>
-            <Link href="/dashboard/billing">
-              <span className="text-xs font-bold uppercase tracking-wide bg-white/20 hover:bg-white/30 transition-colors px-3 py-1 rounded-full cursor-pointer">{t("dashboard.trial.upgradePlan")}</span>
-            </Link>
-          </div>
+    <CorporateBrandingProvider value={corporateBranding}>
+      <div className="min-h-screen bg-background flex" style={corporateBrandingStyle}>
+        {/* Mobile Sidebar Overlay */}
+        {isMobileOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsMobileOpen(false)}
+          />
         )}
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          {children}
-        </div>
-      </main>
-
-      {/* What's New Sheet */}
-      <Sheet open={isWhatsNewOpen} onOpenChange={setIsWhatsNewOpen}>
-        <SheetContent className="overflow-y-auto w-full sm:max-w-md z-[60]">
-          <SheetHeader className="mb-6">
-            <SheetTitle className="flex items-center gap-2 text-2xl font-heading">
-              <Bell className="h-6 w-6 text-primary" />
-              {t("dashboard.whatsNew")}
-            </SheetTitle>
-          </SheetHeader>
-
-          <div className="space-y-8">
-            <div>
-              <div className="space-y-4">
-                {/* Stamp Correction Announcement (COMING SOON) */}
-                <div 
-                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
-                  onClick={() => setComingSoonModalOpen(true)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">↩️</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.stampCorrection.title" as TranslationKey)}</h4>
-                    </div>
-                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.comingSoon")}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("dashboard.whatsNew.stampCorrection.description" as TranslationKey)}
-                  </p>
+        {/* Sidebar */}
+        <aside className={`
+          fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 ease-in-out flex flex-col
+          lg:relative lg:translate-x-0
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+        `}>
+          <div className="p-6 flex items-center justify-between border-b border-border">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              {corporateLogoUrl ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-background ring-1 ring-border">
+                  <img src={corporateLogoUrl} alt={business?.business_name || "Corporate logo"} className="h-full w-full object-contain p-1" />
+                </span>
+              ) : (
+                <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl shrink-0" style={{ backgroundColor: corporatePrimaryColor }}>
+                  {business?.business_name?.charAt(0) || "A"}
                 </div>
+              )}
+              <div className="flex flex-col min-w-0">
+                <span className="font-heading font-semibold text-foreground truncate block">
+                  {business?.business_name}
+                </span>
+                {business?.subscription_plan === 'business' && (
+                  <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded w-max mt-0.5 tracking-wider uppercase">
+                    {t("dashboard.plan.business")}
+                  </span>
+                )}
+                {business?.subscription_plan === 'enterprise' && (
+                  <span className="text-[9px] font-bold text-amber-700 bg-amber-500/10 px-1.5 py-0.5 rounded w-max mt-0.5 tracking-wider uppercase border border-amber-500/20 font-serif">
+                    ★ {t("dashboard.plan.enterprise")}
+                  </span>
+                )}
+              </div>
+            </Link>
+            <button className="lg:hidden" onClick={() => setIsMobileOpen(false)}>
+              <X className="h-5 w-5 text-muted-foreground" />
+            </button>
+          </div>
 
-                {/* New Languages Announcement (NEW) */}
-                <div 
-                  className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🌎</span>
-                      <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.languages.title" as TranslationKey)}</h4>
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+            {isSuperAdmin && (
+              <Link href="/admin">
+                <span className={`
+                  flex items-center gap-3 px-3 py-2.5 mb-4 rounded-md text-sm font-semibold transition-colors bg-amber-500/10 text-amber-600 hover:bg-amber-500/20
+                `}>
+                  <ShieldAlert className="h-5 w-5" />
+                  {t("dashboard.nav.superAdminPanel")}
+                </span>
+              </Link>
+            )}
+
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = router.pathname === item.href || router.pathname.startsWith(`${item.href}/`);
+              const children = "children" in item ? item.children : undefined;
+
+              if (children?.length) {
+                const isGroupActive = isActive || children.some((child) => router.pathname === child.href || router.pathname.startsWith(`${child.href}/`));
+
+                return (
+                  <div key={item.nameKey} className="space-y-1">
+                    <Link href={item.href}>
+                      <span className={`
+                        flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
+                        ${isGroupActive 
+                          ? "bg-primary/10 text-primary" 
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"}
+                      `}>
+                        <Icon className="h-5 w-5" />
+                        {item.nameKey ? t(item.nameKey) : item.name}
+                      </span>
+                    </Link>
+
+                    <div className="ml-4 space-y-1 border-l border-border pl-3">
+                      {children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const isChildActive = router.pathname === child.href || router.pathname.startsWith(`${child.href}/`);
+
+                        return (
+                          <Link key={child.nameKey} href={child.href}>
+                            <span className={`
+                              flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold transition-colors
+                              ${isChildActive 
+                                ? "bg-primary/10 text-primary" 
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"}
+                            `}>
+                              <ChildIcon className="h-4 w-4" />
+                              {child.nameKey ? t(child.nameKey) : child.name}
+                            </span>
+                          </Link>
+                        );
+                      })}
                     </div>
-                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.new")}
-                    </span>
                   </div>
-                  
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-foreground">
-                      {t("dashboard.whatsNew.languages.description" as TranslationKey)}
+                );
+              }
+
+              return (
+                <Link key={item.href} href={item.href}>
+                  <span className={`
+                    flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors
+                    ${isActive 
+                      ? "bg-primary/10 text-primary" 
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"}
+                  `}>
+                    <Icon className="h-5 w-5" />
+                    {item.nameKey ? t(item.nameKey) : item.name}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Top Header Mobile */}
+          <header className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-card">
+            <div className="flex items-center gap-2 overflow-hidden">
+              {corporateLogoUrl ? (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded bg-background ring-1 ring-border">
+                  <img src={corporateLogoUrl} alt={business?.business_name || "Corporate logo"} className="h-full w-full object-contain p-1" />
+                </span>
+              ) : (
+                <div className="w-8 h-8 bg-primary rounded flex items-center justify-center text-primary-foreground font-bold text-xl shrink-0" style={{ backgroundColor: corporatePrimaryColor }}>
+                  {business?.business_name?.charAt(0) || "A"}
+                </div>
+              )}
+              <span className="font-heading font-semibold text-foreground truncate">
+                {business?.business_name}
+              </span>
+            </div>
+            <div className="flex items-center gap-4 shrink-0">
+              <LanguageSelector compact />
+              {activeLocationSwitcher}
+              <button onClick={handleOpenWhatsNew} className="relative">
+                <Bell className={`h-5 w-5 text-foreground ${!hasReadWhatsNew ? 'animate-bell-shake' : ''}`} />
+                {!hasReadWhatsNew && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
+                )}
+              </button>
+              <button onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+                <LogOut className="h-5 w-5" />
+              </button>
+              <button onClick={() => setIsMobileOpen(true)}>
+                <Menu className="h-6 w-6 text-foreground" />
+              </button>
+            </div>
+          </header>
+
+          {/* Top Header Desktop */}
+          <header className="hidden lg:flex items-center justify-end p-4 border-b border-border bg-card">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                className="relative flex items-center gap-2 text-muted-foreground hover:text-foreground"
+                onClick={handleOpenWhatsNew}
+              >
+                <Bell className={`h-4 w-4 ${!hasReadWhatsNew ? 'animate-bell-shake text-primary' : ''}`} />
+                <span className="text-sm font-medium">{t("dashboard.whatsNew")}</span>
+                {!hasReadWhatsNew && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
+                )}
+              </Button>
+              <LanguageSelector compact />
+              {activeLocationSwitcher}
+              <Button
+                variant="ghost"
+                className="flex items-center gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="text-sm font-medium">{t("common.signOut")}</span>
+              </Button>
+            </div>
+          </header>
+
+          {isTrial && !isExpiredTrial && (
+            <div className="bg-indigo-600 px-4 py-2.5 flex items-center justify-between text-indigo-50 shadow-sm z-10">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Gift className="h-4 w-4" /> 
+                {t("dashboard.trial.endsSoon")} <span className="font-bold">{t("dashboard.trial.daysRemaining", { days: trialDaysLeft })}</span>
+              </div>
+              <Link href="/dashboard/billing">
+                <span className="text-xs font-bold uppercase tracking-wide bg-white/20 hover:bg-white/30 transition-colors px-3 py-1 rounded-full cursor-pointer">{t("dashboard.trial.upgradePlan")}</span>
+              </Link>
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto p-4 md:p-8">
+            {children}
+          </div>
+        </main>
+
+        {/* What's New Sheet */}
+        <Sheet open={isWhatsNewOpen} onOpenChange={setIsWhatsNewOpen}>
+          <SheetContent className="overflow-y-auto w-full sm:max-w-md z-[60]">
+            <SheetHeader className="mb-6">
+              <SheetTitle className="flex items-center gap-2 text-2xl font-heading">
+                <Bell className="h-6 w-6 text-primary" />
+                {t("dashboard.whatsNew")}
+              </SheetTitle>
+            </SheetHeader>
+
+            <div className="space-y-8">
+              <div>
+                <div className="space-y-4">
+                  {/* Stamp Correction Announcement (COMING SOON) */}
+                  <div 
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
+                    onClick={() => setComingSoonModalOpen(true)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">↩️</span>
+                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.stampCorrection.title" as TranslationKey)}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.comingSoon")}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("dashboard.whatsNew.stampCorrection.description" as TranslationKey)}
                     </p>
                   </div>
-                </div>
 
-                {/* Quick Issue Stamp Announcement (NEW) */}
-                <div 
-                  className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">⚡</span>
-                      <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.quickIssue.title")}</h4>
+                  {/* New Languages Announcement (NEW) */}
+                  <div 
+                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🌎</span>
+                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.languages.title" as TranslationKey)}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.new")}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-foreground">
-                      {t("dashboard.whatsNew.quickIssue.description")}
-                    </p>
                     
-                    <div className="pt-2 space-y-2">
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">📱</span>
-                        <span><strong>{t("dashboard.whatsNew.quickIssue.displayQrTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.displayQrDescription")}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">📷</span>
-                        <span><strong>{t("dashboard.whatsNew.quickIssue.customerScansTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.customerScansDescription")}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">⏱️</span>
-                        <span><strong>{t("dashboard.whatsNew.quickIssue.securityTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.securityDescription")}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">🧩</span>
-                        <span><strong>{t("dashboard.whatsNew.quickIssue.addonTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.addonDescription")}</span>
-                      </div>
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {t("dashboard.whatsNew.languages.description" as TranslationKey)}
+                      </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Available Add-ons Announcement (NEW) */}
-                <div 
-                  className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🧩</span>
-                      <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.addons.title")}</h4>
+                  {/* Quick Issue Stamp Announcement (NEW) */}
+                  <div 
+                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">⚡</span>
+                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.quickIssue.title")}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.new")}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-foreground">
-                      {t("dashboard.whatsNew.addons.description")}
-                    </p>
-                    <p className="text-sm text-muted-foreground italic">
-                      {t("dashboard.whatsNew.addons.quote")}
-                    </p>
                     
-                    <div className="pt-2 space-y-2">
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">➕</span>
-                        <span><strong>{t("dashboard.whatsNew.addons.moreCustomersTitle")}</strong> - {t("dashboard.whatsNew.addons.moreCustomersDescription")}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">💳</span>
-                        <span><strong>{t("dashboard.whatsNew.addons.keepPlanTitle")}</strong> - {t("dashboard.whatsNew.addons.keepPlanDescription")}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">📈</span>
-                        <span><strong>{t("dashboard.whatsNew.addons.flexibleGrowthTitle")}</strong> - {t("dashboard.whatsNew.addons.flexibleGrowthDescription")}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">⚡</span>
-                        <span><strong>{t("dashboard.whatsNew.addons.simpleApprovalTitle")}</strong> - {t("dashboard.whatsNew.addons.simpleApprovalDescription")}</span>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 mt-2 border-t border-primary/10">
-                      <p className="text-xs font-semibold text-foreground mb-2">{t("dashboard.whatsNew.addons.availableOptions")}</p>
-                      <div className="flex flex-wrap gap-2">
-                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option100")}</span>
-                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option250")}</span>
-                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option500")}</span>
-                        <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option1000")}</span>
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {t("dashboard.whatsNew.quickIssue.description")}
+                      </p>
+                      
+                      <div className="pt-2 space-y-2">
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">📱</span>
+                          <span><strong>{t("dashboard.whatsNew.quickIssue.displayQrTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.displayQrDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">📷</span>
+                          <span><strong>{t("dashboard.whatsNew.quickIssue.customerScansTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.customerScansDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">⏱️</span>
+                          <span><strong>{t("dashboard.whatsNew.quickIssue.securityTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.securityDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">🧩</span>
+                          <span><strong>{t("dashboard.whatsNew.quickIssue.addonTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.addonDescription")}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Reward Expiration Announcement (NEW) */}
-                <div 
-                  className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🎁</span>
-                      <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.rewardExpiration.title")}</h4>
+                  {/* Available Add-ons Announcement (NEW) */}
+                  <div 
+                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🧩</span>
+                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.addons.title")}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.new")}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-foreground">
-                      {t("dashboard.whatsNew.rewardExpiration.description")}
-                    </p>
-                    <p className="text-sm text-muted-foreground italic">
-                      {t("dashboard.whatsNew.rewardExpiration.quote")}
-                    </p>
                     
-                    <div className="pt-2 space-y-2">
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">⏰</span>
-                        <span><strong>{t("dashboard.whatsNew.rewardExpiration.setTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.setDescription")}</span>
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {t("dashboard.whatsNew.addons.description")}
+                      </p>
+                      <p className="text-sm text-muted-foreground italic">
+                        {t("dashboard.whatsNew.addons.quote")}
+                      </p>
+                      
+                      <div className="pt-2 space-y-2">
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">➕</span>
+                          <span><strong>{t("dashboard.whatsNew.addons.moreCustomersTitle")}</strong> - {t("dashboard.whatsNew.addons.moreCustomersDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">💳</span>
+                          <span><strong>{t("dashboard.whatsNew.addons.keepPlanTitle")}</strong> - {t("dashboard.whatsNew.addons.keepPlanDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">📈</span>
+                          <span><strong>{t("dashboard.whatsNew.addons.flexibleGrowthTitle")}</strong> - {t("dashboard.whatsNew.addons.flexibleGrowthDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">⚡</span>
+                          <span><strong>{t("dashboard.whatsNew.addons.simpleApprovalTitle")}</strong> - {t("dashboard.whatsNew.addons.simpleApprovalDescription")}</span>
+                        </div>
                       </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">🎁</span>
-                        <span><strong>{t("dashboard.whatsNew.rewardExpiration.flexibleTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.flexibleDescription")}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">🔒</span>
-                        <span><strong>{t("dashboard.whatsNew.rewardExpiration.protectionTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.protectionDescription")}</span>
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="text-primary mt-0.5">📅</span>
-                        <span><strong>{t("dashboard.whatsNew.rewardExpiration.clearDatesTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.clearDatesDescription")}</span>
+
+                      <div className="pt-2 mt-2 border-t border-primary/10">
+                        <p className="text-xs font-semibold text-foreground mb-2">{t("dashboard.whatsNew.addons.availableOptions")}</p>
+                        <div className="flex flex-wrap gap-2">
+                          <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option100")}</span>
+                          <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option250")}</span>
+                          <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option500")}</span>
+                          <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option1000")}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Feature 1 */}
-                <div 
-                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
-                  onClick={() => setComingSoonModalOpen(true)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🆕</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.birthday.title")}</h4>
+                  {/* Reward Expiration Announcement (NEW) */}
+                  <div 
+                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🎁</span>
+                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.rewardExpiration.title")}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.comingSoon")}
-                    </span>
+                    
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {t("dashboard.whatsNew.rewardExpiration.description")}
+                      </p>
+                      <p className="text-sm text-muted-foreground italic">
+                        {t("dashboard.whatsNew.rewardExpiration.quote")}
+                      </p>
+                      
+                      <div className="pt-2 space-y-2">
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">⏰</span>
+                          <span><strong>{t("dashboard.whatsNew.rewardExpiration.setTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.setDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">🎁</span>
+                          <span><strong>{t("dashboard.whatsNew.rewardExpiration.flexibleTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.flexibleDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">🔒</span>
+                          <span><strong>{t("dashboard.whatsNew.rewardExpiration.protectionTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.protectionDescription")}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">📅</span>
+                          <span><strong>{t("dashboard.whatsNew.rewardExpiration.clearDatesTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.clearDatesDescription")}</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("dashboard.whatsNew.birthday.description")}
-                  </p>
-                </div>
 
-                {/* Feature 2 */}
-                <div 
-                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
-                  onClick={() => setComingSoonModalOpen(true)}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🎁</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.bonusStamps.title")}</h4>
+                  {/* Feature 1 */}
+                  <div 
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
+                    onClick={() => setComingSoonModalOpen(true)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🆕</span>
+                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.birthday.title")}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.comingSoon")}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.comingSoon")}
-                    </span>
+                    <p className="text-sm text-muted-foreground">
+                      {t("dashboard.whatsNew.birthday.description")}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("dashboard.whatsNew.bonusStamps.description")}
-                  </p>
-                </div>
 
-                {/* Feature 3 */}
-                <div 
-                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🔊</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.stampSounds.title")}</h4>
+                  {/* Feature 2 */}
+                  <div 
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
+                    onClick={() => setComingSoonModalOpen(true)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🎁</span>
+                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.bonusStamps.title")}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.comingSoon")}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.new")}
-                    </span>
+                    <p className="text-sm text-muted-foreground">
+                      {t("dashboard.whatsNew.bonusStamps.description")}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("dashboard.whatsNew.stampSounds.description")}
-                  </p>
-                </div>
 
-                {/* Feature 4 */}
-                <div 
-                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">🎨</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.customBanner.title")}</h4>
+                  {/* Feature 3 */}
+                  <div 
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🔊</span>
+                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.stampSounds.title")}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.new")}
-                    </span>
+                    <p className="text-sm text-muted-foreground">
+                      {t("dashboard.whatsNew.stampSounds.description")}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("dashboard.whatsNew.customBanner.description")}
-                  </p>
-                </div>
 
-                {/* Feature 5 */}
-                <div 
-                  className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">📷</span>
-                      <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.rewardScan.title")}</h4>
+                  {/* Feature 4 */}
+                  <div 
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🎨</span>
+                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.customBanner.title")}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                      {t("common.new")}
-                    </span>
+                    <p className="text-sm text-muted-foreground">
+                      {t("dashboard.whatsNew.customBanner.description")}
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {t("dashboard.whatsNew.rewardScan.description")}
-                  </p>
+
+                  {/* Feature 5 */}
+                  <div 
+                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">📷</span>
+                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.rewardScan.title")}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {t("dashboard.whatsNew.rewardScan.description")}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </SheetContent>
-      </Sheet>
+          </SheetContent>
+        </Sheet>
 
-      {/* Coming Soon Modal */}
-      <Dialog open={comingSoonModalOpen} onOpenChange={setComingSoonModalOpen}>
-        <DialogContent className="sm:max-w-md text-center p-6 z-[70]">
-          <DialogHeader>
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl">🚀</span>
+        {/* Coming Soon Modal */}
+        <Dialog open={comingSoonModalOpen} onOpenChange={setComingSoonModalOpen}>
+          <DialogContent className="sm:max-w-md text-center p-6 z-[70]">
+            <DialogHeader>
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <span className="text-2xl">🚀</span>
+              </div>
+              <DialogTitle className="text-2xl font-heading text-center">{t("dashboard.comingSoonModal.title")}</DialogTitle>
+              <DialogDescription className="text-center text-base pt-2">
+                {t("dashboard.comingSoonModal.description")}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-6 flex justify-center w-full">
+              <Button type="button" onClick={() => setComingSoonModalOpen(false)} className="w-full sm:w-auto px-8">
+                {t("common.gotIt")}
+              </Button>
             </div>
-            <DialogTitle className="text-2xl font-heading text-center">{t("dashboard.comingSoonModal.title")}</DialogTitle>
-            <DialogDescription className="text-center text-base pt-2">
-              {t("dashboard.comingSoonModal.description")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mt-6 flex justify-center w-full">
-            <Button type="button" onClick={() => setComingSoonModalOpen(false)} className="w-full sm:w-auto px-8">
-              {t("common.gotIt")}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </CorporateBrandingProvider>
   );
 }

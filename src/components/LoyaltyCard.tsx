@@ -38,6 +38,11 @@ export interface LoyaltyCardProps {
   color?: string;
   className?: string;
   customization?: TemplateCustomization;
+  corporateBranding?: {
+    logo_url: string | null;
+    primary_color: string;
+    secondary_color: string;
+  };
   animateStamp?: boolean;
 }
 
@@ -100,14 +105,15 @@ const getThemeBadgeKey = (templateId: string) => {
 };
 
 export function LoyaltyCard(props: LoyaltyCardProps) {
-  const { customization, stampIcon, color, stampTarget, currentStamps, programName, programDescription, businessName, rewardTitle, rewardDescription, animateStamp } = props;
+  const { customization, stampIcon, color, stampTarget, currentStamps, programName, programDescription, businessName, rewardTitle, rewardDescription, animateStamp, corporateBranding } = props;
   const { t } = useI18n();
   const templateId = (customization?.template_id || "classic").toLowerCase();
   
   // Resolve Theme Specification
   const theme = THEME_REGISTRY[templateId] || THEME_REGISTRY.classic;
   
-  const primaryColor = customization?.primary_color || color || "#F87171";
+  const primaryColor = corporateBranding?.primary_color || customization?.primary_color || color || "#F87171";
+  const secondaryColor = corporateBranding?.secondary_color || customization?.secondary_color || "";
   const overrideBg = customization?.bg_color;
   const overrideText = customization?.text_color;
   
@@ -115,7 +121,7 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
   const Icon = STAMP_ICONS[customization?.stamp_icon || stampIcon || "Star"] || Star;
   const RewardIcon = STAMP_ICONS[customization?.reward_icon || "Gift"] || Gift;
   const stamps = Array.from({ length: stampTarget }, (_, i) => i);
-  const logoUrl = customization?.card_logo_url;
+  const logoUrl = corporateBranding?.logo_url || customization?.card_logo_url;
   const bannerUrl = customization?.card_banner_url;
   const visibleProgramDescription = typeof programDescription === "string" ? programDescription.trim() : "";
   const visibleRewardDescription = typeof rewardDescription === "string" ? rewardDescription.trim() : "";
@@ -260,7 +266,10 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
             <span className="text-sm font-extrabold truncate block">{rewardTitle || t("dashboard.customizer.card.unlockedReward")}</span>
           </div>
           
-          <div className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-black/5" style={{ color: primaryColor }}>
+          <div
+            className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-black/5"
+            style={{ color: primaryColor, backgroundColor: secondaryColor ? `${secondaryColor}22` : undefined }}
+          >
             <RewardIcon className="w-5 h-5" />
           </div>
         </div>
