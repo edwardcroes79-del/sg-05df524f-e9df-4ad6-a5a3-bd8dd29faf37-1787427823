@@ -21,11 +21,11 @@ Current app caller: `src/pages/dashboard/scan.tsx` calls `issue_stamp_tx` with c
 Applied database fix in migration `supabase/migrations/20261008171000_resolve_stamp_rpc_ambiguity.sql`: rewired both `issue_stamp_tx` wrappers to call the 6-argument canonical `issue_stamp_core_tx` with explicit casts, preserved location authorization/program availability checks, and dropped obsolete `issue_stamp_core_tx(uuid, uuid, uuid, uuid, text)`.
 
 ## Checklist
-- [ ] Audit all `public.issue_stamp_core` functions and report exact signatures, return types, definitions, security mode, search path, and permissions
-- [ ] Trace all application callers of `issue_stamp_core` and identify the exact argument meanings and types
-- [ ] Identify the duplicate or overlapping signatures causing `issue_stamp_core(uuid, uuid, uuid, unknown)` ambiguity
-- [ ] Choose the canonical existing stamp issuance path without changing loyalty calculations or creating another duplicate function
-- [ ] Apply the smallest safe fix: remove/rename only confirmed obsolete duplicate functions or make callers unambiguous
+- [x] Audit all `public.issue_stamp_core` functions and report exact signatures, return types, definitions, security mode, search path, and permissions
+- [x] Trace all application callers of `issue_stamp_core` and identify the exact argument meanings and types
+- [x] Identify the duplicate or overlapping signatures causing `issue_stamp_core(uuid, uuid, uuid, unknown)` ambiguity
+- [x] Choose the canonical existing stamp issuance path without changing loyalty calculations or creating another duplicate function
+- [x] Apply the smallest safe fix: remove/rename only confirmed obsolete duplicate functions or make callers unambiguous
 - [ ] Verify Corporate Admin stamp issuance records the correct customer, program, business, location, and single transaction
 - [ ] Verify non-Corporate stamp issuance, Staff issuance, and Quick QR issuance remain working
 - [ ] Run project checks and report exact database/app changes and security impact
