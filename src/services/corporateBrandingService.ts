@@ -16,15 +16,15 @@ export type CorporateBrandingPayload = {
 
 export type ValidatedLogoUpload = {
   buffer: Buffer;
-  mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml";
-  extension: "png" | "jpg" | "webp" | "svg";
+  mimeType: "image/png" | "image/jpeg" | "image/webp";
+  extension: "png" | "jpg" | "webp";
   size: number;
 };
 
 export type OptimizedLogoUpload = {
   buffer: Buffer;
-  mimeType: "image/webp" | "image/svg+xml";
-  extension: "webp" | "svg";
+  mimeType: "image/webp";
+  extension: "webp";
   size: number;
 };
 
@@ -37,10 +37,10 @@ export const ROYALTY_STAMP_DEFAULT_BRANDING = {
 const MAX_LOGO_BYTES = 1024 * 1024;
 const MAX_OPTIMIZED_LOGO_BYTES = 512 * 1024;
 const MAX_LOGO_DIMENSION = 512;
-const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]);
+const ALLOWED_LOGO_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
-function normalizeHexColor(value: string | null | undefined, fallback: string) {
-  if (!value) return fallback;
+export function normalizeHexColor(value: string | null | undefined) {
+  if (!value) return null;
 
   const trimmed = value.trim();
   const shortHex = /^#([0-9a-fA-F]{3})$/;
@@ -65,7 +65,7 @@ function normalizeHexColor(value: string | null | undefined, fallback: string) {
 
 function decodeBase64Logo(logoBase64: string) {
   const trimmed = logoBase64.trim();
-  const dataUrlMatch = trimmed.match(/^data:(image\/(?:png|jpeg|webp|svg\+xml));base64,(.+)$/i);
+  const dataUrlMatch = trimmed.match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/i);
   const encoded = dataUrlMatch ? dataUrlMatch[2] : trimmed;
 
   if (!encoded || encoded.length > MAX_LOGO_BYTES * 2) {
@@ -79,7 +79,6 @@ function extensionFromMimeType(mimeType: string) {
   if (mimeType === "image/png") return "png";
   if (mimeType === "image/jpeg") return "jpg";
   if (mimeType === "image/webp") return "webp";
-  if (mimeType === "image/svg+xml") return "svg";
 
   throw new Error("Unsupported logo file type");
 }
@@ -97,19 +96,14 @@ function hasValidMagicNumber(buffer: Buffer, mimeType: string) {
     return buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP";
   }
 
-  if (mimeType === "image/svg+xml") {
-    const snippet = buffer.subarray(0, Math.min(buffer.length, 512)).toString("utf8").toLowerCase();
-    return snippet.includes("<svg");
-  }
-
   return false;
 }
 
 export function sanitizeBrandingPayload(payload: CorporateBrandingPayload) {
   return {
     businessId: typeof payload.business_id === "string" ? payload.business_id : undefined,
-    primaryColor: normalizeHexColor(payload.primary_color, ROYALTY_STAMP_DEFAULT_BRANDING.primary_color),
-    secondaryColor: normalizeHexColor(payload.secondary_color, ROYALTY_STAMP_DEFAULT_BRANDING.secondary_color),
+    primaryColor: normalizeHexColor(payload.primary_color),
+    secondaryColor: normalizeHexColor(payload.secondary_color),
   };
 }
 
@@ -120,7 +114,7 @@ export function validateLogoUpload(payload: CorporateBrandingPayload): Validated
 
   const mimeType = String(payload.logo_mime_type || "").toLowerCase();
   if (!ALLOWED_LOGO_TYPES.has(mimeType)) {
-    throw new Error("Logo must be PNG, JPG, WEBP, or SVG");
+    throw new Error("Logo must be PNG, JPG, or WEBP");
   }
 
   const buffer = decodeBase64Logo(payload.logo_base64);
@@ -141,15 +135,6 @@ export function validateLogoUpload(payload: CorporateBrandingPayload): Validated
 }
 
 export async function optimizeLogoUpload(upload: ValidatedLogoUpload): Promise<OptimizedLogoUpload> {
-  if (upload.mimeType === "image/svg+xml") {
-    return {
-      buffer: upload.buffer,
-      mimeType: "image/svg+xml",
-      extension: "svg",
-      size: upload.buffer.byteLength,
-    };
-  }
-
   const sharp = (await import("sharp")).default;
   const optimized = await sharp(upload.buffer, { animated: false })
     .rotate()
@@ -174,9 +159,9 @@ export async function optimizeLogoUpload(upload: ValidatedLogoUpload): Promise<O
   };
 }
 
-export function buildCorporateLogoPath(businessId: string, extension: OptimizedLogoUpload["extension"]) {
+export function buildCorporateLogoPath(businessId: string) {
   const timestamp = Date.now();
-  return `corporate-branding/${businessId}/logo-${timestamp}.${extension}`;
+  return `${businessId}/corporate-branding/logo-${timestamp}.webp`;
 }
 
 export function toBrandingSettings(row: {

@@ -49,16 +49,14 @@ async function getAuthenticatedUser(req: NextApiRequest) {
 }
 
 async function hasCorporateBrandingEntitlement(admin: ReturnType<typeof createServiceClient>, business: { id: string; subscription_plan: string | null }) {
-  const { data, error } = await admin
-    .from("plan_entitlements")
-    .select("boolean_value")
-    .eq("plan_id", business.subscription_plan)
-    .eq("key", "corporate_branding")
-    .eq("value_type", "boolean")
-    .maybeSingle();
+  const { data, error } = await admin.rpc("get_business_boolean_entitlement", {
+    p_business_id: business.id,
+    p_key: "corporate_branding",
+    p_fallback: false,
+  });
 
   if (error) throw error;
-  return Boolean(data?.boolean_value);
+  return Boolean(data);
 }
 
 async function userCanManageCorporateBranding(admin: ReturnType<typeof createServiceClient>, businessId: string, userId: string) {
@@ -148,13 +146,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const logoUpload = validateLogoUpload(payload);
+    const nextPrimaryColor = primaryColor || business.primary_color || null;
+    const nextSecondaryColor = secondaryColor || business.secondary_color || null;
     let logoUrl = business.logo || null;
     let logoPath: string | null = null;
     let logoSize: number | null = null;
 
     if (logoUpload) {
       const optimizedLogo = await optimizeLogoUpload(logoUpload);
-      logoPath = buildCorporateLogoPath(business.id, optimizedLogo.extension);
+      logoPath = buildCorporateLogoPath(business.id);
       logoSize = optimizedLogo.size;
 
       const { error: uploadError } = await admin.storage
@@ -175,8 +175,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from("businesses")
       .update({
         logo: logoUrl,
-        primary_color: primaryColor,
-        secondary_color: secondaryColor,
+        primary_color: nextPrimaryColor,
+        secondary_color: nextSecondaryColor,
       })
       .eq("id", business.id)
       .select("id, logo, primary_color, secondary_color")
@@ -189,8 +189,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       logo_path: logoPath,
       logo_size: logoSize,
       has_logo_upload: Boolean(logoUpload),
-      primary_color: primaryColor,
-      secondary_color: secondaryColor,
+      primary_color: nextPrimaryColor,
+      secondary_color: nextSecondaryColor,
     });
 
     return res.status(200).json({
