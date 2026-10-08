@@ -1,6 +1,6 @@
 ---
 title: Corporate Branding Application
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [corporate, branding, dashboard, customer-experience]
@@ -18,7 +18,7 @@ Apply saved Corporate Branding from Phases 1–2 across the approved Corporate e
 - [x] Apply Corporate logo/colors to the Corporate Business Dashboard header, navigation accents, and dashboard actions without changing lower-plan visuals
 - [x] Apply Corporate branding to loyalty program cards and supported customer loyalty card/customer-facing Corporate loyalty surfaces
 - [x] Ensure all new user-facing fallback/error text uses existing i18n in English, Spanish, and Papiamento
-- [ ] Verify Corporate default branding, custom branding persistence, lower-plan unchanged behavior, and project checks
+- [x] Verify Corporate default branding, custom branding persistence, lower-plan unchanged behavior, and project checks
 
 ## Acceptance
 Corporate businesses with saved branding see their logo, primary color, and accent color across approved dashboard and loyalty/customer surfaces.
