@@ -226,17 +226,18 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setLocationsManagementEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
       setCorporateBrandingEnabled(false);
 
-      if (resolvedBusiness.subscription_plan === "mega_plan") {
-        try {
-          const brandingResult = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
-          setCorporateBranding(brandingResult.branding);
-          setCorporateBrandingEnabled(brandingResult.status === "available" && resolvedBusiness.owner_id === session.user.id);
-        } catch (brandingError) {
-          console.error("Corporate branding load error:", brandingError);
-          setCorporateBranding(getDefaultCorporateBranding(resolvedBusiness.id));
-          setCorporateBrandingEnabled(false);
-        }
+      try {
+        const brandingResult = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
+        const canUseCorporateBranding = brandingResult.status === "available";
+        setCorporateBranding(canUseCorporateBranding ? brandingResult.branding : null);
+        setCorporateBrandingEnabled(canUseCorporateBranding && resolvedBusiness.owner_id === session.user.id);
+      } catch (brandingError) {
+        console.error("Corporate branding load error:", brandingError);
+        setCorporateBranding(null);
+        setCorporateBrandingEnabled(false);
+      }
 
+      if (resolvedBusiness.subscription_plan === "mega_plan") {
         const { data: locationRows, error: locationError } = await (supabase as any)
           .from("business_locations")
           .select("id, name, status")
@@ -260,8 +261,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           setActiveLocationId(nextLocationId);
         }
       } else {
-        setCorporateBranding(null);
-        setCorporateBrandingEnabled(false);
         setDashboardLocations([]);
         setActiveLocationId("");
       }

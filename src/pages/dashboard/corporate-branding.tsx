@@ -10,13 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, Image as ImageIcon, Trash2, RotateCcw } from "lucide-react";
 import { useI18n } from "@/contexts/I18nProvider";
+import { fetchCorporateBranding, getDefaultCorporateBranding } from "@/contexts/CorporateBrandingContext";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-// Defaults mapped from backend
-const DEFAULT_BRANDING = {
-  primary_color: "#F43F5E",
-  secondary_color: "#0F172A",
-};
+const DEFAULT_BRANDING = getDefaultCorporateBranding();
 
 export default function CorporateBrandingPage() {
   const router = useRouter();
@@ -50,28 +47,28 @@ export default function CorporateBrandingPage() {
         return;
       }
 
-      // Quick pre-check for roles/ownership before hitting the API
-      const { data: businessData } = await supabase
-        .from("businesses")
-        .select("id, business_name, subscription_plan, owner_id")
-        .eq("owner_id", session.user.id)
-        .maybeSingle();
+      const { data: workspaceRows, error: workspaceError } = await (supabase as any)
+        .rpc("get_business_dashboard_access_status");
 
-      if (!businessData || businessData.subscription_plan !== "mega_plan") {
+      if (workspaceError) throw workspaceError;
+
+      const businessData = Array.isArray(workspaceRows) ? workspaceRows[0] : workspaceRows;
+
+      if (!businessData?.id) {
         router.push("/dashboard");
         return;
       }
-      
+
       setBusiness(businessData);
 
-      // Fetch from API
-      const response = await fetch(`/api/business/corporate-branding?business_id=${businessData.id}`);
-      
-      if (!response.ok) {
-        throw new Error(t("dashboard.corporateBranding.loadFailed"));
+      const brandingResult = await fetchCorporateBranding(businessData.id, session.access_token);
+
+      if (brandingResult.status !== "available") {
+        router.push("/dashboard");
+        return;
       }
-      
-      const { branding } = await response.json();
+
+      const branding = brandingResult.branding;
       
       if (branding) {
         setLogoUrl(branding.logo_url);
@@ -166,8 +163,11 @@ export default function CorporateBrandingPage() {
       }
 
       const response = await fetch("/api/business/corporate-branding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify(payload)
       });
 
@@ -196,7 +196,7 @@ export default function CorporateBrandingPage() {
       }
     } catch (err: any) {
       toast({
-        title: "Error",
+        title: t("dashboard.corporateBranding.saveFailed"),
         description: err.message,
         variant: "destructive"
       });
@@ -207,16 +207,57 @@ export default function CorporateBrandingPage() {
   };
 
   const handleReset = async () => {
-    setIsResetOpen(false);
-    setPrimaryColor(DEFAULT_BRANDING.primary_color);
-    setSecondaryColor(DEFAULT_BRANDING.secondary_color);
-    handleRemoveLogo();
-    
-    // Auto-save the reset
-    toast({
-      title: "Defaults restored",
-      description: "Click Save Branding to apply changes.",
-    });
+    if (!business) return;
+
+    setSaving(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/business/corporate-branding", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          business_id: business.id,
+          primaryColor: DEFAULT_BRANDING.primary_color,
+          secondaryColor: DEFAULT_BRANDING.secondary_color,
+          logoUrl: null,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || t("dashboard.corporateBranding.saveFailed"));
+      }
+
+      setLogoFile(null);
+      setLogoPreviewUrl(null);
+      setLogoUrl(null);
+      setPrimaryColor(DEFAULT_BRANDING.primary_color);
+      setSecondaryColor(DEFAULT_BRANDING.secondary_color);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      toast({
+        title: t("dashboard.corporateBranding.savedTitle"),
+        description: t("dashboard.corporateBranding.savedDescription"),
+      });
+    } catch (err: any) {
+      toast({
+        title: t("dashboard.corporateBranding.saveFailed"),
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+      setIsResetOpen(false);
+    }
   };
 
   const currentLogoDisplay = logoPreviewUrl || logoUrl;
@@ -275,7 +316,7 @@ export default function CorporateBrandingPage() {
                   
                   <div className="space-y-4 flex-1">
                     <div className="space-y-2">
-                      <Label htmlFor="logo_upload" className="sr-only">Logo Upload</Label>
+                      <Label htmlFor="logo_upload" className="sr-only">{t("dashboard.corporateBranding.logoHeading")}</Label>
                       <Input 
                         id="logo_upload" 
                         type="file" 
@@ -459,7 +500,7 @@ export default function CorporateBrandingPage() {
           </DialogHeader>
           <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setIsResetOpen(false)}>{t("dashboard.corporateBranding.cancel")}</Button>
-            <Button variant="destructive" onClick={handleReset}>{t("dashboard.corporateBranding.confirmReset")}</Button>
+            <Button variant="destructive" onClick={handleReset} disabled={saving}>{t("dashboard.corporateBranding.confirmReset")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
