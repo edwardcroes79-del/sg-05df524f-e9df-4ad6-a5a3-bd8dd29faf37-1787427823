@@ -331,7 +331,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { nameKey: "dashboard.nav.overview", href: "/dashboard", icon: LayoutDashboard },
     ...(advancedAnalyticsEnabled ? [{ nameKey: "dashboard.nav.advancedAnalytics" as TranslationKey, href: "/dashboard/analytics", icon: BarChart3 }] : []),
     ...(locationsManagementEnabled ? [{ nameKey: "dashboard.nav.locations" as TranslationKey, href: "/dashboard/locations", icon: MapPin }] : []),
-    ...(corporateBrandingEnabled ? [{ nameKey: "dashboard.nav.corporateBranding" as TranslationKey, href: "/dashboard/corporate-branding", icon: Palette }] : []),
+    ...((corporateBrandingEnabled || business?.subscription_plan === "mega_plan") ? [{ nameKey: "dashboard.nav.corporateBranding" as TranslationKey, href: "/dashboard/corporate-branding", icon: Palette }] : []),
     {
       nameKey: "dashboard.nav.stampsRewards",
       href: "/dashboard/scan",

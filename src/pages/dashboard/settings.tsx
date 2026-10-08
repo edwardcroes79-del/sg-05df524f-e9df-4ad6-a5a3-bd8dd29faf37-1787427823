@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [business, setBusiness] = useState<any>(null);
   const [corporateBrandingAvailable, setCorporateBrandingAvailable] = useState(false);
+  const showCorporateBrandingEntry = corporateBrandingAvailable || business?.subscription_plan === "mega_plan";
 
   // 2FA States
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
@@ -386,7 +387,7 @@ export default function SettingsPage() {
           </Card>
         </form>
 
-        {corporateBrandingAvailable && (
+        {showCorporateBrandingEntry && (
           <Card className="border-primary/20 shadow-sm">
             <CardHeader className="bg-primary/5 border-b">
               <CardTitle className="flex items-center gap-2">
