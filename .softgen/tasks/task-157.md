@@ -68,7 +68,7 @@ Test results:
 - [x] Fix the frontend/API payload mismatch so logo and color fields use the Corporate Branding service contract
 - [x] Align Corporate Branding logo upload labels/errors with PNG/JPG/WEBP under 1MB and add the missing translated size-description key
 - [x] Run project checks successfully after the logo upload and translation fixes
-- [ ] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans from the latest SQL trace
+- [x] Verify the repaired API decision is true for the real Corporate business and remains false for lower plans from the latest SQL trace
 - [ ] User-visible confirmation that a real Corporate logo upload/save/refresh/reset works in the browser
 
 ## Acceptance
