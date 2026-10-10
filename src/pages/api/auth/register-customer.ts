@@ -4,6 +4,116 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 
+interface TurnstileVerifyResponse {
+  success: boolean;
+  "error-codes"?: string[];
+  challenge_ts?: string;
+  hostname?: string;
+  action?: string;
+  cdata?: string;
+}
+
+interface TurnstileVerifyResult {
+  ok: boolean;
+  status: number;
+  error: string;
+}
+
+const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+const TURNSTILE_TIMEOUT_MS = 5000;
+
+async function verifyTurnstileToken(token: unknown, remoteIp?: string): Promise<TurnstileVerifyResult> {
+  const secret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
+
+  if (!secret || !secret.trim()) {
+    return {
+      ok: false,
+      status: 503,
+      error: "Security verification is temporarily unavailable. Please try again later.",
+    };
+  }
+
+  if (typeof token !== "string" || !token.trim() || token.length > 4096) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Security verification is required. Please refresh and try again.",
+    };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TURNSTILE_TIMEOUT_MS);
+
+  try {
+    const body = new URLSearchParams({
+      secret,
+      response: token,
+    });
+
+    if (remoteIp) {
+      body.set("remoteip", remoteIp);
+    }
+
+    const response = await fetch(TURNSTILE_VERIFY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        status: 503,
+        error: "Security verification could not be completed. Please try again.",
+      };
+    }
+
+    const result = (await response.json()) as TurnstileVerifyResponse;
+
+    if (!result.success) {
+      return {
+        ok: false,
+        status: 400,
+        error: "Security verification failed. Please refresh and try again.",
+      };
+    }
+
+    return {
+      ok: true,
+      status: 200,
+      error: "",
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown";
+    console.error("Turnstile verification failed:", message);
+
+    return {
+      ok: false,
+      status: 503,
+      error: "Security verification could not be completed. Please try again.",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function getRequestIp(req: NextApiRequest): string | undefined {
+  const forwardedFor = req.headers["x-forwarded-for"];
+
+  if (typeof forwardedFor === "string") {
+    return forwardedFor.split(",")[0]?.trim();
+  }
+
+  if (Array.isArray(forwardedFor) && forwardedFor[0]) {
+    return forwardedFor[0].split(",")[0]?.trim();
+  }
+
+  return req.socket.remoteAddress;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
@@ -11,10 +121,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { email, password, name, returnUrl, origin } = req.body;
+    const { email, password, name, returnUrl, origin, turnstileToken } = req.body;
 
     if (!email || !password || !name) {
       return res.status(400).json({ error: "Email, password, and name are required" });
+    }
+
+    const turnstileResult = await verifyTurnstileToken(turnstileToken, getRequestIp(req));
+
+    if (!turnstileResult.ok) {
+      return res.status(turnstileResult.status).json({ error: turnstileResult.error });
     }
 
     const supabaseAdmin = createClient(
@@ -24,7 +140,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     let finalOrigin = origin || "https://royaltystamp.com";
     
-    // Correct any legacy domain references to the strict production URL
     if (finalOrigin.includes("arubaroyaltystamp.com")) {
       finalOrigin = "https://royaltystamp.com";
     }
@@ -32,9 +147,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const safeReturnUrl = returnUrl ? `&returnUrl=${encodeURIComponent(returnUrl)}` : "";
     const redirectUrl = `${finalOrigin}/auth/customer?confirmed=true${safeReturnUrl}`;
 
-    // Generate secure signup link using Admin API
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'signup',
+      type: "signup",
       email: email,
       password: password,
       options: {
@@ -55,23 +169,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "Failed to generate confirmation link. Please try again." });
     }
 
-    // Safely extract the raw password
     let mailPassword = process.env.MAIL_PASSWORD;
     try {
-      const envPath = path.resolve(process.cwd(), '.env.local');
+      const envPath = path.resolve(process.cwd(), ".env.local");
       if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, 'utf-8');
+        const envContent = fs.readFileSync(envPath, "utf-8");
         const match = envContent.match(/^MAIL_PASSWORD=(.*)$/m);
         if (match) {
           let rawPass = match[1].trim();
-          if ((rawPass.startsWith('"') && rawPass.endsWith('"')) || (rawPass.startsWith("'") && rawPass.endsWith("'"))) {
+          if ((rawPass.startsWith("\"") && rawPass.endsWith("\"")) || (rawPass.startsWith("'") && rawPass.endsWith("'"))) {
             rawPass = rawPass.slice(1, -1);
           }
           mailPassword = rawPass;
         }
       }
-    } catch(e) {
-      // Fallback in production
+    } catch (e) {
     }
 
     const transporter = nodemailer.createTransport({

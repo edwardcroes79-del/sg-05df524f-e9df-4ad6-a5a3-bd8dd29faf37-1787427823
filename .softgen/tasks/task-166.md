@@ -13,12 +13,12 @@ position: 166
 Implement server-side Cloudflare Turnstile enforcement in the existing customer registration API only. Preserve the existing Supabase Auth signup-link flow, email validation, registration checks, confirmation email behavior, login, password reset, QR enrollment, SMTP settings, database objects, RLS policies, and customer records. The secret key must be read only on the server and never exposed or logged. Verification must occur before generating the Supabase signup link or sending confirmation email. Fail safely if the secret is unavailable, token is missing/invalid/expired/reused, or Siteverify has timeout/network/errors.
 
 ## Checklist
-- [ ] Inspect Phase 1 frontend token payload in `src/pages/auth/customer.tsx`
-- [ ] Inspect existing registration API flow in `src/pages/api/auth/register-customer.ts`
-- [ ] Add server-only Siteverify request using `CLOUDFLARE_TURNSTILE_SECRET_KEY`
-- [ ] Validate missing, invalid, expired, reused, timeout, and Cloudflare error cases before signup link generation
-- [ ] Preserve existing registration validation, Supabase signup-link generation, and email sending behavior
-- [ ] Verify no Turnstile secret is exposed in browser code
+- [x] Inspect Phase 1 frontend token payload in `src/pages/auth/customer.tsx`
+- [x] Inspect existing registration API flow in `src/pages/api/auth/register-customer.ts`
+- [x] Add server-only Siteverify request using `CLOUDFLARE_TURNSTILE_SECRET_KEY`
+- [x] Validate missing, invalid, expired, reused, timeout, and Cloudflare error cases before signup link generation
+- [x] Preserve existing registration validation, Supabase signup-link generation, and email sending behavior
+- [x] Verify no Turnstile secret is exposed in browser code
 - [ ] Run project validation and report actual tests/untested cases
 
 ## Acceptance
