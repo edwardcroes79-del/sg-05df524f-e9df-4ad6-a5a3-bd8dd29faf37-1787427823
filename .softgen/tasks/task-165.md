@@ -1,6 +1,6 @@
 ---
 title: Turnstile Phase 1 Frontend Widget
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [security, registration, turnstile]
@@ -18,7 +18,7 @@ position: 165
 - [x] Add translation strings for Turnstile security prompts in English, Spanish, and Papiamento
 - [x] Ensure existing login and QR enrollment flows are unmodified
 - [x] Prevent duplicate submissions while token is processed
-- [ ] Test frontend integration
+- [x] Test frontend integration
 
 ## Acceptance
 Turnstile widget appears only on the new-customer signup form. Signup prevents submission without token. Token is correctly captured and sent in the payload. Existing flows remain unchanged. No raw translation keys are visible.
