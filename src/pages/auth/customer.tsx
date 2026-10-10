@@ -258,8 +258,8 @@ export default function CustomerAuth() {
 
     if (!turnstileToken) {
       toast({
-        title: t("auth.customer.securityCheckRequired", "Security check required"),
-        description: t("auth.customer.pleaseCompleteSecurityCheck", "Please complete the security check to continue."),
+        title: t("auth.customer.securityCheckRequired"),
+        description: t("auth.customer.pleaseCompleteSecurityCheck"),
         variant: "destructive",
       });
       return;
