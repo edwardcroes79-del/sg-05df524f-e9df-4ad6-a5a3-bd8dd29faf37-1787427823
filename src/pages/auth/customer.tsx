@@ -11,7 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck, RefreshCw } from "lucide-react";
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
-import { useRef } from "react";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
 import Script from "next/script";

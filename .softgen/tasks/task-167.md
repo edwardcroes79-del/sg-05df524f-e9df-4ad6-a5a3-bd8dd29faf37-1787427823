@@ -15,10 +15,10 @@ Fix only the frontend Turnstile visibility issue on the existing customer signup
 ## Checklist
 - [x] Inspect `src/pages/auth/customer.tsx` Phase 1 widget code
 - [x] Inspect `src/pages/api/auth/register-customer.ts` Phase 2 server verification remains enforced
-- [ ] Add robust client-side Turnstile script readiness and explicit visible render state
-- [ ] Add localized loading, expired, error, missing site key, and retry UI
-- [ ] Verify public site key presence without exposing values
-- [ ] Verify no secret key is exposed to browser code
+- [x] Add robust client-side Turnstile script readiness and explicit visible render state
+- [x] Add localized loading, expired, error, missing site key, and retry UI
+- [x] Verify public site key presence without exposing values
+- [x] Verify no secret key is exposed to browser code
 - [ ] Run validation and report actual tests
 
 ## Acceptance
