@@ -14,6 +14,13 @@ import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authS
 import { useRef } from "react";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
+import Script from "next/script";
+
+declare global {
+  interface Window {
+    turnstile: any;
+  }
+}
 
 export default function CustomerAuth() {
   const router = useRouter();
@@ -37,6 +44,47 @@ export default function CustomerAuth() {
   const [name, setName] = useState("");
   const [activeTab, setActiveTab] = useState("signin");
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Turnstile states
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string>("");
+
+  const renderTurnstile = () => {
+    if (typeof window === "undefined" || !window.turnstile || !turnstileRef.current) return;
+    if (turnstileWidgetId.current) return;
+
+    try {
+      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+        sitekey: process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY,
+        callback: (token: string) => setTurnstileToken(token),
+        "expired-callback": () => setTurnstileToken(""),
+        "error-callback": () => setTurnstileToken(""),
+      });
+    } catch (err) {
+      console.error("Failed to render Turnstile:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "signup") {
+      renderTurnstile();
+    } else {
+      if (turnstileWidgetId.current && typeof window !== "undefined" && window.turnstile) {
+        window.turnstile.remove(turnstileWidgetId.current);
+        turnstileWidgetId.current = "";
+        setTurnstileToken("");
+      }
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    return () => {
+      if (turnstileWidgetId.current && typeof window !== "undefined" && window.turnstile) {
+        window.turnstile.remove(turnstileWidgetId.current);
+      }
+    };
+  }, []);
 
   // MFA States
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -207,6 +255,16 @@ export default function CustomerAuth() {
       });
       return;
     }
+
+    if (!turnstileToken) {
+      toast({
+        title: t("auth.customer.securityCheckRequired", "Security check required"),
+        description: t("auth.customer.pleaseCompleteSecurityCheck", "Please complete the security check to continue."),
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (isSubmitting.current) return;
     isSubmitting.current = true;
     setLoading(true);
@@ -219,6 +277,7 @@ export default function CustomerAuth() {
           email,
           password,
           name,
+          turnstileToken,
           returnUrl: safeReturnUrl,
           origin: typeof window !== "undefined" ? window.location.origin : ""
         }),
@@ -434,21 +493,27 @@ export default function CustomerAuth() {
                           <p className="mt-1">{t("auth.customer.successMessage", { email })}</p>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          <Label htmlFor="signup-password">{t("auth.customer.createPassword")}</Label>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              id="signup-password"
-                              type="password"
-                              placeholder={t("auth.customer.passwordPlaceholder")}
-                              className="pl-10"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value)}
-                              required
-                              minLength={6}
-                              disabled={loading}
-                            />
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="signup-password">{t("auth.customer.createPassword")}</Label>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="signup-password"
+                                type="password"
+                                placeholder={t("auth.customer.passwordPlaceholder")}
+                                className="pl-10"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                minLength={6}
+                                disabled={loading}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-center min-h-[65px]">
+                            <div ref={turnstileRef}></div>
                           </div>
                         </div>
                       )}
@@ -545,6 +610,11 @@ export default function CustomerAuth() {
             <LanguageSelector compact />
           </div>
         </div>
+        <Script 
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" 
+          strategy="afterInteractive"
+          onLoad={renderTurnstile}
+        />
       </main>
     </>
   );
