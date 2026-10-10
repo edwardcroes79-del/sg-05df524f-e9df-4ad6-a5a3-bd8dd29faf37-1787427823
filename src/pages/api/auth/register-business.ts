@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
+import { getRequestIp, verifyTurnstileToken } from "@/lib/server/turnstile";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -11,10 +12,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { email, password, returnUrl, origin } = req.body;
+    const { email, password, returnUrl, origin, turnstileToken } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const turnstileResult = await verifyTurnstileToken(turnstileToken, getRequestIp(req));
+
+    if (!turnstileResult.ok) {
+      return res.status(turnstileResult.status).json({ error: turnstileResult.error });
     }
 
     const supabaseAdmin = createClient(

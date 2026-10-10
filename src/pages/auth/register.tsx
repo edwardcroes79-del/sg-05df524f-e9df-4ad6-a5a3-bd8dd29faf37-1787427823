@@ -1,22 +1,23 @@
-import { useState, useEffect, useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
-import { getURL } from "@/services/authService";
 import { normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
+import { TurnstileVerification } from "@/components/TurnstileVerification";
 
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isConfirmationSent, setIsConfirmationSent] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
@@ -29,7 +30,6 @@ export default function Register() {
   const { toast } = useToast();
   const { t } = useI18n();
 
-  // Handle the countdown timer for the resend button
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (resendCooldown > 0) {
@@ -38,9 +38,41 @@ export default function Register() {
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
+  const resetTurnstile = () => {
+    setTurnstileToken("");
+    setTurnstileResetSignal((current) => current + 1);
+  };
+
+  const buildRegistrationPayload = (targetEmail: string, targetPassword: string) => ({
+    email: targetEmail,
+    password: targetPassword,
+    turnstileToken,
+    returnUrl: safeReturnUrl,
+    origin: typeof window !== "undefined" ? window.location.origin : "",
+  });
+
+  const requireSecurityCheck = () => {
+    if (turnstileToken) {
+      return true;
+    }
+
+    toast({
+      title: t("auth.customer.securityCheckRequired"),
+      description: t("auth.customer.pleaseCompleteSecurityCheck"),
+      variant: "destructive",
+    });
+
+    return false;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting.current) return; // Prevent synchronous double-click race conditions
+
+    if (!requireSecurityCheck()) {
+      return;
+    }
+
+    if (isSubmitting.current) return;
     isSubmitting.current = true;
     setLoading(true);
 
@@ -48,12 +80,7 @@ export default function Register() {
       const response = await fetch("/api/auth/register-business", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          password,
-          returnUrl: safeReturnUrl,
-          origin: typeof window !== "undefined" ? window.location.origin : ""
-        }),
+        body: JSON.stringify(buildRegistrationPayload(email, password)),
       });
 
       const result = await response.json();
@@ -64,10 +91,11 @@ export default function Register() {
           description: result.error || t("auth.register.createFailed"),
           variant: "destructive",
         });
+        resetTurnstile();
       } else {
-        // Email confirmation is required via Titan SMTP
         setRegisteredEmail(email);
         setIsConfirmationSent(true);
+        setTurnstileToken("");
       }
     } catch (err: any) {
       toast({
@@ -75,9 +103,51 @@ export default function Register() {
         description: err.message || t("auth.register.tryAgain"),
         variant: "destructive",
       });
+      resetTurnstile();
     } finally {
       isSubmitting.current = false;
       setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (resendCooldown > 0 || isResending.current) return;
+
+    if (!requireSecurityCheck()) {
+      return;
+    }
+
+    isResending.current = true;
+    setResendCooldown(60);
+
+    try {
+      const response = await fetch("/api/auth/register-business", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildRegistrationPayload(registeredEmail, password)),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        toast({
+          title: t("auth.register.failedToResend"),
+          description: result.error || t("auth.register.tryAgain"),
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: t("auth.register.emailResent"), description: t("auth.register.checkInbox") });
+      }
+      resetTurnstile();
+    } catch {
+      toast({
+        title: t("auth.register.resendError"),
+        description: t("auth.register.couldNotResend"),
+        variant: "destructive",
+      });
+      resetTurnstile();
+    } finally {
+      isResending.current = false;
     }
   };
 
@@ -104,45 +174,18 @@ export default function Register() {
             <p className="text-sm text-muted-foreground">
               {t("auth.register.confirmationInstructions")}
             </p>
-            
+            <TurnstileVerification
+              action="business_registration_resend"
+              disabled={resendCooldown > 0}
+              resetSignal={turnstileResetSignal}
+              onTokenChange={setTurnstileToken}
+            />
             <div className="space-y-3 pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full font-semibold"
                 disabled={resendCooldown > 0}
-                onClick={async () => {
-                  if (resendCooldown > 0 || isResending.current) return; // Prevent rapid double-clicks synchronously
-                  isResending.current = true;
-                  setResendCooldown(60);
-                  try {
-                    const response = await fetch("/api/auth/register-business", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        email: registeredEmail,
-                        password: password, // Re-use the password still in state
-                        returnUrl: safeReturnUrl,
-                        origin: typeof window !== "undefined" ? window.location.origin : ""
-                      }),
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (!response.ok) {
-                      toast({ 
-                        title: t("auth.register.failedToResend"), 
-                        description: result.error || t("auth.register.tryAgain"), 
-                        variant: "destructive" 
-                      });
-                    } else {
-                      toast({ title: t("auth.register.emailResent"), description: t("auth.register.checkInbox") });
-                    }
-                  } catch (err: any) {
-                    toast({ title: t("auth.register.resendError"), description: t("auth.register.couldNotResend"), variant: "destructive" });
-                  } finally {
-                    isResending.current = false;
-                  }
-                }}
+                onClick={handleResendConfirmation}
               >
                 {resendCooldown > 0 ? t("auth.register.resendIn", { seconds: resendCooldown }) : t("auth.register.resendConfirmation")}
               </Button>
@@ -168,7 +211,7 @@ export default function Register() {
             <h1 className="font-heading text-3xl font-bold text-foreground">Royalty<span className="text-primary">Stamp</span></h1>
           </Link>
         </div>
-        
+
         <Card className="border-border shadow-sm">
           <CardHeader>
             <CardTitle className="text-2xl font-heading text-foreground">
@@ -182,27 +225,35 @@ export default function Register() {
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">{t("auth.register.businessEmail")}</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
+                <Input
+                  id="email"
+                  type="email"
                   placeholder={t("auth.register.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required 
+                  required
+                  disabled={loading}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">{t("auth.register.password")}</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
+                <Input
+                  id="password"
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required 
+                  required
                   minLength={6}
+                  disabled={loading}
                 />
                 <p className="text-xs text-muted-foreground mt-1">{t("auth.register.passwordHelp")}</p>
               </div>
+              <TurnstileVerification
+                action="business_registration"
+                disabled={loading}
+                resetSignal={turnstileResetSignal}
+                onTokenChange={setTurnstileToken}
+              />
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold mt-6" disabled={loading}>
                 {loading ? (
                   <>
