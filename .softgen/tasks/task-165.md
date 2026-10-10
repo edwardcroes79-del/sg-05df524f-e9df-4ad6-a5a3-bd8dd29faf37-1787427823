@@ -10,14 +10,14 @@ position: 165
 ---
 
 ## Checklist
-- [ ] Inject Cloudflare Turnstile script into `/auth/customer`
-- [ ] Render Turnstile widget securely on the signup tab (explicit render)
-- [ ] Capture the `turnstileToken` state
-- [ ] Validate token presence before form submission
-- [ ] Include `turnstileToken` in the `/api/auth/register-customer` POST payload
-- [ ] Add translation strings for Turnstile security prompts in English, Spanish, and Papiamento
-- [ ] Ensure existing login and QR enrollment flows are unmodified
-- [ ] Prevent duplicate submissions while token is processed
+- [x] Inject Cloudflare Turnstile script into `/auth/customer`
+- [x] Render Turnstile widget securely on the signup tab (explicit render)
+- [x] Capture the `turnstileToken` state
+- [x] Validate token presence before form submission
+- [x] Include `turnstileToken` in the `/api/auth/register-customer` POST payload
+- [x] Add translation strings for Turnstile security prompts in English, Spanish, and Papiamento
+- [x] Ensure existing login and QR enrollment flows are unmodified
+- [x] Prevent duplicate submissions while token is processed
 - [ ] Test frontend integration
 
 ## Acceptance
