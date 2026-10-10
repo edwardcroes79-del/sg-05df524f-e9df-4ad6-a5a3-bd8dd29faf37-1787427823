@@ -25,6 +25,16 @@ begin
   end if;
 
   if p_location_id is not null
+    and not exists (
+      select 1
+      from public.business_locations bl
+      where bl.id = p_location_id
+        and bl.business_id = p_business_id
+    ) then
+    return jsonb_build_object('success', false, 'message', 'Invalid redemption location');
+  end if;
+
+  if p_location_id is not null
     and not public.user_can_access_business_location(v_staff_id, p_business_id, p_location_id) then
     return jsonb_build_object('success', false, 'message', 'Not authorized for this location');
   end if;
