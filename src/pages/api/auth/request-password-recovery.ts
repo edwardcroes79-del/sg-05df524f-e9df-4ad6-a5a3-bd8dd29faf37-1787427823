@@ -29,6 +29,12 @@ interface RecoveryResponse {
   error?: string;
 }
 
+interface ApiRateLimitRow {
+  id: string;
+  attempts: number | null;
+  window_start: string;
+}
+
 function normalizeEmail(value: unknown): string {
   if (typeof value !== "string") {
     return "";
@@ -79,14 +85,14 @@ function createSupabaseAdminClient() {
 }
 
 async function enforceApiRateLimit(
-  supabaseAdmin: ReturnType<typeof createClient>,
+  supabaseAdmin: any,
   rateKey: string,
   maxAttempts: number,
   windowSeconds: number
 ): Promise<boolean> {
   const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString();
 
-  const { data: existingLimit, error: readError } = await supabaseAdmin
+  const { data, error: readError } = await supabaseAdmin
     .from("api_rate_limits")
     .select("id, attempts, window_start")
     .eq("rate_key", rateKey)
@@ -97,6 +103,8 @@ async function enforceApiRateLimit(
     console.error("Password recovery rate-limit read failed");
     return false;
   }
+
+  const existingLimit = data as ApiRateLimitRow | null;
 
   if (!existingLimit || new Date(existingLimit.window_start).toISOString() < windowStart) {
     const { error } = await supabaseAdmin
