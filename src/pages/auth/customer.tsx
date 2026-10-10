@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import Link from "next/link";
@@ -9,16 +9,37 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck } from "lucide-react";
+import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck, RefreshCw } from "lucide-react";
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { useRef } from "react";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
 import Script from "next/script";
 
+type TurnstileStatus = "idle" | "loading" | "ready" | "verified" | "expired" | "error" | "missing-site-key";
+
+interface TurnstileApi {
+  render: (
+    container: HTMLElement,
+    options: {
+      sitekey: string;
+      callback: (token: string) => void;
+      "expired-callback": () => void;
+      "error-callback": () => void;
+      "timeout-callback": () => void;
+      theme: "light";
+      size: "normal";
+      appearance: "always";
+      action: string;
+    }
+  ) => string | undefined;
+  remove: (widgetId: string) => void;
+  reset: (widgetId: string) => void;
+}
+
 declare global {
   interface Window {
-    turnstile: any;
+    turnstile?: TurnstileApi;
   }
 }
 
@@ -46,45 +67,134 @@ export default function CustomerAuth() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   // Turnstile states
-  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || "";
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileScriptReady, setTurnstileScriptReady] = useState(false);
+  const [turnstileStatus, setTurnstileStatus] = useState<TurnstileStatus>("idle");
   const turnstileRef = useRef<HTMLDivElement>(null);
-  const turnstileWidgetId = useRef<string>("");
+  const turnstileWidgetId = useRef("");
 
-  const renderTurnstile = () => {
-    if (typeof window === "undefined" || !window.turnstile || !turnstileRef.current) return;
-    if (turnstileWidgetId.current) return;
+  const resetTurnstileWidget = useCallback(() => {
+    setTurnstileToken("");
+
+    if (typeof window === "undefined" || !window.turnstile || !turnstileWidgetId.current) {
+      setTurnstileStatus(turnstileSiteKey ? "loading" : "missing-site-key");
+      return;
+    }
 
     try {
-      turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
-        sitekey: process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY,
-        callback: (token: string) => setTurnstileToken(token),
-        "expired-callback": () => setTurnstileToken(""),
-        "error-callback": () => setTurnstileToken(""),
-      });
-    } catch (err) {
-      console.error("Failed to render Turnstile:", err);
+      window.turnstile.reset(turnstileWidgetId.current);
+      setTurnstileStatus("ready");
+    } catch {
+      turnstileWidgetId.current = "";
+      setTurnstileStatus("error");
     }
+  }, [turnstileSiteKey]);
+
+  const removeTurnstileWidget = useCallback(() => {
+    setTurnstileToken("");
+
+    if (typeof window !== "undefined" && window.turnstile && turnstileWidgetId.current) {
+      try {
+        window.turnstile.remove(turnstileWidgetId.current);
+      } catch {
+      }
+    }
+
+    turnstileWidgetId.current = "";
+    setTurnstileStatus("idle");
+  }, []);
+
+  const renderTurnstile = useCallback(() => {
+    if (activeTab !== "signup" || isSuccess) {
+      return;
+    }
+
+    if (!turnstileSiteKey) {
+      setTurnstileStatus("missing-site-key");
+      return;
+    }
+
+    if (typeof window === "undefined" || !window.turnstile) {
+      setTurnstileStatus("loading");
+      return;
+    }
+
+    if (!turnstileRef.current) {
+      setTurnstileStatus("loading");
+      return;
+    }
+
+    if (turnstileWidgetId.current) {
+      return;
+    }
+
+    try {
+      setTurnstileToken("");
+      setTurnstileStatus("loading");
+
+      const widgetId = window.turnstile.render(turnstileRef.current, {
+        sitekey: turnstileSiteKey,
+        theme: "light",
+        size: "normal",
+        appearance: "always",
+        action: "customer_signup",
+        callback: (token: string) => {
+          setTurnstileToken(token);
+          setTurnstileStatus("verified");
+        },
+        "expired-callback": () => {
+          setTurnstileToken("");
+          setTurnstileStatus("expired");
+        },
+        "error-callback": () => {
+          setTurnstileToken("");
+          setTurnstileStatus("error");
+        },
+        "timeout-callback": () => {
+          setTurnstileToken("");
+          setTurnstileStatus("expired");
+        },
+      });
+
+      if (widgetId) {
+        turnstileWidgetId.current = widgetId;
+        setTurnstileStatus("ready");
+      } else {
+        setTurnstileStatus("error");
+      }
+    } catch {
+      setTurnstileToken("");
+      setTurnstileStatus("error");
+    }
+  }, [activeTab, isSuccess, turnstileSiteKey]);
+
+  const handleTurnstileRetry = () => {
+    if (turnstileWidgetId.current) {
+      resetTurnstileWidget();
+      return;
+    }
+
+    renderTurnstile();
   };
 
   useEffect(() => {
-    if (activeTab === "signup") {
-      renderTurnstile();
-    } else {
-      if (turnstileWidgetId.current && typeof window !== "undefined" && window.turnstile) {
-        window.turnstile.remove(turnstileWidgetId.current);
-        turnstileWidgetId.current = "";
-        setTurnstileToken("");
-      }
+    if (activeTab === "signup" && !isSuccess) {
+      const renderTimer = window.setTimeout(() => {
+        renderTurnstile();
+      }, 0);
+
+      return () => window.clearTimeout(renderTimer);
     }
-  }, [activeTab]);
+
+    removeTurnstileWidget();
+  }, [activeTab, isSuccess, removeTurnstileWidget, renderTurnstile, turnstileScriptReady]);
 
   useEffect(() => {
     return () => {
-      if (turnstileWidgetId.current && typeof window !== "undefined" && window.turnstile) {
-        window.turnstile.remove(turnstileWidgetId.current);
-      }
+      removeTurnstileWidget();
     };
-  }, []);
+  }, [removeTurnstileWidget]);
 
   // MFA States
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -293,6 +403,7 @@ export default function CustomerAuth() {
         });
         isSubmitting.current = false;
         setLoading(false);
+        resetTurnstileWidget();
       } else {
         // Strict Success State - Lock the form and prevent duplicate emails
         setIsSuccess(true);
@@ -315,8 +426,22 @@ export default function CustomerAuth() {
       });
       isSubmitting.current = false;
       setLoading(false);
+      resetTurnstileWidget();
     } 
   };
+
+  const turnstileMessageKey =
+    turnstileStatus === "verified"
+      ? "auth.customer.turnstileVerified"
+      : turnstileStatus === "expired"
+        ? "auth.customer.turnstileExpired"
+        : turnstileStatus === "error"
+          ? "auth.customer.turnstileError"
+          : turnstileStatus === "missing-site-key"
+            ? "auth.customer.turnstileUnavailable"
+            : turnstileStatus === "loading"
+              ? "auth.customer.turnstileLoading"
+              : "auth.customer.turnstilePrompt";
 
   return (
     <>
@@ -512,8 +637,35 @@ export default function CustomerAuth() {
                             </div>
                           </div>
 
-                          <div className="flex justify-center min-h-[65px]">
-                            <div ref={turnstileRef}></div>
+                          <div className="space-y-2">
+                            <Label>{t("auth.customer.turnstileLabel")}</Label>
+                            <div className="rounded-md border bg-muted/20 p-3">
+                              <div className="flex min-h-[70px] items-center justify-center">
+                                {turnstileStatus === "loading" && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    {t("auth.customer.turnstileLoading")}
+                                  </div>
+                                )}
+                                <div ref={turnstileRef} className={turnstileStatus === "loading" ? "hidden" : ""}></div>
+                              </div>
+                              <div className="mt-2 flex items-center justify-between gap-3">
+                                <p className="text-xs text-muted-foreground">{t(turnstileMessageKey)}</p>
+                                {(turnstileStatus === "expired" || turnstileStatus === "error" || turnstileStatus === "missing-site-key") && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 shrink-0 gap-2 text-xs"
+                                    onClick={handleTurnstileRetry}
+                                    disabled={loading || turnstileStatus === "missing-site-key"}
+                                  >
+                                    <RefreshCw className="h-3 w-3" />
+                                    {t("auth.customer.turnstileRetry")}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -613,7 +765,14 @@ export default function CustomerAuth() {
         <Script 
           src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" 
           strategy="afterInteractive"
-          onLoad={renderTurnstile}
+          onReady={() => {
+            setTurnstileScriptReady(true);
+            renderTurnstile();
+          }}
+          onError={() => {
+            setTurnstileScriptReady(false);
+            setTurnstileStatus("error");
+          }}
         />
       </main>
     </>
