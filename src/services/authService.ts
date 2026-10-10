@@ -15,7 +15,8 @@ export interface AuthError {
 
 // Dynamic URL Helper
 export const getURL = () => {
-  let url = "https://arubaroyaltystamp.com";
+  const productionUrl = "https://royaltystamp.com";
+  let url = productionUrl;
 
   if (typeof window !== "undefined" && window.location.origin) {
     url = window.location.origin;
@@ -25,11 +26,15 @@ export const getURL = () => {
     url = `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`;
   }
 
-  // FORCE PRODUCTION URL: If running in the Softgen sandbox or localhost, 
-  // Supabase Auth will silently drop the email if the redirect URL isn't in its allowed list.
-  // We must strictly enforce the production domain for emails.
-  if (url.includes("softgen.dev") || url.includes("localhost")) {
-    url = "https://arubaroyaltystamp.com";
+  const isPreviewOrLocal =
+    url.includes("softgen.dev") ||
+    url.includes("localhost") ||
+    url.includes("127.0.0.1");
+
+  const isLegacyDomain = url.includes("arubaroyaltystamp.com");
+
+  if (isPreviewOrLocal || isLegacyDomain) {
+    url = productionUrl;
   }
 
   return url.endsWith("/") ? url : `${url}/`;
