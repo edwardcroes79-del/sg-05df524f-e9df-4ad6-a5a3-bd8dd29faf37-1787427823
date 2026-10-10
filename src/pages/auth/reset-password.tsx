@@ -4,45 +4,80 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
-import { getURL } from "@/services/authService";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
+import { TurnstileVerification } from "@/components/TurnstileVerification";
+
+interface RecoveryResponse {
+  success?: boolean;
+  message?: string;
+  error?: string;
+}
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
   const { t } = useI18n();
 
+  const resetTurnstile = () => {
+    setTurnstileToken("");
+    setTurnstileResetSignal((current) => current + 1);
+  };
+
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!turnstileToken) {
+      toast({
+        title: t("auth.customer.securityCheckRequired"),
+        description: t("auth.customer.pleaseCompleteSecurityCheck"),
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getURL()}auth/update-password`,
+      const response = await fetch("/api/auth/request-password-recovery", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          turnstileToken,
+        }),
       });
 
-      if (error) {
+      const result = (await response.json()) as RecoveryResponse;
+
+      if (!response.ok) {
         toast({
           title: t("auth.reset.failed"),
-          description: error.message,
+          description: result.error || t("auth.register.tryAgain"),
           variant: "destructive",
         });
-      } else {
-        setSubmitted(true);
+        resetTurnstile();
+        return;
       }
+
+      setSubmitted(true);
+      setTurnstileToken("");
     } catch (err: any) {
       toast({
         title: t("auth.reset.error"),
         description: err.message || t("auth.register.tryAgain"),
         variant: "destructive",
       });
+      resetTurnstile();
     } finally {
       setLoading(false);
     }
@@ -85,8 +120,15 @@ export default function ResetPassword() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required 
+                    disabled={loading}
                   />
                 </div>
+                <TurnstileVerification
+                  action="password_recovery"
+                  disabled={loading}
+                  resetSignal={turnstileResetSignal}
+                  onTokenChange={setTurnstileToken}
+                />
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("auth.reset.sendLink")}
                 </Button>
