@@ -140,7 +140,7 @@ function getHomepageDisplayLimits(plan: PublicSubscriptionPlan) {
     return {
       maxLoyaltyPrograms: 1,
       maxCustomers: 500,
-      maxStaff: 2,
+      maxStaff: 1,
     };
   }
 
