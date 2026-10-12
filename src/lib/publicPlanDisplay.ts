@@ -113,10 +113,70 @@ function translatedFeatureLabel(t: Translate, key: string, values?: Record<strin
   return translated;
 }
 
-function formatLimit(value: number | null | undefined, t: Translate) {
+function formatLimit(value: number | null | undefined) {
   const numericValue = Number(value || 0);
-  if (!Number.isFinite(numericValue) || numericValue >= 9999) return t("publicPricing.unlimited");
+  if (!Number.isFinite(numericValue)) return "0";
   return numericValue.toLocaleString();
+}
+
+function getNumericLimit(value: number | null | undefined) {
+  const numericValue = Number(value || 0);
+  if (!Number.isFinite(numericValue)) return 0;
+  return numericValue;
+}
+
+function getHomepageDisplayLimits(plan: PublicSubscriptionPlan) {
+  const normalizedName = plan.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  if (normalizedName.includes("free") && normalizedName.includes("trial")) {
+    return {
+      maxLoyaltyPrograms: 1,
+      maxCustomers: 50,
+      maxStaff: 1,
+    };
+  }
+
+  if (normalizedName === "starter") {
+    return {
+      maxLoyaltyPrograms: 1,
+      maxCustomers: 500,
+      maxStaff: 2,
+    };
+  }
+
+  if (normalizedName === "business") {
+    return {
+      maxLoyaltyPrograms: 5,
+      maxCustomers: 2000,
+      maxStaff: 5,
+    };
+  }
+
+  if (normalizedName === "corporate") {
+    return {
+      maxLoyaltyPrograms: 25,
+      maxCustomers: 15000,
+      maxStaff: getNumericLimit(plan.max_staff),
+    };
+  }
+
+  return {
+    maxLoyaltyPrograms: getNumericLimit(plan.max_loyalty_programs),
+    maxCustomers: getNumericLimit(plan.max_customers),
+    maxStaff: getNumericLimit(plan.max_staff),
+  };
+}
+
+function translatedCountFeatureLabel(
+  t: Translate,
+  singularKey: string,
+  pluralKey: string,
+  count: number,
+  dedupeFallbackKey: string
+) {
+  return translatedFeatureLabel(t, count === 1 ? singularKey : pluralKey, {
+    count: count.toLocaleString(),
+  }) || toCustomerFacingFallback(dedupeFallbackKey);
 }
 
 function getFeatureDedupeKey(label: string, fallbackKey?: string) {
@@ -150,6 +210,7 @@ function normalizeDisplayFeature(value: string) {
 export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Translate) {
   const features: string[] = [];
   const seen = new Set<string>();
+  const displayLimits = getHomepageDisplayLimits(plan);
 
   const addFeature = (label: string, dedupeKey?: string) => {
     const normalizedLabel = normalizeDisplayFeature(label);
@@ -162,17 +223,31 @@ export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Transl
     features.push(normalizedLabel);
   };
 
-  addFeature(translatedFeatureLabel(t, "loyaltyPrograms", {
-    count: formatLimit(plan.max_loyalty_programs, t),
-  }), "limit_loyalty_programs");
+  addFeature(translatedCountFeatureLabel(
+    t,
+    "loyaltyProgram",
+    "loyaltyPrograms",
+    displayLimits.maxLoyaltyPrograms,
+    "loyaltyPrograms"
+  ), "limit_loyalty_programs");
 
-  addFeature(translatedFeatureLabel(t, "loyaltyMembers", {
-    count: formatLimit(plan.max_customers, t),
-  }), "limit_loyalty_members");
+  addFeature(translatedCountFeatureLabel(
+    t,
+    "loyaltyMember",
+    "loyaltyMembers",
+    displayLimits.maxCustomers,
+    "loyaltyMembers"
+  ), "limit_loyalty_members");
 
-  addFeature(translatedFeatureLabel(t, "staffAccounts", {
-    count: formatLimit(plan.max_staff, t),
-  }), "limit_staff_accounts");
+  addFeature(translatedFeatureLabel(t, "adminAccount"), "limit_admin_account");
+
+  addFeature(translatedCountFeatureLabel(
+    t,
+    "staffAccount",
+    "staffAccounts",
+    displayLimits.maxStaff,
+    "staffAccounts"
+  ), "limit_staff_accounts");
 
   const entitlementRows = Array.isArray(plan.entitlements) ? plan.entitlements : [];
   const entitlementKeys = new Set(entitlementRows.map((entitlement) => entitlement.key));
@@ -188,7 +263,7 @@ export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Transl
     .forEach((entitlement) => {
       if (entitlement.key === "max_locations") {
         addFeature(translatedFeatureLabel(t, "max_locations", {
-          count: formatLimit(Number(entitlement.number_value || 0), t),
+          count: formatLimit(Number(entitlement.number_value || 0)),
         }), entitlement.key);
         return;
       }
