@@ -132,7 +132,7 @@ function getHomepageDisplayLimits(plan: PublicSubscriptionPlan) {
     return {
       maxLoyaltyPrograms: 1,
       maxCustomers: 50,
-      maxStaff: 1,
+      maxStaff: 0,
     };
   }
 
@@ -241,13 +241,17 @@ export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Transl
 
   addFeature(translatedFeatureLabel(t, "adminAccount"), "limit_admin_account");
 
-  addFeature(translatedCountFeatureLabel(
-    t,
-    "staffAccount",
-    "staffAccounts",
-    displayLimits.maxStaff,
-    "staffAccounts"
-  ), "limit_staff_accounts");
+  if (displayLimits.maxStaff === 0) {
+    addFeature("No Staff Accounts Included", "limit_staff_accounts");
+  } else {
+    addFeature(translatedCountFeatureLabel(
+      t,
+      "staffAccount",
+      "staffAccounts",
+      displayLimits.maxStaff,
+      "staffAccounts"
+    ), "limit_staff_accounts");
+  }
 
   const entitlementRows = Array.isArray(plan.entitlements) ? plan.entitlements : [];
   const entitlementKeys = new Set(entitlementRows.map((entitlement) => entitlement.key));
