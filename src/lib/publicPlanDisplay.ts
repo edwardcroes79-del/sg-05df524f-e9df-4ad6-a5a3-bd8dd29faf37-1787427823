@@ -152,11 +152,19 @@ function getHomepageDisplayLimits(plan: PublicSubscriptionPlan) {
     };
   }
 
+  if (normalizedName === "professional") {
+    return {
+      maxLoyaltyPrograms: 10,
+      maxCustomers: 5000,
+      maxStaff: 10,
+    };
+  }
+
   if (normalizedName === "corporate") {
     return {
       maxLoyaltyPrograms: 25,
       maxCustomers: 15000,
-      maxStaff: getNumericLimit(plan.max_staff),
+      maxStaff: 50,
     };
   }
 
