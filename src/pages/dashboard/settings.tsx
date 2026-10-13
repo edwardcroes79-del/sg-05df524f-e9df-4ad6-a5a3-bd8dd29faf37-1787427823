@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [business, setBusiness] = useState<any>(null);
   const [corporateBrandingAvailable, setCorporateBrandingAvailable] = useState(false);
-  const showCorporateBrandingEntry = corporateBrandingAvailable || business?.subscription_plan === "mega_plan";
+  const showCorporateBrandingEntry = corporateBrandingAvailable;
 
   // 2FA States
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
@@ -91,12 +91,8 @@ export default function SettingsPage() {
     });
 
     try {
-      if (data.subscription_plan === "mega_plan") {
-        const brandingResult = await fetchCorporateBranding(data.id, session.access_token);
-        setCorporateBrandingAvailable(brandingResult.status === "available" && brandingResult.can_manage);
-      } else {
-        setCorporateBrandingAvailable(false);
-      }
+      const brandingResult = await fetchCorporateBranding(data.id, session.access_token);
+      setCorporateBrandingAvailable(brandingResult.status === "available" && brandingResult.can_manage);
     } catch (brandingError) {
       console.error("Corporate branding settings access error:", brandingError);
       setCorporateBrandingAvailable(false);

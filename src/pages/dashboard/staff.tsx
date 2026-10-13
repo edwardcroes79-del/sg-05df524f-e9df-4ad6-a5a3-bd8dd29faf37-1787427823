@@ -53,7 +53,21 @@ export default function StaffPage() {
       if (biz) {
         setIsOwner(true);
         setBusiness(biz);
-        setIsCorporate(biz.subscription_plan === "mega_plan");
+
+        const [{ data: hasStaffLocationAssignment }, { data: maxLocations }] = await Promise.all([
+          (supabase as any).rpc("get_business_boolean_entitlement", {
+            p_business_id: biz.id,
+            p_key: "staff_location_assignment",
+            p_fallback: false,
+          }),
+          (supabase as any).rpc("get_business_effective_numeric_limit", {
+            p_business_id: biz.id,
+            p_key: "max_locations",
+            p_fallback: 0,
+          }),
+        ]);
+
+        setIsCorporate(Boolean(hasStaffLocationAssignment) && Number(maxLocations || 0) > 0);
 
         // Fetch plan limits
         const { data: planData } = await supabase

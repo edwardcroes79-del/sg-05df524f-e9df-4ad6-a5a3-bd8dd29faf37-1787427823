@@ -68,7 +68,16 @@ async function requireCorporateAdmin(admin: any, userId: string, businessId: str
   });
 
   if (entitlementError) throw entitlementError;
-  if (Number(maxLocations || 0) <= 0) {
+
+  const { data: staffLocationAssignmentEnabled, error: assignmentEntitlementError } = await admin.rpc("get_business_boolean_entitlement", {
+    p_business_id: business.id,
+    p_key: "staff_location_assignment",
+    p_fallback: false,
+  });
+
+  if (assignmentEntitlementError) throw assignmentEntitlementError;
+
+  if (!staffLocationAssignmentEnabled || Number(maxLocations || 0) <= 0) {
     throw new Error("Corporate location assignments are not enabled for this business");
   }
 
