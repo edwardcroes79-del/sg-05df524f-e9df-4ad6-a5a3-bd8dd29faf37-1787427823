@@ -88,6 +88,7 @@ export default function Home() {
           .select(publicSubscriptionPlanSelect)
           .eq("status", "active")
           .eq("is_active", true)
+          .eq("visibility", "public")
           .order("display_order", { ascending: true })
           .order("price_awg", { ascending: true });
         

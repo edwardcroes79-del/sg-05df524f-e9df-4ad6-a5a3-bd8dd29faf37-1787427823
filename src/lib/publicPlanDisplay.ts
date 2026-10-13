@@ -23,6 +23,7 @@ export interface PublicSubscriptionPlan {
   trial_days: number | null;
   status: string | null;
   is_active: boolean | null;
+  visibility: string | null;
   display_order: number | null;
   badge: string | null;
   entitlements?: PublicPlanEntitlement[] | null;
@@ -45,6 +46,7 @@ export const publicSubscriptionPlanSelect = `
   trial_days,
   status,
   is_active,
+  visibility,
   display_order,
   badge,
   entitlements:plan_entitlements (
