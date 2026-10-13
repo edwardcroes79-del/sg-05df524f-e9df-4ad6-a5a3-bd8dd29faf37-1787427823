@@ -59,7 +59,7 @@ export const publicSubscriptionPlanSelect = `
 `;
 
 const publicEntitlementKeys: ReadonlySet<string> = new Set(PUBLIC_PLAN_ENTITLEMENT_KEYS);
-const entitlementDisplayOrder = new Map(STANDARD_PLAN_ENTITLEMENTS.map((entitlement, index) => [entitlement.key, index]));
+const entitlementDisplayOrder: ReadonlyMap<string, number> = new Map(STANDARD_PLAN_ENTITLEMENTS.map((entitlement, index) => [entitlement.key, index]));
 
 const internalLimitEntitlementKeys = new Set([
   "max_loyalty_programs",
