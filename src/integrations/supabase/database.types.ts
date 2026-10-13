@@ -11,7 +11,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -1527,6 +1527,7 @@ export type Database = {
           status: string | null
           trial_days: number | null
           updated_at: string | null
+          visibility: string
         }
         Insert: {
           annual_price_awg?: number | null
@@ -1548,6 +1549,7 @@ export type Database = {
           status?: string | null
           trial_days?: number | null
           updated_at?: string | null
+          visibility?: string
         }
         Update: {
           annual_price_awg?: number | null
@@ -1569,6 +1571,7 @@ export type Database = {
           status?: string | null
           trial_days?: number | null
           updated_at?: string | null
+          visibility?: string
         }
         Relationships: []
       }
@@ -1869,6 +1872,14 @@ export type Database = {
             Returns: Json
           }
       refresh_expired_business_contracts: { Args: never; Returns: number }
+      resolve_stamp_issue_location: {
+        Args: {
+          p_business_id: string
+          p_requested_location_id?: string
+          p_staff_user_id: string
+        }
+        Returns: string
+      }
       review_subscription_plan_change: {
         Args: { p_action: string; p_admin_notes?: string; p_payment_id: string }
         Returns: {
