@@ -126,18 +126,27 @@ async function resolveBusinessAccess(admin: any, userId: string, requestedBusine
     throw new Error("Forbidden: You do not have access to this business");
   }
 
-  const { data: maxLocationEntitlement, error: entitlementError } = await admin
+  const { data: locationEntitlements, error: entitlementError } = await admin
     .from("plan_entitlements")
-    .select("number_value")
+    .select("key, value_type, boolean_value, number_value")
     .eq("plan_id", business.subscription_plan || "")
-    .eq("key", "max_locations")
-    .eq("value_type", "number")
-    .maybeSingle();
+    .in("key", ["location_management", "max_locations"]);
 
   if (entitlementError) throw entitlementError;
 
-  const maxLocations = Number(maxLocationEntitlement?.number_value || 0);
-  if (maxLocations <= 0) {
+  const locationManagementEnabled = (locationEntitlements || []).some((entitlement: any) =>
+    entitlement.key === "location_management"
+    && entitlement.value_type === "boolean"
+    && entitlement.boolean_value === true
+  );
+
+  const maxLocationsEntitlement = (locationEntitlements || []).find((entitlement: any) =>
+    entitlement.key === "max_locations"
+    && entitlement.value_type === "number"
+  );
+
+  const maxLocations = Number(maxLocationsEntitlement?.number_value || 0);
+  if (!locationManagementEnabled || maxLocations <= 0) {
     throw new Error("Corporate location management is not enabled for this business");
   }
 
