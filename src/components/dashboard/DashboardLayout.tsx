@@ -221,12 +221,42 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         console.error("Quick Issue Stamp access error:", quickStampAccessError);
       }
 
-      setQuickStampQrEnabled(Boolean(hasQuickStampAddon) || resolvedBusiness.subscription_plan === "mega_plan");
-      setAdvancedAnalyticsEnabled(resolvedBusiness.subscription_plan === "mega_plan");
-      setLocationsManagementEnabled(resolvedBusiness.subscription_plan === "mega_plan" && resolvedBusiness.owner_id === session.user.id);
+      const entitlementKeys = ["quick_stamp_qr", "advanced_analytics", "corporate_branding"] as const;
+      const entitlementEntries = await Promise.all(entitlementKeys.map(async (key) => {
+        const { data, error } = await (supabase as any).rpc("get_business_boolean_entitlement", {
+          p_business_id: resolvedBusiness.id,
+          p_key: key,
+          p_fallback: false,
+        });
+
+        if (error) {
+          console.error(`Dashboard entitlement check failed for ${key}:`, error);
+          return [key, false] as const;
+        }
+
+        return [key, Boolean(data)] as const;
+      }));
+
+      const featureEntitlements = Object.fromEntries(entitlementEntries) as Record<typeof entitlementKeys[number], boolean>;
+
+      const { data: maxLocations, error: maxLocationsError } = await (supabase as any).rpc("get_business_effective_numeric_limit", {
+        p_business_id: resolvedBusiness.id,
+        p_key: "max_locations",
+        p_fallback: 0,
+      });
+
+      if (maxLocationsError) {
+        console.error("Dashboard location entitlement check failed:", maxLocationsError);
+      }
+
+      const hasLocationManagement = Number(maxLocations || 0) > 0;
+
+      setQuickStampQrEnabled(Boolean(hasQuickStampAddon) || featureEntitlements.quick_stamp_qr);
+      setAdvancedAnalyticsEnabled(featureEntitlements.advanced_analytics);
+      setLocationsManagementEnabled(hasLocationManagement && resolvedBusiness.owner_id === session.user.id);
       setCorporateBrandingEnabled(false);
 
-      if (resolvedBusiness.subscription_plan === "mega_plan") {
+      if (featureEntitlements.corporate_branding) {
         try {
           const brandingResult = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
           const canUseCorporateBranding = brandingResult.status === "available";
@@ -242,7 +272,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         setCorporateBrandingEnabled(false);
       }
 
-      if (resolvedBusiness.subscription_plan === "mega_plan") {
+      if (hasLocationManagement) {
         const { data: locationRows, error: locationError } = await (supabase as any)
           .from("business_locations")
           .select("id, name, status")
@@ -336,7 +366,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { nameKey: "dashboard.nav.overview", href: "/dashboard", icon: LayoutDashboard },
     ...(advancedAnalyticsEnabled ? [{ nameKey: "dashboard.nav.advancedAnalytics" as TranslationKey, href: "/dashboard/analytics", icon: BarChart3 }] : []),
     ...(locationsManagementEnabled ? [{ nameKey: "dashboard.nav.locations" as TranslationKey, href: "/dashboard/locations", icon: MapPin }] : []),
-    ...((corporateBrandingEnabled || business?.subscription_plan === "mega_plan") ? [{ nameKey: "dashboard.nav.corporateBranding" as TranslationKey, href: "/dashboard/corporate-branding", icon: Palette }] : []),
+    ...(corporateBrandingEnabled ? [{ nameKey: "dashboard.nav.corporateBranding" as TranslationKey, href: "/dashboard/corporate-branding", icon: Palette }] : []),
     {
       nameKey: "dashboard.nav.stampsRewards",
       href: "/dashboard/scan",

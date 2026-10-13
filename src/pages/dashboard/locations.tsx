@@ -88,7 +88,9 @@ export default function LocationsPage() {
       if (workspaceError) throw workspaceError;
 
       const business = Array.isArray(workspaceRows) ? workspaceRows[0] : workspaceRows;
-      if (!business || business.subscription_plan !== "mega_plan" || business.owner_id !== (await supabase.auth.getUser()).data.user?.id) {
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!business || business.owner_id !== userData.user?.id) {
         setAccessDenied(true);
         return;
       }
@@ -99,7 +101,14 @@ export default function LocationsPage() {
       });
       const body = await response.json();
 
-      if (!response.ok) throw new Error(body.error || t("dashboard.locations.loadFailed"));
+      if (!response.ok) {
+        if (response.status === 403) {
+          setAccessDenied(true);
+          return;
+        }
+
+        throw new Error(body.error || t("dashboard.locations.loadFailed"));
+      }
 
       setLocations(body.locations || []);
       setMaxLocations(Number(body.maxLocations || 0));
