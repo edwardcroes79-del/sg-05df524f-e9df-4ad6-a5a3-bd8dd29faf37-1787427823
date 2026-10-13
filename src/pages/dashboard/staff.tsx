@@ -54,20 +54,24 @@ export default function StaffPage() {
         setIsOwner(true);
         setBusiness(biz);
 
-        const [{ data: hasStaffLocationAssignment }, { data: maxLocations }] = await Promise.all([
-          (supabase as any).rpc("get_business_boolean_entitlement", {
-            p_business_id: biz.id,
-            p_key: "staff_location_assignment",
-            p_fallback: false,
-          }),
-          (supabase as any).rpc("get_business_effective_numeric_limit", {
-            p_business_id: biz.id,
-            p_key: "max_locations",
-            p_fallback: 0,
-          }),
-        ]);
+        const { data: locationEntitlements } = await (supabase as any)
+          .from("plan_entitlements")
+          .select("key, value_type, boolean_value, number_value")
+          .eq("plan_id", biz.subscription_plan || "free")
+          .in("key", ["staff_location_assignment", "max_locations"]);
 
-        setIsCorporate(Boolean(hasStaffLocationAssignment) && Number(maxLocations || 0) > 0);
+        const hasStaffLocationAssignment = (locationEntitlements || []).some((entitlement: any) =>
+          entitlement.key === "staff_location_assignment"
+          && entitlement.value_type === "boolean"
+          && entitlement.boolean_value === true
+        );
+        const maxLocationsEntitlement = (locationEntitlements || []).find((entitlement: any) =>
+          entitlement.key === "max_locations"
+          && entitlement.value_type === "number"
+        );
+        const maxLocations = Number(maxLocationsEntitlement?.number_value || 0);
+
+        setIsCorporate(hasStaffLocationAssignment && maxLocations > 0);
 
         // Fetch plan limits
         const { data: planData } = await supabase
