@@ -805,39 +805,43 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-stretch gap-8 max-w-7xl mx-auto">
               {homepagePlans.map((plan) => (
                 <Card key={plan.id} className={cn(
-                  "border-border/50 shadow-xl flex flex-col relative rounded-3xl overflow-hidden transition-transform hover:-translate-y-1 bg-card", 
-                  plan.isPopular ? "border-primary shadow-2xl shadow-primary/10 scale-105 md:-translate-y-4" : ""
+                  "border-border/50 shadow-xl flex h-full min-w-0 flex-col relative rounded-3xl overflow-hidden transition-transform hover:-translate-y-1 bg-card", 
+                  plan.isPopular ? "border-primary shadow-2xl shadow-primary/10 md:-translate-y-2" : ""
                 )}>
                   {plan.isPopular && (
                     <div className="bg-primary text-primary-foreground py-2 text-center text-sm font-bold uppercase tracking-wider">
                       {plan.badge}
                     </div>
                   )}
-                  <CardHeader className="p-8 pb-6">
-                    <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                    <CardDescription className="text-base mt-2">{plan.description}</CardDescription>
-                    <div className="mt-6 font-heading flex items-baseline gap-2">
-                      <span className="text-5xl font-extrabold">{plan.price}</span>
-                      <span className="text-lg text-muted-foreground font-medium">/ month</span>
+                  <CardHeader className="flex min-h-[18rem] flex-col p-8 pb-6">
+                    <div className="min-h-[6.75rem]">
+                      <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+                      <CardDescription className="mt-2 text-base leading-relaxed">{plan.description}</CardDescription>
                     </div>
-                    {plan.annualPrice && (
-                      <p className="mt-2 text-sm font-semibold text-muted-foreground">{plan.annualPrice}</p>
-                    )}
+                    <div className="mt-auto pt-6 font-heading">
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <span className="text-5xl font-extrabold leading-none">{plan.price}</span>
+                        <span className="text-lg text-muted-foreground font-medium">/ month</span>
+                      </div>
+                      {plan.annualPrice && (
+                        <p className="mt-2 text-sm font-semibold text-muted-foreground">{plan.annualPrice}</p>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent className="flex-1 p-8 pt-0">
                     <ul className="space-y-4">
                       {plan.features.map((item: string, idx: number) => (
-                        <li key={`${item}-${idx}`} className="flex items-start text-base font-medium text-foreground">
-                          <CheckCircle2 className="w-5 h-5 text-primary mr-3 flex-shrink-0 mt-0.5" /> 
-                          <span>{item}</span>
+                        <li key={`${item}-${idx}`} className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-start gap-3 text-base font-medium leading-relaxed text-foreground">
+                          <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" /> 
+                          <span className="min-w-0 break-words">{item}</span>
                         </li>
                       ))}
                     </ul>
                   </CardContent>
-                  <CardFooter className="p-8 pt-0">
+                  <CardFooter className="mt-auto p-8 pt-0">
                     <Link href={plan.ctaHref} className="w-full">
                       <Button 
                         size="lg"
