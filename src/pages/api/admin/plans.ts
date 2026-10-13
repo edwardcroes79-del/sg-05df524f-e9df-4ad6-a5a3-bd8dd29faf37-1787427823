@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
+import { STANDARD_PLAN_ENTITLEMENT_KEYS } from "@/lib/planEntitlements";
 
 type PlanStatus = "active" | "inactive" | "archived";
 
@@ -35,24 +36,10 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 const allowedFeatureKeys = new Set([
-  "premium_templates",
-  "reward_expiration",
-  "custom_card_branding",
-  "advanced_analytics",
-  "quick_stamp_qr",
-  "location_management",
-  "multi_location_management",
-  "staff_location_assignment",
-  "location_manager",
-  "location_analytics",
-  "cross_location_analytics",
-  "location_leaderboard",
-  "corporate_branding",
-  "location_specific_quick_qr",
+  ...STANDARD_PLAN_ENTITLEMENT_KEYS,
   "max_loyalty_programs",
   "max_customers",
   "max_staff",
-  "max_locations",
 ]);
 
 function slugifyPlanId(name: string) {

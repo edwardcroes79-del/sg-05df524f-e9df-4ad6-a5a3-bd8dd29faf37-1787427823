@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
+import { STANDARD_PLAN_ENTITLEMENTS, type StandardPlanEntitlementKey } from "@/lib/planEntitlements";
 
 function asMetadataObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -211,46 +212,17 @@ export default function AdminDashboard() {
   };
 
   // Edit states
-  const availablePlanEntitlements = [
-    { key: "premium_templates", label: "Premium Templates", description: "Allow premium loyalty card templates.", valueType: "boolean" },
-    { key: "reward_expiration", label: "Reward Expiration", description: "Allow businesses to set reward expiration periods.", valueType: "boolean" },
-    { key: "custom_card_branding", label: "Custom Card Branding", description: "Allow branded loyalty card customization.", valueType: "boolean" },
-    { key: "advanced_analytics", label: "Corporate Advanced Analytics", description: "Allow advanced corporate analytics dashboards.", valueType: "boolean" },
-    { key: "quick_stamp_qr", label: "Quick QR Included", description: "Include Quick QR through the plan instead of requiring the AWG 10 add-on.", valueType: "boolean" },
-    { key: "location_management", label: "Location Management", description: "Allow location management screens and APIs.", valueType: "boolean" },
-    { key: "multi_location_management", label: "Multi-location Management", description: "Allow Corporate multi-location operations.", valueType: "boolean" },
-    { key: "staff_location_assignment", label: "Staff-location Assignment", description: "Allow assigning staff to business locations.", valueType: "boolean" },
-    { key: "location_manager", label: "Location Manager Role", description: "Allow location manager functionality.", valueType: "boolean" },
-    { key: "location_analytics", label: "Location Analytics", description: "Allow per-location analytics views.", valueType: "boolean" },
-    { key: "cross_location_analytics", label: "Cross-location Analytics", description: "Allow cross-location analytics comparisons.", valueType: "boolean" },
-    { key: "location_leaderboard", label: "Location Leaderboard", description: "Allow Corporate location leaderboard reporting.", valueType: "boolean" },
-    { key: "corporate_branding", label: "Corporate Branding", description: "Allow Corporate-level branding controls.", valueType: "boolean" },
-    { key: "location_specific_quick_qr", label: "Location-specific Quick QR", description: "Allow Quick QR to carry location context.", valueType: "boolean" },
-    { key: "max_locations", label: "Maximum Locations", description: "Server-side limit for active locations.", valueType: "number" },
-  ] as const;
+  const availablePlanEntitlements = STANDARD_PLAN_ENTITLEMENTS;
 
   const booleanPlanEntitlements = availablePlanEntitlements.filter((feature) => feature.valueType === "boolean");
   const numberPlanEntitlements = availablePlanEntitlements.filter((feature) => feature.valueType === "number");
 
-  type PlanEntitlementKey = typeof availablePlanEntitlements[number]["key"];
+  type PlanEntitlementKey = StandardPlanEntitlementKey;
 
-  const defaultPlanEntitlements: Record<PlanEntitlementKey, boolean | number> = {
-    premium_templates: false,
-    reward_expiration: true,
-    custom_card_branding: false,
-    advanced_analytics: false,
-    quick_stamp_qr: false,
-    location_management: false,
-    multi_location_management: false,
-    staff_location_assignment: false,
-    location_manager: false,
-    location_analytics: false,
-    cross_location_analytics: false,
-    location_leaderboard: false,
-    corporate_branding: false,
-    location_specific_quick_qr: false,
-    max_locations: 0,
-  };
+  const defaultPlanEntitlements = availablePlanEntitlements.reduce((acc, entitlement) => {
+    acc[entitlement.key] = entitlement.defaultValue as boolean | number;
+    return acc;
+  }, {} as Record<PlanEntitlementKey, boolean | number>);
 
   const emptyPlanFormData = {
     id: "",

@@ -1,3 +1,5 @@
+import { getPlanEntitlementLabel, PUBLIC_PLAN_ENTITLEMENT_KEYS } from "@/lib/planEntitlements";
+
 export interface PublicPlanEntitlement {
   key: string;
   value_type: "boolean" | "number" | "text";
@@ -54,23 +56,7 @@ export const publicSubscriptionPlanSelect = `
   )
 `;
 
-const publicEntitlementKeys = new Set([
-  "premium_templates",
-  "reward_expiration",
-  "custom_card_branding",
-  "advanced_analytics",
-  "quick_stamp_qr",
-  "location_management",
-  "multi_location_management",
-  "staff_location_assignment",
-  "location_manager",
-  "location_analytics",
-  "cross_location_analytics",
-  "location_leaderboard",
-  "corporate_branding",
-  "location_specific_quick_qr",
-  "max_locations",
-]);
+const publicEntitlementKeys = new Set(PUBLIC_PLAN_ENTITLEMENT_KEYS);
 
 const internalLimitEntitlementKeys = new Set([
   "max_loyalty_programs",
@@ -107,7 +93,7 @@ function translatedFeatureLabel(t: Translate, key: string, values?: Record<strin
   const translated = t(translationKey, values);
 
   if (!translated || translated === translationKey || translated.includes("dashboard.") || translated.includes("admin.") || translated.includes("plan.")) {
-    return toCustomerFacingFallback(key);
+    return getPlanEntitlementLabel(key) || toCustomerFacingFallback(key);
   }
 
   return translated;
@@ -175,14 +161,6 @@ function isCorporateHomepagePlan(plan: PublicSubscriptionPlan) {
   return plan.name.toLowerCase().replace(/[^a-z0-9]/g, "") === "corporate";
 }
 
-const corporateHomepageFeatureDescriptions = [
-  "VIP Member Identification",
-  "Excel Member Export",
-  "Bulk Member Import",
-  "Bulk Member Management",
-  "Search Stamp access control for staff, configurable by the Business Admin",
-];
-
 function translatedCountFeatureLabel(
   t: Translate,
   singularKey: string,
@@ -208,6 +186,11 @@ function getFeatureDedupeKey(label: string, fallbackKey?: string) {
   if (normalized.includes("locationmanagement")) return "location_management";
   if (normalized.includes("stafflocation")) return "staff_location_assignment";
   if (normalized.includes("corporatebranding")) return "corporate_branding";
+  if (normalized.includes("vipmemberidentification")) return "vip_member_identification";
+  if (normalized.includes("excelmemberexport")) return "excel_member_export";
+  if (normalized.includes("bulkmemberimport")) return "bulk_member_import";
+  if (normalized.includes("bulkmembermanagement")) return "bulk_member_management";
+  if (normalized.includes("searchstampaccesscontrol")) return "search_stamp_staff_access";
 
   return normalized;
 }
@@ -290,10 +273,6 @@ export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Transl
 
       addFeature(translatedFeatureLabel(t, entitlement.key), entitlement.key);
     });
-
-  if (isCorporateHomepagePlan(plan)) {
-    corporateHomepageFeatureDescriptions.forEach((feature) => addFeature(feature, feature));
-  }
 
   return features;
 }
