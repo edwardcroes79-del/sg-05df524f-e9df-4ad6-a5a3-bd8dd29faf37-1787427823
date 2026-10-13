@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
-import { STANDARD_PLAN_ENTITLEMENT_KEYS } from "@/lib/planEntitlements";
+import { STANDARD_PLAN_ENTITLEMENTS, STANDARD_PLAN_ENTITLEMENT_KEYS } from "@/lib/planEntitlements";
 
 type PlanStatus = "active" | "inactive" | "archived";
 
@@ -170,8 +170,31 @@ function buildPlanPayload(body: PlanInput, currentId?: string) {
   };
 }
 
-function normalizeEntitlements(body: PlanInput, payload: ReturnType<typeof buildPlanPayload>) {
+function normalizeEntitlements(body: PlanInput, payload: ReturnType<typeof buildPlanPayload>, useStandardDefaults = false) {
   const baseEntitlements: EntitlementInput[] = [
+    ...(useStandardDefaults ? STANDARD_PLAN_ENTITLEMENTS.map((entitlement) => {
+      if (entitlement.valueType === "boolean") {
+        return {
+          key: entitlement.key,
+          value_type: "boolean" as const,
+          boolean_value: Boolean(entitlement.defaultValue),
+        };
+      }
+
+      if (entitlement.valueType === "number") {
+        return {
+          key: entitlement.key,
+          value_type: "number" as const,
+          number_value: toNumber(entitlement.defaultValue, 0),
+        };
+      }
+
+      return {
+        key: entitlement.key,
+        value_type: "text" as const,
+        text_value: String(entitlement.defaultValue || ""),
+      };
+    }) : []),
     { key: "premium_templates", value_type: "boolean", boolean_value: payload.includes_premium_templates },
     { key: "reward_expiration", value_type: "boolean", boolean_value: true },
     { key: "custom_card_branding", value_type: "boolean", boolean_value: payload.includes_premium_templates },
@@ -270,7 +293,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (error) throw error;
     }
 
-    const entitlements = normalizeEntitlements(body, payload);
+    const entitlements = normalizeEntitlements(body, payload, req.method === "POST");
     const { error: entitlementError } = await admin
       .from("plan_entitlements")
       .upsert(entitlements, { onConflict: "plan_id,key" });

@@ -56,7 +56,7 @@ export const publicSubscriptionPlanSelect = `
   )
 `;
 
-const publicEntitlementKeys = new Set(PUBLIC_PLAN_ENTITLEMENT_KEYS);
+const publicEntitlementKeys: ReadonlySet<string> = new Set(PUBLIC_PLAN_ENTITLEMENT_KEYS);
 
 const internalLimitEntitlementKeys = new Set([
   "max_loyalty_programs",

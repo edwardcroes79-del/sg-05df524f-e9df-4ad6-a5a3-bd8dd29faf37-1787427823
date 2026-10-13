@@ -224,6 +224,11 @@ export default function AdminDashboard() {
     return acc;
   }, {} as Record<PlanEntitlementKey, boolean | number>);
 
+  const emptyExistingPlanEntitlements = availablePlanEntitlements.reduce((acc, entitlement) => {
+    acc[entitlement.key] = entitlement.valueType === "boolean" ? false : 0;
+    return acc;
+  }, {} as Record<PlanEntitlementKey, boolean | number>);
+
   const emptyPlanFormData = {
     id: "",
     name: "",
@@ -260,7 +265,7 @@ export default function AdminDashboard() {
     }, {});
 
     return {
-      ...defaultPlanEntitlements,
+      ...emptyExistingPlanEntitlements,
       premium_templates: Boolean(entitlementMap.premium_templates ?? plan?.includes_premium_templates),
       reward_expiration: Boolean(entitlementMap.reward_expiration ?? true),
       custom_card_branding: Boolean(entitlementMap.custom_card_branding ?? plan?.includes_premium_templates),
@@ -275,6 +280,11 @@ export default function AdminDashboard() {
       location_leaderboard: Boolean(entitlementMap.location_leaderboard ?? entitlementMap.advanced_analytics),
       corporate_branding: Boolean(entitlementMap.corporate_branding ?? entitlementMap.custom_card_branding),
       location_specific_quick_qr: Boolean(entitlementMap.location_specific_quick_qr ?? entitlementMap.quick_stamp_qr),
+      vip_member_identification: Boolean(entitlementMap.vip_member_identification),
+      excel_member_export: Boolean(entitlementMap.excel_member_export),
+      bulk_member_import: Boolean(entitlementMap.bulk_member_import),
+      bulk_member_management: Boolean(entitlementMap.bulk_member_management),
+      search_stamp_staff_access: Boolean(entitlementMap.search_stamp_staff_access),
       max_locations: Number(entitlementMap.max_locations || 0),
     };
   };
