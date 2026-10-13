@@ -32,12 +32,13 @@ import { useI18n } from "@/contexts/I18nProvider";
 import {
   formatPublicPlanFeatures,
   publicSubscriptionPlanSelect,
+  translatePlanText,
   type PublicSubscriptionPlan,
 } from "@/lib/publicPlanDisplay";
 
 export default function Home() {
   const { pricing, faq, footer: defaultFooter } = homeConfig;
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -135,13 +136,13 @@ export default function Home() {
   const homepagePlans = dbPlans.length > 0
     ? dbPlans.map((plan) => ({
         id: plan.id,
-        name: plan.name,
-        description: plan.description,
+        name: translatePlanText(plan.name, language),
+        description: translatePlanText(plan.description, language),
         price: `AWG ${Number(plan.price_awg || 0).toFixed(2)}`,
         annualPrice: Number(plan.annual_price_awg || 0) > 0
           ? t("publicPricing.annualPrice", { amount: Number(plan.annual_price_awg || 0).toFixed(2) })
           : "",
-        features: formatPublicPlanFeatures(plan, t),
+        features: formatPublicPlanFeatures(plan, t, language),
         ctaText: t("publicPricing.startFreeTrial"),
         ctaHref: "/auth/register",
         isPopular: plan.badge?.toLowerCase() === "popular" || plan.badge?.toLowerCase() === "most popular",
@@ -149,11 +150,11 @@ export default function Home() {
       }))
     : (pricing?.plans || []).map((plan, index) => ({
         id: `static-${index}`,
-        name: plan.name,
-        description: plan.description,
+        name: translatePlanText(plan.name, language),
+        description: translatePlanText(plan.description, language),
         price: plan.price,
         annualPrice: "",
-        features: plan.features || [],
+        features: plan.features?.map((f: string) => translatePlanText(f, language)) || [],
         ctaText: plan.ctaText,
         ctaHref: plan.ctaHref || "/auth/register",
         isPopular: Boolean(plan.isPopular),

@@ -208,7 +208,81 @@ function normalizeDisplayFeature(value: string) {
   return trimmed;
 }
 
-export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Translate) {
+export function translatePlanText(text: string | null | undefined, language: string): string {
+  if (!text) return "";
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (language === "en") {
+    if (lower === "prueba gratis" || lower === "gratis prueba") return "Free Trial";
+    if (lower === "cuminsamento") return "Starter";
+    if (lower === "negoshi" || lower === "negocio") return "Business";
+    if (lower === "profesional") return "Professional";
+    if (lower === "corporativo") return "Corporate";
+    if (lower === "empresa") return "Enterprise";
+
+    if (lower === "presetnan y templatenan premium di diseño") return "Premium design presets and templates";
+    if (lower === "expiracion di recompensa") return "Reward expiration";
+    if (lower === "marca personalisa di carta") return "Custom card branding";
+    if (lower === "sin cuenta di personal") return "No staff accounts included";
+    if (lower.includes("analitica avansa")) return "Advanced Analytics";
+    if (lower.includes("acceso quick qr")) return "Quick QR access";
+    if (lower.includes("manejo di ubicacion")) return "Location Management";
+    if (lower.includes("asignacion di personal")) return "Staff-location Assignment";
+    if (lower.includes("marca corporate")) return "Corporate Branding";
+    
+    const match = lower.match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      const rest = match[2].trim();
+      
+      if (rest === "programa di fidelidad" || rest === "programanan di fidelidad") return num === 1 ? `1 loyalty program` : `${num} loyalty programs`;
+      if (rest === "miembro di fidelidad" || rest === "miembronan di fidelidad") return num === 1 ? `1 loyalty member` : `${num} loyalty members`;
+      if (rest === "cuenta di admin" || rest === "cuentanan di admin") return num === 1 ? `1 admin account` : `${num} admin accounts`;
+      if (rest === "cuenta di personal" || rest === "cuentanan di personal") return num === 1 ? `1 staff account` : `${num} staff accounts`;
+      if (rest === "ubicacion" || rest === "ubicacionnan") return num === 1 ? `1 location` : `${num} locations`;
+    }
+  }
+
+  if (language === "es") {
+    if (lower === "prueba gratis" || lower === "gratis prueba") return "Prueba Gratis";
+    if (lower === "cuminsamento") return "Starter";
+    if (lower === "negoshi") return "Negocio";
+    if (lower === "profesional") return "Profesional";
+    if (lower === "corporativo") return "Corporativo";
+    if (lower === "empresa") return "Enterprise";
+
+    if (lower === "presetnan y templatenan premium di diseño") return "Presets y plantillas premium de diseño";
+    if (lower === "expiracion di recompensa") return "Vencimiento de recompensas";
+    if (lower === "marca personalisa di carta") return "Marca personalizada de tarjeta";
+    if (lower === "sin cuenta di personal") return "Sin cuentas de personal";
+    if (lower.includes("analitica avansa")) return "Analítica avanzada";
+    if (lower.includes("acceso quick qr")) return "Acceso Quick QR";
+    if (lower.includes("manejo di ubicacion")) return "Gestión de ubicaciones";
+    if (lower.includes("asignacion di personal")) return "Asignación de personal";
+    if (lower.includes("marca corporate")) return "Marca Corporate";
+
+    const match = lower.match(/^(\d+)\s+(.+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      const rest = match[2].trim();
+      
+      if (rest === "programa di fidelidad" || rest === "programanan di fidelidad") return num === 1 ? `1 programa de fidelidad` : `${num} programas de fidelidad`;
+      if (rest === "miembro di fidelidad" || rest === "miembronan di fidelidad") return num === 1 ? `1 miembro de fidelidad` : `${num} miembros de fidelidad`;
+      if (rest === "cuenta di admin" || rest === "cuentanan di admin") return num === 1 ? `1 cuenta de administrador` : `${num} cuentas de administrador`;
+      if (rest === "cuenta di personal" || rest === "cuentanan di personal") return num === 1 ? `1 cuenta de personal` : `${num} cuentas de personal`;
+      if (rest === "ubicacion" || rest === "ubicacionnan") return num === 1 ? `1 ubicación` : `${num} ubicaciones`;
+    }
+  }
+  
+  return trimmed;
+}
+
+export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Translate, language: string) {
+  if (Array.isArray(plan.features) && plan.features.length > 0) {
+    return plan.features.map(f => translatePlanText(f, language));
+  }
+
   const features: string[] = [];
   const seen = new Set<string>();
   const displayLimits = getHomepageDisplayLimits(plan);
