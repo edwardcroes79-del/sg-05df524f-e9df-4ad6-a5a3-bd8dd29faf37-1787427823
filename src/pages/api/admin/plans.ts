@@ -171,30 +171,38 @@ function buildPlanPayload(body: PlanInput, currentId?: string) {
 }
 
 function normalizeEntitlements(body: PlanInput, payload: ReturnType<typeof buildPlanPayload>, useStandardDefaults = false) {
+  const standardDefaultEntitlements: EntitlementInput[] = useStandardDefaults
+    ? STANDARD_PLAN_ENTITLEMENTS.map((entitlement): EntitlementInput => {
+        const key = String(entitlement.key);
+        const valueType = entitlement.valueType as "boolean" | "number" | "text";
+        const defaultValue = entitlement.defaultValue as boolean | number | string;
+
+        if (valueType === "boolean") {
+          return {
+            key,
+            value_type: "boolean",
+            boolean_value: Boolean(defaultValue),
+          };
+        }
+
+        if (valueType === "number") {
+          return {
+            key,
+            value_type: "number",
+            number_value: toNumber(defaultValue, 0),
+          };
+        }
+
+        return {
+          key,
+          value_type: "text",
+          text_value: String(defaultValue || ""),
+        };
+      })
+    : [];
+
   const baseEntitlements: EntitlementInput[] = [
-    ...(useStandardDefaults ? STANDARD_PLAN_ENTITLEMENTS.map((entitlement) => {
-      if (entitlement.valueType === "boolean") {
-        return {
-          key: entitlement.key,
-          value_type: "boolean" as const,
-          boolean_value: Boolean(entitlement.defaultValue),
-        };
-      }
-
-      if (entitlement.valueType === "number") {
-        return {
-          key: entitlement.key,
-          value_type: "number" as const,
-          number_value: toNumber(entitlement.defaultValue, 0),
-        };
-      }
-
-      return {
-        key: entitlement.key,
-        value_type: "text" as const,
-        text_value: String(entitlement.defaultValue || ""),
-      };
-    }) : []),
+    ...standardDefaultEntitlements,
     { key: "premium_templates", value_type: "boolean", boolean_value: payload.includes_premium_templates },
     { key: "reward_expiration", value_type: "boolean", boolean_value: true },
     { key: "custom_card_branding", value_type: "boolean", boolean_value: payload.includes_premium_templates },
