@@ -175,6 +175,18 @@ function getHomepageDisplayLimits(plan: PublicSubscriptionPlan) {
   };
 }
 
+function isCorporateHomepagePlan(plan: PublicSubscriptionPlan) {
+  return plan.name.toLowerCase().replace(/[^a-z0-9]/g, "") === "corporate";
+}
+
+const corporateHomepageFeatureDescriptions = [
+  "VIP Member Identification",
+  "Excel Member Export",
+  "Bulk Member Import",
+  "Bulk Member Management",
+  "Search Stamp access control for staff, configurable by the Business Admin",
+];
+
 function translatedCountFeatureLabel(
   t: Translate,
   singularKey: string,
@@ -282,6 +294,10 @@ export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Transl
 
       addFeature(translatedFeatureLabel(t, entitlement.key), entitlement.key);
     });
+
+  if (isCorporateHomepagePlan(plan)) {
+    corporateHomepageFeatureDescriptions.forEach((feature) => addFeature(feature, feature));
+  }
 
   return features;
 }

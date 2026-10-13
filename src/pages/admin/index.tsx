@@ -1394,7 +1394,7 @@ export default function AdminDashboard() {
       badge: plan.badge || "",
       max_loyalty_programs: plan.max_loyalty_programs,
       max_customers: plan.max_customers,
-      max_staff: plan.max_staff || 1,
+      max_staff: plan.max_staff ?? 1,
       is_trial: plan.is_trial || false,
       trial_days: plan.trial_days || 14,
       includes_premium_templates: plan.includes_premium_templates || Boolean(entitlementState.premium_templates),
@@ -1497,7 +1497,7 @@ export default function AdminDashboard() {
       const statusPlanData = {
         max_loyalty_programs: Number(plan.max_loyalty_programs || 1),
         max_customers: Number(plan.max_customers || 300),
-        max_staff: Number(plan.max_staff || 1),
+        max_staff: Number(plan.max_staff ?? 1),
       };
 
       setPlanFormData({
@@ -3406,7 +3406,7 @@ export default function AdminDashboard() {
                             </div>
                           </TableCell>
                           <TableCell>AWG {Number(plan.price_awg || 0).toFixed(2)}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{plan.max_customers} customers · {plan.max_loyalty_programs} programs · {plan.max_staff || 1} staff</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{plan.max_customers} customers · {plan.max_loyalty_programs} programs · {plan.max_staff ?? 1} staff</TableCell>
                           <TableCell><Badge variant={(plan.status || (plan.is_active ? "active" : "inactive")) === "active" ? "default" : "secondary"}>{plan.status || (plan.is_active ? "active" : "inactive")}</Badge></TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
