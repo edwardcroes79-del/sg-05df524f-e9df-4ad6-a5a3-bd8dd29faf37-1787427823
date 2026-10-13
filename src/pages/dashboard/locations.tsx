@@ -211,6 +211,9 @@ export default function LocationsPage() {
 
       if (activeLocationId === location.id) {
         window.localStorage.removeItem(`active_location_${businessId}`);
+        window.dispatchEvent(new CustomEvent("royalty-active-location-change", {
+          detail: { businessId, locationId: "all" },
+        }));
         setActiveLocationId("");
       }
 
@@ -231,6 +234,9 @@ export default function LocationsPage() {
   const selectActiveLocation = (location: BusinessLocation) => {
     if (location.status === "inactive" || !businessId) return;
     window.localStorage.setItem(`active_location_${businessId}`, location.id);
+    window.dispatchEvent(new CustomEvent("royalty-active-location-change", {
+      detail: { businessId, locationId: location.id },
+    }));
     setActiveLocationId(location.id);
     toast({
       title: t("dashboard.locations.activeSelectedTitle"),

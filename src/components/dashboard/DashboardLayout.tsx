@@ -239,22 +239,48 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       const featureEntitlements = Object.fromEntries(entitlementEntries) as Record<typeof entitlementKeys[number], boolean>;
 
-      const { data: maxLocations, error: maxLocationsError } = await (supabase as any).rpc("get_business_effective_numeric_limit", {
-        p_business_id: resolvedBusiness.id,
-        p_key: "max_locations",
-        p_fallback: 0,
-      });
-
-      if (maxLocationsError) {
-        console.error("Dashboard location entitlement check failed:", maxLocationsError);
-      }
-
-      const hasLocationManagement = Number(maxLocations || 0) > 0;
-
       setQuickStampQrEnabled(Boolean(hasQuickStampAddon) || featureEntitlements.quick_stamp_qr);
       setAdvancedAnalyticsEnabled(featureEntitlements.advanced_analytics);
-      setLocationsManagementEnabled(hasLocationManagement && resolvedBusiness.owner_id === session.user.id);
+      setLocationsManagementEnabled(false);
       setCorporateBrandingEnabled(false);
+
+      try {
+        const locationResponse = await fetch(`/api/business/locations?business_id=${resolvedBusiness.id}`, {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (locationResponse.ok) {
+          const locationBody = await locationResponse.json();
+          const availableLocations = ((locationBody.locations || []) as DashboardLocation[])
+            .filter((location) => location.status !== "inactive");
+          const hasLocationManagement = Number(locationBody.maxLocations || 0) > 0;
+
+          setLocationsManagementEnabled(hasLocationManagement && resolvedBusiness.owner_id === session.user.id);
+          setDashboardLocations(availableLocations);
+
+          if (typeof window !== "undefined" && availableLocations.length > 0) {
+            const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
+            const nextLocationId = storedLocationId === "all" || availableLocations.some((location) => location.id === storedLocationId)
+              ? storedLocationId || "all"
+              : availableLocations[0].id;
+            publishActiveLocationChange(resolvedBusiness.id, nextLocationId);
+            setActiveLocationId(nextLocationId);
+          } else {
+            setActiveLocationId("");
+          }
+        } else {
+          setLocationsManagementEnabled(false);
+          setDashboardLocations([]);
+          setActiveLocationId("");
+        }
+      } catch (locationError) {
+        console.error("Dashboard authorized location switcher error:", locationError);
+        setLocationsManagementEnabled(false);
+        setDashboardLocations([]);
+        setActiveLocationId("");
+      }
 
       if (featureEntitlements.corporate_branding) {
         try {
@@ -270,34 +296,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       } else {
         setCorporateBranding(null);
         setCorporateBrandingEnabled(false);
-      }
-
-      if (hasLocationManagement) {
-        const { data: locationRows, error: locationError } = await (supabase as any)
-          .from("business_locations")
-          .select("id, name, status")
-          .eq("business_id", resolvedBusiness.id)
-          .neq("status", "inactive")
-          .order("name", { ascending: true });
-
-        if (locationError) {
-          console.error("Dashboard location switcher error:", locationError);
-        }
-
-        const availableLocations = (locationRows || []) as DashboardLocation[];
-        setDashboardLocations(availableLocations);
-
-        if (typeof window !== "undefined" && availableLocations.length > 0) {
-          const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
-          const nextLocationId = storedLocationId === "all" || availableLocations.some((location) => location.id === storedLocationId)
-            ? storedLocationId || "all"
-            : availableLocations[0].id;
-          publishActiveLocationChange(resolvedBusiness.id, nextLocationId);
-          setActiveLocationId(nextLocationId);
-        }
-      } else {
-        setDashboardLocations([]);
-        setActiveLocationId("");
       }
 
       // Fetch Plan data to check for trial status
@@ -343,6 +341,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     publishActiveLocationChange(business.id, locationId);
     setActiveLocationId(locationId);
   };
+
+  useEffect(() => {
+    if (!business?.id || typeof window === "undefined") return;
+
+    const handleExternalLocationChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ businessId?: string; locationId?: string }>).detail;
+      if (detail?.businessId !== business.id) return;
+
+      const nextLocationId = detail.locationId || "all";
+      if (nextLocationId === "all" || dashboardLocations.some((location) => location.id === nextLocationId)) {
+        setActiveLocationId(nextLocationId);
+      }
+    };
+
+    window.addEventListener("royalty-active-location-change", handleExternalLocationChange);
+    return () => window.removeEventListener("royalty-active-location-change", handleExternalLocationChange);
+  }, [business?.id, dashboardLocations]);
 
   const activeLocationSwitcher = dashboardLocations.length > 0 ? (
     <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
