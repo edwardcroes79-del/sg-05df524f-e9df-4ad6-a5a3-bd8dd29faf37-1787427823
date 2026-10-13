@@ -205,11 +205,13 @@ async function createUniqueLocationSlug(admin: any, businessId: string, name: st
 async function countLocationReference(admin: any, references: LocationDependencyReference[], table: string, column: string, label: string, businessId: string, locationId: string) {
   const { count, error } = await admin
     .from(table)
-    .select("id", { count: "exact", head: true })
+    .select(column, { count: "exact", head: true })
     .eq("business_id", businessId)
     .eq(column, locationId);
 
-  if (error) throw error;
+  if (error) {
+    throw new Error(`Unable to verify ${label} before deletion: ${error.message || error.details || error.code || "database dependency check failed"}`);
+  }
 
   if (Number(count || 0) > 0) {
     references.push({ label, count: Number(count || 0) });
