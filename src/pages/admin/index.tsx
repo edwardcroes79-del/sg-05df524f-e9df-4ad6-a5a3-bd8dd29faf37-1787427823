@@ -334,6 +334,8 @@ export default function AdminDashboard() {
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [duplicatingPlan, setDuplicatingPlan] = useState<any | null>(null);
+  const [planToDelete, setPlanToDelete] = useState<any | null>(null);
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
   const [savingPlan, setSavingPlan] = useState(false);
   const [planFormData, setPlanFormData] = useState(emptyPlanFormData);
 
@@ -1591,6 +1593,47 @@ export default function AdminDashboard() {
       });
     } finally {
       setSavingPlan(false);
+    }
+  };
+
+  const handleDeletePlan = async () => {
+    if (!planToDelete?.id) return;
+
+    try {
+      setDeletingPlanId(planToDelete.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/plans", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ id: planToDelete.id }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Plan deletion failed.");
+      }
+
+      setPlans(result.plans || []);
+      toast({
+        title: "Plan deleted",
+        description: `${planToDelete.name} was permanently deleted because it had no protected usage records.`,
+      });
+      setPlanToDelete(null);
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Plan deletion blocked",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingPlanId(null);
     }
   };
 
@@ -3444,6 +3487,9 @@ export default function AdminDashboard() {
                               <Button type="button" variant="outline" size="sm" onClick={() => handleDuplicatePlanClick(plan)}><Copy className="mr-1 h-4 w-4" /> Duplicate</Button>
                               <Button type="button" variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "active")}>Activate</Button>
                               <Button type="button" variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "inactive")}>Disable</Button>
+                              <Button type="button" variant="destructive" size="sm" onClick={() => setPlanToDelete(plan)} disabled={deletingPlanId === plan.id}>
+                                {deletingPlanId === plan.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />} Delete
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -4235,6 +4281,52 @@ export default function AdminDashboard() {
       )}
 
       {/* Delete Confirmation Dialog */}
+      {planToDelete && (
+        <Dialog open={!!planToDelete} onOpenChange={(open) => !open && setPlanToDelete(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" /> Delete {planToDelete.name}
+              </DialogTitle>
+              <DialogDescription className="space-y-3 pt-2">
+                <p>This permanently deletes the plan configuration and its saved feature entitlements.</p>
+                <p>The server will recheck businesses, subscription payment history, add-on subscription metadata, and payment transaction metadata before deletion. If the plan has ever been used, deletion will be blocked.</p>
+                <p className="rounded border border-destructive/20 bg-destructive/10 p-2.5 text-xs font-semibold uppercase tracking-wider text-destructive">
+                  This cannot be undone. Existing businesses, subscriptions, payments, and customer records will never be deleted.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPlanToDelete(null)}
+                disabled={deletingPlanId === planToDelete.id}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeletePlan}
+                disabled={deletingPlanId === planToDelete.id}
+                className="gap-2"
+              >
+                {deletingPlanId === planToDelete.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" /> Confirm delete
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {customerToDelete && (
         <Dialog open={!!customerToDelete} onOpenChange={(open) => !open && setCustomerToDelete(null)}>
           <DialogContent className="sm:max-w-md">

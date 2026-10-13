@@ -308,6 +308,25 @@ async function getPlanUsageReferences(admin: any, planId: string): Promise<PlanU
     references.push({ label: "subscription payment or plan-change history", count: matchingPayments.length });
   }
 
+  const { data: paymentTransactions, error: transactionError } = await admin
+    .from("payment_transactions")
+    .select("id, metadata");
+
+  if (transactionError) throw transactionError;
+
+  const matchingPaymentTransactions = (paymentTransactions || []).filter((transaction: any) => {
+    const metadata = transaction.metadata && typeof transaction.metadata === "object" ? transaction.metadata : {};
+    return metadata.plan_id === planId
+      || metadata.base_plan_id === planId
+      || metadata.current_plan_id === planId
+      || metadata.requested_plan_id === planId
+      || metadata.subscription_plan === planId;
+  });
+
+  if (matchingPaymentTransactions.length > 0) {
+    references.push({ label: "payment transaction history", count: matchingPaymentTransactions.length });
+  }
+
   const { data: addonSubscriptions, error: addonError } = await admin
     .from("business_addon_subscriptions")
     .select("id, metadata");
