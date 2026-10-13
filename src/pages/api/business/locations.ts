@@ -17,6 +17,11 @@ type LocationPayload = {
   metadata?: Record<string, unknown>;
 };
 
+type LocationDependencyReference = {
+  label: string;
+  count: number;
+};
+
 function createServiceClient() {
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error("Supabase server configuration is incomplete");
@@ -121,14 +126,18 @@ async function resolveBusinessAccess(admin: any, userId: string, requestedBusine
     throw new Error("Forbidden: You do not have access to this business");
   }
 
-  const { data: maxLocations, error: entitlementError } = await admin.rpc("get_business_effective_numeric_limit", {
-    p_business_id: business.id,
-    p_key: "max_locations",
-    p_fallback: 0,
-  });
+  const { data: maxLocationEntitlement, error: entitlementError } = await admin
+    .from("plan_entitlements")
+    .select("number_value")
+    .eq("plan_id", business.subscription_plan || "")
+    .eq("key", "max_locations")
+    .eq("value_type", "number")
+    .maybeSingle();
 
   if (entitlementError) throw entitlementError;
-  if (Number(maxLocations || 0) <= 0) {
+
+  const maxLocations = Number(maxLocationEntitlement?.number_value || 0);
+  if (maxLocations <= 0) {
     throw new Error("Corporate location management is not enabled for this business");
   }
 
@@ -136,7 +145,7 @@ async function resolveBusinessAccess(admin: any, userId: string, requestedBusine
     business,
     membership,
     isOwner,
-    maxLocations: Number(maxLocations || 0),
+    maxLocations,
   };
 }
 
@@ -191,6 +200,41 @@ async function createUniqueLocationSlug(admin: any, businessId: string, name: st
   }
 
   return `${baseSlug}-${Date.now()}`;
+}
+
+async function countLocationReference(admin: any, references: LocationDependencyReference[], table: string, column: string, label: string, businessId: string, locationId: string) {
+  const { count, error } = await admin
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("business_id", businessId)
+    .eq(column, locationId);
+
+  if (error) throw error;
+
+  if (Number(count || 0) > 0) {
+    references.push({ label, count: Number(count || 0) });
+  }
+}
+
+async function getLocationDeletionBlockers(admin: any, businessId: string, locationId: string) {
+  const references: LocationDependencyReference[] = [];
+
+  await countLocationReference(admin, references, "business_user_locations", "location_id", "staff location assignments", businessId, locationId);
+  await countLocationReference(admin, references, "loyalty_program_locations", "location_id", "loyalty program location links", businessId, locationId);
+  await countLocationReference(admin, references, "qr_codes", "location_id", "QR codes", businessId, locationId);
+  await countLocationReference(admin, references, "quick_stamp_qr_tokens", "location_id", "Quick QR tokens", businessId, locationId);
+  await countLocationReference(admin, references, "stamp_transactions", "location_id", "stamp transaction history", businessId, locationId);
+  await countLocationReference(admin, references, "rewards", "earned_location_id", "earned reward history", businessId, locationId);
+  await countLocationReference(admin, references, "rewards", "redeemed_location_id", "redeemed reward history", businessId, locationId);
+
+  return references;
+}
+
+function createBlockedDeletionError(references: LocationDependencyReference[]) {
+  const error = new Error(`This location cannot be permanently deleted because it has dependent records: ${references.map((reference) => `${reference.count} ${reference.label}`).join(", ")}. Deactivate the location to remove it from active operations while preserving history.`);
+  (error as any).statusCode = 409;
+  (error as any).references = references;
+  return error;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -330,11 +374,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ success: true, location });
     }
 
-    res.setHeader("Allow", "GET, POST, PATCH");
+    if (req.method === "DELETE") {
+      if (!payload.id || typeof payload.id !== "string") {
+        return res.status(400).json({ error: "Location ID is required" });
+      }
+
+      if (!isOwner) {
+        return res.status(403).json({ error: "Only the Corporate Admin can delete locations" });
+      }
+
+      const { data: location, error: locationError } = await admin
+        .from("business_locations")
+        .select("id, business_id, name, status")
+        .eq("id", payload.id)
+        .eq("business_id", business.id)
+        .maybeSingle();
+
+      if (locationError) throw locationError;
+      if (!location) {
+        return res.status(404).json({ error: "Location not found for this business" });
+      }
+
+      const references = await getLocationDeletionBlockers(admin, business.id, location.id);
+
+      if (references.length > 0) {
+        throw createBlockedDeletionError(references);
+      }
+
+      const { error: deleteError } = await admin
+        .from("business_locations")
+        .delete()
+        .eq("id", location.id)
+        .eq("business_id", business.id);
+
+      if (deleteError) {
+        if (deleteError.code === "23503") {
+          throw createBlockedDeletionError([{ label: "protected database references", count: 1 }]);
+        }
+
+        throw deleteError;
+      }
+
+      await audit(admin, user.id, "business_location_deleted", location.id, { business_id: business.id, name: location.name });
+
+      return res.status(200).json({ success: true, deletedLocation: location });
+    }
+
+    res.setHeader("Allow", "GET, POST, PATCH, DELETE");
     return res.status(405).json({ error: "Method not allowed" });
   } catch (error: any) {
     const message = error.message || "Failed to manage Corporate locations";
-    const status = message.includes("Not authenticated") || message.includes("authorization") ? 401 : message.includes("Forbidden") || message.includes("not authorized") || message.includes("not enabled") ? 403 : 500;
-    return res.status(status).json({ error: message });
+    const status = error.statusCode || (message.includes("Not authenticated") || message.includes("authorization") ? 401 : message.includes("Forbidden") || message.includes("not authorized") || message.includes("not enabled") ? 403 : 500);
+    return res.status(status).json({ error: message, references: error.references || undefined });
   }
 }

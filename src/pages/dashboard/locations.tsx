@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { Building2, CheckCircle2, Edit3, Loader2, MapPin, Plus, RefreshCw, ShieldAlert } from "lucide-react";
+import { AlertTriangle, Building2, CheckCircle2, Edit3, Loader2, MapPin, Plus, RefreshCw, ShieldAlert, Trash2 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 
@@ -64,6 +65,8 @@ export default function LocationsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [locationToDelete, setLocationToDelete] = useState<BusinessLocation | null>(null);
+  const [deletingLocationId, setDeletingLocationId] = useState("");
   const activeCount = useMemo(() => locations.filter((location) => location.status !== "inactive").length, [locations]);
 
   const getStatusLabel = (status: LocationStatus) => t(statusTranslationKeys[status]);
@@ -231,6 +234,59 @@ export default function LocationsPage() {
     }
   };
 
+  const deleteLocation = async () => {
+    if (!businessId || !locationToDelete) return;
+
+    try {
+      setDeletingLocationId(locationToDelete.id);
+      const authorization = await getAuthHeader();
+      const response = await fetch("/api/business/locations", {
+        method: "DELETE",
+        headers: {
+          Authorization: authorization,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: locationToDelete.id,
+          business_id: businessId,
+        }),
+      });
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(body.error || "Location deletion failed.");
+      }
+
+      if (activeLocationId === locationToDelete.id) {
+        window.localStorage.removeItem(`active_location_${businessId}`);
+        window.dispatchEvent(new CustomEvent("royalty-active-location-change", {
+          detail: { businessId, locationId: "all" },
+        }));
+        setActiveLocationId("");
+      }
+
+      if (editingId === locationToDelete.id) {
+        resetForm();
+      }
+
+      toast({
+        title: "Location deleted",
+        description: `${locationToDelete.name} was permanently deleted because it had no dependent records.`,
+      });
+
+      setLocationToDelete(null);
+      await fetchLocations();
+    } catch (error: any) {
+      toast({
+        title: "Location deletion blocked",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingLocationId("");
+    }
+  };
+
   const selectActiveLocation = (location: BusinessLocation) => {
     if (location.status === "inactive" || !businessId) return;
     window.localStorage.setItem(`active_location_${businessId}`, location.id);
@@ -367,11 +423,43 @@ export default function LocationsPage() {
                   <Button variant="outline" size="sm" onClick={() => selectActiveLocation(location)} disabled={location.status === "inactive"}>{t("dashboard.locations.selectActive")}</Button>
                   <Button variant="outline" size="sm" onClick={() => editLocation(location)} className="gap-2"><Edit3 className="h-4 w-4" /> {t("dashboard.locations.edit")}</Button>
                   {location.status !== "inactive" && <Button variant="destructive" size="sm" onClick={() => void deactivateLocation(location)} disabled={saving}>{t("dashboard.locations.deactivate")}</Button>}
+                  <Button variant="outline" size="sm" onClick={() => setLocationToDelete(location)} disabled={Boolean(deletingLocationId)} className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                    {deletingLocationId === location.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete
+                  </Button>
                 </div>
               </div>
             ))}
           </CardContent>
         </Card>
+
+        <AlertDialog open={Boolean(locationToDelete)} onOpenChange={(open) => !open && !deletingLocationId && setLocationToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" /> Permanently delete {locationToDelete?.name}
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <span className="block">This action permanently deletes the location configuration and cannot be undone.</span>
+                <span className="block">The server will first check staff assignments, program-location links, QR codes, Quick QR tokens, stamp transactions, and reward history. If any dependent records exist, deletion will be blocked and you can deactivate the location instead to remove it from active operations while preserving history.</span>
+                <span className="block font-semibold text-destructive">Existing stamps, rewards, customers, staff assignments, subscriptions, and business records will never be cascade-deleted.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={Boolean(deletingLocationId)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  void deleteLocation();
+                }}
+                disabled={Boolean(deletingLocationId)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletingLocationId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Delete permanently
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
