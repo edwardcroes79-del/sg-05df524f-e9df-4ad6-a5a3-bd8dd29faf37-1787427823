@@ -61,23 +61,28 @@ async function requireCorporateAdmin(admin: any, userId: string, businessId: str
     throw new Error("Only the Corporate Admin can manage staff location assignments");
   }
 
-  const { data: maxLocations, error: entitlementError } = await admin.rpc("get_business_effective_numeric_limit", {
-    p_business_id: business.id,
-    p_key: "max_locations",
-    p_fallback: 0,
-  });
+  const { data: entitlementRows, error: entitlementError } = await admin
+    .from("plan_entitlements")
+    .select("key, value_type, boolean_value, number_value")
+    .eq("plan_id", business.subscription_plan)
+    .in("key", ["staff_location_assignment", "max_locations"]);
 
   if (entitlementError) throw entitlementError;
 
-  const { data: staffLocationAssignmentEnabled, error: assignmentEntitlementError } = await admin.rpc("get_business_boolean_entitlement", {
-    p_business_id: business.id,
-    p_key: "staff_location_assignment",
-    p_fallback: false,
-  });
+  const staffLocationAssignmentEnabled = (entitlementRows || []).some((entitlement: any) =>
+    entitlement.key === "staff_location_assignment"
+    && entitlement.value_type === "boolean"
+    && entitlement.boolean_value === true
+  );
 
-  if (assignmentEntitlementError) throw assignmentEntitlementError;
+  const maxLocationsEntitlement = (entitlementRows || []).find((entitlement: any) =>
+    entitlement.key === "max_locations"
+    && entitlement.value_type === "number"
+  );
 
-  if (!staffLocationAssignmentEnabled || Number(maxLocations || 0) <= 0) {
+  const maxLocations = Number(maxLocationsEntitlement?.number_value || 0);
+
+  if (!staffLocationAssignmentEnabled || maxLocations <= 0) {
     throw new Error("Corporate location assignments are not enabled for this business");
   }
 

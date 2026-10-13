@@ -10,14 +10,14 @@ position: 184
 ---
 
 ## Notes
-Investigate and fix the error “Corporate location assignments are not enabled for this business” after duplicating the Corporate subscription plan. Scope includes tracing the exact API/backend function that throws the error, the entitlement checks and database fields involved, comparing original Corporate versus duplicated plan entitlements, checking plan duplication logic, and fixing authorization so any plan with the required configured entitlement can use location assignments regardless of plan name. Do not change subscription prices or limits, do not alter/delete business locations, staff assignments, customers, subscriptions, or existing plan assignments, do not grant location assignments to every plan, do not run destructive migrations, and do not deploy. Backend must continue verifying staff and locations belong to the same business.
+Investigate and fix the error “Corporate location assignments are not enabled for this business” after duplicating the Corporate subscription plan. Scope includes tracing the exact API/backend function that throws the error, the entitlement checks and database fields involved, comparing original Corporate versus duplicated plan entitlements, checking plan duplication logic, and fixing authorization so any plan with the required configured entitlement can use location assignments regardless of plan name. Do not change subscription prices or limits, do not alter/delete business locations, staff assignments, customers, subscriptions, or existing plan assignments, do not grant location assignments to every plan, do not run destructive migrations, and do not deploy. Backend must continue verifying staff and locations belong to the same business. Exact error path: `StaffLocationAssignments` calls `/api/staff/locations`, which runs `requireCorporateAdmin` in `src/pages/api/staff/locations.ts`; that function verifies the authenticated user owns the business, then previously called `get_business_effective_numeric_limit("max_locations")` and `get_business_boolean_entitlement("staff_location_assignment")`. Read-only database comparison showed original Corporate and duplicated Corporate-like plans have `plan_entitlements.staff_location_assignment = true` and positive `max_locations`, but the boolean RPC returned fallback `false` for assigned businesses when called through the service-role API path. This matches the earlier known pattern where these RPCs depend on `auth.uid()` and service-role calls do not carry the dashboard user inside the function. Fix: after owner authorization succeeds, the API now resolves `staff_location_assignment` and `max_locations` directly from the business plan’s `plan_entitlements`, then keeps the existing same-business staff/location checks before insert/update/delete. No database values or subscriptions were changed.
 
 ## Checklist
-- [ ] Trace the exact code path that throws the location-assignment error
-- [ ] Identify the entitlement keys, RPCs, database fields, and API routes involved
-- [ ] Compare original Corporate and duplicated plan entitlement data without changing plan values
-- [ ] Inspect duplicate-plan logic for copied location entitlements and configuration
-- [ ] Apply the smallest safe fix so configured entitlements authorize location assignments regardless of plan name
+- [x] Trace the exact code path that throws the location-assignment error
+- [x] Identify the entitlement keys, RPCs, database fields, and API routes involved
+- [x] Compare original Corporate and duplicated plan entitlement data without changing plan values
+- [x] Inspect duplicate-plan logic for copied location entitlements and configuration
+- [x] Apply the smallest safe backend fix so configured entitlements authorize location assignments regardless of plan name
 - [ ] Verify original Corporate still works and lower-tier plans remain restricted
 - [ ] Run static checks and report root cause, modified files, migrations, and manual tests
 
