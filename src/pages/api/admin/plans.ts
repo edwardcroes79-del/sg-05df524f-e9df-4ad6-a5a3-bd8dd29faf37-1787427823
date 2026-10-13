@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { STANDARD_PLAN_ENTITLEMENTS, STANDARD_PLAN_ENTITLEMENT_KEYS } from "@/lib/planEntitlements";
 
 type PlanStatus = "active" | "inactive" | "archived";
+type PlanVisibility = "public" | "private";
 
 type EntitlementInput = {
   key: string;
@@ -27,6 +28,7 @@ type PlanInput = {
   is_trial?: boolean;
   trial_days?: number;
   includes_premium_templates?: boolean;
+  visibility?: PlanVisibility;
   entitlements?: EntitlementInput[];
   features?: string[];
   source_plan_id?: string | null;
@@ -64,6 +66,10 @@ function toNumber(value: unknown, fallback: number) {
 
 function normalizeStatus(value: unknown): PlanStatus {
   return value === "inactive" || value === "archived" ? value : "active";
+}
+
+function normalizeVisibility(value: unknown): PlanVisibility {
+  return value === "private" ? "private" : "public";
 }
 
 async function requireSuperAdmin(req: NextApiRequest) {
@@ -144,6 +150,7 @@ function buildPlanPayload(body: PlanInput, currentId?: string) {
   }
 
   const status = normalizeStatus(body.status);
+  const visibility = normalizeVisibility(body.visibility);
   const id = currentId || body.id?.trim() || slugifyPlanId(body.name);
 
   if (!id) {
@@ -169,6 +176,7 @@ function buildPlanPayload(body: PlanInput, currentId?: string) {
     is_trial: Boolean(body.is_trial),
     trial_days: Math.max(1, Math.trunc(toNumber(body.trial_days, 14))),
     includes_premium_templates: Boolean(body.includes_premium_templates),
+    visibility,
     is_active: status === "active",
     features: Array.isArray(body.features) ? body.features.filter(f => typeof f === 'string' && f.trim() !== '') : [],
     archived_at: status === "archived" ? new Date().toISOString() : null,
@@ -483,6 +491,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       target_id: payload.id,
       metadata: {
         status: payload.status,
+        visibility: payload.visibility,
         name: payload.name,
         source_plan_id: body.source_plan_id || null,
         duplicated_from_plan: req.method === "POST" && Boolean(body.source_plan_id),

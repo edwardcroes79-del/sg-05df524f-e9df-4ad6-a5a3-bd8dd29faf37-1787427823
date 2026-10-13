@@ -91,6 +91,22 @@ export default function Home() {
           .eq("visibility", "public")
           .order("display_order", { ascending: true })
           .order("price_awg", { ascending: true });
+
+        if (error?.code === "42703") {
+          console.warn("Plan visibility column is not available yet; falling back to active public pricing list until the migration is applied.");
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("subscription_plans")
+            .select(publicSubscriptionPlanSelect.replace("visibility,", ""))
+            .eq("status", "active")
+            .eq("is_active", true)
+            .order("display_order", { ascending: true })
+            .order("price_awg", { ascending: true });
+
+          if (fallbackData && !fallbackError) {
+            setDbPlans(fallbackData as PublicSubscriptionPlan[]);
+          }
+          return;
+        }
         
         if (data && !error) {
           setDbPlans(data as PublicSubscriptionPlan[]);

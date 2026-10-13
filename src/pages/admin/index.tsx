@@ -244,6 +244,7 @@ export default function AdminDashboard() {
     is_trial: false,
     trial_days: 14,
     includes_premium_templates: false,
+    visibility: "public",
     features: [] as string[],
     entitlements: { ...defaultPlanEntitlements },
   };
@@ -1384,6 +1385,7 @@ export default function AdminDashboard() {
       is_trial: plan.is_trial || false,
       trial_days: plan.trial_days || 14,
       includes_premium_templates: plan.includes_premium_templates || Boolean(entitlementState.premium_templates),
+      visibility: plan.visibility === "private" ? "private" : "public",
       features: Array.isArray(plan.features) ? plan.features : [],
       entitlements: entitlementState,
     });
@@ -1417,6 +1419,7 @@ export default function AdminDashboard() {
       is_trial: Boolean(plan.is_trial),
       trial_days: Number(plan.trial_days || 14),
       includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
+      visibility: plan.visibility === "private" ? "private" : "public",
       features: Array.isArray(plan.features) ? plan.features : [],
       entitlements: entitlementState,
     });
@@ -1449,6 +1452,7 @@ export default function AdminDashboard() {
         is_trial: planFormData.is_trial,
         trial_days: Number(planFormData.trial_days),
         includes_premium_templates: Boolean(planFormData.entitlements.premium_templates),
+        visibility: planFormData.visibility,
         features: planFormData.features,
         entitlements,
         source_plan_id: duplicatingPlan?.id || undefined,
@@ -1541,6 +1545,7 @@ export default function AdminDashboard() {
         is_trial: Boolean(plan.is_trial),
         trial_days: Number(plan.trial_days || 14),
         includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
+        visibility: plan.visibility === "private" ? "private" : "public",
         features: Array.isArray(plan.features) ? plan.features : [],
         entitlements: entitlementState,
       });
@@ -1569,6 +1574,7 @@ export default function AdminDashboard() {
           is_trial: Boolean(plan.is_trial),
           trial_days: Number(plan.trial_days || 14),
           includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
+          visibility: plan.visibility === "private" ? "private" : "public",
           features: Array.isArray(plan.features) ? plan.features : [],
           entitlements: buildPlanEntitlementPayload(entitlementState, statusPlanData),
         }),
@@ -3395,6 +3401,18 @@ export default function AdminDashboard() {
                         <option value="archived">Archived</option>
                       </select>
                     </div>
+                    <label className="flex items-start gap-3 rounded-lg border bg-background p-3 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={planFormData.visibility === "public"}
+                        onChange={(event) => setPlanFormData((current) => ({ ...current, visibility: event.target.checked ? "public" : "private" }))}
+                      />
+                      <span>
+                        <span className="block font-semibold text-foreground">Show on Homepage</span>
+                        <span className="block text-xs text-muted-foreground">When disabled, this plan stays active and assignable in Super Admin but is hidden from public pricing.</span>
+                      </span>
+                    </label>
                     <div className="space-y-2 md:col-span-2">
                       <Label>Display feature text</Label>
                       <Input value={planFormData.features.join(", ")} onChange={(event) => setPlanFormData((current) => ({ ...current, features: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) }))} placeholder="Optional comma-separated marketing feature list" />
@@ -3469,6 +3487,11 @@ export default function AdminDashboard() {
                           <TableCell>
                             <div className="font-semibold">{plan.name}</div>
                             <div className="text-xs text-muted-foreground">{plan.id}</div>
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              <Badge variant={plan.visibility === "private" ? "outline" : "secondary"} className="text-[10px]">
+                                {plan.visibility === "private" ? "Hidden from homepage" : "Shown on homepage"}
+                              </Badge>
+                            </div>
                             <div className="mt-2 flex max-w-xl flex-wrap gap-1">
                               {getSelectedPlanFeatureLabels(plan).slice(0, 6).map((featureLabel) => (
                                 <Badge key={featureLabel} variant="secondary" className="text-[10px]">{featureLabel}</Badge>
