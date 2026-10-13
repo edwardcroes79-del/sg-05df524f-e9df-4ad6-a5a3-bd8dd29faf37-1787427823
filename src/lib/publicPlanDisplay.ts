@@ -1,4 +1,4 @@
-import { getPlanEntitlementLabel, PUBLIC_PLAN_ENTITLEMENT_KEYS } from "@/lib/planEntitlements";
+import { getPlanEntitlementLabel, PUBLIC_PLAN_ENTITLEMENT_KEYS, STANDARD_PLAN_ENTITLEMENTS } from "@/lib/planEntitlements";
 
 export interface PublicPlanEntitlement {
   key: string;
@@ -59,6 +59,7 @@ export const publicSubscriptionPlanSelect = `
 `;
 
 const publicEntitlementKeys: ReadonlySet<string> = new Set(PUBLIC_PLAN_ENTITLEMENT_KEYS);
+const entitlementDisplayOrder = new Map(STANDARD_PLAN_ENTITLEMENTS.map((entitlement, index) => [entitlement.key, index]));
 
 const internalLimitEntitlementKeys = new Set([
   "max_loyalty_programs",
@@ -90,15 +91,52 @@ function toCustomerFacingFallback(value: string) {
     .join(" ");
 }
 
-function translatedFeatureLabel(t: Translate, key: string, values?: Record<string, string | number>) {
+function translatedFeatureLabel(t: Translate, key: string, values?: Record<string, string | number>, language = "en") {
   const translationKey = `publicPricing.feature.${key}`;
   const translated = t(translationKey, values);
 
   if (!translated || translated === translationKey || translated.includes("dashboard.") || translated.includes("admin.") || translated.includes("plan.")) {
-    return getPlanEntitlementLabel(key) || toCustomerFacingFallback(key);
+    return translatedEntitlementFallback(key, language, values) || getPlanEntitlementLabel(key) || toCustomerFacingFallback(key);
   }
 
   return translated;
+}
+
+function translatedEntitlementFallback(key: string, language: string, values?: Record<string, string | number>) {
+  const count = values?.count;
+  const englishLabels: Record<string, string> = {
+    vip_member_identification: "VIP Member Identification",
+    excel_member_export: "Excel Member Export",
+    bulk_member_import: "Bulk Member Import",
+    bulk_member_management: "Bulk Member Management",
+    search_stamp_staff_access: "Search Stamp access control for staff",
+  };
+
+  const spanishLabels: Record<string, string> = {
+    vip_member_identification: "Identificación de miembros VIP",
+    excel_member_export: "Exportación de miembros a Excel",
+    bulk_member_import: "Importación masiva de miembros",
+    bulk_member_management: "Gestión masiva de miembros",
+    search_stamp_staff_access: "Control de acceso a Search Stamp para personal",
+  };
+
+  const papiamentoLabels: Record<string, string> = {
+    vip_member_identification: "Identificacion di miembro VIP",
+    excel_member_export: "Exportacion di miembronan pa Excel",
+    bulk_member_import: "Importacion masivo di miembronan",
+    bulk_member_management: "Manejo masivo di miembronan",
+    search_stamp_staff_access: "Control di acceso na Search Stamp pa personal",
+  };
+
+  if (key === "max_locations" && count !== undefined) {
+    if (language === "es") return `${count} ubicaciones`;
+    if (language === "pa") return `${count} ubicacion`;
+    return `${count} locations`;
+  }
+
+  if (language === "es") return spanishLabels[key] || "";
+  if (language === "pa") return papiamentoLabels[key] || "";
+  return englishLabels[key] || "";
 }
 
 function formatLimit(value: number | null | undefined) {
@@ -168,11 +206,12 @@ function translatedCountFeatureLabel(
   singularKey: string,
   pluralKey: string,
   count: number,
-  dedupeFallbackKey: string
+  dedupeFallbackKey: string,
+  language: string
 ) {
   return translatedFeatureLabel(t, count === 1 ? singularKey : pluralKey, {
     count: count.toLocaleString(),
-  }) || toCustomerFacingFallback(dedupeFallbackKey);
+  }, language) || toCustomerFacingFallback(dedupeFallbackKey);
 }
 
 function getFeatureDedupeKey(label: string, fallbackKey?: string) {
@@ -180,6 +219,11 @@ function getFeatureDedupeKey(label: string, fallbackKey?: string) {
 
   const normalized = label.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+  if (normalized.includes("loyaltyprogram") || normalized.includes("programadifidelidad")) return "limit_loyalty_programs";
+  if (normalized.includes("loyaltymember") || normalized.includes("miembrodefidelidad") || normalized.includes("miembrodifidelidad")) return "limit_loyalty_members";
+  if (normalized.includes("adminaccount") || normalized.includes("cuentadeadministrador") || normalized.includes("cuentadiadmin")) return "limit_admin_account";
+  if (normalized.includes("staffaccount") || normalized.includes("staffaccounts") || normalized.includes("cuentadepersonal") || normalized.includes("cuentadipersonal")) return "limit_staff_accounts";
+  if (/^\d+locations?$/.test(normalized) || /^\d+ubicacion/.test(normalized)) return "max_locations";
   if (normalized.includes("premiumdesignpreset") || normalized.includes("premiumtemplate")) return "premium_templates";
   if (normalized.includes("rewardexpiration")) return "reward_expiration";
   if (normalized.includes("customcardbranding") || normalized.includes("brandedloyalty")) return "custom_card_branding";
@@ -279,16 +323,21 @@ export function translatePlanText(text: string | null | undefined, language: str
 }
 
 export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Translate, language: string) {
-  if (Array.isArray(plan.features) && plan.features.length > 0) {
-    return plan.features.map(f => translatePlanText(f, language));
-  }
-
   const features: string[] = [];
   const seen = new Set<string>();
-  const displayLimits = getHomepageDisplayLimits(plan);
+  const displayLimits = {
+    maxLoyaltyPrograms: getNumericLimit(plan.max_loyalty_programs),
+    maxCustomers: getNumericLimit(plan.max_customers),
+    maxStaff: getNumericLimit(plan.max_staff),
+  };
+
+  const entitlementRows = (Array.isArray(plan.entitlements) ? plan.entitlements : [])
+    .slice()
+    .sort((a, b) => (entitlementDisplayOrder.get(a.key) ?? 999) - (entitlementDisplayOrder.get(b.key) ?? 999));
 
   const addFeature = (label: string, dedupeKey?: string) => {
-    const normalizedLabel = normalizeDisplayFeature(label);
+    const translatedLabel = translatePlanText(label, language);
+    const normalizedLabel = normalizeDisplayFeature(translatedLabel);
     if (!normalizedLabel) return;
 
     const key = getFeatureDedupeKey(normalizedLabel, dedupeKey);
@@ -303,7 +352,8 @@ export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Transl
     "loyaltyProgram",
     "loyaltyPrograms",
     displayLimits.maxLoyaltyPrograms,
-    "loyaltyPrograms"
+    "loyaltyPrograms",
+    language
   ), "limit_loyalty_programs");
 
   addFeature(translatedCountFeatureLabel(
@@ -311,28 +361,41 @@ export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Transl
     "loyaltyMember",
     "loyaltyMembers",
     displayLimits.maxCustomers,
-    "loyaltyMembers"
+    "loyaltyMembers",
+    language
   ), "limit_loyalty_members");
 
-  addFeature(translatedFeatureLabel(t, "adminAccount"), "limit_admin_account");
+  addFeature(translatedFeatureLabel(t, "adminAccount", undefined, language), "limit_admin_account");
 
   if (displayLimits.maxStaff === 0) {
-    addFeature("No Staff Accounts Included", "limit_staff_accounts");
+    addFeature(language === "es" ? "Sin cuentas de personal" : language === "pa" ? "Sin cuenta di personal" : "No staff accounts included", "limit_staff_accounts");
   } else {
     addFeature(translatedCountFeatureLabel(
       t,
       "staffAccount",
       "staffAccounts",
       displayLimits.maxStaff,
-      "staffAccounts"
+      "staffAccounts",
+      language
     ), "limit_staff_accounts");
   }
 
-  const entitlementRows = Array.isArray(plan.entitlements) ? plan.entitlements : [];
+  const maxLocationsEntitlement = entitlementRows.find((entitlement) => entitlement.key === "max_locations" && isEnabledEntitlement(entitlement));
+  const maxLocations = Number(maxLocationsEntitlement?.number_value || 0);
+  if (maxLocations > 0) {
+    addFeature(translatedFeatureLabel(t, "max_locations", {
+      count: formatLimit(maxLocations),
+    }, language), "max_locations");
+  }
+
+  if (Array.isArray(plan.features)) {
+    plan.features.forEach((feature) => addFeature(feature));
+  }
+
   const entitlementKeys = new Set(entitlementRows.map((entitlement) => entitlement.key));
 
   if (plan.includes_premium_templates && !entitlementKeys.has("premium_templates")) {
-    addFeature(translatedFeatureLabel(t, "premium_templates"), "premium_templates");
+    addFeature(translatedFeatureLabel(t, "premium_templates", undefined, language), "premium_templates");
   }
 
   entitlementRows
@@ -343,11 +406,11 @@ export function formatPublicPlanFeatures(plan: PublicSubscriptionPlan, t: Transl
       if (entitlement.key === "max_locations") {
         addFeature(translatedFeatureLabel(t, "max_locations", {
           count: formatLimit(Number(entitlement.number_value || 0)),
-        }), entitlement.key);
+        }, language), entitlement.key);
         return;
       }
 
-      addFeature(translatedFeatureLabel(t, entitlement.key), entitlement.key);
+      addFeature(translatedFeatureLabel(t, entitlement.key, undefined, language), entitlement.key);
     });
 
   return features;
