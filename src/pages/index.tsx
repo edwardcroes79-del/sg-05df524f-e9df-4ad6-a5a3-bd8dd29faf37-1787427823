@@ -83,7 +83,7 @@ export default function Home() {
 
     async function loadPlans() {
       try {
-        const { data, error } = await supabase
+        const planQuery = (supabase as any)
           .from("subscription_plans")
           .select(publicSubscriptionPlanSelect)
           .eq("status", "active")
@@ -92,15 +92,19 @@ export default function Home() {
           .order("display_order", { ascending: true })
           .order("price_awg", { ascending: true });
 
+        const { data, error } = await planQuery;
+
         if (error?.code === "42703") {
           console.warn("Plan visibility column is not available yet; falling back to active public pricing list until the migration is applied.");
-          const { data: fallbackData, error: fallbackError } = await supabase
+          const fallbackQuery = (supabase as any)
             .from("subscription_plans")
             .select(publicSubscriptionPlanSelect.replace("visibility,", ""))
             .eq("status", "active")
             .eq("is_active", true)
             .order("display_order", { ascending: true })
             .order("price_awg", { ascending: true });
+
+          const { data: fallbackData, error: fallbackError } = await fallbackQuery;
 
           if (fallbackData && !fallbackError) {
             setDbPlans(fallbackData as PublicSubscriptionPlan[]);
