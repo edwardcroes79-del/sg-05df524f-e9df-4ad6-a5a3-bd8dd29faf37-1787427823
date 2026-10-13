@@ -127,52 +127,48 @@ function getNumericLimit(value: number | null | undefined) {
 
 function getHomepageDisplayLimits(plan: PublicSubscriptionPlan) {
   const normalizedName = plan.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const baseLimits = {
+    maxLoyaltyPrograms: getNumericLimit(plan.max_loyalty_programs),
+    maxCustomers: getNumericLimit(plan.max_customers),
+    maxStaff: getNumericLimit(plan.max_staff),
+  };
 
   if (normalizedName.includes("free") && normalizedName.includes("trial")) {
     return {
-      maxLoyaltyPrograms: 1,
-      maxCustomers: 50,
+      ...baseLimits,
       maxStaff: 0,
     };
   }
 
   if (normalizedName === "starter") {
     return {
-      maxLoyaltyPrograms: 1,
-      maxCustomers: 500,
+      ...baseLimits,
       maxStaff: 1,
     };
   }
 
   if (normalizedName === "business") {
     return {
-      maxLoyaltyPrograms: 5,
-      maxCustomers: 2000,
+      ...baseLimits,
       maxStaff: 5,
     };
   }
 
   if (normalizedName === "professional") {
     return {
-      maxLoyaltyPrograms: 10,
-      maxCustomers: 5000,
+      ...baseLimits,
       maxStaff: 10,
     };
   }
 
   if (normalizedName === "corporate") {
     return {
-      maxLoyaltyPrograms: 25,
-      maxCustomers: 15000,
+      ...baseLimits,
       maxStaff: 50,
     };
   }
 
-  return {
-    maxLoyaltyPrograms: getNumericLimit(plan.max_loyalty_programs),
-    maxCustomers: getNumericLimit(plan.max_customers),
-    maxStaff: getNumericLimit(plan.max_staff),
-  };
+  return baseLimits;
 }
 
 function isCorporateHomepagePlan(plan: PublicSubscriptionPlan) {
