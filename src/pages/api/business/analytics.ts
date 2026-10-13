@@ -97,10 +97,8 @@ async function resolveBusinessForUser(authorization: string) {
   };
 }
 
-async function fetchPermittedLocationOptions(authorization: string, businessId: string) {
-  const userClient = createUserClient(authorization);
-
-  const { data, error } = await (userClient as any)
+async function fetchPermittedLocationOptions(admin: any, businessId: string) {
+  const { data, error } = await admin
     .from("business_locations")
     .select("id, name, status")
     .eq("business_id", businessId)
@@ -112,6 +110,40 @@ async function fetchPermittedLocationOptions(authorization: string, businessId: 
   }
 
   return Array.isArray(data) ? data : [];
+}
+
+async function fetchAnalyticsEntitlements(admin: any, businessId: string) {
+  const { data: business, error: businessError } = await admin
+    .from("businesses")
+    .select("id, subscription_plan")
+    .eq("id", businessId)
+    .maybeSingle();
+
+  if (businessError) throw businessError;
+  if (!business?.subscription_plan) {
+    throw new Error("Business subscription plan not found.");
+  }
+
+  const { data: entitlementRows, error: entitlementError } = await admin
+    .from("plan_entitlements")
+    .select("key, value_type, boolean_value")
+    .eq("plan_id", business.subscription_plan)
+    .in("key", ["advanced_analytics", "location_analytics", "cross_location_analytics"]);
+
+  if (entitlementError) throw entitlementError;
+
+  const hasBooleanEntitlement = (key: string) => (entitlementRows || []).some((entitlement: any) =>
+    entitlement.key === key
+    && entitlement.value_type === "boolean"
+    && entitlement.boolean_value === true
+  );
+
+  return {
+    planId: business.subscription_plan as string,
+    advancedAnalyticsEnabled: hasBooleanEntitlement("advanced_analytics"),
+    locationAnalyticsEnabled: hasBooleanEntitlement("location_analytics"),
+    crossLocationAnalyticsEnabled: hasBooleanEntitlement("cross_location_analytics"),
+  };
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -130,13 +162,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId, businessId } = await resolveBusinessForUser(authorization);
     const { startAt, endAt } = parseDateRange(req);
     const locationId = typeof req.query.location_id === "string" && req.query.location_id !== "all" ? req.query.location_id : null;
-    const locationOptions = await fetchPermittedLocationOptions(authorization, businessId);
+    const admin = createServiceClient();
+    const analyticsEntitlements = await fetchAnalyticsEntitlements(admin, businessId);
+
+    if (!analyticsEntitlements.advancedAnalyticsEnabled) {
+      return res.status(403).json({ error: "Advanced analytics access denied." });
+    }
+
+    if (locationId && !analyticsEntitlements.locationAnalyticsEnabled) {
+      return res.status(403).json({ error: "Location analytics access denied." });
+    }
+
+    const locationOptions = await fetchPermittedLocationOptions(admin, businessId);
 
     if (locationId && !locationOptions.some((location: any) => location.id === locationId)) {
       return res.status(403).json({ error: "Location analytics access denied." });
     }
-
-    const admin = createServiceClient();
 
     const { data, error } = await (admin as any).rpc("get_corporate_advanced_analytics", {
       p_business_id: businessId,
