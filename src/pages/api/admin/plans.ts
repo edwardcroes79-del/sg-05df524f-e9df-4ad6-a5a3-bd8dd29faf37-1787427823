@@ -32,6 +32,11 @@ type PlanInput = {
   source_plan_id?: string | null;
 };
 
+type PlanUsageReference = {
+  label: string;
+  count: number;
+};
+
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -271,6 +276,100 @@ async function ensureUniquePlanName(admin: any, name: string, currentId?: string
   }
 }
 
+async function getPlanUsageReferences(admin: any, planId: string): Promise<PlanUsageReference[]> {
+  const references: PlanUsageReference[] = [];
+
+  const { count: businessCount, error: businessError } = await admin
+    .from("businesses")
+    .select("id", { count: "exact", head: true })
+    .eq("subscription_plan", planId);
+
+  if (businessError) throw businessError;
+  if ((businessCount || 0) > 0) {
+    references.push({ label: "business assignments", count: businessCount || 0 });
+  }
+
+  const { data: subscriptionPayments, error: paymentError } = await admin
+    .from("subscription_payments")
+    .select("id, plan_id, metadata");
+
+  if (paymentError) throw paymentError;
+
+  const matchingPayments = (subscriptionPayments || []).filter((payment: any) => {
+    const metadata = payment.metadata && typeof payment.metadata === "object" ? payment.metadata : {};
+    return payment.plan_id === planId
+      || metadata.plan_id === planId
+      || metadata.base_plan_id === planId
+      || metadata.current_plan_id === planId
+      || metadata.requested_plan_id === planId;
+  });
+
+  if (matchingPayments.length > 0) {
+    references.push({ label: "subscription payment or plan-change history", count: matchingPayments.length });
+  }
+
+  const { data: addonSubscriptions, error: addonError } = await admin
+    .from("business_addon_subscriptions")
+    .select("id, metadata");
+
+  if (addonError) throw addonError;
+
+  const matchingAddonSubscriptions = (addonSubscriptions || []).filter((subscription: any) => {
+    const metadata = subscription.metadata && typeof subscription.metadata === "object" ? subscription.metadata : {};
+    return metadata.plan_id === planId
+      || metadata.base_plan_id === planId
+      || metadata.current_plan_id === planId
+      || metadata.requested_plan_id === planId;
+  });
+
+  if (matchingAddonSubscriptions.length > 0) {
+    references.push({ label: "add-on subscription history", count: matchingAddonSubscriptions.length });
+  }
+
+  return references;
+}
+
+async function deleteUnusedPlan(admin: any, planId: string) {
+  const { data: plan, error: planError } = await admin
+    .from("subscription_plans")
+    .select("id, name")
+    .eq("id", planId)
+    .maybeSingle();
+
+  if (planError) throw planError;
+
+  if (!plan) {
+    const notFoundError = new Error("Plan not found");
+    (notFoundError as any).statusCode = 404;
+    throw notFoundError;
+  }
+
+  const references = await getPlanUsageReferences(admin, planId);
+
+  if (references.length > 0) {
+    const inUseError = new Error(`This plan cannot be deleted because it has been used by ${references.map((reference) => `${reference.count} ${reference.label}`).join(", ")}.`);
+    (inUseError as any).statusCode = 409;
+    (inUseError as any).references = references;
+    throw inUseError;
+  }
+
+  const { error: entitlementDeleteError } = await admin
+    .from("plan_entitlements")
+    .delete()
+    .eq("plan_id", planId);
+
+  if (entitlementDeleteError) throw entitlementDeleteError;
+
+  const { error: planDeleteError } = await admin
+    .from("subscription_plans")
+    .delete()
+    .eq("id", planId);
+
+  if (planDeleteError) throw planDeleteError;
+
+  return plan;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const adminUserId = await requireSuperAdmin(req);
@@ -281,8 +380,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ success: true, plans });
     }
 
+    if (req.method === "DELETE") {
+      const planId = typeof req.body?.id === "string" ? req.body.id.trim() : "";
+
+      if (!planId) {
+        return res.status(400).json({ error: "Plan ID is required" });
+      }
+
+      const deletedPlan = await deleteUnusedPlan(admin, planId);
+
+      await admin.from("audit_logs").insert({
+        admin_user_id: adminUserId,
+        action: "delete_subscription_plan",
+        target_type: "subscription_plan",
+        target_id: deletedPlan.id,
+        metadata: {
+          name: deletedPlan.name,
+          deleted_unused_plan: true,
+        },
+      });
+
+      const plans = await listPlans(admin);
+      return res.status(200).json({ success: true, plans });
+    }
+
     if (req.method !== "POST" && req.method !== "PATCH") {
-      res.setHeader("Allow", "GET, POST, PATCH");
+      res.setHeader("Allow", "GET, POST, PATCH, DELETE");
       return res.status(405).json({ error: "Method not allowed" });
     }
 
@@ -350,6 +473,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const plans = await listPlans(admin);
     return res.status(200).json({ success: true, plans });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || "Failed to manage subscription plans" });
+    return res.status(err.statusCode || 500).json({
+      error: err.message || "Failed to manage subscription plans",
+      references: err.references || undefined,
+    });
   }
 }
