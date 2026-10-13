@@ -29,6 +29,7 @@ type PlanInput = {
   includes_premium_templates?: boolean;
   entitlements?: EntitlementInput[];
   features?: string[];
+  source_plan_id?: string | null;
 };
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -255,6 +256,21 @@ function normalizeEntitlements(body: PlanInput, payload: ReturnType<typeof build
   }));
 }
 
+async function ensureUniquePlanName(admin: any, name: string, currentId?: string) {
+  const { data, error } = await admin
+    .from("subscription_plans")
+    .select("id, name")
+    .ilike("name", name);
+
+  if (error) throw error;
+
+  const conflict = (data || []).find((plan: any) => plan.id !== currentId && String(plan.name || "").trim().toLowerCase() === name.trim().toLowerCase());
+
+  if (conflict) {
+    throw new Error("A plan with this name already exists");
+  }
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const adminUserId = await requireSuperAdmin(req);
@@ -278,6 +294,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const payload = buildPlanPayload(body, planId);
+    await ensureUniquePlanName(admin, payload.name, req.method === "PATCH" ? payload.id : undefined);
+    let insertedNewPlan = false;
 
     if (req.method === "POST") {
       const { data: existing } = await admin
@@ -292,6 +310,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const { error } = await admin.from("subscription_plans").insert(payload);
       if (error) throw error;
+      insertedNewPlan = true;
     } else {
       const { error } = await admin
         .from("subscription_plans")
@@ -306,7 +325,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from("plan_entitlements")
       .upsert(entitlements, { onConflict: "plan_id,key" });
 
-    if (entitlementError) throw entitlementError;
+    if (entitlementError) {
+      if (insertedNewPlan) {
+        await admin.from("plan_entitlements").delete().eq("plan_id", payload.id);
+        await admin.from("subscription_plans").delete().eq("id", payload.id);
+      }
+
+      throw entitlementError;
+    }
 
     await admin.from("audit_logs").insert({
       admin_user_id: adminUserId,
@@ -316,6 +342,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       metadata: {
         status: payload.status,
         name: payload.name,
+        source_plan_id: body.source_plan_id || null,
+        duplicated_from_plan: req.method === "POST" && Boolean(body.source_plan_id),
       },
     });
 

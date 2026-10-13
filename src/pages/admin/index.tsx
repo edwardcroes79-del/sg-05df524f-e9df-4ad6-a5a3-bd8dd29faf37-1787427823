@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle, UploadCloud, AlertTriangle, Square } from "lucide-react";
+import { Loader2, Shield, Building2, Users, CreditCard, Power, Edit2, Save, Ban, CheckCircle, Clock, XCircle, Eye, LogOut, Trash2, Globe, ShieldCheck, ShieldAlert, Key, Mail, PlusCircle, Archive, Bell, Database, HardDrive, History, Download, PlayCircle, UploadCloud, AlertTriangle, Square, Copy } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
@@ -333,6 +333,7 @@ export default function AdminDashboard() {
 
   const [editingPlan, setEditingPlan] = useState<any | null>(null);
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+  const [duplicatingPlan, setDuplicatingPlan] = useState<any | null>(null);
   const [savingPlan, setSavingPlan] = useState(false);
   const [planFormData, setPlanFormData] = useState(emptyPlanFormData);
 
@@ -1365,6 +1366,7 @@ export default function AdminDashboard() {
 
     setEditingPlan(plan);
     setIsCreatingPlan(false);
+    setDuplicatingPlan(null);
     setPlanFormData({
       id: plan.id,
       name: plan.name,
@@ -1388,7 +1390,34 @@ export default function AdminDashboard() {
   const handleCreatePlanClick = () => {
     setEditingPlan(null);
     setIsCreatingPlan(true);
+    setDuplicatingPlan(null);
     setPlanFormData(emptyPlanFormData);
+  };
+
+  const handleDuplicatePlanClick = (plan: any) => {
+    const entitlementState = buildPlanEntitlementState(plan);
+
+    setEditingPlan(null);
+    setIsCreatingPlan(false);
+    setDuplicatingPlan(plan);
+    setPlanFormData({
+      id: "",
+      name: "",
+      description: plan.description || "",
+      price_awg: Number(plan.price_awg || 0),
+      annual_price_awg: plan.annual_price_awg === null || plan.annual_price_awg === undefined ? "" : String(plan.annual_price_awg),
+      status: "inactive",
+      display_order: Number(plan.display_order || 100) + 1,
+      badge: plan.badge || "",
+      max_loyalty_programs: Number(plan.max_loyalty_programs || 1),
+      max_customers: Number(plan.max_customers || 300),
+      max_staff: Number(plan.max_staff ?? 1),
+      is_trial: Boolean(plan.is_trial),
+      trial_days: Number(plan.trial_days || 14),
+      includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
+      features: Array.isArray(plan.features) ? plan.features : [],
+      entitlements: entitlementState,
+    });
   };
 
   const savePlanThroughApi = async (method: "POST" | "PATCH") => {
@@ -1420,6 +1449,7 @@ export default function AdminDashboard() {
         includes_premium_templates: Boolean(planFormData.entitlements.premium_templates),
         features: planFormData.features,
         entitlements,
+        source_plan_id: duplicatingPlan?.id || undefined,
       }),
     });
 
@@ -1435,29 +1465,41 @@ export default function AdminDashboard() {
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!editingPlan && !isCreatingPlan) return;
+    if (!editingPlan && !isCreatingPlan && !duplicatingPlan) return;
 
     if (planFormData.max_staff < 0) {
       toast({ title: "Invalid Limit", description: "Staff limit cannot be negative.", variant: "destructive" });
       return;
     }
 
-    if (!planFormData.name.trim()) {
+    const normalizedPlanName = planFormData.name.trim().toLowerCase();
+
+    if (!normalizedPlanName) {
       toast({ title: "Plan name required", description: "Enter a plan name before saving.", variant: "destructive" });
+      return;
+    }
+
+    const planNameConflict = plans.some((plan) =>
+      String(plan.name || "").trim().toLowerCase() === normalizedPlanName && plan.id !== planFormData.id
+    );
+
+    if (planNameConflict) {
+      toast({ title: "Unique plan name required", description: "Enter a new plan name that is not already used by another plan.", variant: "destructive" });
       return;
     }
 
     try {
       setSavingPlan(true);
-      await savePlanThroughApi(isCreatingPlan ? "POST" : "PATCH");
+      await savePlanThroughApi(editingPlan ? "PATCH" : "POST");
 
       toast({
-        title: isCreatingPlan ? "Plan Created" : "Plan Updated",
+        title: duplicatingPlan ? "Plan Duplicated" : isCreatingPlan ? "Plan Created" : "Plan Updated",
         description: `${planFormData.name} has been saved with database-driven limits and features.`,
       });
 
       setEditingPlan(null);
       setIsCreatingPlan(false);
+      setDuplicatingPlan(null);
       setPlanFormData(emptyPlanFormData);
       await fetchAdminData();
     } catch (err: any) {
@@ -3261,12 +3303,18 @@ export default function AdminDashboard() {
                   <PlusCircle className="mr-2 h-4 w-4" /> Create plan
                 </Button>
               </CardHeader>
-              {(editingPlan || isCreatingPlan) && (
+              {(editingPlan || isCreatingPlan || duplicatingPlan) && (
                 <CardContent>
                   <form onSubmit={handleSavePlan} className="grid gap-4 rounded-xl border bg-muted/30 p-4 md:grid-cols-2">
+                    {duplicatingPlan && (
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm md:col-span-2">
+                        <p className="font-semibold text-foreground">Duplicating {duplicatingPlan.name}</p>
+                        <p className="text-muted-foreground">Configuration and entitlements are copied into this form. Enter a new unique plan name before creating the duplicate.</p>
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Plan ID</Label>
-                      <Input value={planFormData.id} onChange={(event) => setPlanFormData((current) => ({ ...current, id: event.target.value }))} disabled={Boolean(editingPlan)} />
+                      <Input value={planFormData.id} onChange={(event) => setPlanFormData((current) => ({ ...current, id: event.target.value }))} disabled={Boolean(editingPlan)} placeholder={duplicatingPlan ? "Leave blank to generate from the new plan name" : undefined} />
                     </div>
                     <div className="space-y-2">
                       <Label>Name</Label>
@@ -3354,8 +3402,8 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="flex gap-2 md:col-span-2">
-                      <Button type="submit" disabled={savingPlan}>{savingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save plan</Button>
-                      <Button type="button" variant="outline" onClick={() => { setEditingPlan(null); setIsCreatingPlan(false); setPlanFormData(emptyPlanFormData); }}>Cancel</Button>
+                      <Button type="submit" disabled={savingPlan}>{savingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} {duplicatingPlan ? "Create duplicate" : "Save plan"}</Button>
+                      <Button type="button" variant="outline" onClick={() => { setEditingPlan(null); setIsCreatingPlan(false); setDuplicatingPlan(null); setPlanFormData(emptyPlanFormData); }}>Cancel</Button>
                     </div>
                   </form>
                 </CardContent>
@@ -3393,6 +3441,7 @@ export default function AdminDashboard() {
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button type="button" variant="outline" size="sm" onClick={() => handleEditPlanClick(plan)}><Edit2 className="h-4 w-4" /></Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleDuplicatePlanClick(plan)}><Copy className="mr-1 h-4 w-4" /> Duplicate</Button>
                               <Button type="button" variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "active")}>Activate</Button>
                               <Button type="button" variant="outline" size="sm" onClick={() => handleUpdatePlanStatus(plan, "inactive")}>Disable</Button>
                             </div>
