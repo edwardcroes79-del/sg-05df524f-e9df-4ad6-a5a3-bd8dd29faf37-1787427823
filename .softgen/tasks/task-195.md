@@ -10,12 +10,12 @@ position: 195
 ---
 
 ## Notes
-Add a separate `excel_member_import` entitlement for Royalty Stamp. Inspect the current plan entitlement registry, Super Admin plan management, live schema, migrations, and existing `excel_member_export` behavior before changing anything. Corporate and Enterprise should be enabled by default only if this matches the current plan model. Other plans remain disabled by default. Custom and duplicated plans must follow saved entitlement rows, not hardcoded plan names. Do not change prices, limits, visibility, unrelated entitlements, subscriptions, customer data, RLS, or deployment state. If a migration is required, prepare and explain it before applying.
+Add a separate `excel_member_import` entitlement for Royalty Stamp. Inspect the current plan entitlement registry, Super Admin plan management, live schema, migrations, and existing `excel_member_export` behavior before changing anything. Corporate and Enterprise should be enabled by default only if this matches the current plan model. Other plans remain disabled by default. Custom and duplicated plans must follow saved entitlement rows, not hardcoded plan names. Do not change prices, limits, visibility, unrelated entitlements, subscriptions, customer data, RLS, or deployment state. If a migration is required, prepare and explain it before applying. Initial inspection confirmed entitlements are managed through `src/lib/planEntitlements.ts` and `src/pages/api/admin/plans.ts`, with live rows stored in `plan_entitlements`. Added `excel_member_import` to the standard registry so Super Admin plan management can persist it through the existing entitlement payload path.
 
 ## Checklist
-- [ ] Inspect existing export entitlement, plan entitlement registry, Super Admin plan-management API/UI, and live schema
+- [x] Inspect existing export entitlement, plan entitlement registry, Super Admin plan-management API/UI, and live schema
 - [ ] Determine whether a migration or seed update is required for `excel_member_import`
-- [ ] Add entitlement support without changing prices, limits, visibility, or unrelated entitlements
+- [x] Add entitlement support without changing prices, limits, visibility, or unrelated entitlements
 - [ ] Verify Corporate/Enterprise default behavior and custom/duplicated plan saved entitlement behavior
 - [ ] Run checks and document migration requirements and entitlement behavior
 

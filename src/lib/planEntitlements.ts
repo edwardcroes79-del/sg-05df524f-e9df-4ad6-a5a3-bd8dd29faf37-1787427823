@@ -139,6 +139,14 @@ export const STANDARD_PLAN_ENTITLEMENTS = [
     publicVisible: true,
   },
   {
+    key: "excel_member_import",
+    label: "Excel Member Import",
+    description: "Allow secure Excel member import with preview and confirmation.",
+    valueType: "boolean",
+    defaultValue: true,
+    publicVisible: true,
+  },
+  {
     key: "bulk_member_import",
     label: "Bulk Member Import",
     description: "Advertise bulk member import as a plan feature.",
