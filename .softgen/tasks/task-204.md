@@ -10,15 +10,15 @@ position: 204
 ---
 
 ## Notes
-Implement Phase 4 on the existing Registered Customers page: add a separate Reconcile Members workflow beside Export to Excel and Import from Excel. Keep existing export/import unchanged. Reconciliation must compare a valid Royalty Stamp export workbook against current memberships in a selected loyalty program, preselect memberships missing from the uploaded list, allow deselection, warn on exact removal count including valid headers-only workbooks, require explicit confirmation, and remove only selected program membership associations while preserving profiles/history/other memberships. Enforce Owner authorization, business isolation, selected-program ownership, and `bulk_member_removal` entitlement server-side. Do not modify production customer data or deploy.
+Implemented Phase 4 on the existing Registered Customers page: separate Reconcile Members workflow beside Export to Excel and Import from Excel. Existing export/import behavior remains unchanged. Inspection confirmed the UI component, preview API, confirmation API, parser option, owner authorization, selected-program business isolation, reversible membership-status removal, and history/profile preservation already exist. The concrete blocker was live configuration: `plan_entitlements` had no `bulk_member_removal` rows, so the Customers page hid the Reconcile Members button and users were left in the Import workflow. Seeded only the existing Corporate/Enterprise entitlement target from `supabase/migrations/20261014170500_bulk_member_removal_entitlement.sql`. No customer data, memberships, stamps, rewards, transactions, prices, or deployment were modified.
 
 ## Checklist
-- [ ] Inspect Customers page, Excel export/import APIs, reconciliation files, schema relationships, and authorization helpers
-- [ ] Verify or add separate Reconcile Members button beside Export to Excel and Import from Excel
-- [ ] Verify or add server-side owner authorization, selected-program ownership, business isolation, and `bulk_member_removal` entitlement enforcement
-- [ ] Compare uploaded valid members against current selected-program memberships using verified stable identifiers
-- [ ] Preselect only safe missing memberships, flag duplicates/invalid/ambiguous rows, and support valid headers-only workbook warnings
-- [ ] Require explicit confirmation and remove only selected program membership associations without deleting profiles/history/other memberships
+- [x] Inspect Customers page, Excel export/import APIs, reconciliation files, schema relationships, and authorization helpers
+- [x] Verify or add separate Reconcile Members button beside Export to Excel and Import from Excel
+- [x] Verify or add server-side owner authorization, selected-program ownership, business isolation, and `bulk_member_removal` entitlement enforcement
+- [x] Compare uploaded valid members against current selected-program memberships using verified stable identifiers
+- [x] Preselect only safe missing memberships, flag duplicates/invalid/ambiguous rows, and support valid headers-only workbook warnings
+- [x] Require explicit confirmation and remove only selected program membership associations without deleting profiles/history/other memberships
 - [ ] Run static validation and safe non-mutating preview checks
 - [ ] Report changed files, actual tests run, remaining risks, and manual test steps
 
