@@ -43,6 +43,8 @@ export type ImportPreviewRow = ParsedImportRow & {
 
 export type ImportPreviewPayload = {
   rows: ImportPreviewRow[];
+  targetProgramId: string;
+  targetProgramName: string;
   targetProgramRequired: boolean;
   programsInFile: string[];
   summary: Record<ImportStatus, number>;
@@ -437,6 +439,8 @@ export async function buildImportPreview(admin: any, businessId: string, rows: P
 
   return {
     rows: finalRows,
+    targetProgramId: resolvedProgram.id,
+    targetProgramName: resolvedProgram.name,
     targetProgramRequired,
     programsInFile,
     summary,
@@ -444,8 +448,21 @@ export async function buildImportPreview(admin: any, businessId: string, rows: P
   };
 }
 
-export async function createImportedMemberships(admin: any, businessId: string, targetProgramId: string, rows: ImportPreviewRow[]) {
-  const preview = await buildImportPreview(admin, businessId, rows, targetProgramId);
+export async function createImportedMemberships(admin: any, businessId: string, targetProgramId: string, rows: ImportPreviewRow[], importToken?: string) {
+  const reparsedRows = rows.map((row) => ({
+    rowNumber: row.rowNumber,
+    memberName: row.memberName,
+    emailAddress: normalizeEmail(row.emailAddress),
+    phoneNumber: normalizePhone(row.phoneNumber),
+    loyaltyProgram: row.loyaltyProgram,
+  }));
+
+  const preview = await buildImportPreview(admin, businessId, reparsedRows, targetProgramId);
+
+  if (importToken && preview.importToken !== importToken) {
+    throw makeHttpError("Import preview expired or changed. Preview the workbook again before confirming.", 400);
+  }
+
   const created: any[] = [];
   const skipped: any[] = [];
   const failed: any[] = [];
@@ -507,7 +524,7 @@ export async function createImportedMemberships(admin: any, businessId: string, 
         .from("customer_loyalty_cards")
         .insert({
           customer_id: customer.id,
-          user_id: customer.user_id || customer.id,
+          user_id: customer.user_id || null,
           business_id: businessId,
           loyalty_program_id: targetProgramId,
           current_stamps: 0,

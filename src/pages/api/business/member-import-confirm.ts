@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: "Missing authorization header." });
     }
 
-    const { targetProgramId, rows } = req.body || {};
+    const { targetProgramId, rows, importToken } = req.body || {};
 
     if (typeof targetProgramId !== "string" || !targetProgramId.trim()) {
       return res.status(400).json({ error: "Select a target loyalty program before confirming the import." });
@@ -40,12 +40,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Preview rows are required before confirming the import." });
     }
 
+    if (typeof importToken !== "string" || !importToken.trim()) {
+      return res.status(400).json({ error: "Preview the workbook again before confirming the import." });
+    }
+
     const { businessId } = await resolveBusinessForUser(authorization);
     const admin = createServiceClient();
 
     await requireExcelImportEntitlement(admin, businessId);
 
-    const result = await createImportedMemberships(admin, businessId, targetProgramId.trim(), rows);
+    const result = await createImportedMemberships(admin, businessId, targetProgramId.trim(), rows, importToken.trim());
 
     return res.status(200).json({ success: true, result });
   } catch (error: any) {
