@@ -1,6 +1,6 @@
 ---
 title: VIP Member Identification
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [customers, vip, entitlement, memberships]
@@ -10,18 +10,18 @@ position: 205
 ---
 
 ## Notes
-VIP Member Identification was added with membership-scoped UI/API logic, but the Customers page now fails with `column customer_loyalty_cards.is_vip does not exist`. Current fix scope: inspect live Supabase schema, migration files, generated types, and recent VIP feature changes; confirm intended VIP storage location; apply the smallest safe schema/code correction only after verifying whether a migration is required. Existing regular members must appear when VIP only is off, VIP only must show verified VIP memberships only, and existing export/import/reconciliation/stamps/rewards/history must remain unchanged. No customer data, production records, unrelated features, plan prices, or deployment should be modified.
+Fixed the VIP Member Identification runtime error: `column customer_loyalty_cards.is_vip does not exist`. Root cause: the Customers page and VIP update API had been updated to select/update a membership-scoped `is_vip` field, but the live Supabase schema did not yet contain that column. The intended storage location is verified as `public.customer_loyalty_cards` because it is scoped by membership id, business id, loyalty program id, and status. Applied the smallest safe additive schema correction: `is_vip boolean NOT NULL DEFAULT false` plus an index for business/program/VIP filtering. Existing memberships default to non-VIP, preserving customer data and restoring regular member visibility when VIP only is off. Generated Supabase types were updated. Export/import, Reconcile Members, stamps, rewards, transaction history, plan prices, and unrelated features were not changed. No deployment was performed.
 
 ## Checklist
-- [ ] Inspect live `customer_loyalty_cards` schema and confirm whether `is_vip` exists
-- [ ] Inspect VIP migration, generated database types, Customers page query, and member VIP API
-- [ ] Identify the exact root cause of the query failure and intended membership-scoped storage
-- [ ] Apply the smallest safe schema/code correction after explaining any required migration
-- [ ] Restore Customers page behavior with VIP only off showing regular members
-- [ ] Verify VIP only on shows only memberships with verified VIP status
-- [ ] Preserve search, Excel export/import, Reconcile Members, stamps, rewards, and transaction history
-- [ ] Update generated types or query typing if required
-- [ ] Run static validation and safe non-destructive tests
+- [x] Inspect live `customer_loyalty_cards` schema and confirm whether `is_vip` exists
+- [x] Inspect VIP migration, generated database types, Customers page query, and member VIP API
+- [x] Identify the exact root cause of the query failure and intended membership-scoped storage
+- [x] Apply the smallest safe schema/code correction after explaining any required migration
+- [x] Restore Customers page behavior with VIP only off showing regular members
+- [x] Verify VIP only on shows only memberships with verified VIP status
+- [x] Preserve search, Excel export/import, Reconcile Members, stamps, rewards, and transaction history
+- [x] Update generated types or query typing if required
+- [x] Run static validation and safe non-destructive tests
 
 ## Acceptance
 The Customers page loads all active memberships normally when VIP only is off. VIP only filters to verified VIP memberships. VIP status is stored per business/program membership and server-side authorization/entitlement checks remain enforced.

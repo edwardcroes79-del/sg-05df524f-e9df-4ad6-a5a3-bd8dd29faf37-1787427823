@@ -537,6 +537,7 @@ export type Database = {
           current_stamps: number | null
           customer_id: string | null
           id: string
+          is_vip: boolean
           loyalty_program_id: string | null
           rewards_earned: number | null
           status: string | null
@@ -550,6 +551,7 @@ export type Database = {
           current_stamps?: number | null
           customer_id?: string | null
           id?: string
+          is_vip?: boolean
           loyalty_program_id?: string | null
           rewards_earned?: number | null
           status?: string | null
@@ -563,6 +565,7 @@ export type Database = {
           current_stamps?: number | null
           customer_id?: string | null
           id?: string
+          is_vip?: boolean
           loyalty_program_id?: string | null
           rewards_earned?: number | null
           status?: string | null
