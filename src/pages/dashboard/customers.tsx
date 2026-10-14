@@ -97,6 +97,7 @@ export default function CustomersDashboard() {
   const [canImportMembers, setCanImportMembers] = useState(false);
   const [canBulkRemoveMembers, setCanBulkRemoveMembers] = useState(false);
   const [canIdentifyVipMembers, setCanIdentifyVipMembers] = useState(false);
+  const [checkingImportAccess, setCheckingImportAccess] = useState(false);
   const [exportingMembers, setExportingMembers] = useState(false);
   const [previewingImport, setPreviewingImport] = useState(false);
   const [confirmingImport, setConfirmingImport] = useState(false);
@@ -327,6 +328,54 @@ export default function CustomersDashboard() {
     setImportProgramId("");
     setImportPreview(null);
     setImportResult(null);
+  };
+
+  const handleOpenImportDialog = async () => {
+    if (checkingImportAccess || previewingImport || confirmingImport) return;
+
+    if (!business?.id) {
+      toast({
+        title: "Import unavailable",
+        description: "The business context is still loading. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setCheckingImportAccess(true);
+
+      const { data: importEntitlement, error: importEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
+        p_business_id: business.id,
+        p_key: "excel_member_import",
+        p_fallback: false,
+      });
+
+      if (importEntitlementError) throw importEntitlementError;
+
+      const hasImportAccess = importEntitlement === true;
+      setCanImportMembers(hasImportAccess);
+
+      if (!hasImportAccess) {
+        toast({
+          title: "Import unavailable",
+          description: "Excel member import is not enabled for this subscription plan.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      resetImportWorkflow();
+      setImportDialogOpen(true);
+    } catch (err: any) {
+      toast({
+        title: "Import unavailable",
+        description: err.message || "Unable to verify Excel member import access.",
+        variant: "destructive",
+      });
+    } finally {
+      setCheckingImportAccess(false);
+    }
   };
 
   const getImportErrorMessage = (status: number, fallback: string) => {
@@ -806,23 +855,15 @@ export default function CustomersDashboard() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
-                  if (!canImportMembers) {
-                    toast({
-                      title: "Import unavailable",
-                      description: "Excel member import is not enabled for this subscription plan.",
-                      variant: "destructive",
-                    });
-                    return;
-                  }
-
-                  resetImportWorkflow();
-                  setImportDialogOpen(true);
-                }}
-                disabled={previewingImport || confirmingImport || !canImportMembers}
+                onClick={handleOpenImportDialog}
+                disabled={checkingImportAccess || previewingImport || confirmingImport || !business?.id}
                 className="gap-2 whitespace-nowrap"
               >
-                <Upload className="h-4 w-4" />
+                {checkingImportAccess ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
                 Import from Excel
               </Button>
               {canBulkRemoveMembers && (

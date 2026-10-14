@@ -1,6 +1,6 @@
 ---
 title: Customers Import Button Regression
-status: done
+status: in_progress
 priority: urgent
 type: bug
 tags: [customers, excel, import, entitlement]
@@ -10,18 +10,17 @@ position: 209
 ---
 
 ## Notes
-Restored the missing Import from Excel button on the Royalty Stamp Customers page with the smallest direct UI change. The original import workflow already existed in `src/pages/dashboard/customers.tsx`: `resetImportWorkflow()`, `setImportDialogOpen(true)`, the import dialog, Excel preview, validation, duplicate status rows, and confirmation handlers. The remaining blocker was that the toolbar action itself was still conditionally absent in the running page for users seeing the regression. The fix restores the Import from Excel action beside Export to Excel and Reconcile Members while keeping the existing workflow usable only when `canImportMembers` is true. Unauthorized businesses see the button disabled and cannot open the workflow; server-side import APIs still enforce authorization. No replacement importer was created. No customer records, membership data, stamps, rewards, import APIs, production configuration, unrelated features, or deployment were changed. Verification: SQL confirmed `get_business_boolean_entitlement` uses the applied resolver and Botica Benu resolves `excel_member_import = true`; Test 13 Oct, Royalty Stamp Demo, and Royalty Stamp Admin resolve false; Export and Reconcile entitlements remain separate; `check_for_errors` passed. The tool API cannot physically click the iframe, so final browser click verification should be performed in the preview before deployment.
+The Import from Excel button is visible again but greyed out and does not open the import dialog. In the current `src/pages/dashboard/customers.tsx`, the button's exact disabled condition is `previewingImport || confirmingImport || !canImportMembers`, and the click handler also blocks when `canImportMembers` is false. The existing import workflow still exists in the file: `resetImportWorkflow()`, `setImportDialogOpen(true)`, import dialog, file selector, target program selector, preview handler, duplicate/status rows, and confirm handler. Current scope: fix the confirmed cause so authorized businesses with `excel_member_import = true` can click the restored original button, while businesses without the entitlement remain restricted by existing server-side import APIs. Do not create a replacement importer, hardcode business names, grant all plans, modify customer data, or deploy.
 
 ## Checklist
-- [x] Open and inspect current Customers page toolbar JSX and Import from Excel render condition
-- [x] Trace runtime `excel_member_import` from resolver through frontend state to button visibility
-- [x] Verify resolver migration is applied in the tested environment
-- [x] Identify the exact remaining cause and why prior fixes did not restore the button
-- [x] Restore the original Import from Excel button beside Export and Reconcile using existing handlers
-- [x] Confirm true-entitlement businesses render the enabled button and false-entitlement businesses cannot use it
-- [x] Verify button opens the existing import dialog and preview/duplicate/confirm flow remains connected in code
-- [x] Confirm Export to Excel and Reconcile Members remain unchanged
-- [x] Run validation and report exact root cause, changed files, test evidence, and deployment steps if any
+- [x] Inspect current disabled condition and click handler
+- [ ] Trace why `canImportMembers` remains false/stale for an authorized business
+- [ ] Restore clickable button behavior for authorized businesses
+- [ ] Preserve unauthorized restriction and server-side import authorization
+- [ ] Verify the button opens the existing import dialog using `resetImportWorkflow()` and `setImportDialogOpen(true)`
+- [ ] Verify preview, validation, duplicate detection, and confirm workflow remain connected
+- [ ] Confirm Export to Excel and Reconcile Members remain unchanged
+- [ ] Run validation and report exact cause, files changed, and test evidence
 
 ## Acceptance
-The Customers page visibly shows Import from Excel in the toolbar. Businesses whose resolved `excel_member_import` entitlement is true can open the original import dialog. Businesses without the entitlement cannot use the import workflow. The existing preview/confirm workflow remains unchanged.
+Authorized businesses can click Import from Excel and open the original import dialog. Unauthorized businesses cannot complete the import workflow. Existing preview/confirm import APIs remain unchanged.
