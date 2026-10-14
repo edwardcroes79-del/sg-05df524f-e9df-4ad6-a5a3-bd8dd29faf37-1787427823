@@ -24,7 +24,8 @@ import {
   Gift,
   Clock,
   AlertCircle,
-  Download
+  Download,
+  Upload
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useI18n } from "@/contexts/I18nProvider";
@@ -55,6 +56,33 @@ interface CustomerLoyaltyCard {
   } | null;
 }
 
+type ImportStatus = "valid" | "invalid" | "duplicate" | "existing" | "ambiguous";
+
+interface ImportPreviewRow {
+  rowNumber: number;
+  memberName: string;
+  emailAddress: string;
+  phoneNumber: string;
+  loyaltyProgram: string;
+  status: ImportStatus;
+  messages: string[];
+}
+
+interface ImportPreviewPayload {
+  rows: ImportPreviewRow[];
+  targetProgramId: string;
+  targetProgramName: string;
+  targetProgramRequired: boolean;
+  programsInFile: string[];
+  summary: Record<ImportStatus, number>;
+  importToken: string;
+}
+
+interface LoyaltyProgramOption {
+  id: string;
+  name: string;
+}
+
 export default function CustomersDashboard() {
   const { toast } = useToast();
   const { t, language } = useI18n();
@@ -62,7 +90,16 @@ export default function CustomersDashboard() {
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState<any>(null);
   const [canExportMembers, setCanExportMembers] = useState(false);
+  const [canImportMembers, setCanImportMembers] = useState(false);
   const [exportingMembers, setExportingMembers] = useState(false);
+  const [previewingImport, setPreviewingImport] = useState(false);
+  const [confirmingImport, setConfirmingImport] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importProgramId, setImportProgramId] = useState("");
+  const [importPreview, setImportPreview] = useState<ImportPreviewPayload | null>(null);
+  const [importResult, setImportResult] = useState<any | null>(null);
+  const [businessPrograms, setBusinessPrograms] = useState<LoyaltyProgramOption[]>([]);
   const [effectiveCustomerLimit, setEffectiveCustomerLimit] = useState<number | null>(null);
   const [currentMemberCount, setCurrentMemberCount] = useState(0);
   const [cards, setCards] = useState<CustomerLoyaltyCard[]>([]);
@@ -146,6 +183,29 @@ export default function CustomersDashboard() {
         setCanExportMembers(exportEntitlement === true);
       }
 
+      const { data: importEntitlement, error: importEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
+        p_business_id: resolvedBusinessId,
+        p_key: "excel_member_import",
+        p_fallback: false,
+      });
+
+      if (importEntitlementError) {
+        console.error("Unable to verify Excel member import entitlement:", importEntitlementError);
+        setCanImportMembers(false);
+      } else {
+        setCanImportMembers(importEntitlement === true);
+      }
+
+      const { data: programsData, error: programsError } = await supabase
+        .from("loyalty_programs")
+        .select("id, name")
+        .eq("business_id", resolvedBusinessId)
+        .eq("active", true)
+        .order("created_at", { ascending: true });
+
+      if (programsError) throw programsError;
+      setBusinessPrograms((programsData || []) as LoyaltyProgramOption[]);
+
       const { data: effectiveLimit } = await (supabase.rpc as any)("get_business_effective_numeric_limit", {
         p_business_id: resolvedBusinessId,
         p_key: "max_customers",
@@ -207,6 +267,153 @@ export default function CustomersDashboard() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resetImportWorkflow = () => {
+    setImportFile(null);
+    setImportProgramId("");
+    setImportPreview(null);
+    setImportResult(null);
+  };
+
+  const getImportErrorMessage = (status: number, fallback: string) => {
+    if (status === 401) return "Your session expired. Please sign in again and retry the import.";
+    if (status === 403) return "Excel member import is not enabled for this subscription plan.";
+    if (status === 413) return fallback || "This workbook is too large to import safely.";
+    if (status >= 500) return "The import could not be processed right now. Please try again later.";
+    return fallback || "The import could not be completed.";
+  };
+
+  const handlePreviewImport = async () => {
+    if (previewingImport || !canImportMembers) return;
+
+    if (!importFile) {
+      toast({
+        title: "Choose an Excel file",
+        description: "Upload a Royalty Stamp .xlsx export before previewing the import.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!importFile.name.toLowerCase().endsWith(".xlsx")) {
+      toast({
+        title: "Unsupported file",
+        description: "Upload a genuine .xlsx workbook.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!importProgramId) {
+      toast({
+        title: "Select a loyalty program",
+        description: "Choose the target program for imported memberships before previewing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setPreviewingImport(true);
+      setImportPreview(null);
+      setImportResult(null);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast({
+          title: "Import unavailable",
+          description: "Please sign in again before importing members.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(`/api/business/member-import-preview?programId=${encodeURIComponent(importProgramId)}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        },
+        body: importFile,
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        const fallback = typeof body?.error === "string" ? body.error : "";
+        throw new Error(getImportErrorMessage(response.status, fallback));
+      }
+
+      const payload = await response.json();
+      setImportPreview(payload.preview);
+      setImportProgramId(payload.preview?.targetProgramId || importProgramId);
+
+      toast({
+        title: "Import preview ready",
+        description: "Review the row summary before confirming. No members have been imported yet.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Import preview failed",
+        description: err.message || "The workbook could not be previewed.",
+        variant: "destructive",
+      });
+    } finally {
+      setPreviewingImport(false);
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (confirmingImport || !importPreview || !canImportMembers) return;
+
+    try {
+      setConfirmingImport(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast({
+          title: "Import unavailable",
+          description: "Please sign in again before confirming the import.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch("/api/business/member-import-confirm", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          targetProgramId: importPreview.targetProgramId,
+          rows: importPreview.rows,
+          importToken: importPreview.importToken,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const fallback = typeof payload?.error === "string" ? payload.error : "";
+        throw new Error(getImportErrorMessage(response.status, fallback));
+      }
+
+      setImportResult(payload.result);
+      toast({
+        title: "Import complete",
+        description: `${payload.result?.createdCount || 0} members imported, ${payload.result?.skippedCount || 0} skipped, ${payload.result?.failedCount || 0} failed.`,
+      });
+      await fetchBusinessAndCustomers();
+    } catch (err: any) {
+      toast({
+        title: "Import failed",
+        description: err.message || "The import could not be confirmed.",
+        variant: "destructive",
+      });
+    } finally {
+      setConfirmingImport(false);
     }
   };
 
@@ -467,6 +674,21 @@ export default function CustomersDashboard() {
                     <Download className="h-4 w-4" />
                   )}
                   {exportingMembers ? "Exporting..." : "Export to Excel"}
+                </Button>
+              )}
+              {canImportMembers && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    resetImportWorkflow();
+                    setImportDialogOpen(true);
+                  }}
+                  disabled={previewingImport || confirmingImport}
+                  className="gap-2 whitespace-nowrap"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import from Excel
                 </Button>
               )}
             </div>
@@ -803,6 +1025,165 @@ export default function CustomersDashboard() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {canImportMembers && (
+          <Dialog open={importDialogOpen} onOpenChange={(open) => {
+            setImportDialogOpen(open);
+            if (!open) resetImportWorkflow();
+          }}>
+            <DialogContent className="max-w-4xl bg-card border-border overflow-y-auto max-h-[90vh]">
+              <DialogHeader>
+                <DialogTitle className="font-heading text-2xl font-bold flex items-center gap-2">
+                  <Upload className="text-primary w-6 h-6" /> Import Members from Excel
+                </DialogTitle>
+                <DialogDescription>
+                  Upload a Royalty Stamp .xlsx export, preview row results, then confirm. Selecting a file never imports members automatically.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-5 py-2">
+                <div className="grid gap-4 md:grid-cols-[1fr_16rem]">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Excel workbook</label>
+                    <Input
+                      type="file"
+                      accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      onChange={(event) => {
+                        setImportFile(event.target.files?.[0] || null);
+                        setImportPreview(null);
+                        setImportResult(null);
+                      }}
+                      disabled={previewingImport || confirmingImport}
+                    />
+                    <p className="text-xs text-muted-foreground">Use the same column format as the Royalty Stamp member export. Extra columns are ignored.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground">Target loyalty program</label>
+                    <select
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={importProgramId}
+                      onChange={(event) => {
+                        setImportProgramId(event.target.value);
+                        setImportPreview(null);
+                        setImportResult(null);
+                      }}
+                      disabled={previewingImport || confirmingImport}
+                    >
+                      <option value="">Select program</option>
+                      {businessPrograms.map((program) => (
+                        <option key={program.id} value={program.id}>{program.name}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">Imports are scoped to this business and selected program only.</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setImportDialogOpen(false);
+                      resetImportWorkflow();
+                    }}
+                    disabled={previewingImport || confirmingImport}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handlePreviewImport}
+                    disabled={previewingImport || confirmingImport || !importFile || !importProgramId}
+                    className="gap-2"
+                  >
+                    {previewingImport && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Preview Import
+                  </Button>
+                </div>
+
+                {importPreview && (
+                  <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
+                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <h3 className="font-heading font-bold text-foreground">Preview summary</h3>
+                        <p className="text-sm text-muted-foreground">Target program: {importPreview.targetProgramName}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {(["valid", "invalid", "duplicate", "existing", "ambiguous"] as ImportStatus[]).map((status) => (
+                          <Badge key={status} variant={status === "valid" ? "default" : "outline"} className="capitalize">
+                            {status}: {importPreview.summary[status] || 0}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="max-h-72 overflow-auto rounded-lg border bg-background">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Row</TableHead>
+                            <TableHead>Member</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Notes</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {importPreview.rows.slice(0, 25).map((row) => (
+                            <TableRow key={`${row.rowNumber}-${row.emailAddress || row.phoneNumber}`}>
+                              <TableCell>{row.rowNumber}</TableCell>
+                              <TableCell>{row.memberName || "—"}</TableCell>
+                              <TableCell>{row.emailAddress || "—"}</TableCell>
+                              <TableCell>
+                                <Badge variant={row.status === "valid" ? "default" : "secondary"} className="capitalize">
+                                  {row.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-xs text-xs text-muted-foreground">
+                                {row.messages.length > 0 ? row.messages.join(" ") : "Ready to import."}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {importPreview.rows.length > 25 && (
+                      <p className="text-xs text-muted-foreground">Showing the first 25 preview rows of {importPreview.rows.length}.</p>
+                    )}
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setImportPreview(null)}
+                        disabled={confirmingImport}
+                      >
+                        Choose another file
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleConfirmImport}
+                        disabled={confirmingImport || (importPreview.summary.valid || 0) === 0}
+                        className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        {confirmingImport && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Confirm Import
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {importResult && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                    <p className="font-semibold">Final result</p>
+                    <p>{importResult.createdCount || 0} created, {importResult.skippedCount || 0} skipped, {importResult.failedCount || 0} failed.</p>
+                  </div>
+                )}
               </div>
             </DialogContent>
           </Dialog>

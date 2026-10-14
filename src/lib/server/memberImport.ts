@@ -478,7 +478,7 @@ export async function createImportedMemberships(admin: any, businessId: string, 
       if (email) {
         const { data, error } = await admin
           .from("customers")
-          .select("id, name, email, phone")
+          .select("id, user_id, name, email, phone")
           .eq("email", email)
           .maybeSingle();
 
@@ -489,7 +489,7 @@ export async function createImportedMemberships(admin: any, businessId: string, 
       if (!customer && phone) {
         const { data, error } = await admin
           .from("customers")
-          .select("id, name, email, phone")
+          .select("id, user_id, name, email, phone")
           .eq("phone", phone)
           .maybeSingle();
 
@@ -498,22 +498,16 @@ export async function createImportedMemberships(admin: any, businessId: string, 
       }
 
       if (!customer) {
-        const pseudoUserId = createHash("sha256")
-          .update(`${businessId}:${targetProgramId}:${email || phone}:${row.memberName}`)
-          .digest("hex")
-          .slice(0, 32)
-          .replace(/^(.{8})(.{4})(.{4})(.{4})(.{12}).*$/, "$1-$2-4$3-a$4-$5");
-
         const { data: insertedCustomer, error: customerError } = await admin
           .from("customers")
           .insert({
             id: randomUUID(),
-            user_id: pseudoUserId,
+            user_id: null,
             name: row.memberName,
             email,
             phone,
           })
-          .select("id, name, email, phone")
+          .select("id, user_id, name, email, phone")
           .single();
 
         if (customerError) throw customerError;
