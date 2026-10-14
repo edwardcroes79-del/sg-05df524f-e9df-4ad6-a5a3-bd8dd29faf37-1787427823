@@ -141,30 +141,30 @@ export default function CustomersDashboard() {
 
       let resolvedBusinessId: string | null = null;
 
-      const { data: membership, error: membershipError } = await supabase
-        .from("business_users")
-        .select("business_id, role, status")
-        .eq("user_id", session.user.id)
-        .eq("status", "active")
+      const { data: businessData, error: bizError } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("owner_id", session.user.id)
         .limit(1)
         .maybeSingle();
 
-      if (membershipError) throw membershipError;
+      if (bizError) throw bizError;
 
-      if (membership?.business_id) {
-        resolvedBusinessId = membership.business_id;
+      if (businessData?.id) {
+        resolvedBusinessId = businessData.id;
       } else {
-        const { data: businessData, error: bizError } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("owner_id", session.user.id)
+        const { data: membership, error: membershipError } = await supabase
+          .from("business_users")
+          .select("business_id, role, status")
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
           .limit(1)
           .maybeSingle();
 
-        if (bizError) throw bizError;
+        if (membershipError) throw membershipError;
 
-        if (businessData) {
-          resolvedBusinessId = businessData.id;
+        if (membership?.business_id) {
+          resolvedBusinessId = membership.business_id;
         }
       }
 
