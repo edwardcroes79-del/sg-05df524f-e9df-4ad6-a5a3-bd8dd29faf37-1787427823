@@ -77,6 +77,19 @@ async function resolveBusinessForUser(authorization: string) {
     throw makeHttpError("Business access required.", 403);
   }
 
+  const { data: ownerMembership, error: ownerMembershipError } = await userClient
+    .from("business_users")
+    .select("id")
+    .eq("business_id", workspace.id)
+    .eq("user_id", userData.user.id)
+    .eq("role", "owner")
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (ownerMembershipError || !ownerMembership) {
+    throw makeHttpError("Business owner access required.", 403);
+  }
+
   return {
     userId: userData.user.id as string,
     businessId: workspace.id as string,
