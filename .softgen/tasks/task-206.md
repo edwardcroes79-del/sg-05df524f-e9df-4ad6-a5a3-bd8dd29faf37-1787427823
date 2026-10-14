@@ -1,6 +1,6 @@
 ---
 title: Staff Search Send Stamp Permission
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [staff, permissions, stamps, authorization]
@@ -10,18 +10,18 @@ position: 206
 ---
 
 ## Notes
-Implemented and fixed one Owner-controlled ON/OFF permission named Allow Search & Send Stamp for staff members. New reported bug: the stamping page shows "Search & Send Stamp is off for this staff account" for a logged-in Owner and hides the customer search field. Owners must always have Search & Send Stamp access under the existing Owner role without needing a staff permission toggle. Diagnose the actual authenticated role resolution, database permission helper, stamping page UI gating, and Search & Send stamp API authorization. Apply staff ON/OFF only to actual `staff` rows. Preserve QR/NFC and hardware scanner stamping, business isolation, location permissions, program authorization, stamp balances, rewards, and unrelated features.
+Implemented and fixed one Owner-controlled ON/OFF permission named Allow Search & Send Stamp for staff members. Latest bug: the stamping page showed "Search & Send Stamp is off for this staff account" for a logged-in Owner and hid the customer search field. Root cause: the stamping page resolved an active `business_users` row before checking ownership, so an Owner who also had a business-user row could be treated as staff-restricted. The server-side Search & Send endpoint also needed to explicitly apply the ON/OFF permission only to `role = "staff"`. Fixed `src/pages/dashboard/scan.tsx` to check owned business first and grant Owners unrestricted Search & Send access. Fixed `src/pages/api/staff/search-send-stamp.ts` so non-owners must have an active staff row with `allow_search_send_stamp = true`. Updated the database helper so Owners return true and staff permission checks only apply to `role = 'staff'`. QR/NFC and hardware scanner stamping, location assignments, stamps, rewards, customer data, owner role, and unrelated permissions were not changed. Safe SQL role/access checks ran, `npx tsc --noEmit` passed, and `check_for_errors` passed with no CSS, linting, TypeScript, or server errors.
 
 ## Checklist
-- [ ] Inspect stamping page role resolution and UI gating for Search & Send Stamp
-- [ ] Inspect server-side Search & Send stamp API authorization
-- [ ] Inspect database permission helper and actual role handling
-- [ ] Identify exact root cause of Owner being treated as staff-restricted
-- [ ] Ensure Owners always see and can use the customer search workflow
-- [ ] Ensure Staff OFF remains blocked and Staff ON remains allowed
-- [ ] Preserve QR/NFC and hardware scanner stamping behavior
-- [ ] Run TypeScript/static validation and safe non-destructive role checks
-- [ ] Report root cause, changed files, and actual test results
+- [x] Inspect stamping page role resolution and UI gating for Search & Send Stamp
+- [x] Inspect server-side Search & Send stamp API authorization
+- [x] Inspect database permission helper and actual role handling
+- [x] Identify exact root cause of Owner being treated as staff-restricted
+- [x] Ensure Owners always see and can use the customer search workflow
+- [x] Ensure Staff OFF remains blocked and Staff ON remains allowed
+- [x] Preserve QR/NFC and hardware scanner stamping behavior
+- [x] Run TypeScript/static validation and safe non-destructive role checks
+- [x] Report root cause, changed files, and actual test results
 
 ## Acceptance
 Owners can use Search & Send Stamp without a staff permission toggle. Staff rows obey the ON/OFF permission server-side and in the UI. QR/NFC stamping and unrelated loyalty behavior remain unchanged.
