@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.search_business_customers(uuid, text, integer);
