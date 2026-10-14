@@ -1,8 +1,8 @@
 ---
 title: VIP Member Identification
-status: done
-priority: high
-type: feature
+status: in_progress
+priority: urgent
+type: bug
 tags: [customers, vip, entitlement, memberships]
 created_by: agent
 created_at: 2026-10-14T19:17:49Z
@@ -10,18 +10,18 @@ position: 205
 ---
 
 ## Notes
-Implemented VIP Member Identification as a focused feature. Inspection found `customer_loyalty_cards` has membership/business/program scope (`id`, `customer_id`, `business_id`, `loyalty_program_id`, `status`) but no VIP column, so a membership-scoped migration file is required. Live plan configuration already has `vip_member_identification` rows enabled for Corporate (`mega_plan`) and Enterprise, and the entitlement key is present in the standard registry for Super Admin plan controls. Added an unapplied migration file for `customer_loyalty_cards.is_vip`, a server-side owner/entitlement checked update API, and Customers page VIP badges/filter/mark-unmark controls. No customer rows, production records, stamps, rewards, history, or plan prices were modified. Static validation passed with no CSS, linting, TypeScript, or server errors. Manual owner/session tests for mark, unmark, non-entitled denial, and cross-business isolation still require dedicated browser sessions after applying the migration.
+VIP Member Identification was added with membership-scoped UI/API logic, but the Customers page now fails with `column customer_loyalty_cards.is_vip does not exist`. Current fix scope: inspect live Supabase schema, migration files, generated types, and recent VIP feature changes; confirm intended VIP storage location; apply the smallest safe schema/code correction only after verifying whether a migration is required. Existing regular members must appear when VIP only is off, VIP only must show verified VIP memberships only, and existing export/import/reconciliation/stamps/rewards/history must remain unchanged. No customer data, production records, unrelated features, plan prices, or deployment should be modified.
 
 ## Checklist
-- [x] Inspect Customers page, member detail UI, schema/types, entitlement registry, and owner authorization helpers
-- [x] Determine whether a membership-scoped schema migration is required and keep VIP status business/program scoped
-- [x] Add `vip_member_identification` entitlement to the existing entitlement registry and Super Admin controls
-- [x] Add owner-only, entitlement-checked server endpoint for marking/unmarking membership VIP status
-- [x] Add VIP badge in customer list and member detail surfaces
-- [x] Add VIP-only filter on Registered Customers
-- [x] Ensure VIP changes do not alter stamps, rewards, registration, or history
-- [x] Run static validation and safe authorization/schema checks
-- [x] Report changed files, migration requirements, entitlement behavior, tests run, and remaining risks
+- [ ] Inspect live `customer_loyalty_cards` schema and confirm whether `is_vip` exists
+- [ ] Inspect VIP migration, generated database types, Customers page query, and member VIP API
+- [ ] Identify the exact root cause of the query failure and intended membership-scoped storage
+- [ ] Apply the smallest safe schema/code correction after explaining any required migration
+- [ ] Restore Customers page behavior with VIP only off showing regular members
+- [ ] Verify VIP only on shows only memberships with verified VIP status
+- [ ] Preserve search, Excel export/import, Reconcile Members, stamps, rewards, and transaction history
+- [ ] Update generated types or query typing if required
+- [ ] Run static validation and safe non-destructive tests
 
 ## Acceptance
-Entitled Owners can mark/unmark VIP status for a selected business/program membership only. VIP status is visible and filterable on Registered Customers. Server-side checks prevent unauthorized or non-entitled updates, and unrelated loyalty history remains unchanged.
+The Customers page loads all active memberships normally when VIP only is off. VIP only filters to verified VIP memberships. VIP status is stored per business/program membership and server-side authorization/entitlement checks remain enforced.
