@@ -1,6 +1,6 @@
 ---
 title: Staff Search Send Stamp Permission
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [staff, permissions, stamps, authorization]
@@ -10,17 +10,17 @@ position: 206
 ---
 
 ## Notes
-Implemented one Owner-controlled ON/OFF permission named Allow Search & Send Stamp for staff members. New reported bug: enabling the toggle for the account labelled Owner fails with "Permission update failed — Failed to update Search & Send Stamp permission." This permission is intended to control Staff access only, not Owner access. Diagnose actual staff roles, permission-update API, and schema; hide/disable Owner controls with a clear Owner-unrestricted label; keep toggles working for Staff; preserve server-side Search & Send denial when Staff permission is OFF and allowance when ON. Do not alter Owner role, QR/NFC stamping, stamps, rewards, location assignments, customer data, or unrelated permissions.
+Implemented and fixed one Owner-controlled ON/OFF permission named Allow Search & Send Stamp for staff members. The reported bug was that enabling the toggle for an account labelled Owner failed with "Permission update failed — Failed to update Search & Send Stamp permission." Root cause: the Team Members UI rendered a writable staff-only permission toggle for Owner/non-staff rows, and the permission-update API did not clearly reject non-staff rows before the update path. The API also no longer updates a non-existent `business_users.updated_at` column. Owner rows now show "Owner access is not restricted by this staff setting." instead of a writable toggle. Actual Staff rows keep the toggle and save through the secured API. Server-side Staff OFF/ON enforcement for Search & Send Stamp remains in place. QR/NFC stamping, location assignments, stamps, rewards, customer data, owner role, and unrelated permissions were not changed. TypeScript validation passed with `npx tsc --noEmit`, safe SQL role/permission checks ran, and `check_for_errors` passed with no CSS, linting, TypeScript, or server errors.
 
 ## Checklist
-- [ ] Inspect actual Team Members roles, `business_users` schema, and permission-update API
-- [ ] Identify exact cause of Owner-row toggle failure
-- [ ] Hide or disable Search & Send Stamp toggle for Owner accounts and show unrestricted Owner label
-- [ ] Keep toggle enabled and saving correctly for actual Staff accounts
-- [ ] Preserve server-side OFF/ON enforcement for Staff Search & Send Stamp
-- [ ] Preserve QR/NFC stamping, location assignments, rewards, and unrelated permissions
-- [ ] Run TypeScript/static validation and safe non-destructive permission checks
-- [ ] Report root cause, changed files, and actual test results
+- [x] Inspect actual Team Members roles, `business_users` schema, and permission-update API
+- [x] Identify exact cause of Owner-row toggle failure
+- [x] Hide or disable Search & Send Stamp toggle for Owner accounts and show unrestricted Owner label
+- [x] Keep toggle enabled and saving correctly for actual Staff accounts
+- [x] Preserve server-side OFF/ON enforcement for Staff Search & Send Stamp
+- [x] Preserve QR/NFC stamping, location assignments, rewards, and unrelated permissions
+- [x] Run TypeScript/static validation and safe non-destructive permission checks
+- [x] Report root cause, changed files, and actual test results
 
 ## Acceptance
 Owner rows cannot be changed with this staff-only permission and show a clear unrestricted-access label. Staff rows can be enabled/disabled successfully. Direct Search & Send requests remain denied for Staff when OFF and allowed when ON, while QR/NFC stamping remains unchanged.
