@@ -260,8 +260,8 @@ export default function CustomersDashboard() {
       const startIndex = (currentPage - 1) * itemsPerPage;
       const endIndex = startIndex + itemsPerPage - 1;
 
-      const { data: cardsData, error: cardsError, count } = await supabase
-        .from("customer_loyalty_cards")
+      const { data: cardsData, error: cardsError, count } = await (supabase
+        .from("customer_loyalty_cards") as any)
         .select(`
           id,
           current_stamps,
