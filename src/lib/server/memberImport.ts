@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { createClient } from "@supabase/supabase-js";
 import ExcelJS from "exceljs";
 import type { NextApiRequest } from "next";
@@ -199,7 +199,8 @@ export async function parseWorkbookRows(buffer: Buffer): Promise<ParsedImportRow
   const workbook = new ExcelJS.Workbook();
 
   try {
-    await workbook.xlsx.load(buffer);
+    const workbookBuffer = buffer as unknown as Parameters<typeof workbook.xlsx.load>[0];
+    await workbook.xlsx.load(workbookBuffer);
   } catch {
     throw makeHttpError("The uploaded file is not a readable .xlsx workbook.", 400);
   }
@@ -489,7 +490,7 @@ export async function createImportedMemberships(admin: any, businessId: string, 
         const { data: insertedCustomer, error: customerError } = await admin
           .from("customers")
           .insert({
-            id: crypto.randomUUID(),
+            id: randomUUID(),
             user_id: pseudoUserId,
             name: row.memberName,
             email,
