@@ -234,6 +234,7 @@ export default function CustomersDashboard() {
         .from("customer_loyalty_cards")
         .select("customer_id")
         .eq("business_id", resolvedBusinessId)
+        .eq("status", "active")
         .not("customer_id", "is", null);
       setCurrentMemberCount(new Set((memberRows || []).map((row: any) => row.customer_id)).size);
 
@@ -267,6 +268,7 @@ export default function CustomersDashboard() {
           )
         `, { count: 'exact' })
         .eq("business_id", resolvedBusinessId)
+        .eq("status", "active")
         .range(startIndex, endIndex);
 
       if (cardsError) throw cardsError;
