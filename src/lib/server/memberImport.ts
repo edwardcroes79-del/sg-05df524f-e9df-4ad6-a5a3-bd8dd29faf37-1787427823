@@ -210,7 +210,7 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-export async function parseWorkbookRows(buffer: Buffer): Promise<ParsedImportRow[]> {
+export async function parseWorkbookRows(buffer: Buffer, options: { allowEmptyRows?: boolean } = {}): Promise<ParsedImportRow[]> {
   const workbook = new ExcelJS.Workbook();
 
   try {
@@ -264,7 +264,7 @@ export async function parseWorkbookRows(buffer: Buffer): Promise<ParsedImportRow
     }
   }
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && !options.allowEmptyRows) {
     throw makeHttpError("The workbook does not contain any member rows to import.", 400);
   }
 

@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await requireBulkMemberRemovalEntitlement(admin, businessId);
 
     const buffer = await readRequestBuffer(req);
-    const rows = await parseWorkbookRows(buffer);
+    const rows = await parseWorkbookRows(buffer, { allowEmptyRows: true });
     const preview = await buildReconcilePreview(admin, businessId, rows, targetProgramId);
 
     return res.status(200).json({ success: true, preview });
