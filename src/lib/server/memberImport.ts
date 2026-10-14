@@ -226,7 +226,7 @@ export async function parseWorkbookRows(buffer: Buffer, options: { allowEmptyRow
     throw makeHttpError("The workbook does not contain a worksheet.", 400);
   }
 
-  if (worksheet.rowCount < 2) {
+  if (worksheet.rowCount < 2 && !options.allowEmptyRows) {
     throw makeHttpError("The workbook does not contain any member rows to import.", 400);
   }
 
