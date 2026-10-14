@@ -1,6 +1,6 @@
 ---
 title: Customers Import Button Regression
-status: done
+status: in_progress
 priority: urgent
 type: bug
 tags: [customers, excel, import, entitlement]
@@ -10,18 +10,18 @@ position: 209
 ---
 
 ## Notes
-Fixed the missing Import from Excel button by correcting the runtime entitlement resolver path. Confirmed diagnosis: the existing Import from Excel workflow and APIs still exist, and the Customers page correctly hides the button when `excel_member_import` resolves to false. Root cause: Botica Benu had the saved plan setting enabled (`excel_member_import = true` on `mega_plan`) while the runtime resolver returned false, causing the authorized import button to be hidden. There is no supported business-level override table in the inspected schema, so the smallest safe fix was a resolver-only SQL update that evaluates the existing `businesses.subscription_plan -> plan_entitlements` boolean rule while preserving active subscription/contract restrictions. No plan names were hardcoded, no global entitlement grant was added, and no import UI/API replacement was created. The Customers page remains wired to the existing `resetImportWorkflow()` / `setImportDialogOpen(true)` flow and the existing `member-import-preview`, `member-import-confirm`, and `memberImport.ts` workflow. Verification showed Botica Benu now resolves `excel_member_import = true`, while businesses with saved false plan values still resolve false. Export and reconciliation entitlement checks were included in verification and remain separate. `check_for_errors` passed. No customer data, schema tables, import APIs, production configuration, unrelated features, or deployment were changed.
+The Import from Excel button remains missing after the entitlement resolver fix. The existing Import from Excel workflow and APIs still exist, and the Customers page contains the original import dialog, `resetImportWorkflow()`, `setImportDialogOpen(true)`, preview, duplicate detection, validation, and confirmation handlers. Current scope: inspect the exact `canImportMembers` condition, live entitlement value for the logged-in/resolved business, business resolution logic, toolbar rendering, stale state, and responsive layout. Completion requires the original Import from Excel button to be visibly restored beside Export to Excel and Reconcile Members, and the existing dialog/workflow verified. Do not create a replacement importer, hardcode plan names, grant all businesses, alter customer data, or deploy.
 
 ## Checklist
-- [x] Inspect Customers page `canImportMembers` gating and import dialog wiring
-- [x] Inspect live `get_business_boolean_entitlement` implementation and entitlement tables
-- [x] Identify why runtime result contradicts saved `excel_member_import` plan configuration
-- [x] Apply the smallest resolver/query fix without hardcoding plan names or granting all businesses
-- [x] Verify authorized businesses resolve `excel_member_import = true`
-- [x] Verify non-authorized businesses still resolve `excel_member_import = false`
-- [x] Verify supported business-level override behavior if present
-- [x] Confirm import preview/confirm APIs remain wired and export/reconciliation unaffected
-- [x] Run validation and report root cause, changed files, and test results
+- [ ] Inspect current Customers page toolbar and `canImportMembers` gating
+- [ ] Verify whether the resolver migration is applied in the relevant environment
+- [ ] Inspect the actual entitlement value returned for the resolved business
+- [ ] Identify the remaining conditional-rendering, entitlement, permission, stale-state, or layout cause
+- [ ] Restore the original Import from Excel button beside Export and Reconcile
+- [ ] Verify the button opens the existing import dialog via `resetImportWorkflow()` and `setImportDialogOpen(true)`
+- [ ] Confirm import preview, validation, duplicate detection, and confirmation remain connected
+- [ ] Confirm Export to Excel, Reconcile Members, search, VIP filtering, and responsive layout remain unchanged
+- [ ] Run validation and report exact root cause, changed files, and test results
 
 ## Acceptance
-Businesses with `excel_member_import` enabled by the established entitlement rules see the existing Import from Excel button. Businesses without the entitlement do not. The existing import preview, duplicate detection, validation, and confirmation workflow remains unchanged.
+The Customers page visibly shows Import from Excel for businesses whose resolved `excel_member_import` entitlement is true and keeps it hidden for businesses where it is false. Clicking the button opens the original import dialog and preserves the existing preview/confirm workflow.
