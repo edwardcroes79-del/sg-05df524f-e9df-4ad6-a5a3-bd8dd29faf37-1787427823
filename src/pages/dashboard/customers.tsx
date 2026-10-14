@@ -133,12 +133,18 @@ export default function CustomersDashboard() {
       
       setBusiness({ id: resolvedBusinessId });
 
-      const { data: exportEntitlement } = await (supabase.rpc as any)("get_business_effective_boolean_entitlement", {
+      const { data: exportEntitlement, error: exportEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
         p_business_id: resolvedBusinessId,
         p_key: "excel_member_export",
         p_fallback: false,
       });
-      setCanExportMembers(exportEntitlement === true);
+
+      if (exportEntitlementError) {
+        console.error("Unable to verify Excel member export entitlement:", exportEntitlementError);
+        setCanExportMembers(false);
+      } else {
+        setCanExportMembers(exportEntitlement === true);
+      }
 
       const { data: effectiveLimit } = await (supabase.rpc as any)("get_business_effective_numeric_limit", {
         p_business_id: resolvedBusinessId,

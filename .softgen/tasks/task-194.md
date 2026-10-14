@@ -10,14 +10,14 @@ position: 194
 ---
 
 ## Notes
-Diagnose and fix why Excel Member Export is not visible for an Enterprise business after enabling `excel_member_export` in Super Admin. Scope includes verifying the saved `plan_entitlements` row for Enterprise, verifying the business subscription references the expected plan, tracing how Customers page frontend retrieves the entitlement, inspecting every condition controlling button visibility, confirming the button calls `/api/business/member-export`, and confirming backend entitlement enforcement remains independent. Do not implement Excel Member Import, hardcode Enterprise, change prices, limits, plan assignments, customer records, RLS, unrelated features, or deploy automatically. If the exact affected business cannot be identified from available data, report that and ask for the business ID/name needed for targeted verification.
+Diagnose and fix why Excel Member Export is not visible for an Enterprise business after enabling `excel_member_export` in Super Admin. Scope includes verifying the saved `plan_entitlements` row for Enterprise, verifying the business subscription references the expected plan, tracing how Customers page frontend retrieves the entitlement, inspecting every condition controlling button visibility, confirming the button calls `/api/business/member-export`, and confirming backend entitlement enforcement remains independent. Do not implement Excel Member Import, hardcode Enterprise, change prices, limits, plan assignments, customer records, RLS, unrelated features, or deploy automatically. If the exact affected business cannot be identified from available data, report that and ask for the business ID/name needed for targeted verification. Root cause found: `src/pages/dashboard/customers.tsx` rendered the button only when `canExportMembers` became true, but it called a non-existent frontend RPC named `get_business_effective_boolean_entitlement`. The live schema exposes `get_business_boolean_entitlement` and `get_business_entitlement_bool`, not `get_business_effective_boolean_entitlement`; the failed RPC returned no true value, and the page failed closed by hiding the Export to Excel button everywhere. Backend Phase 1 enforcement was already independent and reads `plan_entitlements.excel_member_export` directly. Fix: Customers page now checks the existing live `get_business_boolean_entitlement` RPC with `p_key = "excel_member_export"` and `p_fallback = false`, logs lookup failures without exposing the button, and continues using `/api/business/member-export` for the actual download.
 
 ## Checklist
 - [ ] Verify Enterprise `excel_member_export` saved `plan_id`, `value_type`, and `boolean_value`
 - [ ] Verify Enterprise business subscription references the correct plan record
-- [ ] Inspect Customers page implementation and every condition controlling Export button visibility
-- [ ] Inspect Phase 1 backend endpoint entitlement enforcement and API call path
-- [ ] Apply the smallest integration fix without hardcoding plan names or weakening authorization
+- [x] Inspect Customers page implementation and every condition controlling Export button visibility
+- [x] Inspect Phase 1 backend endpoint entitlement enforcement and API call path
+- [x] Apply the smallest integration fix without hardcoding plan names or weakening authorization
 - [ ] Run checks and report root cause, files changed, test results, and `.xlsx` download status
 
 ## Acceptance
