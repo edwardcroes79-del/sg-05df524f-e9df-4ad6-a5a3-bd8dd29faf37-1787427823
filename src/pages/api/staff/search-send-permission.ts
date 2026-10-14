@@ -50,6 +50,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Staff membership not found" });
     }
 
+    if (staffMembership.role !== "staff") {
+      return res.status(400).json({ error: "Search & Send Stamp permission applies to staff accounts only. Owner access is not restricted by this setting." });
+    }
+
     const { data: business, error: businessError } = await supabaseAdmin
       .from("businesses")
       .select("id, owner_id, contract_end_date, contract_status")
@@ -72,8 +76,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .from("business_users")
       .update({
         allow_search_send_stamp: allowSearchSendStamp,
-        updated_at: new Date().toISOString(),
-      } as any)
+      })
       .eq("id", staffMembership.id)
       .eq("business_id", business.id)
       .select("id, allow_search_send_stamp")

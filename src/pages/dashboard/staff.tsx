@@ -213,6 +213,14 @@ export default function StaffPage() {
   };
 
   const handleToggleSearchSendPermission = async (member: any, allowSearchSendStamp: boolean) => {
+    if (member.role !== "staff") {
+      toast({
+        title: "Owner access is unrestricted",
+        description: "Owner access is not restricted by this staff setting.",
+      });
+      return;
+    }
+
     try {
       setUpdatingSearchSendId(member.id);
 
@@ -399,14 +407,22 @@ export default function StaffPage() {
                     <div className="hidden md:flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
                       <div className="text-right">
                         <p className="text-xs font-semibold text-foreground">Allow Search & Send Stamp</p>
-                        <p className="text-[11px] text-muted-foreground">{member.allow_search_send_stamp === true ? "Enabled" : "Off by default"}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {member.role === "staff"
+                            ? member.allow_search_send_stamp === true ? "Enabled" : "Off by default"
+                            : "Owner access is not restricted by this staff setting."}
+                        </p>
                       </div>
-                      <Switch
-                        checked={member.allow_search_send_stamp === true}
-                        disabled={updatingSearchSendId === member.id}
-                        onCheckedChange={(checked) => handleToggleSearchSendPermission(member, checked)}
-                        aria-label="Allow Search & Send Stamp"
-                      />
+                      {member.role === "staff" ? (
+                        <Switch
+                          checked={member.allow_search_send_stamp === true}
+                          disabled={updatingSearchSendId === member.id}
+                          onCheckedChange={(checked) => handleToggleSearchSendPermission(member, checked)}
+                          aria-label="Allow Search & Send Stamp"
+                        />
+                      ) : (
+                        <Badge variant="secondary" className="whitespace-nowrap">Owner unrestricted</Badge>
+                      )}
                     </div>
                     <Badge variant="outline" className="hidden sm:inline-flex capitalize">
                       {member.role || t("dashboard.staff.roleFallback")}
@@ -424,12 +440,18 @@ export default function StaffPage() {
                       <DropdownMenuContent align="end">
                         <div className="flex items-center justify-between gap-3 px-2 py-2 md:hidden">
                           <span className="text-xs font-medium">Allow Search & Send Stamp</span>
-                          <Switch
-                            checked={member.allow_search_send_stamp === true}
-                            disabled={updatingSearchSendId === member.id}
-                            onCheckedChange={(checked) => handleToggleSearchSendPermission(member, checked)}
-                            aria-label="Allow Search & Send Stamp"
-                          />
+                          {member.role === "staff" ? (
+                            <Switch
+                              checked={member.allow_search_send_stamp === true}
+                              disabled={updatingSearchSendId === member.id}
+                              onCheckedChange={(checked) => handleToggleSearchSendPermission(member, checked)}
+                              aria-label="Allow Search & Send Stamp"
+                            />
+                          ) : (
+                            <span className="max-w-36 text-right text-[11px] text-muted-foreground">
+                              Owner access is not restricted by this staff setting.
+                            </span>
+                          )}
                         </div>
                         {member.status === 'active' ? (
                           <DropdownMenuItem onClick={() => handleUpdateStatus(member.id, 'inactive')}>
