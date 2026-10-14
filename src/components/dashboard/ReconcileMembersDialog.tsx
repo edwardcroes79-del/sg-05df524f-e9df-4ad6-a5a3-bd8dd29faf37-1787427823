@@ -49,6 +49,7 @@ type ReconcilePreview = {
     invalidRows: number;
     ambiguousRows: number;
     outsideProgramRows: number;
+    headersOnlyWorkbook: boolean;
   };
   reconcileToken: string;
 };
@@ -262,6 +263,18 @@ export function ReconcileMembersDialog({ open, programs, onOpenChange, onComplet
                 </div>
               )}
 
+              {preview.summary.headersOnlyWorkbook && (
+                <div className="flex gap-3 rounded-lg border-2 border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <div className="space-y-1">
+                    <p className="font-bold">Headers-only reconciliation workbook</p>
+                    <p>
+                      This workbook contains no member rows for {preview.targetProgramName}. If confirmed, {preview.summary.proposedRemoval} selected-program memberships are proposed for removal. Nothing will be removed unless you review the list and type REMOVE {selectedCount}.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="max-h-72 overflow-auto rounded-lg border bg-background">
                 <Table>
                   <TableHeader>
@@ -306,6 +319,11 @@ export function ReconcileMembersDialog({ open, programs, onOpenChange, onComplet
 
               <div className="rounded-lg border bg-background p-4 space-y-3">
                 <p className="text-sm text-muted-foreground">Type <strong>REMOVE {selectedCount}</strong> to confirm the selected membership removals. Customer profiles, stamps, rewards, and history are preserved.</p>
+                {preview.summary.headersOnlyWorkbook && (
+                  <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                    You are confirming a headers-only reconciliation list. This will remove {selectedCount} selected memberships from {preview.targetProgramName} only.
+                  </p>
+                )}
                 <Input value={confirmationText} onChange={(event) => setConfirmationText(event.target.value)} placeholder={`REMOVE ${selectedCount}`} disabled={confirming || selectedCount === 0} />
                 <Button type="button" onClick={confirmRemoval} disabled={confirming || selectedCount === 0 || confirmationText !== `REMOVE ${selectedCount}`} className="w-full gap-2">
                   {confirming && <Loader2 className="h-4 w-4 animate-spin" />} Confirm removal of {selectedCount} memberships

@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Select a target loyalty program before confirming removals." });
     }
 
-    if (!Array.isArray(rows) || rows.length === 0 || !rows.every(isReconcileRow)) {
+    if (!Array.isArray(rows) || !rows.every(isReconcileRow)) {
       return res.status(400).json({ error: "Preview rows are required before confirming removals." });
     }
 

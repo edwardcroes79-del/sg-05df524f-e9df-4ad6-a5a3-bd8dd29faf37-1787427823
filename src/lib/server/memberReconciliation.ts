@@ -43,6 +43,7 @@ export type ReconcilePreviewPayload = {
     invalidRows: number;
     ambiguousRows: number;
     outsideProgramRows: number;
+    headersOnlyWorkbook: boolean;
   };
   reconcileToken: string;
 };
@@ -213,7 +214,7 @@ export async function buildReconcilePreview(admin: any, businessId: string, rows
   const targetProgramName = normalizeText(String(targetProgram.name || ""));
   const targetRows = rows.filter((row) => normalizeText(row.loyaltyProgram) === targetProgramName);
 
-  if (targetRows.length === 0 && currentMemberships.length > 0) {
+  if (rows.length > 0 && targetRows.length === 0 && currentMemberships.length > 0) {
     throw makeHttpError("This workbook does not contain rows for the selected loyalty program, so reconciliation is blocked.", 400);
   }
 
@@ -342,6 +343,7 @@ export async function buildReconcilePreview(admin: any, businessId: string, rows
       invalidRows: previewRows.filter((row) => row.status === "invalid").length,
       ambiguousRows: previewRows.filter((row) => row.status === "ambiguous").length,
       outsideProgramRows: previewRows.filter((row) => row.status === "outside_program").length,
+      headersOnlyWorkbook: rows.length === 0,
     },
     reconcileToken: createReconcileToken(businessId, targetProgramId, previewRows, removalCandidates),
   };
