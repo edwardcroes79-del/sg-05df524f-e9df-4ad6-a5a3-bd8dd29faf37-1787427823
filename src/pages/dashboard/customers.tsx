@@ -756,7 +756,7 @@ export default function CustomersDashboard() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
               {searchTerm && (
                 <Button variant="ghost" onClick={() => setSearchTerm("")} className="gap-2">
                   <X className="h-4 w-4" /> {t("dashboard.customers.clearSearch")}
