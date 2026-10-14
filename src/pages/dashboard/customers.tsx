@@ -27,7 +27,8 @@ import {
   AlertCircle,
   Download,
   Upload,
-  FileCheck
+  FileCheck,
+  Crown
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useI18n } from "@/contexts/I18nProvider";
@@ -47,6 +48,7 @@ interface CustomerLoyaltyCard {
   total_stamps: number;
   rewards_earned: number;
   status: string;
+  is_vip: boolean | null;
   created_at: string;
   updated_at: string;
   customer: CustomerProfile;
@@ -94,6 +96,7 @@ export default function CustomersDashboard() {
   const [canExportMembers, setCanExportMembers] = useState(false);
   const [canImportMembers, setCanImportMembers] = useState(false);
   const [canBulkRemoveMembers, setCanBulkRemoveMembers] = useState(false);
+  const [canIdentifyVipMembers, setCanIdentifyVipMembers] = useState(false);
   const [exportingMembers, setExportingMembers] = useState(false);
   const [previewingImport, setPreviewingImport] = useState(false);
   const [confirmingImport, setConfirmingImport] = useState(false);
@@ -108,6 +111,8 @@ export default function CustomersDashboard() {
   const [currentMemberCount, setCurrentMemberCount] = useState(0);
   const [cards, setCards] = useState<CustomerLoyaltyCard[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [vipOnly, setVipOnly] = useState(false);
+  const [vipUpdatingId, setVipUpdatingId] = useState<string | null>(null);
   
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -213,6 +218,19 @@ export default function CustomersDashboard() {
         setCanBulkRemoveMembers(bulkRemovalEntitlement === true);
       }
 
+      const { data: vipEntitlement, error: vipEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
+        p_business_id: resolvedBusinessId,
+        p_key: "vip_member_identification",
+        p_fallback: false,
+      });
+
+      if (vipEntitlementError) {
+        console.error("Unable to verify VIP member identification entitlement:", vipEntitlementError);
+        setCanIdentifyVipMembers(false);
+      } else {
+        setCanIdentifyVipMembers(vipEntitlement === true);
+      }
+
       const { data: programsData, error: programsError } = await supabase
         .from("loyalty_programs")
         .select("id, name")
@@ -250,6 +268,7 @@ export default function CustomersDashboard() {
           total_stamps,
           rewards_earned,
           status,
+          is_vip,
           created_at,
           updated_at,
           customer:customers (
@@ -565,6 +584,69 @@ export default function CustomersDashboard() {
     await loadHistoryAndRewards(card);
   };
 
+  const handleToggleVip = async (card: CustomerLoyaltyCard) => {
+    if (!canIdentifyVipMembers || vipUpdatingId) return;
+
+    try {
+      setVipUpdatingId(card.id);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast({
+          title: "VIP update unavailable",
+          description: "Please sign in again before changing VIP status.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const nextVipStatus = card.is_vip !== true;
+      const response = await fetch("/api/business/member-vip", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          membershipId: card.id,
+          isVip: nextVipStatus,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const fallback = typeof payload?.error === "string" ? payload.error : "";
+        throw new Error(fallback || "VIP status could not be updated.");
+      }
+
+      setCards((currentCards) => currentCards.map((currentCard) =>
+        currentCard.id === card.id
+          ? { ...currentCard, is_vip: payload.membership?.is_vip === true }
+          : currentCard
+      ));
+
+      setSelectedCard((currentCard) =>
+        currentCard?.id === card.id
+          ? { ...currentCard, is_vip: payload.membership?.is_vip === true }
+          : currentCard
+      );
+
+      toast({
+        title: nextVipStatus ? "VIP member marked" : "VIP member removed",
+        description: `${card.customer.name} is ${nextVipStatus ? "now marked as VIP" : "no longer marked as VIP"} for this membership.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "VIP update failed",
+        description: err.message || "VIP status could not be updated.",
+        variant: "destructive",
+      });
+    } finally {
+      setVipUpdatingId(null);
+    }
+  };
+
   // Secure One-Click Redemption handler
   const handleRedeemReward = async (reward: any) => {
     if (!selectedCard || redeemingId || !business?.id) return;
@@ -624,7 +706,8 @@ export default function CustomersDashboard() {
     const emailMatch = cust.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
     const phoneMatch = cust.phone?.includes(searchTerm) || false;
     const programMatch = card.loyalty_programs?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false;
-    return nameMatch || emailMatch || phoneMatch || programMatch;
+    const vipMatch = !vipOnly || card.is_vip === true;
+    return vipMatch && (nameMatch || emailMatch || phoneMatch || programMatch);
   });
 
   return (
@@ -677,6 +760,17 @@ export default function CustomersDashboard() {
               {searchTerm && (
                 <Button variant="ghost" onClick={() => setSearchTerm("")} className="gap-2">
                   <X className="h-4 w-4" /> {t("dashboard.customers.clearSearch")}
+                </Button>
+              )}
+              {canIdentifyVipMembers && (
+                <Button
+                  type="button"
+                  variant={vipOnly ? "default" : "outline"}
+                  onClick={() => setVipOnly((current) => !current)}
+                  className="gap-2 whitespace-nowrap"
+                >
+                  <Crown className="h-4 w-4" />
+                  VIP only
                 </Button>
               )}
               {canExportMembers && (
@@ -775,7 +869,15 @@ export default function CustomersDashboard() {
                             {card.customer.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-foreground truncate">{card.customer.name}</span>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold text-foreground truncate">{card.customer.name}</span>
+                              {card.is_vip === true && (
+                                <Badge className="gap-1 bg-amber-100 text-amber-900 hover:bg-amber-100">
+                                  <Crown className="h-3 w-3" />
+                                  VIP
+                                </Badge>
+                              )}
+                            </div>
                             {card.customer.email && (
                               <span className="text-xs text-muted-foreground truncate">{card.customer.email}</span>
                             )}
@@ -805,14 +907,33 @@ export default function CustomersDashboard() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleViewCustomerDetails(card)} 
-                          className="hover:bg-primary hover:text-white"
-                        >
-                          <Eye className="w-4 h-4 mr-1.5" /> {t("dashboard.customers.viewDetails")}
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          {canIdentifyVipMembers && (
+                            <Button
+                              type="button"
+                              variant={card.is_vip === true ? "outline" : "ghost"}
+                              size="sm"
+                              onClick={() => handleToggleVip(card)}
+                              disabled={vipUpdatingId === card.id}
+                              className="gap-1.5"
+                            >
+                              {vipUpdatingId === card.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Crown className="w-4 h-4" />
+                              )}
+                              {card.is_vip === true ? "Unmark VIP" : "Mark VIP"}
+                            </Button>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleViewCustomerDetails(card)} 
+                            className="hover:bg-primary hover:text-white"
+                          >
+                            <Eye className="w-4 h-4 mr-1.5" /> {t("dashboard.customers.viewDetails")}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -880,14 +1001,39 @@ export default function CustomersDashboard() {
                       {selectedCard.customer.name.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h4 className="font-heading font-bold text-lg text-foreground truncate">
-                        {selectedCard.customer.name}
-                      </h4>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-heading font-bold text-lg text-foreground truncate">
+                          {selectedCard.customer.name}
+                        </h4>
+                        {selectedCard.is_vip === true && (
+                          <Badge className="gap-1 bg-amber-100 text-amber-900 hover:bg-amber-100">
+                            <Crown className="h-3 w-3" />
+                            VIP
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {t("dashboard.customers.customerSince", { date: new Date(selectedCard.customer.created_at).toLocaleDateString(locale) })}
                       </p>
                     </div>
                   </div>
+
+                  {canIdentifyVipMembers && (
+                    <Button
+                      type="button"
+                      variant={selectedCard.is_vip === true ? "outline" : "default"}
+                      onClick={() => handleToggleVip(selectedCard)}
+                      disabled={vipUpdatingId === selectedCard.id}
+                      className="w-full gap-2"
+                    >
+                      {vipUpdatingId === selectedCard.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Crown className="h-4 w-4" />
+                      )}
+                      {selectedCard.is_vip === true ? "Unmark VIP for this membership" : "Mark this membership as VIP"}
+                    </Button>
+                  )}
 
                   <div className="space-y-2.5 pt-2">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

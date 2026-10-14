@@ -10,16 +10,16 @@ position: 205
 ---
 
 ## Notes
-Implement VIP Member Identification as a focused feature. Inspect the existing Customers page, member details, database schema/types, plan-entitlement registry, and authorization helpers before changing schema or UI. Add a separate `vip_member_identification` entitlement through the existing entitlement architecture, initially intended for Corporate subject to current plan verification. Authorized business Owners should be able to mark/unmark a customer membership as VIP within the correct business and loyalty-program membership scope. Display VIP badges in customer list/member details and add a VIP-only filter. Server-side authorization and entitlement enforcement are required. VIP status must not affect stamps, rewards, registration, history, plan prices, customer data, or deployment.
+Implement VIP Member Identification as a focused feature. Inspection found `customer_loyalty_cards` has membership/business/program scope (`id`, `customer_id`, `business_id`, `loyalty_program_id`, `status`) but no VIP column, so a membership-scoped migration file is required. Live plan configuration already has `vip_member_identification` rows enabled for Corporate (`mega_plan`) and Enterprise, and the entitlement key is present in the standard registry for Super Admin plan controls. Added an unapplied migration file for `customer_loyalty_cards.is_vip`, a server-side owner/entitlement checked update API, and Customers page VIP badges/filter/mark-unmark controls. No customer rows, production records, stamps, rewards, history, or plan prices were modified.
 
 ## Checklist
-- [ ] Inspect Customers page, member detail UI, schema/types, entitlement registry, and owner authorization helpers
-- [ ] Determine whether a membership-scoped schema migration is required and keep VIP status business/program scoped
-- [ ] Add `vip_member_identification` entitlement to the existing entitlement registry and Super Admin controls
-- [ ] Add owner-only, entitlement-checked server endpoint for marking/unmarking membership VIP status
-- [ ] Add VIP badge in customer list and member detail surfaces
-- [ ] Add VIP-only filter on Registered Customers
-- [ ] Ensure VIP changes do not alter stamps, rewards, registration, or history
+- [x] Inspect Customers page, member detail UI, schema/types, entitlement registry, and owner authorization helpers
+- [x] Determine whether a membership-scoped schema migration is required and keep VIP status business/program scoped
+- [x] Add `vip_member_identification` entitlement to the existing entitlement registry and Super Admin controls
+- [x] Add owner-only, entitlement-checked server endpoint for marking/unmarking membership VIP status
+- [x] Add VIP badge in customer list and member detail surfaces
+- [x] Add VIP-only filter on Registered Customers
+- [x] Ensure VIP changes do not alter stamps, rewards, registration, or history
 - [ ] Run static validation and safe authorization/schema checks
 - [ ] Report changed files, migration requirements, entitlement behavior, tests run, and remaining risks
 
