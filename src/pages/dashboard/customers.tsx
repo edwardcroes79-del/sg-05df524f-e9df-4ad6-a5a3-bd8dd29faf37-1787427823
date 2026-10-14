@@ -803,21 +803,28 @@ export default function CustomersDashboard() {
                   {exportingMembers ? "Exporting..." : "Export to Excel"}
                 </Button>
               )}
-              {canImportMembers && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    resetImportWorkflow();
-                    setImportDialogOpen(true);
-                  }}
-                  disabled={previewingImport || confirmingImport}
-                  className="gap-2 whitespace-nowrap"
-                >
-                  <Upload className="h-4 w-4" />
-                  Import from Excel
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (!canImportMembers) {
+                    toast({
+                      title: "Import unavailable",
+                      description: "Excel member import is not enabled for this subscription plan.",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+
+                  resetImportWorkflow();
+                  setImportDialogOpen(true);
+                }}
+                disabled={previewingImport || confirmingImport || !canImportMembers}
+                className="gap-2 whitespace-nowrap"
+              >
+                <Upload className="h-4 w-4" />
+                Import from Excel
+              </Button>
               {canBulkRemoveMembers && (
                 <Button
                   type="button"
