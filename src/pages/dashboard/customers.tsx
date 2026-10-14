@@ -23,7 +23,8 @@ import {
   CheckCircle,
   Gift,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Download
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useI18n } from "@/contexts/I18nProvider";
@@ -60,6 +61,8 @@ export default function CustomersDashboard() {
   const locale = language === "es" ? "es-ES" : "en-US";
   const [loading, setLoading] = useState(true);
   const [business, setBusiness] = useState<any>(null);
+  const [canExportMembers, setCanExportMembers] = useState(false);
+  const [exportingMembers, setExportingMembers] = useState(false);
   const [effectiveCustomerLimit, setEffectiveCustomerLimit] = useState<number | null>(null);
   const [currentMemberCount, setCurrentMemberCount] = useState(0);
   const [cards, setCards] = useState<CustomerLoyaltyCard[]>([]);
@@ -130,6 +133,13 @@ export default function CustomersDashboard() {
       
       setBusiness({ id: resolvedBusinessId });
 
+      const { data: exportEntitlement } = await (supabase.rpc as any)("get_business_effective_boolean_entitlement", {
+        p_business_id: resolvedBusinessId,
+        p_key: "excel_member_export",
+        p_fallback: false,
+      });
+      setCanExportMembers(exportEntitlement === true);
+
       const { data: effectiveLimit } = await (supabase.rpc as any)("get_business_effective_numeric_limit", {
         p_business_id: resolvedBusinessId,
         p_key: "max_customers",
@@ -191,6 +201,96 @@ export default function CustomersDashboard() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const extractDownloadFilename = (contentDisposition: string | null) => {
+    if (!contentDisposition) return `royalty-stamp-members-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1].replace(/"/g, ""));
+
+    const quotedMatch = contentDisposition.match(/filename="([^"]+)"/i);
+    if (quotedMatch?.[1]) return quotedMatch[1];
+
+    const plainMatch = contentDisposition.match(/filename=([^;]+)/i);
+    if (plainMatch?.[1]) return plainMatch[1].replace(/"/g, "").trim();
+
+    return `royalty-stamp-members-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  };
+
+  const getExportErrorMessage = (status: number, fallback: string) => {
+    if (status === 401) return "Your session expired. Please sign in again and retry the export.";
+    if (status === 403) return "Excel member export is not enabled for this subscription plan.";
+    if (status === 413) return fallback || "This export is too large to download at once.";
+    if (status >= 500) return "The export could not be prepared right now. Please try again later.";
+    return fallback || "The export could not be completed.";
+  };
+
+  const handleExportMembers = async () => {
+    if (exportingMembers || !canExportMembers) return;
+
+    try {
+      setExportingMembers(true);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast({
+          title: "Export unavailable",
+          description: "Please sign in again before exporting members.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch("/api/business/member-export", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        const body = contentType.includes("application/json")
+          ? await response.json().catch(() => null)
+          : null;
+        const fallback = typeof body?.error === "string" ? body.error : "";
+        throw new Error(getExportErrorMessage(response.status, fallback));
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) {
+        throw new Error("The server did not return a valid Excel workbook.");
+      }
+
+      const blob = await response.blob();
+      const filename = extractDownloadFilename(response.headers.get("content-disposition"));
+      const objectUrl = URL.createObjectURL(blob);
+
+      try {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+
+      toast({
+        title: "Export started",
+        description: `${filename} is downloading.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Export failed",
+        description: err.message || "The member export could not be completed.",
+        variant: "destructive",
+      });
+    } finally {
+      setExportingMembers(false);
     }
   };
 
@@ -341,11 +441,29 @@ export default function CustomersDashboard() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {searchTerm && (
-              <Button variant="ghost" onClick={() => setSearchTerm("")} className="gap-2">
-                <X className="h-4 w-4" /> {t("dashboard.customers.clearSearch")}
-              </Button>
-            )}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {searchTerm && (
+                <Button variant="ghost" onClick={() => setSearchTerm("")} className="gap-2">
+                  <X className="h-4 w-4" /> {t("dashboard.customers.clearSearch")}
+                </Button>
+              )}
+              {canExportMembers && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleExportMembers}
+                  disabled={exportingMembers}
+                  className="gap-2 whitespace-nowrap"
+                >
+                  {exportingMembers ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  {exportingMembers ? "Exporting..." : "Export to Excel"}
+                </Button>
+              )}
+            </div>
           </CardContent>
         </Card>
 
