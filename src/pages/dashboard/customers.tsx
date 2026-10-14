@@ -141,17 +141,31 @@ export default function CustomersDashboard() {
 
       let resolvedBusinessId: string | null = null;
 
-      const { data: businessData, error: bizError } = await supabase
+      const { data: ownedBusinesses, error: bizError } = await supabase
         .from("businesses")
         .select("id")
         .eq("owner_id", session.user.id)
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
 
       if (bizError) throw bizError;
 
-      if (businessData?.id) {
-        resolvedBusinessId = businessData.id;
+      if (ownedBusinesses && ownedBusinesses.length > 0) {
+        const entitlementResults = await Promise.all(
+          ownedBusinesses.map(async (ownedBusiness) => {
+            const { data: importEntitlement } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
+              p_business_id: ownedBusiness.id,
+              p_key: "excel_member_import",
+              p_fallback: false,
+            });
+
+            return {
+              businessId: ownedBusiness.id,
+              canImport: importEntitlement === true,
+            };
+          })
+        );
+
+        resolvedBusinessId = entitlementResults.find((result) => result.canImport)?.businessId || ownedBusinesses[0].id;
       } else {
         const { data: membership, error: membershipError } = await supabase
           .from("business_users")
