@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/contexts/I18nProvider";
 
 export default function StaffPage() {
@@ -32,6 +33,7 @@ export default function StaffPage() {
   // Remove Staff Modal State
   const [staffToRemove, setStaffToRemove] = useState<any>(null);
   const [removingStaff, setRemovingStaff] = useState(false);
+  const [updatingSearchSendId, setUpdatingSearchSendId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStaffData();
@@ -96,7 +98,7 @@ export default function StaffPage() {
         // Fetch staff members for this business
         const { data: businessUsers } = await supabase
           .from("business_users")
-          .select("id, user_id, role, status, created_at")
+          .select("id, user_id, role, status, allow_search_send_stamp, created_at")
           .eq("business_id", biz.id)
           .order("created_at", { ascending: false });
 
@@ -207,6 +209,52 @@ export default function StaffPage() {
       fetchStaffData();
     } catch (err: any) {
       toast({ title: t("dashboard.staff.statusUpdateError"), description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleToggleSearchSendPermission = async (member: any, allowSearchSendStamp: boolean) => {
+    try {
+      setUpdatingSearchSendId(member.id);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("dashboard.staff.noActiveSession"));
+
+      const response = await fetch("/api/staff/search-send-permission", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          staffMembershipId: member.id,
+          allowSearchSendStamp,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Search & Send Stamp permission could not be updated.");
+      }
+
+      setStaff((currentStaff) => currentStaff.map((currentMember) =>
+        currentMember.id === member.id
+          ? { ...currentMember, allow_search_send_stamp: allowSearchSendStamp }
+          : currentMember
+      ));
+
+      toast({
+        title: "Permission updated",
+        description: `Search & Send Stamp is now ${allowSearchSendStamp ? "allowed" : "blocked"} for this staff member.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Permission update failed",
+        description: err.message || "Search & Send Stamp permission could not be updated.",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingSearchSendId(null);
     }
   };
 
@@ -348,6 +396,18 @@ export default function StaffPage() {
                   </div>
                   
                   <div className="flex items-center gap-4 shrink-0">
+                    <div className="hidden md:flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
+                      <div className="text-right">
+                        <p className="text-xs font-semibold text-foreground">Allow Search & Send Stamp</p>
+                        <p className="text-[11px] text-muted-foreground">{member.allow_search_send_stamp === true ? "Enabled" : "Off by default"}</p>
+                      </div>
+                      <Switch
+                        checked={member.allow_search_send_stamp === true}
+                        disabled={updatingSearchSendId === member.id}
+                        onCheckedChange={(checked) => handleToggleSearchSendPermission(member, checked)}
+                        aria-label="Allow Search & Send Stamp"
+                      />
+                    </div>
                     <Badge variant="outline" className="hidden sm:inline-flex capitalize">
                       {member.role || t("dashboard.staff.roleFallback")}
                     </Badge>
@@ -362,6 +422,15 @@ export default function StaffPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <div className="flex items-center justify-between gap-3 px-2 py-2 md:hidden">
+                          <span className="text-xs font-medium">Allow Search & Send Stamp</span>
+                          <Switch
+                            checked={member.allow_search_send_stamp === true}
+                            disabled={updatingSearchSendId === member.id}
+                            onCheckedChange={(checked) => handleToggleSearchSendPermission(member, checked)}
+                            aria-label="Allow Search & Send Stamp"
+                          />
+                        </div>
                         {member.status === 'active' ? (
                           <DropdownMenuItem onClick={() => handleUpdateStatus(member.id, 'inactive')}>
                             <PowerOff className="w-4 h-4 mr-2" /> {t("dashboard.staff.deactivate")}

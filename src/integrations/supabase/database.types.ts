@@ -332,6 +332,7 @@ export type Database = {
       }
       business_users: {
         Row: {
+          allow_search_send_stamp: boolean
           business_id: string | null
           created_at: string | null
           id: string
@@ -340,6 +341,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          allow_search_send_stamp?: boolean
           business_id?: string | null
           created_at?: string | null
           id?: string
@@ -348,6 +350,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          allow_search_send_stamp?: boolean
           business_id?: string | null
           created_at?: string | null
           id?: string
@@ -1915,6 +1918,10 @@ export type Database = {
           p_location_id: string
           p_user_id: string
         }
+        Returns: boolean
+      }
+      user_can_search_send_stamp: {
+        Args: { p_business_id: string; p_user_id: string }
         Returns: boolean
       }
       user_has_business_location_access: {

@@ -32,6 +32,7 @@ export default function ScanQR() {
   const [business, setBusiness] = useState<any>(null);
   const [programs, setPrograms] = useState<any[]>([]);
   const [customers, setCustomers] = useState<RegisteredCustomer[]>([]);
+  const [canSearchSendStamp, setCanSearchSendStamp] = useState(false);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
   const [activeLocationId, setActiveLocationId] = useState<string>("");
   
@@ -249,10 +250,11 @@ export default function ScanQR() {
       }
 
       let resolvedBusinessId: string | null = null;
+      let resolvedCanSearchSendStamp = false;
 
       const { data: membership, error: membershipError } = await supabase
         .from("business_users")
-        .select("business_id, role, status")
+        .select("business_id, role, status, allow_search_send_stamp")
         .eq("user_id", session.user.id)
         .eq("status", "active")
         .limit(1)
@@ -262,6 +264,7 @@ export default function ScanQR() {
 
       if (membership?.business_id) {
         resolvedBusinessId = membership.business_id;
+        resolvedCanSearchSendStamp = membership.allow_search_send_stamp === true;
       } else {
         const { data: ownedBusiness, error: bizError } = await supabase
           .from("businesses")
@@ -273,8 +276,11 @@ export default function ScanQR() {
         if (bizError) throw bizError;
         if (ownedBusiness) {
           resolvedBusinessId = ownedBusiness.id;
+          resolvedCanSearchSendStamp = true;
         }
       }
+
+      setCanSearchSendStamp(resolvedCanSearchSendStamp);
 
       if (resolvedBusinessId) {
         // Set the minimal business object needed for the rest of the file
@@ -298,7 +304,7 @@ export default function ScanQR() {
           setSelectedProgramId(progs[0].id);
         }
 
-        await searchRegisteredCustomers("", resolvedBusinessId);
+        await searchRegisteredCustomers("", resolvedBusinessId, resolvedCanSearchSendStamp);
       }
     } catch (err) {
       console.error("Failed to load scanner context:", err);
@@ -307,9 +313,9 @@ export default function ScanQR() {
     }
   };
 
-  const searchRegisteredCustomers = async (query: string, businessIdOverride?: string) => {
+  const searchRegisteredCustomers = async (query: string, businessIdOverride?: string, canSearchOverride = canSearchSendStamp) => {
     const targetBusinessId = businessIdOverride || business?.id;
-    if (!targetBusinessId) return;
+    if (!targetBusinessId || !canSearchOverride) return;
 
     try {
       setCustomerSearchLoading(true);
@@ -537,9 +543,86 @@ export default function ScanQR() {
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedCustomer) {
-      handleProcessQR(`CUSTOMER:${selectedCustomer}`);
+      void handleSearchSendStamp(selectedCustomer);
     } else if (manualCode) {
       handleProcessQR(manualCode);
+    }
+  };
+
+  const handleSearchSendStamp = async (customerId: string) => {
+    if (processingRef.current || processing) return;
+    processingRef.current = true;
+    setProcessing(true);
+    setScanResult(null);
+    setPendingRewardQR(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("dashboard.scan.noActiveSession"));
+      if (!business?.id) throw new Error(t("dashboard.scan.missingBusiness"));
+      if (!selectedProgramId) throw new Error(t("dashboard.scan.missingProgram"));
+      if (!canSearchSendStamp) throw new Error("Search & Send Stamp is not enabled for this staff account");
+
+      const response = await fetch("/api/staff/search-send-stamp", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          customerId,
+          businessId: business.id,
+          loyaltyProgramId: selectedProgramId,
+          locationId: activeLocationId || undefined,
+        }),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Search & Send Stamp could not be completed.");
+      }
+
+      if (result.success && (!result.transaction_id || !result.loyalty_card_id)) {
+        throw new Error(t("dashboard.scan.stampVerificationFailed"));
+      }
+
+      setScanResult(result);
+
+      if (result.success) {
+        toast({
+          title: result.reward_earned ? t("dashboard.scan.rewardUnlocked") : t("dashboard.scan.stampAdded"),
+          description: result.message,
+          variant: "default",
+        });
+
+        void sendStampReceiptForTransaction(result.transaction_id).then((receipt) => {
+          if (receipt.error) {
+            console.warn("Stamp receipt email was not sent:", receipt.error);
+          }
+        });
+      } else {
+        toast({
+          title: t("dashboard.scan.failedIssueStamp"),
+          description: result.message,
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      setScanResult({
+        success: false,
+        message: err.message || t("dashboard.scan.processFailed"),
+      });
+      toast({
+        title: t("dashboard.scan.error"),
+        description: err.message || t("dashboard.scan.processFailed"),
+        variant: "destructive",
+      });
+    } finally {
+      processingRef.current = false;
+      setProcessing(false);
+      setSelectedCustomer("");
+      setCustomerSearchOpen(false);
     }
   };
 
@@ -945,68 +1028,74 @@ export default function ScanQR() {
                   ) : (
                     <form onSubmit={handleManualSubmit} className="space-y-6 py-4">
                       <div className="space-y-4">
-                        <div className="space-y-2 text-left">
-                          <label className="text-sm font-medium">{t("dashboard.scan.searchCustomersLabel")}</label>
-                          <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={customerSearchOpen}
-                                className="w-full justify-between font-normal bg-background"
-                                disabled={processing}
-                              >
-                                {selectedCustomer
-                                  ? customers.find((c) => c.id === selectedCustomer)?.name || t("dashboard.scan.customerSelected")
-                                  : t("dashboard.scan.searchByNameEmailPhone")}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-full p-0 max-w-[calc(100vw-3rem)] sm:max-w-md" align="start">
-                              <Command shouldFilter={false}>
-                                <CommandInput
-                                  placeholder={t("dashboard.scan.searchCustomersPlaceholder")}
-                                  value={customerSearchTerm}
-                                  onValueChange={(value) => {
-                                    setCustomerSearchTerm(value);
-                                    void searchRegisteredCustomers(value);
-                                  }}
-                                />
-                                <CommandList>
-                                  <CommandEmpty>
-                                    {customerSearchLoading ? t("dashboard.scan.searchingCustomers") : t("dashboard.scan.noRegisteredCustomers")}
-                                  </CommandEmpty>
-                                  <CommandGroup>
-                                    {customers.map((c) => (
-                                      <CommandItem
-                                        key={c.id}
-                                        value={c.id}
-                                        onSelect={() => {
-                                          setSelectedCustomer(c.id === selectedCustomer ? "" : c.id);
-                                          setManualCode("");
-                                          setCustomerSearchOpen(false);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            selectedCustomer === c.id ? "opacity-100" : "opacity-0"
-                                          )}
-                                        />
-                                        <div className="flex flex-col">
-                                          <span>{c.name}</span>
-                                          <span className="text-xs text-muted-foreground">
-                                            {[c.email, c.phone].filter(Boolean).join(" • ")}
-                                          </span>
-                                        </div>
-                                      </CommandItem>
-                                    ))}
-                                  </CommandGroup>
-                                </CommandList>
-                              </Command>
-                            </PopoverContent>
-                          </Popover>
-                        </div>
+                        {canSearchSendStamp ? (
+                          <div className="space-y-2 text-left">
+                            <label className="text-sm font-medium">{t("dashboard.scan.searchCustomersLabel")}</label>
+                            <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={customerSearchOpen}
+                                  className="w-full justify-between font-normal bg-background"
+                                  disabled={processing}
+                                >
+                                  {selectedCustomer
+                                    ? customers.find((c) => c.id === selectedCustomer)?.name || t("dashboard.scan.customerSelected")
+                                    : t("dashboard.scan.searchByNameEmailPhone")}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-full p-0 max-w-[calc(100vw-3rem)] sm:max-w-md" align="start">
+                                <Command shouldFilter={false}>
+                                  <CommandInput
+                                    placeholder={t("dashboard.scan.searchCustomersPlaceholder")}
+                                    value={customerSearchTerm}
+                                    onValueChange={(value) => {
+                                      setCustomerSearchTerm(value);
+                                      void searchRegisteredCustomers(value);
+                                    }}
+                                  />
+                                  <CommandList>
+                                    <CommandEmpty>
+                                      {customerSearchLoading ? t("dashboard.scan.searchingCustomers") : t("dashboard.scan.noRegisteredCustomers")}
+                                    </CommandEmpty>
+                                    <CommandGroup>
+                                      {customers.map((c) => (
+                                        <CommandItem
+                                          key={c.id}
+                                          value={c.id}
+                                          onSelect={() => {
+                                            setSelectedCustomer(c.id === selectedCustomer ? "" : c.id);
+                                            setManualCode("");
+                                            setCustomerSearchOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              selectedCustomer === c.id ? "opacity-100" : "opacity-0"
+                                            )}
+                                          />
+                                          <div className="flex flex-col">
+                                            <span>{c.name}</span>
+                                            <span className="text-xs text-muted-foreground">
+                                              {[c.email, c.phone].filter(Boolean).join(" • ")}
+                                            </span>
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-sm text-amber-900">
+                            Search & Send Stamp is off for this staff account. QR/NFC and hardware scanner stamping remain available.
+                          </div>
+                        )}
                         
                         <div className="relative flex py-2 items-center">
                           <div className="flex-grow border-t border-border"></div>
@@ -1029,7 +1118,7 @@ export default function ScanQR() {
                           <p className="text-xs text-muted-foreground">{t("dashboard.scan.hardwareHelp")}</p>
                         </div>
                       </div>
-                      <Button type="submit" className="w-full" disabled={(!manualCode && !selectedCustomer) || processing}>
+                      <Button type="submit" className="w-full" disabled={(!manualCode && (!selectedCustomer || !canSearchSendStamp)) || processing}>
                         {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("dashboard.scan.processing")}</> : t("dashboard.scan.issueStamp")}
                       </Button>
                     </form>

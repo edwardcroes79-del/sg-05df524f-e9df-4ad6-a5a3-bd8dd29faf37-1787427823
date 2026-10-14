@@ -10,16 +10,16 @@ position: 206
 ---
 
 ## Notes
-Implement one Owner-controlled ON/OFF permission named Allow Search & Send Stamp for staff members. Inspect the existing Staff Management page, staff permission system, Search & Send Stamp UI, and backend stamp-award APIs before changing schema/code. Default new staff to OFF and ensure existing staff are not accidentally granted the new permission. When OFF, staff must not see/use the customer-search-and-stamp workflow, and direct API calls must be denied server-side. Do not change QR/NFC stamping permissions, Owner privileges, stamp balances, rewards, or unrelated features. Enforce business isolation and preserve all customer/reward/history data.
+Implemented one Owner-controlled ON/OFF permission named Allow Search & Send Stamp for staff members. Inspection found staff permissions are stored on `business_users`, the Search & Send customer picker uses `search_business_customers`, and stamp awarding uses the `issue_stamp_tx` Supabase RPC. Added membership-scoped `business_users.allow_search_send_stamp boolean NOT NULL DEFAULT false`, preserving OFF default for existing and new staff. Added a database helper plus `search_business_customers` guard so disabled staff cannot use the customer-search list directly. Added Owner-only permission update API and a Search & Send stamp API that rechecks Owner/staff permission before calling the existing stamp RPC with the user's session. The regular QR/NFC/hardware scanner path continues to use the existing `issue_stamp_tx` RPC unchanged. No customer data, stamp balances, rewards, transactions, or unrelated features were modified.
 
 ## Checklist
-- [ ] Inspect Staff Management page, staff permission schema, Search & Send Stamp UI, and stamp-award APIs
-- [ ] Determine whether a schema migration is required for `allow_search_send_stamp`
-- [ ] Add Owner-controlled Allow Search & Send Stamp toggle per staff member, default OFF
-- [ ] Hide or disable Search & Send Stamp workflow for staff when permission is OFF
-- [ ] Enforce permission server-side on every relevant customer-search-and-stamp award API
-- [ ] Preserve QR/NFC stamping behavior and Owner privileges
-- [ ] Verify one business cannot read or change another business's staff permissions
+- [x] Inspect Staff Management page, staff permission schema, Search & Send Stamp UI, and stamp-award APIs
+- [x] Determine whether a schema migration is required for `allow_search_send_stamp`
+- [x] Add Owner-controlled Allow Search & Send Stamp toggle per staff member, default OFF
+- [x] Hide or disable Search & Send Stamp workflow for staff when permission is OFF
+- [x] Enforce permission server-side on every relevant customer-search-and-stamp award API
+- [x] Preserve QR/NFC stamping behavior and Owner privileges
+- [x] Verify one business cannot read or change another business's staff permissions
 - [ ] Run static validation and safe non-destructive permission checks
 - [ ] Report changed files, default behavior, migration requirements, and actual test results
 
