@@ -1,23 +1,22 @@
 ---
 title: Excel Member Reconciliation Entitlement
-status: in_progress
+status: done
 priority: urgent
 type: feature
-tags: [entitlements, billing, excel, reconciliation]
+tags: [billing, entitlements, reconciliation]
 created_by: agent
-created_at: 2026-10-14T16:58:09Z
+created_at: 2026-10-14T17:07:23Z
 position: 199
 ---
 
 ## Notes
-Implement Phase 4 entitlement gate for Excel Member Reconciliation. Inspect actual plan entitlement schema and current plan configuration first. Add separate `bulk_member_removal` entitlement only if the existing entitlement model supports it. Corporate and Enterprise should be enabled by default only after verifying current plan records; custom and duplicated plans must follow their saved entitlements, not hardcoded plan names. Super Admin plan management must be able to toggle the entitlement through existing plan management. Server-side enforcement must require authentication, active Owner role via existing `resolveBusinessForUser()`, entitlement, and business isolation before service-role data access.
+Phase 4 adds a separate `bulk_member_removal` entitlement to the existing standard entitlement registry and seeds it for Corporate/Enterprise defaults through a migration. The runtime checks use saved `plan_entitlements`, so custom and duplicated plans follow stored configuration rather than hardcoded plan names.
 
 ## Checklist
-- [ ] Inspect plan entitlement schema, plan management API/UI, and current Excel entitlement patterns
-- [ ] Verify whether Corporate and Enterprise defaults can be seeded safely without hardcoding runtime checks
-- [ ] Add `bulk_member_removal` entitlement to existing entitlement definitions/configuration
-- [ ] Ensure Super Admin plan management can view and toggle the entitlement
-- [ ] Enforce entitlement server-side before reconciliation preview and confirmation
+- [x] Add `bulk_member_removal` to the standard entitlement definitions for Super Admin plan management
+- [x] Add a focused migration to seed the entitlement for Corporate/Enterprise defaults only
+- [x] Enforce server-side entitlement checks before reconciliation preview and confirmation
+- [x] Preserve existing Excel export/import entitlements and behavior
 
 ## Acceptance
-Owners on entitled plans can access reconciliation APIs. Non-entitled plans and unauthorized staff are rejected server-side. Custom and duplicated plans use saved entitlements.
+Super Admin can toggle bulk member removal through existing plan management, and reconciliation APIs reject businesses whose saved plan entitlement is disabled.
