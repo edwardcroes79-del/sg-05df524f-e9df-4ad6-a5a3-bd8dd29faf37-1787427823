@@ -81,6 +81,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
+    const { data: activeMembership, error: activeMembershipError } = await supabaseAdmin
+      .from("customer_loyalty_cards")
+      .select("id")
+      .eq("customer_id", customerId)
+      .eq("business_id", businessId)
+      .eq("loyalty_program_id", loyaltyProgramId)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (activeMembershipError) {
+      return res.status(500).json({ error: "Unable to verify active program membership" });
+    }
+
+    if (!activeMembership?.id) {
+      return res.status(403).json({ error: "Customer does not have an active membership in the selected loyalty program" });
+    }
+
     const supabaseUser = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

@@ -10,17 +10,17 @@ position: 207
 ---
 
 ## Notes
-Fix the Search Registered Customers dropdown after Excel Member Reconciliation. Observed issue: customer `gipaxic150` was removed from the selected Loyalty Rewards program through Reconcile Members, but still appears in the customer search dropdown on the Stamps & Rewards page. Inspect reconciliation removal logic, the actual customer-search query/RPC used by the stamping page, and the server-side Search & Send stamp submission path. Determine whether reconciliation deletes, deactivates, or retains the membership association because of history. Dropdown results and direct search-based stamp requests must require an active membership in the selected business and selected loyalty program. Preserve global customer profiles, historical stamps, rewards, transactions, and memberships in other programs/businesses. Do not change unrelated features or deploy.
+Fix the Search Registered Customers dropdown after Excel Member Reconciliation. Observed issue: customer `gipaxic150` was removed from the selected Loyalty Rewards program through Reconcile Members, but still appears in the customer search dropdown on the Stamps & Rewards page. Inspection confirmed reconciliation preserves history by updating `customer_loyalty_cards.status` from `active` to `removed`; it does not delete the global customer profile or historical records. `gipaxic150` is `removed` in Test 13 Oct / Loyalty Rewards and remains `active` in another business/program, which must be preserved. Root cause: the Search & Send customer-search RPC was business-wide and did not require the selected loyalty program or active selected-program membership. Implemented selected-program active-membership filtering in the search RPC, passed the selected program from the stamping page, cleared cached dropdown results on program changes, and added server-side active selected-program membership verification before search-based stamping. Do not change unrelated features or deploy.
 
 ## Checklist
-- [ ] Inspect reconciliation removal logic and confirm whether memberships are deleted, deactivated, or retained
-- [ ] Inspect stamping page customer-search query/RPC and selected-program filtering
-- [ ] Inspect server-side Search & Send stamp API eligibility checks
-- [ ] Determine actual membership state for `gipaxic150` without modifying data
-- [ ] Fix dropdown search to return only active memberships in the selected business and selected loyalty program
-- [ ] Revalidate active selected-program membership server-side before awarding search-based stamps
-- [ ] Refresh or invalidate customer-search results after reconciliation succeeds where relevant
-- [ ] Preserve profiles, history, rewards, transactions, and other program/business memberships
+- [x] Inspect reconciliation removal logic and confirm whether memberships are deleted, deactivated, or retained
+- [x] Inspect stamping page customer-search query/RPC and selected-program filtering
+- [x] Inspect server-side Search & Send stamp API eligibility checks
+- [x] Determine actual membership state for `gipaxic150` without modifying data
+- [x] Fix dropdown search to return only active memberships in the selected business and selected loyalty program
+- [x] Revalidate active selected-program membership server-side before awarding search-based stamps
+- [x] Refresh or invalidate customer-search results after reconciliation succeeds where relevant
+- [x] Preserve profiles, history, rewards, transactions, and other program/business memberships
 - [ ] Run static validation and safe non-destructive membership/search checks
 
 ## Acceptance

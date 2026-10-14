@@ -304,9 +304,8 @@ export default function ScanQR() {
         if (progs && progs.length > 0) {
           setPrograms(progs);
           setSelectedProgramId(progs[0].id);
+          await searchRegisteredCustomers("", resolvedBusinessId, resolvedCanSearchSendStamp, progs[0].id);
         }
-
-        await searchRegisteredCustomers("", resolvedBusinessId, resolvedCanSearchSendStamp);
       }
     } catch (err) {
       console.error("Failed to load scanner context:", err);
@@ -315,9 +314,18 @@ export default function ScanQR() {
     }
   };
 
-  const searchRegisteredCustomers = async (query: string, businessIdOverride?: string, canSearchOverride = canSearchSendStamp) => {
+  const searchRegisteredCustomers = async (
+    query: string,
+    businessIdOverride?: string,
+    canSearchOverride = canSearchSendStamp,
+    programIdOverride = selectedProgramId
+  ) => {
     const targetBusinessId = businessIdOverride || business?.id;
-    if (!targetBusinessId || !canSearchOverride) return;
+    const targetProgramId = programIdOverride || selectedProgramId;
+    if (!targetBusinessId || !targetProgramId || !canSearchOverride) {
+      setCustomers([]);
+      return;
+    }
 
     try {
       setCustomerSearchLoading(true);
@@ -325,7 +333,8 @@ export default function ScanQR() {
       const { data, error } = await (supabase.rpc as any)("search_business_customers", {
         p_business_id: targetBusinessId,
         p_search: query,
-        p_limit: 25
+        p_limit: 25,
+        p_loyalty_program_id: targetProgramId,
       });
 
       if (error) throw error;
@@ -341,6 +350,14 @@ export default function ScanQR() {
     } finally {
       setCustomerSearchLoading(false);
     }
+  };
+
+  const handleSelectedProgramChange = (programId: string) => {
+    setSelectedProgramId(programId);
+    setSelectedCustomer("");
+    setCustomers([]);
+    setCustomerSearchTerm("");
+    void searchRegisteredCustomers("", undefined, undefined, programId);
   };
 
   useEffect(() => {
@@ -879,7 +896,7 @@ export default function ScanQR() {
               <CardTitle className="text-lg">{t("dashboard.scan.selectProgramTitle")}</CardTitle>
               <CardDescription>{t("dashboard.scan.selectProgramDescription")}</CardDescription>
               <div className="mt-4">
-                <Select value={selectedProgramId} onValueChange={setSelectedProgramId} disabled={processing || !!scanResult || !!pendingRewardQR}>
+                <Select value={selectedProgramId} onValueChange={handleSelectedProgramChange} disabled={processing || !!scanResult || !!pendingRewardQR}>
                   <SelectTrigger>
                     <SelectValue placeholder={t("dashboard.scan.selectProgramPlaceholder")} />
                   </SelectTrigger>
