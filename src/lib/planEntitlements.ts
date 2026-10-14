@@ -163,6 +163,14 @@ export const STANDARD_PLAN_ENTITLEMENTS = [
     publicVisible: true,
   },
   {
+    key: "bulk_member_removal",
+    label: "Bulk Member Removal",
+    description: "Allow Excel member reconciliation with safe bulk membership removal.",
+    valueType: "boolean",
+    defaultValue: true,
+    publicVisible: true,
+  },
+  {
     key: "search_stamp_staff_access",
     label: "Search Stamp access control for staff, configurable by the Business Admin",
     description: "Advertise configurable staff access control for Search Stamp.",

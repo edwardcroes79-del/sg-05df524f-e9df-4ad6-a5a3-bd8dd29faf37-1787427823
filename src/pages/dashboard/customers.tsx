@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { ReconcileMembersDialog } from "@/components/dashboard/ReconcileMembersDialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,8 @@ import {
   Clock,
   AlertCircle,
   Download,
-  Upload
+  Upload,
+  FileCheck
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useI18n } from "@/contexts/I18nProvider";
@@ -91,10 +93,12 @@ export default function CustomersDashboard() {
   const [business, setBusiness] = useState<any>(null);
   const [canExportMembers, setCanExportMembers] = useState(false);
   const [canImportMembers, setCanImportMembers] = useState(false);
+  const [canBulkRemoveMembers, setCanBulkRemoveMembers] = useState(false);
   const [exportingMembers, setExportingMembers] = useState(false);
   const [previewingImport, setPreviewingImport] = useState(false);
   const [confirmingImport, setConfirmingImport] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [reconcileDialogOpen, setReconcileDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importProgramId, setImportProgramId] = useState("");
   const [importPreview, setImportPreview] = useState<ImportPreviewPayload | null>(null);
@@ -194,6 +198,19 @@ export default function CustomersDashboard() {
         setCanImportMembers(false);
       } else {
         setCanImportMembers(importEntitlement === true);
+      }
+
+      const { data: bulkRemovalEntitlement, error: bulkRemovalEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
+        p_business_id: resolvedBusinessId,
+        p_key: "bulk_member_removal",
+        p_fallback: false,
+      });
+
+      if (bulkRemovalEntitlementError) {
+        console.error("Unable to verify bulk member removal entitlement:", bulkRemovalEntitlementError);
+        setCanBulkRemoveMembers(false);
+      } else {
+        setCanBulkRemoveMembers(bulkRemovalEntitlement === true);
       }
 
       const { data: programsData, error: programsError } = await supabase
@@ -689,6 +706,18 @@ export default function CustomersDashboard() {
                 >
                   <Upload className="h-4 w-4" />
                   Import from Excel
+                </Button>
+              )}
+              {canBulkRemoveMembers && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setReconcileDialogOpen(true)}
+                  disabled={previewingImport || confirmingImport}
+                  className="gap-2 whitespace-nowrap"
+                >
+                  <FileCheck className="h-4 w-4" />
+                  Reconcile Members
                 </Button>
               )}
             </div>
@@ -1187,6 +1216,15 @@ export default function CustomersDashboard() {
               </div>
             </DialogContent>
           </Dialog>
+        )}
+
+        {canBulkRemoveMembers && (
+          <ReconcileMembersDialog
+            open={reconcileDialogOpen}
+            programs={businessPrograms}
+            onOpenChange={setReconcileDialogOpen}
+            onCompleted={fetchBusinessAndCustomers}
+          />
         )}
 
         {/* Lightweight Confirmation Dialog for Redemption */}
