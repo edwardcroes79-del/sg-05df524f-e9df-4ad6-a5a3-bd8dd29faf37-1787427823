@@ -212,27 +212,13 @@ export async function buildReconcilePreview(admin: any, businessId: string, rows
   });
 
   const targetProgramName = normalizeText(String(targetProgram.name || ""));
-  const targetRows = rows.filter((row) => normalizeText(row.loyaltyProgram) === targetProgramName);
-
-  if (rows.length > 0 && targetRows.length === 0 && currentMemberships.length > 0) {
-    throw makeHttpError("This workbook does not contain rows for the selected loyalty program, so reconciliation is blocked.", 400);
-  }
-
   const seenRowKeys = new Set<string>();
   const retainedIds = new Set<string>();
 
   const previewRows: ReconcilePreviewRow[] = rows.map((row) => {
     const messages: string[] = [];
     const rowProgramName = normalizeText(row.loyaltyProgram);
-
-    if (rowProgramName !== targetProgramName) {
-      return {
-        ...row,
-        status: "outside_program",
-        matchedMembershipId: null,
-        messages: ["This row belongs to a different loyalty program and will not affect the selected program."],
-      };
-    }
+    const programLabelMatches = rowProgramName === targetProgramName;
 
     if (!row.emailAddress && !row.phoneNumber) {
       messages.push("Email address or phone number is required for reconciliation.");
@@ -267,6 +253,15 @@ export async function buildReconcilePreview(admin: any, businessId: string, rows
     const phoneMatches = row.phoneNumber ? byPhone.get(normalizePhone(row.phoneNumber)) || [] : [];
     [...emailMatches, ...phoneMatches].forEach((membership) => matches.set(membership.id, membership));
 
+    if (rowProgramName && !programLabelMatches && matches.size === 0) {
+      return {
+        ...row,
+        status: "outside_program",
+        matchedMembershipId: null,
+        messages: ["This row belongs to a different loyalty program and will not affect the selected program."],
+      };
+    }
+
     if (matches.size > 1) {
       return {
         ...row,
@@ -292,9 +287,21 @@ export async function buildReconcilePreview(admin: any, businessId: string, rows
       ...row,
       status: "retained",
       matchedMembershipId: matched.id,
-      messages: ["Matched current membership to retain."],
+      messages: [
+        programLabelMatches || !rowProgramName
+          ? "Matched current membership to retain."
+          : "Matched current membership to retain by email or phone in the selected program.",
+      ],
     };
   });
+
+  const hasRetainedRows = previewRows.some((row) => row.status === "retained");
+  const hasTargetProgramRows = rows.some((row) => normalizeText(row.loyaltyProgram) === targetProgramName);
+  const hasProgramLabels = rows.some((row) => Boolean(normalizeText(row.loyaltyProgram)));
+
+  if (rows.length > 0 && currentMemberships.length > 0 && !hasRetainedRows && !hasTargetProgramRows && hasProgramLabels) {
+    throw makeHttpError("This workbook does not contain rows for the selected loyalty program, so reconciliation is blocked.", 400);
+  }
 
   const ambiguousCurrentIds = new Set<string>();
   [...byEmail.values(), ...byPhone.values()].forEach((memberships) => {
