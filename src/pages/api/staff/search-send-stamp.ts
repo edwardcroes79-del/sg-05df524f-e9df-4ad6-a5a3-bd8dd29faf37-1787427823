@@ -65,10 +65,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!isOwner) {
       const { data: membership, error: membershipError } = await supabaseAdmin
         .from("business_users")
-        .select("id, allow_search_send_stamp, status")
+        .select("id, role, allow_search_send_stamp, status")
         .eq("business_id", businessId)
         .eq("user_id", user.id)
         .eq("status", "active")
+        .eq("role", "staff")
         .maybeSingle();
 
       if (membershipError || !membership) {

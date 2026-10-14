@@ -252,31 +252,33 @@ export default function ScanQR() {
       let resolvedBusinessId: string | null = null;
       let resolvedCanSearchSendStamp = false;
 
-      const { data: membership, error: membershipError } = await supabase
-        .from("business_users")
-        .select("business_id, role, status, allow_search_send_stamp")
-        .eq("user_id", session.user.id)
-        .eq("status", "active")
+      const { data: ownedBusiness, error: ownedBusinessError } = await supabase
+        .from("businesses")
+        .select("id, business_name, subscription_plan")
+        .eq("owner_id", session.user.id)
         .limit(1)
         .maybeSingle();
 
-      if (membershipError) throw membershipError;
+      if (ownedBusinessError) throw ownedBusinessError;
 
-      if (membership?.business_id) {
-        resolvedBusinessId = membership.business_id;
-        resolvedCanSearchSendStamp = membership.allow_search_send_stamp === true;
+      if (ownedBusiness) {
+        resolvedBusinessId = ownedBusiness.id;
+        resolvedCanSearchSendStamp = true;
       } else {
-        const { data: ownedBusiness, error: bizError } = await supabase
-          .from("businesses")
-          .select("id, business_name, subscription_plan")
-          .eq("owner_id", session.user.id)
+        const { data: membership, error: membershipError } = await supabase
+          .from("business_users")
+          .select("business_id, role, status, allow_search_send_stamp")
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
+          .eq("role", "staff")
           .limit(1)
           .maybeSingle();
 
-        if (bizError) throw bizError;
-        if (ownedBusiness) {
-          resolvedBusinessId = ownedBusiness.id;
-          resolvedCanSearchSendStamp = true;
+        if (membershipError) throw membershipError;
+
+        if (membership?.business_id) {
+          resolvedBusinessId = membership.business_id;
+          resolvedCanSearchSendStamp = membership.allow_search_send_stamp === true;
         }
       }
 
