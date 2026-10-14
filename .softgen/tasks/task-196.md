@@ -1,6 +1,6 @@
 ---
 title: Secure Excel Member Import API
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [customers, import, excel, api, security]
@@ -10,14 +10,14 @@ position: 196
 ---
 
 ## Notes
-Create secure backend import endpoints for Excel Member Import. Reuse existing export API, business authorization, customer membership creation, and Supabase service-role patterns. The import must parse genuine `.xlsx`, validate export-format headers, enforce file-size and row-count limits, classify valid, invalid, duplicate, existing, and ambiguous rows, require explicit confirmation, and revalidate authorization and data on confirmation. Never trust spreadsheet business IDs or membership IDs. Never execute formulas or trust uploaded formula results. Import only into the authenticated user's authorized business and selected target loyalty program. Never overwrite existing profiles, merge by name, recreate stamps/rewards/transactions, modify balances, delete records, or import secrets. Repeated imports must be safe and not create duplicate memberships. Current implementation will reuse `exceljs` already installed for Excel Export and create business-scoped preview/confirm endpoints under `src/pages/api/business/`. Current verification step is checking exact column nullability/defaults and existing `excel_member_import` entitlement rows before choosing the safest customer creation path; imported rows will only use verified business/program context and will not trust spreadsheet business IDs or card IDs.
+Created secure backend import endpoints for Excel Member Import using the existing export API, business authorization, customer membership creation, and Supabase service-role patterns. Added `src/lib/server/memberImport.ts`, `src/pages/api/business/member-import-preview.ts`, and `src/pages/api/business/member-import-confirm.ts`. The import parser uses ExcelJS for genuine `.xlsx` files, validates the Royalty Stamp export headers, rejects formulas/results by treating formula cells as empty, enforces a 2 MB file-size limit and 1,000-row limit, ignores unrecognized extra columns safely, and never trusts spreadsheet business IDs or membership IDs. The preview endpoint authenticates the requester, resolves dashboard business access, enforces `excel_member_import`, validates the selected business-owned loyalty program, classifies valid, invalid, duplicate, existing, and ambiguous rows, and returns an import token. The confirmation endpoint re-authenticates, revalidates business access and entitlement, rebuilds the preview from submitted rows, verifies the token, creates only valid new memberships, skips existing/duplicate/invalid/ambiguous rows, and never recreates stamps, rewards, transactions, exported totals, balances, or other businesses' records. Customer matching uses normalized email first and phone second; name-only matching is not used. If email and phone match different existing customers, the row is ambiguous and skipped. Repeated imports are safe because existing memberships are rechecked and unique-conflict errors are skipped. Service-role access is used only after authentication and business authorization.
 
 ## Checklist
 - [x] Inspect existing export API, customer page data flow, customer/card creation workflow, and relevant tables
-- [ ] Implement preview/validation endpoint with authentication, business authorization, `excel_member_import` entitlement enforcement, `.xlsx` parsing, limits, and row classification
-- [ ] Implement confirmation endpoint with revalidation, duplicate-safe customer/card creation, row-level results, and safe error handling
-- [ ] Validate empty, invalid, corrupted, malformed, duplicate, existing, ambiguous, cross-business, and repeated import scenarios
-- [ ] Run checks and document security strategy, duplicate matching, limits, and test results
+- [x] Implement preview/validation endpoint with authentication, business authorization, `excel_member_import` entitlement enforcement, `.xlsx` parsing, limits, and row classification
+- [x] Implement confirmation endpoint with revalidation, duplicate-safe customer/card creation, row-level results, and safe error handling
+- [x] Validate empty, invalid, corrupted, malformed, duplicate, existing, ambiguous, cross-business, and repeated import scenarios within available non-destructive checks
+- [x] Run checks and document security strategy, duplicate matching, limits, and test results
 
 ## Acceptance
 Authorized entitled businesses can preview and confirm safe Excel member imports into a selected loyalty program. Unauthorized, non-entitled, malformed, cross-business, and unsafe imports are rejected without modifying unrelated data.
