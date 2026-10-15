@@ -17,7 +17,10 @@ Add two announcements to the existing What's New section:
 Reuse existing structure and design without altering logic, entitlements, or security controls. Do not deploy.
 
 ## Checklist
-- [ ] Locate the "What's New" section in the codebase
-- [ ] Add "Anti-fraud protection" announcement following existing patterns
-- [ ] Add "Security Alerts" announcement following existing patterns
-- [ ] Run project checks
+- [x] Locate the "What's New" section in the codebase
+- [x] Add "Anti-fraud protection" announcement following existing patterns
+- [x] Add "Security Alerts" announcement following existing patterns
+- [x] Run project checks
+
+## Acceptance
+The new announcements correctly appear in the business dashboard's "What's New" section with translations, respecting existing structural conventions.

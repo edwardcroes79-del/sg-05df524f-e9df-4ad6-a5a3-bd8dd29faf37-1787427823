@@ -853,6 +853,78 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="space-y-8">
               <div>
                 <div className="space-y-4">
+                  {/* Anti-Fraud Protection Announcement (NEW) */}
+                  <div 
+                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🛡️</span>
+                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.antiFraud.title" as TranslationKey)}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {t("dashboard.whatsNew.antiFraud.description" as TranslationKey)}
+                      </p>
+                      
+                      <div className="pt-2 space-y-2">
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">⚙️</span>
+                          <span><strong>{t("dashboard.whatsNew.antiFraud.configurableTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.antiFraud.configurableDescription" as TranslationKey)}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">🔒</span>
+                          <span><strong>{t("dashboard.whatsNew.antiFraud.enforcementTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.antiFraud.enforcementDescription" as TranslationKey)}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">⏱️</span>
+                          <span><strong>{t("dashboard.whatsNew.antiFraud.cooldownTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.antiFraud.cooldownDescription" as TranslationKey)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Security Alerts Announcement (NEW) */}
+                  <div 
+                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🚨</span>
+                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.securityAlerts.title" as TranslationKey)}</h4>
+                      </div>
+                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
+                        {t("common.new")}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">
+                        {t("dashboard.whatsNew.securityAlerts.description" as TranslationKey)}
+                      </p>
+                      
+                      <div className="pt-2 space-y-2">
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">👀</span>
+                          <span><strong>{t("dashboard.whatsNew.securityAlerts.monitoringTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.securityAlerts.monitoringDescription" as TranslationKey)}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">🔐</span>
+                          <span><strong>{t("dashboard.whatsNew.securityAlerts.accessTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.securityAlerts.accessDescription" as TranslationKey)}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <span className="text-primary mt-0.5">🛡️</span>
+                          <span><strong>{t("dashboard.whatsNew.securityAlerts.isolationTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.securityAlerts.isolationDescription" as TranslationKey)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Stamp Correction Announcement (COMING SOON) */}
                   <div 
                     className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
