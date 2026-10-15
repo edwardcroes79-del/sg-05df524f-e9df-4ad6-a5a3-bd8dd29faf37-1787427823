@@ -10,14 +10,14 @@ position: 225
 ---
 
 ## Notes
-Focused bug fix for anti-fraud Security Alert Details modal showing “Staff identity unavailable.” Inspect the actual data flow before changing code: authenticated staff user making the blocked attempt, cooldown rejection event, security alert record, alert API hydration, staff/account/business-membership records, and modal rendering. Make the smallest safe correction only. Do not implement realtime updates, rebuild alerts, create unnecessary migrations, change cooldown enforcement, stamping methods, rewards, customer records, transaction history, or deployment behavior. Staff identity must come from authoritative server-side account/business records for the same business, never browser-supplied values or another business’s profile. Preserve existing alert rows, attempt counts, timestamps, cooldown windows, and read/unread state.
+Focused bug fix for anti-fraud Security Alert Details modal showing “Staff identity unavailable.” Inspection found alert/block rows preserve `staff_user_id`; the recent blocked attempts have active same-business `business_users` membership for the staff user, but no matching `profiles` row. The existing security-alert API only looked up `profiles.full_name/email`, so it returned the unavailable fallback even though the authoritative Supabase Auth account exists. The smallest fix updates `src/pages/api/business/security-alerts.ts` to keep the same business-membership/owner guard and resolve the exact `staff_user_id` through `auth.admin.getUserById` when the profile row is missing or incomplete. It does not substitute another staff member or owner. No schema, alert, cooldown, stamping, reward, customer, transaction, or realtime behavior was changed.
 
 ## Checklist
-- [ ] Inspect current security-alert API and modal rendering
-- [ ] Inspect actual staff identity fields on blocked attempts and alert records
-- [ ] Inspect staff/account/business-membership schema and relationships
-- [ ] Identify whether staff ID is missing, incorrect, joined through the wrong relationship, or not displayed
-- [ ] Apply the smallest safe fix to resolve same-business staff name and email
+- [x] Inspect current security-alert API and modal rendering
+- [x] Inspect actual staff identity fields on blocked attempts and alert records
+- [x] Inspect staff/account/business-membership schema and relationships
+- [x] Identify whether staff ID is missing, incorrect, joined through the wrong relationship, or not displayed
+- [x] Apply the smallest safe fix to resolve same-business staff name and email
 - [ ] Verify missing-name and missing-email fallbacks
 - [ ] Verify existing alert details and read/unread state remain unchanged
 - [ ] Run project checks and document browser/modal verification limits

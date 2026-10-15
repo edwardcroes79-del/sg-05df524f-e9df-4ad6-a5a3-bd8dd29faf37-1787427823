@@ -169,6 +169,12 @@ function mapById<T extends { id: string }>(rows: T[]) {
   return new Map(rows.map((row) => [row.id, row]));
 }
 
+type StaffAuthIdentity = {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+};
+
 async function loadAlertDetails(admin: SupabaseClient, alerts: SecurityAlertRow[]) {
   const businessIds = [...new Set(alerts.map((alert) => alert.business_id).filter(Boolean))];
   const customerIds = [...new Set(alerts.map((alert) => alert.customer_id).filter(Boolean))];
@@ -213,10 +219,45 @@ async function loadAlertDetails(admin: SupabaseClient, alerts: SecurityAlertRow[
       .map((membership) => `${membership.business_id}:${membership.user_id}`)
   );
 
+  const allowedStaffIds = staffIds.filter((staffId) => alerts.some((alert) => {
+    const business = businessesById.get(alert.business_id);
+
+    return alert.staff_user_id === staffId && (
+      business?.owner_id === staffId ||
+      staffMembershipKeys.has(`${alert.business_id}:${staffId}`)
+    );
+  }));
+
+  const authIdentities = await Promise.all(
+    allowedStaffIds.map(async (staffId): Promise<StaffAuthIdentity | null> => {
+      try {
+        const { data, error } = await admin.auth.admin.getUserById(staffId);
+
+        if (error || !data.user) {
+          return null;
+        }
+
+        const metadata = data.user.user_metadata as Record<string, unknown> | null;
+        const metadataFullName = typeof metadata?.full_name === "string" ? metadata.full_name.trim() : "";
+        const metadataName = typeof metadata?.name === "string" ? metadata.name.trim() : "";
+
+        return {
+          id: staffId,
+          fullName: metadataFullName || metadataName || null,
+          email: data.user.email?.trim() || null,
+        };
+      } catch {
+        return null;
+      }
+    })
+  );
+  const staffAuthById = mapById(authIdentities.filter(Boolean) as StaffAuthIdentity[]);
+
   return alerts.map((alert) => {
     const customer = customersById.get(alert.customer_id);
     const program = programsById.get(alert.loyalty_program_id);
     const staff = alert.staff_user_id ? staffById.get(alert.staff_user_id) : null;
+    const staffAuth = alert.staff_user_id ? staffAuthById.get(alert.staff_user_id) : null;
     const business = businessesById.get(alert.business_id);
     const staffBelongsToBusiness = Boolean(
       alert.staff_user_id &&
@@ -225,8 +266,8 @@ async function loadAlertDetails(admin: SupabaseClient, alerts: SecurityAlertRow[
         staffMembershipKeys.has(`${alert.business_id}:${alert.staff_user_id}`)
       )
     );
-    const staffFullName = staffBelongsToBusiness ? staff?.full_name?.trim() || null : null;
-    const staffEmail = staffBelongsToBusiness ? staff?.email?.trim() || null : null;
+    const staffFullName = staffBelongsToBusiness ? staff?.full_name?.trim() || staffAuth?.fullName || null : null;
+    const staffEmail = staffBelongsToBusiness ? staff?.email?.trim() || staffAuth?.email || null : null;
     const staffDisplayName = staffFullName || staffEmail || "Staff identity unavailable";
 
     return {
