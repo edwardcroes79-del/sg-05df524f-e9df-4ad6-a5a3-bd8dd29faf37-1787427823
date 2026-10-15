@@ -1,6 +1,6 @@
 ---
 title: Add Anti-Fraud and Security Alerts to What's New
-status: in_progress
+status: done
 priority: medium
 type: feature
 tags: [content, announcements]
