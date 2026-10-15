@@ -86,6 +86,98 @@ export type Database = {
           },
         ]
       }
+      anti_fraud_security_alerts: {
+        Row: {
+          attempt_count: number
+          business_id: string
+          cooldown_expires_at: string
+          cooldown_started_at: string
+          created_at: string
+          customer_id: string
+          first_attempt_at: string
+          id: string
+          latest_attempt_at: string
+          loyalty_card_id: string | null
+          loyalty_program_id: string
+          read_at: string | null
+          read_by: string | null
+          reason: string
+          staff_group_key: string
+          staff_user_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          business_id: string
+          cooldown_expires_at: string
+          cooldown_started_at: string
+          created_at?: string
+          customer_id: string
+          first_attempt_at: string
+          id?: string
+          latest_attempt_at: string
+          loyalty_card_id?: string | null
+          loyalty_program_id: string
+          read_at?: string | null
+          read_by?: string | null
+          reason?: string
+          staff_group_key: string
+          staff_user_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          business_id?: string
+          cooldown_expires_at?: string
+          cooldown_started_at?: string
+          created_at?: string
+          customer_id?: string
+          first_attempt_at?: string
+          id?: string
+          latest_attempt_at?: string
+          loyalty_card_id?: string | null
+          loyalty_program_id?: string
+          read_at?: string | null
+          read_by?: string | null
+          reason?: string
+          staff_group_key?: string
+          staff_user_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anti_fraud_security_alerts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anti_fraud_security_alerts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anti_fraud_security_alerts_loyalty_card_id_fkey"
+            columns: ["loyalty_card_id"]
+            isOneToOne: false
+            referencedRelation: "customer_loyalty_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anti_fraud_security_alerts_loyalty_program_id_fkey"
+            columns: ["loyalty_program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_rate_limits: {
         Row: {
           action: string
@@ -1971,6 +2063,14 @@ export type Database = {
           p_loyalty_program_id: string
         }
         Returns: boolean
+      }
+      mark_anti_fraud_security_alert_read: {
+        Args: { p_alert_id: string; p_user_id?: string }
+        Returns: {
+          id: string
+          read_at: string
+          status: string
+        }[]
       }
       quick_stamp_qr_issue_stamp: { Args: { p_token: string }; Returns: Json }
       redeem_reward: {
