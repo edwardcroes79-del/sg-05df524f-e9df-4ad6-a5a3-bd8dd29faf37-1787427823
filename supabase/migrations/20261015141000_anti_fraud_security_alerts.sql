@@ -253,7 +253,9 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.mark_anti_fraud_security_alert_read(uuid, uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.upsert_anti_fraud_security_alert_from_blocked_attempt(uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.upsert_anti_fraud_security_alert_from_blocked_attempt(uuid) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.upsert_anti_fraud_security_alert_from_blocked_attempt(uuid) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.upsert_anti_fraud_security_alert_from_blocked_attempt(uuid) FROM authenticated;
 
 DO $$
 DECLARE
