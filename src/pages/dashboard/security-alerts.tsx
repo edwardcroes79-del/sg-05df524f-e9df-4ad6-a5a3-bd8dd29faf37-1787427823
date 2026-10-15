@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { AlertTriangle, CheckCircle2, Clock, Eye, Loader2, RefreshCw, ShieldAlert, UserRound } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -52,10 +52,22 @@ export default function SecurityAlertsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [markingReadId, setMarkingReadId] = useState("");
   const [error, setError] = useState("");
+  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "live" | "polling" | "disconnected">("connecting");
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const unreadAlerts = useMemo(() => alerts.filter((alert) => !alert.readAt), [alerts]);
 
-  const loadAlerts = async (nextBusinessId = businessId, quiet = false) => {
+  const scheduleAuthoritativeRefresh = useCallback((nextBusinessId: string, delayMs = 750) => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+
+    refreshTimerRef.current = setTimeout(() => {
+      void loadAlerts(nextBusinessId, true);
+    }, delayMs);
+  }, []);
+
+  const loadAlerts = useCallback(async (nextBusinessId = businessId, quiet = false) => {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
@@ -94,7 +106,7 @@ export default function SecurityAlertsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [businessId, router]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -126,7 +138,81 @@ export default function SecurityAlertsPage() {
     };
 
     void initialize();
-  }, []);
+
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+    };
+  }, [loadAlerts, router]);
+
+  useEffect(() => {
+    if (!businessId) return;
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const channel = supabase
+      .channel(`security_alerts_${businessId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "anti_fraud_security_alerts",
+          filter: `business_id=eq.${businessId}`,
+        },
+        () => {
+          setConnectionStatus("live");
+          scheduleAuthoritativeRefresh(businessId);
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          setConnectionStatus("live");
+          scheduleAuthoritativeRefresh(businessId, 0);
+          return;
+        }
+
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          setConnectionStatus("polling");
+          if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+          }
+          reconnectTimeout = setTimeout(() => {
+            scheduleAuthoritativeRefresh(businessId, 0);
+          }, 1000);
+        }
+      });
+
+    pollInterval = setInterval(() => {
+      void loadAlerts(businessId, true);
+    }, connectionStatus === "live" ? 60000 : 15000);
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        scheduleAuthoritativeRefresh(businessId, 0);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    window.addEventListener("focus", handleVisibilityOrFocus);
+
+    return () => {
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [businessId, connectionStatus, loadAlerts, scheduleAuthoritativeRefresh]);
 
   const markAsRead = async (alert: SecurityAlert) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -200,6 +286,18 @@ export default function SecurityAlertsPage() {
             Refresh
           </Button>
         </div>
+
+        <Alert variant={connectionStatus === "disconnected" ? "destructive" : "default"}>
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>
+            {connectionStatus === "live" ? "Live security monitoring" : "Security monitoring fallback active"}
+          </AlertTitle>
+          <AlertDescription>
+            {connectionStatus === "live"
+              ? "New and updated security alerts are refreshed automatically from the authorized server state."
+              : "Realtime delivery is unavailable or reconnecting, so this page is checking for updates automatically."}
+          </AlertDescription>
+        </Alert>
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>

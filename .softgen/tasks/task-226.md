@@ -10,15 +10,15 @@ position: 226
 ---
 
 ## Notes
-Implement real-time updates for the existing anti-fraud Security Alerts dashboard. Reuse the existing Security Alerts API, staff identity resolution, alert trigger, read/unread state, and dashboard navigation badge where possible. Inspect Supabase Realtime support for `anti_fraud_security_alerts` before changing code. If realtime is unavailable or unsafe, add a lightweight polling/reconnect fallback. Preserve Owner/Admin server-side authorization and strict business isolation. Do not modify cooldown enforcement, stamp issuance, QR/NFC/camera/hardware flows, Search & Send Stamp, Quick Stamp QR, reward redemption, historical records, email/SMS notifications, or create a competing alert system.
+Implemented real-time updates for the existing anti-fraud Security Alerts dashboard using the current Security Alerts API, staff identity resolution, alert trigger, read/unread state, and dashboard navigation badge. Database inspection showed `anti_fraud_security_alerts` and `anti_fraud_blocked_attempts` have default replica identity, but `anti_fraud_security_alerts` was not returned from `pg_publication_tables` for `supabase_realtime` in this sandbox query output. To avoid requiring an unreviewed production publication/schema change, the dashboard now attempts a business-filtered Supabase Realtime subscription and uses a lightweight polling fallback. All realtime/polling events re-fetch authoritative alert state through `/api/business/security-alerts`, so the client never decides whether an alert is legitimate or who can see it. The alerts page re-fetches on received changes, reconnect/status changes, focus, visibility return, and periodic polling. The dashboard layout unread badge uses the same authorized API summary and refreshes through realtime-when-available plus polling/focus fallback. Cooldown enforcement, alert triggering, staff identity resolution, stamping flows, reward redemption, history, and notifications were not changed.
 
 ## Checklist
-- [ ] Inspect current Security Alerts API, dashboard page, layout badge, Supabase client, and refresh logic
-- [ ] Verify whether `anti_fraud_security_alerts` is enabled for Supabase Realtime/publication
-- [ ] Add business-scoped realtime subscription or lightweight polling fallback for the alerts page
-- [ ] Update unread badge behavior in dashboard layout without duplicating entries or trusting client authorization
-- [ ] Re-fetch authoritative alert state on reconnect, visibility return, and received changes
-- [ ] Preserve staff name/email display and read/unread behavior
+- [x] Inspect current Security Alerts API, dashboard page, layout badge, Supabase client, and refresh logic
+- [x] Verify whether `anti_fraud_security_alerts` is enabled for Supabase Realtime/publication
+- [x] Add business-scoped realtime subscription or lightweight polling fallback for the alerts page
+- [x] Update unread badge behavior in dashboard layout without duplicating entries or trusting client authorization
+- [x] Re-fetch authoritative alert state on reconnect, visibility return, and received changes
+- [x] Preserve staff name/email display and read/unread behavior
 - [ ] Verify business isolation, unauthorized staff denial, and project checks
 - [ ] Document actual database/static/browser verification and deployment status
 

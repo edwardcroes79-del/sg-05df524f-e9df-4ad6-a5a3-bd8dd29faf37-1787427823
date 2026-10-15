@@ -134,6 +134,89 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    if (!business?.id || !securityAlertsVisible) return;
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const refreshSummary = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await fetchSecurityAlertsSummary(business.id, session.access_token);
+    };
+
+    const scheduleSummaryRefresh = (delayMs = 750) => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+
+      refreshTimeout = setTimeout(() => {
+        void refreshSummary();
+      }, delayMs);
+    };
+
+    const channel = supabase
+      .channel(`security_alert_badge_${business.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "anti_fraud_security_alerts",
+          filter: `business_id=eq.${business.id}`,
+        },
+        () => {
+          scheduleSummaryRefresh();
+        }
+      )
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") {
+          scheduleSummaryRefresh(0);
+          return;
+        }
+
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          if (reconnectTimeout) {
+            clearTimeout(reconnectTimeout);
+          }
+
+          reconnectTimeout = setTimeout(() => {
+            scheduleSummaryRefresh(0);
+          }, 1000);
+        }
+      });
+
+    pollInterval = setInterval(() => {
+      void refreshSummary();
+    }, 15000);
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "visible") {
+        scheduleSummaryRefresh(0);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    window.addEventListener("focus", handleVisibilityOrFocus);
+
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      supabase.removeChannel(channel);
+    };
+  }, [business?.id, securityAlertsVisible]);
+  
+  useEffect(() => {
     if (!business?.id || !business?.owner_id || !currentUserId) return;
     if (business.owner_id !== currentUserId) return;
 
