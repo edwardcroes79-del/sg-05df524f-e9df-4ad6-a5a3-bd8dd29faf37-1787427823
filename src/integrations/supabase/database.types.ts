@@ -15,6 +15,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      anti_fraud_blocked_attempts: {
+        Row: {
+          attempted_at: string
+          business_id: string
+          cooldown_minutes: number
+          customer_id: string
+          id: string
+          loyalty_card_id: string | null
+          loyalty_program_id: string
+          reason: string
+          remaining_seconds: number
+          staff_user_id: string | null
+          verification_method: string | null
+        }
+        Insert: {
+          attempted_at?: string
+          business_id: string
+          cooldown_minutes: number
+          customer_id: string
+          id?: string
+          loyalty_card_id?: string | null
+          loyalty_program_id: string
+          reason?: string
+          remaining_seconds: number
+          staff_user_id?: string | null
+          verification_method?: string | null
+        }
+        Update: {
+          attempted_at?: string
+          business_id?: string
+          cooldown_minutes?: number
+          customer_id?: string
+          id?: string
+          loyalty_card_id?: string | null
+          loyalty_program_id?: string
+          reason?: string
+          remaining_seconds?: number
+          staff_user_id?: string | null
+          verification_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "anti_fraud_blocked_attempts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anti_fraud_blocked_attempts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anti_fraud_blocked_attempts_loyalty_card_id_fkey"
+            columns: ["loyalty_card_id"]
+            isOneToOne: false
+            referencedRelation: "customer_loyalty_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "anti_fraud_blocked_attempts_loyalty_program_id_fkey"
+            columns: ["loyalty_program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_rate_limits: {
         Row: {
           action: string
@@ -196,6 +267,41 @@ export type Database = {
             foreignKeyName: "business_addon_subscriptions_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_anti_fraud_settings: {
+        Row: {
+          business_id: string
+          cooldown_minutes: number
+          created_at: string
+          enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_id: string
+          cooldown_minutes?: number
+          created_at?: string
+          enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_id?: string
+          cooldown_minutes?: number
+          created_at?: string
+          enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_anti_fraud_settings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
@@ -1674,6 +1780,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      can_manage_business_settings: {
+        Args: { p_business_id: string; p_user_id?: string }
+        Returns: boolean
+      }
       can_use_program_at_location: {
         Args: {
           target_business_id: string
@@ -1725,6 +1835,13 @@ export type Database = {
       get_business_active_addon_capacity: {
         Args: { p_business_id: string; p_entitlement_key?: string }
         Returns: number
+      }
+      get_business_anti_fraud_settings: {
+        Args: { p_business_id: string }
+        Returns: {
+          cooldown_minutes: number
+          enabled: boolean
+        }[]
       }
       get_business_boolean_entitlement: {
         Args: { p_business_id: string; p_fallback?: boolean; p_key: string }
@@ -1895,13 +2012,40 @@ export type Database = {
           review_status: string
         }[]
       }
-      search_business_customers: {
-        Args: { p_business_id: string; p_limit?: number; p_search?: string }
+      search_business_customers:
+        | {
+            Args: { p_business_id: string; p_limit?: number; p_search?: string }
+            Returns: {
+              email: string
+              id: string
+              name: string
+              phone: string
+            }[]
+          }
+        | {
+            Args: {
+              p_business_id: string
+              p_limit?: number
+              p_loyalty_program_id?: string
+              p_search?: string
+            }
+            Returns: {
+              email: string
+              id: string
+              name: string
+              phone: string
+            }[]
+          }
+      upsert_business_anti_fraud_settings: {
+        Args: {
+          p_business_id: string
+          p_cooldown_minutes: number
+          p_enabled: boolean
+          p_user_id?: string
+        }
         Returns: {
-          email: string
-          id: string
-          name: string
-          phone: string
+          cooldown_minutes: number
+          enabled: boolean
         }[]
       }
       user_can_access_business_location: {
