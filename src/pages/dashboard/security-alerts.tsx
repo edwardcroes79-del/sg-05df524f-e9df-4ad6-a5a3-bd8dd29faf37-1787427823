@@ -52,7 +52,7 @@ export default function SecurityAlertsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [markingReadId, setMarkingReadId] = useState("");
   const [error, setError] = useState("");
-  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "live" | "polling" | "disconnected">("connecting");
+  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "live" | "polling" | "disconnected">("polling");
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const unreadAlerts = useMemo(() => alerts.filter((alert) => !alert.readAt), [alerts]);
@@ -67,7 +67,7 @@ export default function SecurityAlertsPage() {
     }, delayMs);
   }, []);
 
-  const loadAlerts = useCallback(async (nextBusinessId = businessId, quiet = false) => {
+  const loadAlerts = useCallback(async (nextBusinessId = businessId, quiet = false, manualRefresh = false) => {
     const { data: { session } } = await supabase.auth.getSession();
 
     if (!session) {
@@ -77,9 +77,9 @@ export default function SecurityAlertsPage() {
 
     if (!nextBusinessId) return;
 
-    if (quiet) {
+    if (manualRefresh) {
       setRefreshing(true);
-    } else {
+    } else if (!quiet) {
       setLoading(true);
     }
 
@@ -107,6 +107,10 @@ export default function SecurityAlertsPage() {
       setRefreshing(false);
     }
   }, [businessId, router]);
+
+  const handleManualRefresh = useCallback(() => {
+    void loadAlerts(businessId, true, true);
+  }, [businessId, loadAlerts]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -169,13 +173,12 @@ export default function SecurityAlertsPage() {
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          setConnectionStatus("live");
           scheduleAuthoritativeRefresh(businessId, 0);
           return;
         }
 
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          setConnectionStatus("polling");
+          setConnectionStatus((current) => current === "polling" ? current : "polling");
           if (reconnectTimeout) {
             clearTimeout(reconnectTimeout);
           }
@@ -187,7 +190,7 @@ export default function SecurityAlertsPage() {
 
     pollInterval = setInterval(() => {
       void loadAlerts(businessId, true);
-    }, connectionStatus === "live" ? 60000 : 15000);
+    }, 15000);
 
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === "visible") {
@@ -212,7 +215,7 @@ export default function SecurityAlertsPage() {
       window.removeEventListener("focus", handleVisibilityOrFocus);
       supabase.removeChannel(channel);
     };
-  }, [businessId, connectionStatus, loadAlerts, scheduleAuthoritativeRefresh]);
+  }, [businessId, loadAlerts, scheduleAuthoritativeRefresh]);
 
   const markAsRead = async (alert: SecurityAlert) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -281,7 +284,7 @@ export default function SecurityAlertsPage() {
               </div>
             </div>
           </div>
-          <Button type="button" variant="outline" disabled={loading || refreshing} onClick={() => loadAlerts(businessId, true)}>
+          <Button type="button" variant="outline" disabled={loading || refreshing} onClick={handleManualRefresh}>
             {refreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Refresh
           </Button>
