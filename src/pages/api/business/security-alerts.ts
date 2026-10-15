@@ -35,6 +35,7 @@ type SecurityAlertResponse = {
   loyaltyCardId: string | null;
   staffUserId: string | null;
   staffName: string;
+  staffEmail: string | null;
   staffIdentifier: string;
   memberName: string;
   memberIdentifier: string;
@@ -169,11 +170,18 @@ function mapById<T extends { id: string }>(rows: T[]) {
 }
 
 async function loadAlertDetails(admin: SupabaseClient, alerts: SecurityAlertRow[]) {
+  const businessIds = [...new Set(alerts.map((alert) => alert.business_id).filter(Boolean))];
   const customerIds = [...new Set(alerts.map((alert) => alert.customer_id).filter(Boolean))];
   const programIds = [...new Set(alerts.map((alert) => alert.loyalty_program_id).filter(Boolean))];
   const staffIds = [...new Set(alerts.map((alert) => alert.staff_user_id).filter(Boolean))] as string[];
 
-  const [{ data: customers }, { data: programs }, { data: staffProfiles }] = await Promise.all([
+  const [
+    { data: customers },
+    { data: programs },
+    { data: staffProfiles },
+    { data: staffMemberships },
+    { data: businesses },
+  ] = await Promise.all([
     customerIds.length
       ? admin.from("customers").select("id, name, email, phone").in("id", customerIds)
       : Promise.resolve({ data: [] }),
@@ -183,16 +191,43 @@ async function loadAlertDetails(admin: SupabaseClient, alerts: SecurityAlertRow[
     staffIds.length
       ? admin.from("profiles").select("id, full_name, email").in("id", staffIds)
       : Promise.resolve({ data: [] }),
+    staffIds.length && businessIds.length
+      ? admin
+          .from("business_users")
+          .select("business_id, user_id, status")
+          .in("business_id", businessIds)
+          .in("user_id", staffIds)
+      : Promise.resolve({ data: [] }),
+    businessIds.length
+      ? admin.from("businesses").select("id, owner_id").in("id", businessIds)
+      : Promise.resolve({ data: [] }),
   ]);
 
   const customersById = mapById((customers || []) as Array<{ id: string; name: string | null; email: string | null; phone: string | null }>);
   const programsById = mapById((programs || []) as Array<{ id: string; name: string | null }>);
   const staffById = mapById((staffProfiles || []) as Array<{ id: string; full_name: string | null; email: string | null }>);
+  const businessesById = mapById((businesses || []) as Array<{ id: string; owner_id: string | null }>);
+  const staffMembershipKeys = new Set(
+    ((staffMemberships || []) as Array<{ business_id: string; user_id: string | null; status: string | null }>)
+      .filter((membership) => membership.user_id && membership.status === "active")
+      .map((membership) => `${membership.business_id}:${membership.user_id}`)
+  );
 
   return alerts.map((alert) => {
     const customer = customersById.get(alert.customer_id);
     const program = programsById.get(alert.loyalty_program_id);
     const staff = alert.staff_user_id ? staffById.get(alert.staff_user_id) : null;
+    const business = businessesById.get(alert.business_id);
+    const staffBelongsToBusiness = Boolean(
+      alert.staff_user_id &&
+      (
+        business?.owner_id === alert.staff_user_id ||
+        staffMembershipKeys.has(`${alert.business_id}:${alert.staff_user_id}`)
+      )
+    );
+    const staffFullName = staffBelongsToBusiness ? staff?.full_name?.trim() || null : null;
+    const staffEmail = staffBelongsToBusiness ? staff?.email?.trim() || null : null;
+    const staffDisplayName = staffFullName || staffEmail || "Staff identity unavailable";
 
     return {
       id: alert.id,
@@ -201,8 +236,9 @@ async function loadAlertDetails(admin: SupabaseClient, alerts: SecurityAlertRow[
       customerId: alert.customer_id,
       loyaltyCardId: alert.loyalty_card_id,
       staffUserId: alert.staff_user_id,
-      staffName: staff?.full_name || staff?.email || "Unknown staff member",
-      staffIdentifier: staff?.email || alert.staff_group_key || "Unavailable",
+      staffName: staffDisplayName,
+      staffEmail,
+      staffIdentifier: staffEmail || staffFullName || "Staff identity unavailable",
       memberName: customer?.name || "Unknown member",
       memberIdentifier: customer?.email || customer?.phone || alert.customer_id,
       programName: program?.name || "Unknown loyalty program",

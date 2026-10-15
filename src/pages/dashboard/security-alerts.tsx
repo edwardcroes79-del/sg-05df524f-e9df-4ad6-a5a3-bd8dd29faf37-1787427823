@@ -19,6 +19,7 @@ type SecurityAlert = {
   loyaltyCardId: string | null;
   staffUserId: string | null;
   staffName: string;
+  staffEmail: string | null;
   staffIdentifier: string;
   memberName: string;
   memberIdentifier: string;
@@ -272,12 +273,16 @@ export default function SecurityAlertsPage() {
                           <UserRound className="mt-0.5 h-4 w-4 text-muted-foreground" />
                           <div>
                             <p className="font-medium">Staff</p>
-                            <p className="text-muted-foreground">{alert.staffIdentifier}</p>
+                            <p className="text-muted-foreground">{alert.staffName}</p>
+                            {alert.staffEmail && alert.staffEmail !== alert.staffName ? (
+                              <p className="text-xs text-muted-foreground">{alert.staffEmail}</p>
+                            ) : null}
                           </div>
                         </div>
                         <div>
                           <p className="font-medium">Member</p>
-                          <p className="text-muted-foreground">{alert.memberIdentifier}</p>
+                          <p className="text-muted-foreground">{alert.memberName}</p>
+                          <p className="text-xs text-muted-foreground">{alert.memberIdentifier}</p>
                         </div>
                         <div>
                           <p className="font-medium">Latest attempt</p>
@@ -318,7 +323,9 @@ export default function SecurityAlertsPage() {
                 <div>
                   <p className="font-medium">Staff member</p>
                   <p className="text-muted-foreground">{selectedAlert.staffName}</p>
-                  <p className="text-xs text-muted-foreground">{selectedAlert.staffIdentifier}</p>
+                  {selectedAlert.staffEmail && selectedAlert.staffEmail !== selectedAlert.staffName ? (
+                    <p className="text-xs text-muted-foreground">{selectedAlert.staffEmail}</p>
+                  ) : null}
                 </div>
                 <div>
                   <p className="font-medium">Member</p>
