@@ -2136,6 +2136,10 @@ export type Database = {
               phone: string
             }[]
           }
+      upsert_anti_fraud_security_alert_from_blocked_attempt: {
+        Args: { p_attempt_id: string }
+        Returns: undefined
+      }
       upsert_business_anti_fraud_settings: {
         Args: {
           p_business_id: string
