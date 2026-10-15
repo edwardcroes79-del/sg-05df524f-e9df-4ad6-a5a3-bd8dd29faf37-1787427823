@@ -10,14 +10,14 @@ position: 211
 ---
 
 ## Notes
-Bug: the Rotating Quick Issue Stamp QR component reports "Quick Stamp QR add-on is not active for this business" even though the backend shows Quick Stamp QR available/enabled for that business. Scope: inspect the actual dashboard component, API calls, add-on activation/entitlement resolver, add-on configuration, and live database records. Determine whether the runtime check uses the wrong key, wrong source, stale/default false value, plan availability vs business activation mismatch, or wrong business ID. Preserve existing subscription rules, Super Admin controls, business-level activation requirements, QR generation, 60-second rotation, loyalty program selection, stamp issuance security, and all other stamping methods. Do not hardcode business names, grant access globally, modify customer data, deploy, or change production configuration.
+Bug: the Rotating Quick Issue Stamp QR component reported "Quick Stamp QR add-on is not active for this business" even though backend plan entitlement/configuration showed Quick Stamp QR enabled. Inspection confirmed the page calls `generate_quick_stamp_qr_token(...)`, and that RPC returns the unavailable message when `public.business_has_active_quick_stamp_qr(p_business_id)` returns false. The live resolver only returned true for hardcoded `mega_plan` or a paid active add-on row, so any business/plan enabled through the established `plan_entitlements` key `quick_stamp_qr` but not named `mega_plan` failed token generation. Fix applied in migration `supabase/migrations/20261015001500_quick_stamp_qr_entitlement_resolver.sql`: `business_has_active_quick_stamp_qr` now first verifies the business is active and contract-accessible, then honors `get_business_boolean_entitlement(p_business_id, 'quick_stamp_qr', false)`, and still falls back to the existing active approved Quick Stamp add-on subscription check. No business names are hardcoded, no global grant was added, and token generation, program/location validation, QR rotation, and stamp issuance remain handled by the existing RPC chain.
 
 ## Checklist
-- [ ] Inspect Quick Stamp QR component and unavailable message source
-- [ ] Inspect related API calls and add-on/entitlement resolver logic
-- [ ] Inspect live add-on, plan, business activation, and business ID records
-- [ ] Identify the exact runtime condition returning inactive
-- [ ] Apply the smallest resolver/check fix without bypassing authorization
+- [x] Inspect Quick Stamp QR component and unavailable message source
+- [x] Inspect related API calls and add-on/entitlement resolver logic
+- [x] Inspect live add-on, plan, business activation, and business ID records
+- [x] Identify the exact runtime condition returning inactive
+- [x] Apply the smallest resolver/check fix without bypassing authorization
 - [ ] Verify entitled and activated business can use Quick Stamp QR
 - [ ] Verify non-entitled or inactive business remains blocked
 - [ ] Verify selected program, 60-second rotation, and QR issuance paths remain intact
