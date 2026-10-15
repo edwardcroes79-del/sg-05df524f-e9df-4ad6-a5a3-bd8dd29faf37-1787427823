@@ -159,7 +159,8 @@ async function countExportRows(admin: any, businessId: string) {
   const { count, error } = await admin
     .from("customer_loyalty_cards")
     .select("id", { count: "exact", head: true })
-    .eq("business_id", businessId);
+    .eq("business_id", businessId)
+    .eq("status", "active");
 
   if (error) {
     throw makeHttpError("Unable to prepare member export.", 500);
@@ -192,6 +193,7 @@ async function fetchExportRows(admin: any, businessId: string, start: number, en
       )
     `)
     .eq("business_id", businessId)
+    .eq("status", "active")
     .order("created_at", { ascending: true })
     .range(start, end);
 
