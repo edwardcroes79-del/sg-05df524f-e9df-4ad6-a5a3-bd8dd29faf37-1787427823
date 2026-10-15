@@ -1,6 +1,6 @@
 ---
 title: Anti-Fraud Alert Persistence
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [anti-fraud, alerts, database]
@@ -10,7 +10,7 @@ position: 220
 ---
 
 ## Notes
-Added the smallest dedicated persistence layer because no reusable Business Owner security-alert table exists. New migration `supabase/migrations/20261015141000_anti_fraud_security_alerts.sql` creates `anti_fraud_security_alerts`, indexes, Owner/Admin/Super Admin read RLS, no-direct-write policy, a server-side trigger function on `anti_fraud_blocked_attempts`, and a server-side mark-read RPC. Alerts are derived only from server-side cooldown-blocked events with `reason = 'cooldown_active'`. The trigger groups by business, loyalty program, customer/member, staff group, and overlapping active cooldown period. The first blocked attempt records only the Phase 1 event and creates no alert. The second qualifying blocked attempt creates one alert. Further qualifying attempts update the same alert with latest timestamp and attempt count. Direct client creation/mutation remains blocked. No stamp issuance, cooldown duration, reward redemption, customer balances, customer profiles, memberships, or transaction history were changed.
+Added the smallest dedicated persistence layer because no reusable Business Owner security-alert table exists. New migration `supabase/migrations/20261015141000_anti_fraud_security_alerts.sql` creates `anti_fraud_security_alerts`, indexes, Owner/Admin/Super Admin read RLS, no-direct-write policy, a server-side trigger function on `anti_fraud_blocked_attempts`, and a server-side mark-read RPC. Alerts are derived only from server-side cooldown-blocked events with `reason = 'cooldown_active'`. The trigger groups by business, loyalty program, customer/member, staff group, and overlapping active cooldown period. The first blocked attempt records only the Phase 1 event and creates no alert. The second qualifying blocked attempt creates one alert. Further qualifying attempts update the same alert with latest timestamp and attempt count. Direct client creation/mutation remains blocked. No stamp issuance, cooldown duration, reward redemption, customer balances, customer profiles, memberships, or transaction history were changed. Rollback-only SQL verification passed for first attempt no alert, second attempt one alert, third attempt same alert count update, separate program grouping, non-cooldown event not producing a cooldown alert, and Owner/Admin mark-read with a valid owner fixture. A different-staff grouping test could not be completed with live fixture data because the sandbox lacked two usable profile/staff user IDs for that focused test.
 
 ## Checklist
 - [x] Determine whether an existing alert/notification table can be reused safely

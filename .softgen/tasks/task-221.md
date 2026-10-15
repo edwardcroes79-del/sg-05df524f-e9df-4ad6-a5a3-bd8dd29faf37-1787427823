@@ -1,6 +1,6 @@
 ---
 title: Owner Security Alerts Dashboard
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [dashboard, alerts, anti-fraud]
@@ -10,7 +10,7 @@ position: 221
 ---
 
 ## Notes
-Added `src/pages/api/business/security-alerts.ts` to list business-scoped anti-fraud security alerts and mark alerts as read. The API authenticates the bearer token server-side, verifies the user is the business owner, an active owner/admin/corporate_admin business user, or a Super Admin, and denies staff/cross-business access before returning or mutating alerts. Added `src/pages/dashboard/security-alerts.tsx` with loading, empty, error, summary cards, alert list, detail dialog, and mark-as-read interaction. Updated `src/components/dashboard/DashboardLayout.tsx` to show a Security Alerts navigation item with unread badge only when the API authorizes the current user. No client-side service-role access was added. No email/SMS/external notifications were added.
+Added `src/pages/api/business/security-alerts.ts` to list business-scoped anti-fraud security alerts and mark alerts as read. The API authenticates the bearer token server-side, verifies the user is the business owner, an active owner/admin/corporate_admin business user, or a Super Admin, and denies staff/cross-business access before returning or mutating alerts. Added `src/pages/dashboard/security-alerts.tsx` with loading, empty, error, summary cards, alert list, detail dialog, and mark-as-read interaction. Updated `src/components/dashboard/DashboardLayout.tsx` to show a Security Alerts navigation item with unread badge only when the API authorizes the current user. No client-side service-role access was added. No email/SMS/external notifications were added. `check_for_errors` passed after implementation. Browser click-through for loading/empty/error states and refresh persistence remains a staging review item because it requires authenticated Owner/Admin and Staff sessions in the preview.
 
 ## Checklist
 - [x] Add secure API to list security alerts for an authorized business Owner/Admin
