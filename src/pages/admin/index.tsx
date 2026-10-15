@@ -283,8 +283,10 @@ export default function AdminDashboard() {
       location_specific_quick_qr: Boolean(entitlementMap.location_specific_quick_qr ?? entitlementMap.quick_stamp_qr),
       vip_member_identification: Boolean(entitlementMap.vip_member_identification),
       excel_member_export: Boolean(entitlementMap.excel_member_export),
+      excel_member_import: Boolean(entitlementMap.excel_member_import),
       bulk_member_import: Boolean(entitlementMap.bulk_member_import),
       bulk_member_management: Boolean(entitlementMap.bulk_member_management),
+      bulk_member_removal: Boolean(entitlementMap.bulk_member_removal),
       search_stamp_staff_access: Boolean(entitlementMap.search_stamp_staff_access),
       max_locations: Number(entitlementMap.max_locations || 0),
     };
