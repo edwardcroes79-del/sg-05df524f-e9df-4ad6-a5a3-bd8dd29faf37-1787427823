@@ -14,6 +14,7 @@ import { Loader2, Save, ShieldCheck, ShieldAlert, Key } from "lucide-react";
 import { useI18n } from "@/contexts/I18nProvider";
 import { fetchCorporateBranding } from "@/contexts/CorporateBrandingContext";
 import { CorporateBrandingSettingsPanel } from "@/components/dashboard/CorporateBrandingSettingsPanel";
+import { Switch } from "@/components/ui/switch";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -24,6 +25,12 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [business, setBusiness] = useState<any>(null);
   const [corporateBrandingAvailable, setCorporateBrandingAvailable] = useState(false);
+  const [antiFraudLoading, setAntiFraudLoading] = useState(false);
+  const [antiFraudSaving, setAntiFraudSaving] = useState(false);
+  const [antiFraudSettings, setAntiFraudSettings] = useState({
+    enabled: false,
+    cooldownMinutes: 10
+  });
   const showCorporateBrandingEntry = corporateBrandingAvailable;
 
   // 2FA States
@@ -98,8 +105,98 @@ export default function SettingsPage() {
       setCorporateBrandingAvailable(false);
     }
 
+    await fetchAntiFraudSettings(data.id, session.access_token);
     await fetchMfaFactors();
     setLoading(false);
+  };
+
+  const fetchAntiFraudSettings = async (businessId: string, accessToken?: string) => {
+    if (!accessToken) return;
+
+    setAntiFraudLoading(true);
+
+    try {
+      const response = await fetch(`/api/business/anti-fraud-settings?businessId=${encodeURIComponent(businessId)}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to load anti-fraud settings");
+      }
+
+      setAntiFraudSettings({
+        enabled: payload.settings?.enabled === true,
+        cooldownMinutes: [5, 10, 15].includes(Number(payload.settings?.cooldownMinutes)) ? Number(payload.settings.cooldownMinutes) : 10,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Anti-fraud settings unavailable",
+        description: err.message || "Unable to load anti-fraud settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setAntiFraudLoading(false);
+    }
+  };
+
+  const saveAntiFraudSettings = async (nextSettings = antiFraudSettings) => {
+    if (!business?.id) return;
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      router.push("/auth/login");
+      return;
+    }
+
+    setAntiFraudSaving(true);
+
+    try {
+      const response = await fetch("/api/business/anti-fraud-settings", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          businessId: business.id,
+          enabled: nextSettings.enabled,
+          cooldownMinutes: nextSettings.cooldownMinutes,
+        }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Unable to save anti-fraud settings");
+      }
+
+      const savedSettings = {
+        enabled: payload.settings?.enabled === true,
+        cooldownMinutes: [5, 10, 15].includes(Number(payload.settings?.cooldownMinutes)) ? Number(payload.settings.cooldownMinutes) : 10,
+      };
+
+      setAntiFraudSettings(savedSettings);
+
+      toast({
+        title: "Anti-fraud settings saved",
+        description: savedSettings.enabled
+          ? `Cooldown protection is active for ${savedSettings.cooldownMinutes} minutes.`
+          : "Cooldown protection is turned off.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Anti-fraud settings failed",
+        description: err.message || "Unable to save anti-fraud settings.",
+        variant: "destructive",
+      });
+    } finally {
+      setAntiFraudSaving(false);
+    }
   };
 
   const fetchMfaFactors = async () => {
@@ -391,6 +488,70 @@ export default function SettingsPage() {
         {showCorporateBrandingEntry && business && (
           <CorporateBrandingSettingsPanel business={business} />
         )}
+
+        <Card className="border-border shadow-sm">
+          <CardHeader className="bg-muted/10 border-b">
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              Anti-fraud protection
+            </CardTitle>
+            <CardDescription>
+              Control repeat-stamp cooldown protection for this business. This core setting is available on every plan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-6">
+            <div className="flex flex-col gap-4 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="font-semibold text-lg">Cooldown enforcement</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+                  When enabled, the same member cannot receive another stamp in the same business and loyalty program until the cooldown expires.
+                </p>
+              </div>
+              <Switch
+                checked={antiFraudSettings.enabled}
+                disabled={antiFraudLoading || antiFraudSaving}
+                onCheckedChange={(checked) => {
+                  const nextSettings = { ...antiFraudSettings, enabled: checked };
+                  setAntiFraudSettings(nextSettings);
+                  saveAntiFraudSettings(nextSettings);
+                }}
+                aria-label="Toggle anti-fraud cooldown"
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div className="space-y-2">
+                <Label htmlFor="antiFraudCooldown">Cooldown duration</Label>
+                <select
+                  id="antiFraudCooldown"
+                  value={antiFraudSettings.cooldownMinutes}
+                  disabled={antiFraudLoading || antiFraudSaving}
+                  onChange={(event) => {
+                    const nextSettings = { ...antiFraudSettings, cooldownMinutes: Number(event.target.value) };
+                    setAntiFraudSettings(nextSettings);
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value={5}>5 minutes</option>
+                  <option value={10}>10 minutes</option>
+                  <option value={15}>15 minutes</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Missing or invalid saved durations default to 10 minutes.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={antiFraudLoading || antiFraudSaving}
+                onClick={() => saveAntiFraudSettings()}
+              >
+                {antiFraudSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save anti-fraud
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Account Security Card (2FA) */}
         <Card className="border-border shadow-sm">
