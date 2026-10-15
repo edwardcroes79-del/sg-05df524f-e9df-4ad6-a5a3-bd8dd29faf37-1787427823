@@ -42,6 +42,7 @@ type DashboardNavItem = {
   name?: string;
   href: string;
   icon: LucideIcon;
+  badgeCount?: number;
   children?: DashboardNavItem[];
 };
 
@@ -76,6 +77,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [advancedAnalyticsEnabled, setAdvancedAnalyticsEnabled] = useState(false);
   const [locationsManagementEnabled, setLocationsManagementEnabled] = useState(false);
   const [corporateBrandingEnabled, setCorporateBrandingEnabled] = useState(false);
+  const [securityAlertsVisible, setSecurityAlertsVisible] = useState(false);
+  const [securityUnreadCount, setSecurityUnreadCount] = useState(0);
   const [corporateBranding, setCorporateBranding] = useState<CorporateBrandingSettings | null>(null);
   const [dashboardLocations, setDashboardLocations] = useState<DashboardLocation[]>([]);
   const [activeLocationId, setActiveLocationId] = useState("");
@@ -103,6 +106,30 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setHasReadWhatsNew(true);
     if (typeof window !== "undefined") {
       localStorage.setItem("whatsNewRead_v1", "true");
+    }
+  };
+  
+  const fetchSecurityAlertsSummary = async (businessId: string, accessToken: string) => {
+    try {
+      const response = await fetch(`/api/business/security-alerts?businessId=${encodeURIComponent(businessId)}&limit=1`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        setSecurityAlertsVisible(false);
+        setSecurityUnreadCount(0);
+        return;
+      }
+
+      const payload = await response.json();
+      setSecurityAlertsVisible(true);
+      setSecurityUnreadCount(Number(payload.unreadCount || 0));
+    } catch (securityAlertError) {
+      console.error("Security alerts summary error:", securityAlertError);
+      setSecurityAlertsVisible(false);
+      setSecurityUnreadCount(0);
     }
   };
 
@@ -211,6 +238,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setIsExpiredContract(
         resolvedBusiness.access_state === "contract_expired" || isContractExpiredForDashboard(resolvedBusiness)
       );
+      await fetchSecurityAlertsSummary(resolvedBusiness.id, session.access_token);
 
       const { data: hasQuickStampAddon, error: quickStampAccessError } = await (supabase as any)
         .rpc("business_has_active_quick_stamp_qr", {
@@ -397,6 +425,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { nameKey: "dashboard.nav.qrCodes", href: "/dashboard/qr", icon: QrCode },
     { nameKey: "dashboard.nav.billing", href: "/dashboard/billing", icon: CreditCard },
     { nameKey: "dashboard.nav.staff", href: "/dashboard/staff", icon: Users },
+    ...(securityAlertsVisible ? [{ name: "Security Alerts", href: "/dashboard/security-alerts", icon: ShieldAlert, badgeCount: securityUnreadCount }] : []),
     { nameKey: "dashboard.nav.settings", href: "/dashboard/settings", icon: Settings },
   ];
 
@@ -594,6 +623,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       `}>
                         <Icon className="h-5 w-5" />
                         {item.nameKey ? t(item.nameKey) : item.name}
+                        {item.badgeCount ? (
+                          <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                            {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                          </span>
+                        ) : null}
                       </span>
                     </Link>
 
@@ -631,6 +665,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   `}>
                     <Icon className="h-5 w-5" />
                     {item.nameKey ? t(item.nameKey) : item.name}
+                    {item.badgeCount ? (
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                        {item.badgeCount > 99 ? "99+" : item.badgeCount}
+                      </span>
+                    ) : null}
                   </span>
                 </Link>
               );

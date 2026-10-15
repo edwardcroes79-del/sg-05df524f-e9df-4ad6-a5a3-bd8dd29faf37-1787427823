@@ -1,6 +1,6 @@
 ---
 title: Owner Security Alerts Dashboard
-status: todo
+status: in_progress
 priority: high
 type: feature
 tags: [dashboard, alerts, anti-fraud]
@@ -10,16 +10,16 @@ position: 221
 ---
 
 ## Notes
-Add a Security Alerts or Security Activity section to the existing Business Owner/Admin dashboard using current design/navigation conventions. Only authorized Owner/Admin users for the relevant business may read alerts or mark them read. Staff must not access or mutate alerts through UI or direct API requests. UI should show staff fallback, member name/identifier, loyalty program, blocked attempt count, first/latest timestamps, repeated cooldown reason, read/unread status, empty/loading/error states, unread badge, detail view, and mark-as-read action. Use existing realtime if present; otherwise use lightweight refresh. No email/SMS/external notifications.
+Added `src/pages/api/business/security-alerts.ts` to list business-scoped anti-fraud security alerts and mark alerts as read. The API authenticates the bearer token server-side, verifies the user is the business owner, an active owner/admin/corporate_admin business user, or a Super Admin, and denies staff/cross-business access before returning or mutating alerts. Added `src/pages/dashboard/security-alerts.tsx` with loading, empty, error, summary cards, alert list, detail dialog, and mark-as-read interaction. Updated `src/components/dashboard/DashboardLayout.tsx` to show a Security Alerts navigation item with unread badge only when the API authorizes the current user. No client-side service-role access was added. No email/SMS/external notifications were added.
 
 ## Checklist
-- [ ] Add secure API to list security alerts for an authorized business Owner/Admin
-- [ ] Add secure API to mark an alert as read for an authorized business Owner/Admin
-- [ ] Add dashboard Security Alerts/Activity UI with empty, loading, and error states
-- [ ] Display staff, member, identifier, program, attempt count, first/latest timestamps, reason, and read status
-- [ ] Add unread badge in dashboard navigation or dashboard section
-- [ ] Add alert detail/review interaction
-- [ ] Prevent Staff UI access while preserving server-side denial
+- [x] Add secure API to list security alerts for an authorized business Owner/Admin
+- [x] Add secure API to mark an alert as read for an authorized business Owner/Admin
+- [x] Add dashboard Security Alerts/Activity UI with empty, loading, and error states
+- [x] Display staff, member, identifier, program, attempt count, first/latest timestamps, reason, and read status
+- [x] Add unread badge in dashboard navigation or dashboard section
+- [x] Add alert detail/review interaction
+- [x] Prevent Staff UI access while preserving server-side denial
 
 ## Acceptance
 Authorized Owner/Admin users can review repeated cooldown-blocked attempt alerts and mark them read. Staff and other businesses cannot access or mutate alerts.
