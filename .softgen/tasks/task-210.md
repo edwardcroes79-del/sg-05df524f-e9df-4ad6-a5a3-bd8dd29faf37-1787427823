@@ -10,16 +10,16 @@ position: 210
 ---
 
 ## Notes
-Investigate and fix an Excel import inconsistency: member `gipaxic150` / `gipaxic150@leafflip.com` was removed from a loyalty program using Reconcile Members and no longer appears on the Customers page, but Import from Excel preview labels the same row as Existing with "Membership already exists for the selected program." Scope: inspect import preview/confirm APIs, `memberImport.ts`, Reconcile Members removal logic, membership status schema, and actual data. Fix duplicate detection so it matches the app definition of a current active membership in the selected business/program. Removed/inactive memberships should be re-addable through the existing import workflow if validation and authorization pass. Preserve customer profiles, historical stamps, rewards, transactions, business isolation, and duplicate protection for genuinely active memberships. Revalidate during confirmation, not preview only. No unrelated changes, production deployment, or destructive data changes.
+Investigate and fix an Excel import inconsistency: member `gipaxic150` / `gipaxic150@leafflip.com` was removed from a loyalty program using Reconcile Members and no longer appears on the Customers page, but Import from Excel preview labels the same row as Existing with "Membership already exists for the selected program." Inspection confirmed Reconcile Members does not delete profiles, history, or card rows; it updates `customer_loyalty_cards.status` from `active` to `removed`. The schema also has a unique constraint on `(customer_id, loyalty_program_id)`, so a removed historical row still blocks a new insert for the same customer/program. Root cause: `findExistingMemberships` in `src/lib/server/memberImport.ts` treated any customer/program card row as existing without requiring `status = "active"`. Fix: preview duplicate detection now counts only active selected-program memberships, and confirmation revalidates current membership state. If a matching active membership exists, it is skipped as Existing. If a matching inactive/removed membership exists, confirmation safely reactivates that existing row to `active` instead of inserting a duplicate, preserving historical stamps, rewards, transactions, and the customer profile. No schema/customer/history deletion or unrelated changes.
 
 ## Checklist
-- [ ] Inspect import preview API and duplicate detection logic
-- [ ] Inspect import confirm API and server-side duplicate/re-add behavior
-- [ ] Inspect Reconcile Members removal logic and membership status behavior
-- [ ] Inspect schema and actual data for `gipaxic150`
-- [ ] Identify why removed membership is treated as active/existing during import
-- [ ] Fix preview duplicate detection to count only active selected-program memberships
-- [ ] Fix confirmation to revalidate active membership state and re-add removed memberships safely
+- [x] Inspect import preview API and duplicate detection logic
+- [x] Inspect import confirm API and server-side duplicate/re-add behavior
+- [x] Inspect Reconcile Members removal logic and membership status behavior
+- [x] Inspect schema and actual data for `gipaxic150`
+- [x] Identify why removed membership is treated as active/existing during import
+- [x] Fix preview duplicate detection to count only active selected-program memberships
+- [x] Fix confirmation to revalidate active membership state and re-add removed memberships safely
 - [ ] Verify active members remain Existing and removed members can be imported again
 - [ ] Run validation and report root cause, changed files/migrations, and test results
 

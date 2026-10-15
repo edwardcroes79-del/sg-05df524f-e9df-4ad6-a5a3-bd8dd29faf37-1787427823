@@ -324,11 +324,26 @@ async function findExistingMemberships(admin: any, businessId: string, programId
     .select("customer_id")
     .eq("business_id", businessId)
     .eq("loyalty_program_id", programId)
+    .eq("status", "active")
     .in("customer_id", customerIds);
 
   if (error) throw makeHttpError("Unable to validate existing memberships.", 500);
 
   return new Set((data || []).map((row: any) => row.customer_id).filter(Boolean));
+}
+
+async function findProgramMembership(admin: any, businessId: string, programId: string, customerId: string) {
+  const { data, error } = await admin
+    .from("customer_loyalty_cards")
+    .select("id, status")
+    .eq("business_id", businessId)
+    .eq("loyalty_program_id", programId)
+    .eq("customer_id", customerId)
+    .maybeSingle();
+
+  if (error) throw makeHttpError("Unable to revalidate membership status.", 500);
+
+  return data || null;
 }
 
 export async function buildImportPreview(admin: any, businessId: string, rows: ParsedImportRow[], targetProgramId?: string): Promise<ImportPreviewPayload> {
@@ -527,7 +542,39 @@ export async function createImportedMemberships(admin: any, businessId: string, 
         customer = insertedCustomer;
       }
 
-      const { error: cardError } = await admin
+      const existingMembership = await findProgramMembership(admin, businessId, targetProgramId, customer.id);
+
+      if (existingMembership?.status === "active") {
+        skipped.push({ rowNumber: row.rowNumber, reason: "Membership already exists." });
+        continue;
+      }
+
+      if (existingMembership?.id) {
+        const { data: reactivatedMembership, error: reactivateError } = await admin
+          .from("customer_loyalty_cards")
+          .update({
+            user_id: customer.user_id || null,
+            status: "active",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingMembership.id)
+          .eq("business_id", businessId)
+          .eq("loyalty_program_id", targetProgramId)
+          .eq("customer_id", customer.id)
+          .neq("status", "active")
+          .select("id")
+          .maybeSingle();
+
+        if (reactivateError || !reactivatedMembership?.id) {
+          failed.push({ rowNumber: row.rowNumber, reason: "Could not reactivate this removed membership safely." });
+          continue;
+        }
+
+        created.push({ rowNumber: row.rowNumber, customerId: customer.id, membershipId: reactivatedMembership.id });
+        continue;
+      }
+
+      const { data: insertedMembership, error: cardError } = await admin
         .from("customer_loyalty_cards")
         .insert({
           customer_id: customer.id,
@@ -538,7 +585,9 @@ export async function createImportedMemberships(admin: any, businessId: string, 
           total_stamps: 0,
           rewards_earned: 0,
           status: "active",
-        });
+        })
+        .select("id")
+        .single();
 
       if (cardError) {
         if (String(cardError.code) === "23505") {
@@ -549,7 +598,7 @@ export async function createImportedMemberships(admin: any, businessId: string, 
         throw cardError;
       }
 
-      created.push({ rowNumber: row.rowNumber, customerId: customer.id });
+      created.push({ rowNumber: row.rowNumber, customerId: customer.id, membershipId: insertedMembership?.id });
     } catch {
       failed.push({ rowNumber: row.rowNumber, reason: "Could not import this row safely." });
     }
