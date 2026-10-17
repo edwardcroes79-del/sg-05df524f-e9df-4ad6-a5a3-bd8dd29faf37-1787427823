@@ -22,6 +22,7 @@ import {
   BarChart3,
   MapPin,
   Palette,
+  MessageCircle,
   type LucideIcon
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -759,6 +760,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
+          
+          <div className="p-4 border-t border-border bg-card mt-auto shrink-0">
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("show-whatsapp"));
+                setIsMobileOpen(false);
+              }}
+              className="flex w-full items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <MessageCircle className="h-5 w-5" />
+              Contact Support
+            </button>
+          </div>
         </aside>
 
         {/* Main Content */}
