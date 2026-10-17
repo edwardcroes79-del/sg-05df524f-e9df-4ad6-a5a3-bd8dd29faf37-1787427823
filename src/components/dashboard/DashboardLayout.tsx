@@ -28,6 +28,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { WhatsAppSupportButton } from "@/components/WhatsAppSupportButton";
 import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 import {
   CorporateBrandingProvider,
@@ -1217,6 +1218,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Floating WhatsApp Support Button */}
+        <WhatsAppSupportButton />
       </div>
     </CorporateBrandingProvider>
   );
