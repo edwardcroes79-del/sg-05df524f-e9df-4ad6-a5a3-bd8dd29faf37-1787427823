@@ -1,6 +1,6 @@
 ---
 title: Make Business Registration Phone Number Required
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [auth, registration, validation]
