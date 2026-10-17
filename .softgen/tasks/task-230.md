@@ -1,6 +1,6 @@
 ---
 title: Make Phone Number Required in Business Onboarding
-status: in_progress
+status: done
 priority: high
 type: bug
 tags: [onboarding, validation]
@@ -18,11 +18,11 @@ Make the Phone Number field mandatory on Step 1 of the Business Onboarding wizar
 - Preserve existing styling and behavior.
 
 ## Checklist
-- [ ] Locate onboarding page and API endpoint.
-- [ ] Update frontend validation logic for phone number on Step 1.
-- [ ] Update frontend UI to show "Phone Number *".
-- [ ] Update backend API validation to require phone number.
-- [ ] Run checks and verify constraints.
+- [x] Locate onboarding page and API endpoint.
+- [x] Update frontend validation logic for phone number on Step 1.
+- [x] Update frontend UI to show "Phone Number *".
+- [x] Update backend API validation to require phone number (using a Postgres `BEFORE INSERT` trigger to protect direct Supabase insertions).
+- [x] Run checks and verify constraints.
 
 ## Acceptance
 Empty or whitespace-only phone numbers block onboarding progression both on frontend and backend. Valid phone numbers pass.

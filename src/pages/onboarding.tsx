@@ -73,6 +73,14 @@ export default function Onboarding() {
 
   const handleComplete = async () => {
     if (isCompleting.current) return; // Prevent synchronous double-clicks
+    
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone || !/^\+?[0-9\s\-\(\)]{6,20}$/.test(trimmedPhone)) {
+      setStep(1);
+      setPhoneError("A valid phone number is required");
+      return;
+    }
+
     isCompleting.current = true;
     setLoading(true);
     
