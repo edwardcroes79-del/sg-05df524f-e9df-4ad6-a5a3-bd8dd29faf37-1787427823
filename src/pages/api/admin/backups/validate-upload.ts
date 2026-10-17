@@ -15,7 +15,8 @@ export const config = {
   },
 };
 
-const maxUploadBytes = 1024 * 1024 * 1024;
+const maxUploadBytes = 4 * 1024 * 1024;
+const maxUploadMegabytes = maxUploadBytes / 1024 / 1024;
 
 function getFileName(req: NextApiRequest) {
   const rawName = req.headers["x-backup-filename"];
@@ -45,7 +46,7 @@ async function writeRequestToTempFile(req: NextApiRequest, filePath: string) {
     transform(chunk, _encoding, callback) {
       totalBytes += chunk.length;
       if (totalBytes > maxUploadBytes) {
-        callback(new Error("Backup upload exceeds the 1 GB validation limit"));
+        callback(new Error(`Backup upload exceeds the ${maxUploadMegabytes} MB validation upload limit.`));
         return;
       }
       callback(null, chunk);
@@ -70,6 +71,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await requireSuperAdmin(req);
 
     const contentType = String(req.headers["content-type"] || "");
+    const declaredClientSize = Number(req.headers["x-backup-client-size"] || req.headers["content-length"] || 0);
+    if (Number.isFinite(declaredClientSize) && declaredClientSize > maxUploadBytes) {
+      return res.status(413).json({
+        error: `Backup package is too large for direct validation upload. Maximum supported upload size is ${maxUploadMegabytes} MB.`,
+        max_size_bytes: maxUploadBytes,
+        max_size_mb: maxUploadMegabytes,
+      });
+    }
+
     if (!isPlausibleBackupFileName(fileName)) {
       return res.status(400).json({
         error: "Upload must be a Royalty Stamp .tar.gz backup file.",
@@ -123,7 +133,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       report,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message || "Backup validation failed" });
+    const message = err.message || "Backup validation failed";
+    const status = message.includes("validation upload limit") ? 413 : 500;
+
+    return res.status(status).json({ error: message });
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true });
   }

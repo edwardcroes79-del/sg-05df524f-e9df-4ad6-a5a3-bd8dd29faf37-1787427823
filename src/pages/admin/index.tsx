@@ -113,6 +113,13 @@ function isRoyaltyStampBackupUploadName(name: string) {
   return normalized.includes(".tar.gz");
 }
 
+const backupValidationUploadLimitBytes = 4 * 1024 * 1024;
+const backupValidationUploadLimitMb = backupValidationUploadLimitBytes / 1024 / 1024;
+
+function formatBackupUploadSize(bytes: number) {
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
 const activeBackupStatuses = new Set(["queued", "running"]);
 
 function hasActiveBackupJobs(backups: any[]) {
@@ -2648,6 +2655,15 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (file.size > backupValidationUploadLimitBytes) {
+      toast({
+        title: "Backup package too large",
+        description: `Direct validation uploads support packages up to ${backupValidationUploadLimitMb} MB on this deployment. This file is ${formatBackupUploadSize(file.size)}. Download or create a smaller validation package, or use a direct object-storage upload flow before validating larger production backups.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setValidatingBackup(true);
       setBackupValidationReport(null);
@@ -2668,12 +2684,19 @@ export default function AdminDashboard() {
       });
       const responseText = await response.text();
       const contentType = response.headers.get("content-type") || "";
+      const parsedResult = contentType.includes("application/json")
+        ? JSON.parse(responseText || "{}")
+        : null;
 
-      if (!contentType.includes("application/json")) {
-        throw new Error(`Backup validation endpoint returned ${response.status} ${response.statusText || ""} with ${contentType || "unknown content type"} instead of JSON.`);
+      if (!parsedResult) {
+        const plainText = responseText.trim();
+        const oversizedMessage = response.status === 413
+          ? `Backup package is too large for direct validation upload. Maximum supported upload size is ${backupValidationUploadLimitMb} MB.`
+          : `Backup validation endpoint returned ${response.status} ${response.statusText || ""} with ${contentType || "unknown content type"} instead of JSON.`;
+        throw new Error(plainText ? `${oversizedMessage} Server response: ${plainText}` : oversizedMessage);
       }
 
-      const result = JSON.parse(responseText);
+      const result = parsedResult;
       if (!response.ok && !result.report) throw new Error(result.error || "Backup validation failed");
 
       setBackupValidationReport(result.report);
