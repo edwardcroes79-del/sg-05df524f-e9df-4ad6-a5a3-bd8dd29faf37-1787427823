@@ -16,6 +16,7 @@ import { TurnstileVerification } from "@/components/TurnstileVerification";
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
   const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -43,9 +44,10 @@ export default function Register() {
     setTurnstileResetSignal((current) => current + 1);
   };
 
-  const buildRegistrationPayload = (targetEmail: string, targetPassword: string) => ({
+  const buildRegistrationPayload = (targetEmail: string, targetPassword: string, targetPhone: string) => ({
     email: targetEmail,
     password: targetPassword,
+    phone: targetPhone,
     turnstileToken,
     returnUrl: safeReturnUrl,
     origin: typeof window !== "undefined" ? window.location.origin : "",
@@ -68,6 +70,16 @@ export default function Register() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone) {
+      toast({
+        title: "Registration Failed",
+        description: "Phone number is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!requireSecurityCheck()) {
       return;
     }
@@ -80,7 +92,7 @@ export default function Register() {
       const response = await fetch("/api/auth/register-business", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildRegistrationPayload(email, password)),
+        body: JSON.stringify(buildRegistrationPayload(email, password, trimmedPhone)),
       });
 
       const result = await response.json();
@@ -124,7 +136,7 @@ export default function Register() {
       const response = await fetch("/api/auth/register-business", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildRegistrationPayload(registeredEmail, password)),
+        body: JSON.stringify(buildRegistrationPayload(registeredEmail, password, phone.trim())),
       });
 
       const result = await response.json();
@@ -224,7 +236,7 @@ export default function Register() {
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">{t("auth.register.businessEmail")}</Label>
+                <Label htmlFor="email">{t("auth.register.businessEmail")} *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -236,7 +248,19 @@ export default function Register() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">{t("auth.register.password")}</Label>
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="e.g. +297 555 1234"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">{t("auth.register.password")} *</Label>
                 <Input
                   id="password"
                   type="password"

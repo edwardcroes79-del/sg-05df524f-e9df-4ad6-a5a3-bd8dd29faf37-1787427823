@@ -18,11 +18,11 @@ Make the Phone Number field mandatory on Step 1 of the Business Registration wiz
 - Preserve existing styling and behavior.
 
 ## Checklist
-- [ ] Inspect `register.tsx` and `register-business.ts`.
-- [ ] Update frontend Zod schema or validation logic for phone number.
-- [ ] Update frontend UI to show "Phone Number *".
-- [ ] Update backend API validation to require phone number and validate format.
-- [ ] Run checks and verify constraints.
+- [x] Inspect `register.tsx` and `register-business.ts`.
+- [x] Update frontend Zod schema or validation logic for phone number.
+- [x] Update frontend UI to show "Phone Number *".
+- [x] Update backend API validation to require phone number and validate format.
+- [x] Run checks and verify constraints.
 
 ## Acceptance
 Empty or whitespace-only phone numbers block registration both on frontend and backend. Valid phone numbers pass. Other registration steps remain fully functional.

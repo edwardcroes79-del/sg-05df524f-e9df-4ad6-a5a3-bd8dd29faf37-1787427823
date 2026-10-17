@@ -12,10 +12,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { email, password, returnUrl, origin, turnstileToken } = req.body;
+    const { email, password, phone, returnUrl, origin, turnstileToken } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    const trimmedPhone = phone?.trim();
+    if (!trimmedPhone) {
+      return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    // Basic format validation (can be expanded based on exact Aruba requirements later)
+    const phoneRegex = /^\+?[0-9\s\-\(\)]{6,20}$/;
+    if (!phoneRegex.test(trimmedPhone)) {
+      return res.status(400).json({ error: "Invalid phone number format" });
     }
 
     const turnstileResult = await verifyTurnstileToken(turnstileToken, getRequestIp(req));
@@ -44,6 +55,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       email: email,
       password: password,
       options: {
+        data: {
+          phone: trimmedPhone
+        },
         redirectTo: redirectUrl
       }
     });
