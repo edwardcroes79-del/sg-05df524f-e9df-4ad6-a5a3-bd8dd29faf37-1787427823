@@ -21,6 +21,7 @@ export default function Onboarding() {
   const [businessName, setBusinessName] = useState("");
   const [description, setDescription] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [email, setEmail] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#fb7185"); // Coral default
   
@@ -54,6 +55,21 @@ export default function Onboarding() {
     };
     checkUser();
   }, [router]);
+
+  const handleNextStep1 = () => {
+    const trimmedPhone = phone.trim();
+    if (!trimmedPhone) {
+      setPhoneError("Phone number is required");
+      return;
+    }
+    const phoneRegex = /^\+?[0-9\s\-\(\)]{6,20}$/;
+    if (!phoneRegex.test(trimmedPhone)) {
+      setPhoneError("Invalid phone number format");
+      return;
+    }
+    setPhoneError("");
+    setStep(2);
+  };
 
   const handleComplete = async () => {
     if (isCompleting.current) return; // Prevent synchronous double-clicks
@@ -209,8 +225,17 @@ export default function Onboarding() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" placeholder="+297 555-1234" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <Label htmlFor="phone">Phone Number <span className="text-destructive">*</span></Label>
+                  <Input 
+                    id="phone" 
+                    placeholder="+297 555-1234" 
+                    value={phone} 
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      setPhoneError("");
+                    }} 
+                  />
+                  {phoneError && <p className="text-sm text-destructive">{phoneError}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Contact Email <span className="text-destructive">*</span></Label>
@@ -219,7 +244,7 @@ export default function Onboarding() {
               </div>
             </CardContent>
             <CardFooter className="justify-end">
-              <Button onClick={() => setStep(2)} disabled={!businessName || !email} className="font-semibold">Next Step</Button>
+              <Button onClick={handleNextStep1} disabled={!businessName || !email || !phone.trim()} className="font-semibold">Next Step</Button>
             </CardFooter>
           </>
         )}
