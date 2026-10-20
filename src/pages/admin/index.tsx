@@ -35,6 +35,16 @@ type SuperAdminNotification = {
   relatedRecord: any;
 };
 
+type UnconfirmedAuthUser = {
+  id: string;
+  email: string;
+  created_at: string;
+  confirmation_sent_at: string | null;
+  last_sign_in_at: string | null;
+  audience: "business" | "customer" | "general";
+  display_name: string | null;
+};
+
 function notificationKey(sourceType: string, sourceId: string) {
   return `${sourceType}:${sourceId}`;
 }
@@ -171,6 +181,8 @@ export default function AdminDashboard() {
   const [contractReminders, setContractReminders] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [unconfirmedUsers, setUnconfirmedUsers] = useState<UnconfirmedAuthUser[]>([]);
+  const [resendingConfirmationId, setResendingConfirmationId] = useState<string | null>(null);
   const [globalStats, setGlobalStats] = useState({
     totalBusinesses: 0,
     activeSubscribers: 0,
@@ -778,6 +790,21 @@ export default function AdminDashboard() {
         .order("created_at", { ascending: false })
         .limit(100);
       setCustomers(customersData || []);
+
+      if (session) {
+        const unconfirmedResponse = await fetch("/api/admin/unconfirmed-users", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (unconfirmedResponse.ok) {
+          const unconfirmedResult = await unconfirmedResponse.json();
+          setUnconfirmedUsers(unconfirmedResult.users || []);
+        } else {
+          setUnconfirmedUsers([]);
+        }
+      }
 
       // 5. Fetch Platform Stats
       const [
@@ -2388,6 +2415,44 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleResendConfirmationEmail = async (user: UnconfirmedAuthUser) => {
+    try {
+      setResendingConfirmationId(user.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/resend-confirmation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId: user.id, origin: window.location.origin }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Confirmation email resend failed.");
+      }
+
+      toast({
+        title: result.alreadyConfirmed ? "Account already confirmed" : "Confirmation email submitted",
+        description: result.message || "The message was submitted successfully. This does not guarantee inbox delivery.",
+      });
+
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Confirmation resend failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setResendingConfirmationId(null);
+    }
+  };
+
   const handleDeleteBusiness = async () => {
     if (!businessToDelete) return;
 
@@ -3669,6 +3734,63 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="customers" className="min-h-0 space-y-6 pb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Unconfirmed Auth Users</CardTitle>
+                <CardDescription>Resend confirmation emails to existing accounts without creating duplicates or exposing confirmation links.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto overscroll-contain">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead>Confirmation Sent</TableHead>
+                        <TableHead>Last Sign In</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {unconfirmedUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="font-semibold">{user.email}</div>
+                            {user.display_name && <div className="text-xs text-muted-foreground">{user.display_name}</div>}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="capitalize">{user.audience}</Badge>
+                          </TableCell>
+                          <TableCell>{new Date(user.created_at).toLocaleString(locale)}</TableCell>
+                          <TableCell>{user.confirmation_sent_at ? new Date(user.confirmation_sent_at).toLocaleString(locale) : "-"}</TableCell>
+                          <TableCell>{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString(locale) : "-"}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => handleResendConfirmationEmail(user)}
+                              disabled={resendingConfirmationId === user.id}
+                            >
+                              {resendingConfirmationId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                              Resend Confirmation Email
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {unconfirmedUsers.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No unconfirmed auth users found.</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>{t("admin.customers.title")}</CardTitle>
