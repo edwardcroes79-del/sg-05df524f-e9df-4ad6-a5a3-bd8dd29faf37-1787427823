@@ -123,7 +123,7 @@ function isRoyaltyStampBackupUploadName(name: string) {
   return normalized.includes(".tar.gz");
 }
 
-const backupValidationUploadLimitBytes = 4 * 1024 * 1024;
+const backupValidationUploadLimitBytes = 250 * 1024 * 1024;
 const backupValidationUploadLimitMb = backupValidationUploadLimitBytes / 1024 / 1024;
 
 function formatBackupUploadSize(bytes: number) {
@@ -2723,7 +2723,7 @@ export default function AdminDashboard() {
     if (file.size > backupValidationUploadLimitBytes) {
       toast({
         title: "Backup package too large",
-        description: `Direct validation uploads support packages up to ${backupValidationUploadLimitMb} MB on this deployment. This file is ${formatBackupUploadSize(file.size)}. Download or create a smaller validation package, or use a direct object-storage upload flow before validating larger production backups.`,
+        description: `Large backup validation supports packages up to ${backupValidationUploadLimitMb} MB. This file is ${formatBackupUploadSize(file.size)}.`,
         variant: "destructive",
       });
       return;
@@ -2736,16 +2736,47 @@ export default function AdminDashboard() {
       if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
       const uploadContentType = getBackupUploadContentType(file);
-      const response = await fetch("/api/admin/backups/validate-upload", {
+      const initiateResponse = await fetch("/api/admin/backups/initiate-validation-upload", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${session.access_token}`,
-          "Content-Type": uploadContentType,
-          "X-Backup-Filename": encodeURIComponent(file.name),
-          "X-Backup-Client-Type": encodeURIComponent(file.type || ""),
-          "X-Backup-Client-Size": String(file.size),
+          "Content-Type": "application/json",
+          "Accept": "application/json",
         },
-        body: file,
+        body: JSON.stringify({
+          fileName: file.name,
+          fileSizeBytes: file.size,
+          contentType: uploadContentType,
+        }),
+      });
+      const initiateResult = await initiateResponse.json().catch(() => ({}));
+      if (!initiateResponse.ok || !initiateResult.success) {
+        throw new Error(initiateResult.error || "Could not initialize secure backup upload.");
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from(initiateResult.bucket)
+        .uploadToSignedUrl(initiateResult.storagePath, initiateResult.token, file, {
+          contentType: uploadContentType,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message || "Backup upload failed before validation.");
+      }
+
+      const response = await fetch("/api/admin/backups/validate-storage-upload", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          storagePath: initiateResult.storagePath,
+          fileName: initiateResult.fileName || file.name,
+          fileSizeBytes: file.size,
+        }),
       });
       const responseText = await response.text();
       const contentType = response.headers.get("content-type") || "";
@@ -2756,7 +2787,7 @@ export default function AdminDashboard() {
       if (!parsedResult) {
         const plainText = responseText.trim();
         const oversizedMessage = response.status === 413
-          ? `Backup package is too large for direct validation upload. Maximum supported upload size is ${backupValidationUploadLimitMb} MB.`
+          ? `Backup package is too large for validation. Maximum supported upload size is ${backupValidationUploadLimitMb} MB.`
           : `Backup validation endpoint returned ${response.status} ${response.statusText || ""} with ${contentType || "unknown content type"} instead of JSON.`;
         throw new Error(plainText ? `${oversizedMessage} Server response: ${plainText}` : oversizedMessage);
       }
