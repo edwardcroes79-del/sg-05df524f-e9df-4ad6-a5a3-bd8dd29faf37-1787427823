@@ -149,6 +149,44 @@ function getBackupUploadContentType(file: File) {
   return allowedTypes.has(normalizedType) ? (normalizedType || "application/octet-stream") : "application/octet-stream";
 }
 
+async function uploadBackupValidationChunks(file: File, initiateResult: any, accessToken: string) {
+  const chunkSizeBytes = Number(initiateResult.chunkSizeBytes || 0);
+  const expectedChunks = Number(initiateResult.expectedChunks || 0);
+  const uploadToken = String(initiateResult.uploadToken || "");
+
+  if (!chunkSizeBytes || !expectedChunks || !uploadToken) {
+    throw new Error("Secure backup upload was not initialized correctly.");
+  }
+
+  for (let chunkIndex = 0; chunkIndex < expectedChunks; chunkIndex += 1) {
+    const start = chunkIndex * chunkSizeBytes;
+    const end = Math.min(start + chunkSizeBytes, file.size);
+    const chunk = file.slice(start, end);
+
+    const response = await fetch("/api/admin/backups/upload-validation-chunk", {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "X-Backup-Upload-Token": uploadToken,
+        "X-Backup-Chunk-Index": String(chunkIndex),
+        "Content-Type": "application/octet-stream",
+        "Accept": "application/json",
+      },
+      body: chunk,
+    });
+
+    const responseText = await response.text();
+    const contentType = response.headers.get("content-type") || "";
+    const result = contentType.includes("application/json") ? JSON.parse(responseText || "{}") : null;
+
+    if (!response.ok || !result?.success) {
+      const fallback = `Backup upload chunk ${chunkIndex + 1} of ${expectedChunks} failed.`;
+      const nonJsonMessage = responseText.trim() ? `${fallback} Server response: ${responseText.trim()}` : fallback;
+      throw new Error(result?.error || nonJsonMessage);
+    }
+  }
+}
+
 function summarizeBackupValidationFailure(report: any, fallback = "Backup validation failed.") {
   const errors = Array.isArray(report?.errors) ? report.errors.filter(Boolean) : [];
   if (errors.length > 0) return errors.slice(0, 3).join(" ");
@@ -2754,16 +2792,11 @@ export default function AdminDashboard() {
         throw new Error(initiateResult.error || "Could not initialize secure backup upload.");
       }
 
-      const { error: uploadError } = await supabase.storage
-        .from(initiateResult.bucket)
-        .uploadToSignedUrl(initiateResult.storagePath, initiateResult.token, file, {
-          contentType: uploadContentType,
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw new Error(uploadError.message || "Backup upload failed before validation.");
+      if (initiateResult.uploadMode !== "chunked-storage") {
+        throw new Error("Backup validation upload mode is not supported by this client.");
       }
+
+      await uploadBackupValidationChunks(file, initiateResult, session.access_token);
 
       const response = await fetch("/api/admin/backups/validate-storage-upload", {
         method: "POST",
@@ -2773,8 +2806,7 @@ export default function AdminDashboard() {
           "Accept": "application/json",
         },
         body: JSON.stringify({
-          storagePath: initiateResult.storagePath,
-          fileName: initiateResult.fileName || file.name,
+          uploadToken: initiateResult.uploadToken,
           fileSizeBytes: file.size,
         }),
       });
