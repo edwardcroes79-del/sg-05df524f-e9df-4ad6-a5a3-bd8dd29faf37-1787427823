@@ -52,6 +52,27 @@ async function writeBlobToTempFile(blob: Blob, filePath: string) {
   return totalBytes;
 }
 
+async function writeResponseToTempFile(response: Response, filePath: string) {
+  if (!response.body) {
+    throw new Error("Uploaded backup package could not be read from Storage.");
+  }
+
+  let totalBytes = 0;
+  const limiter = new Transform({
+    transform(chunk, _encoding, callback) {
+      totalBytes += chunk.length;
+      if (totalBytes > maxValidationUploadBytes) {
+        callback(new Error(`Backup upload exceeds the ${maxValidationUploadMegabytes} MB validation limit.`));
+        return;
+      }
+      callback(null, chunk);
+    },
+  });
+
+  await pipeline(Readable.fromWeb(response.body as any), limiter, fs.createWriteStream(filePath));
+  return totalBytes;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -88,13 +109,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const { data, error } = await admin.storage.from(backupBucketName).download(storagePath);
-    if (error || !data) {
+    const { data, error } = await admin.storage.from(backupBucketName).createSignedUrl(storagePath, 60);
+    if (error || !data?.signedUrl) {
       return res.status(404).json({ error: "Uploaded backup package was not found or the upload URL expired before validation." });
     }
 
+    const storageResponse = await fetch(data.signedUrl);
+    if (!storageResponse.ok) {
+      return res.status(storageResponse.status === 404 ? 404 : 502).json({
+        error: storageResponse.status === 404
+          ? "Uploaded backup package was not found or the upload URL expired before validation."
+          : "Uploaded backup package could not be downloaded for validation.",
+      });
+    }
+
     const tempPath = path.join(tempDir, fileName);
-    const fileSizeBytes = await writeBlobToTempFile(data, tempPath);
+    const fileSizeBytes = await writeResponseToTempFile(storageResponse, tempPath);
 
     if (fileSizeBytes === 0) {
       return res.status(400).json({ error: "Uploaded backup file is empty." });
