@@ -2,38 +2,26 @@ import crypto from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
 import { backupBucketName } from "@/lib/server/backupConfig";
-
-const maxValidationUploadBytes = 250 * 1024 * 1024;
-const maxValidationUploadMegabytes = maxValidationUploadBytes / 1024 / 1024;
-const uploadPrefix = "validation-uploads";
-const staleUploadMs = 24 * 60 * 60 * 1000;
-
-function safeFileName(value: string) {
-  return decodeURIComponent(value || "uploaded-backup.tar.gz").replace(/[^\w.\-() ]/g, "_");
-}
-
-function isPlausibleBackupFileName(fileName: string) {
-  return decodeURIComponent(fileName || "").trim().toLowerCase().includes(".tar.gz");
-}
-
-function isAllowedUploadContentType(contentType: string) {
-  const normalized = contentType.toLowerCase();
-  return (
-    normalized === "" ||
-    normalized.includes("gzip") ||
-    normalized.includes("octet-stream") ||
-    normalized.includes("x-tar") ||
-    normalized.includes("tar")
-  );
-}
+import {
+  createValidationUploadToken,
+  isAllowedBackupUploadContentType,
+  isPlausibleBackupFileName,
+  maxValidationUploadBytes,
+  maxValidationUploadMegabytes,
+  safeBackupUploadFileName,
+  staleValidationUploadMs,
+  validationUploadChunkBytes,
+  validationUploadPrefix,
+  validationUploadTtlMs,
+} from "@/lib/server/backupValidationUpload";
 
 async function cleanupStaleValidationUploads(admin: ReturnType<typeof createServiceClient>, adminUserId: string) {
-  const prefix = `${uploadPrefix}/${adminUserId}`;
+  const prefix = `${validationUploadPrefix}/${adminUserId}`;
   const { data } = await admin.storage.from(backupBucketName).list(prefix, { limit: 100, sortBy: { column: "created_at", order: "asc" } });
   const stalePaths = (data || [])
     .filter((item) => {
       const createdAt = item.created_at ? new Date(item.created_at).getTime() : 0;
-      return createdAt > 0 && Date.now() - createdAt > staleUploadMs;
+      return createdAt > 0 && Date.now() - createdAt > staleValidationUploadMs;
     })
     .map((item) => `${prefix}/${item.name}`);
 
@@ -51,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const adminUserId = await requireSuperAdmin(req);
     const admin = createServiceClient();
-    const fileName = safeFileName(String(req.body?.fileName || ""));
+    const fileName = safeBackupUploadFileName(String(req.body?.fileName || ""));
     const fileSizeBytes = Number(req.body?.fileSizeBytes || 0);
     const contentType = String(req.body?.contentType || "application/octet-stream");
 
@@ -71,30 +59,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    if (!isAllowedUploadContentType(contentType)) {
+    if (!isAllowedBackupUploadContentType(contentType)) {
       return res.status(400).json({ error: "Upload content type is not allowed for backup validation." });
     }
 
     await cleanupStaleValidationUploads(admin, adminUserId);
 
-    const storagePath = `${uploadPrefix}/${adminUserId}/${Date.now()}-${crypto.randomUUID()}-${fileName}`;
-    const { data, error } = await admin.storage.from(backupBucketName).createSignedUploadUrl(storagePath);
-
-    if (error || !data?.signedUrl || !data?.token) {
-      throw new Error(error?.message || "Could not create a secure backup upload URL.");
-    }
+    const uploadId = crypto.randomUUID();
+    const storagePrefix = `${validationUploadPrefix}/${adminUserId}/${Date.now()}-${uploadId}`;
+    const expectedChunks = Math.ceil(fileSizeBytes / validationUploadChunkBytes);
+    const expiresAt = Date.now() + validationUploadTtlMs;
+    const uploadToken = createValidationUploadToken({
+      adminUserId,
+      storagePrefix,
+      fileName,
+      fileSizeBytes,
+      expectedChunks,
+      expiresAt,
+    });
 
     return res.status(200).json({
       success: true,
+      uploadMode: "chunked-storage",
       bucket: backupBucketName,
-      storagePath,
-      signedUrl: data.signedUrl,
-      token: data.token,
+      uploadId,
+      storagePrefix,
+      uploadToken,
       fileName,
       fileSizeBytes,
+      expectedChunks,
+      chunkSizeBytes: validationUploadChunkBytes,
       max_size_bytes: maxValidationUploadBytes,
       max_size_mb: maxValidationUploadMegabytes,
-      expires_in_seconds: 7200,
+      expires_at: new Date(expiresAt).toISOString(),
     });
   } catch (err: any) {
     const message = err.message || "Could not initialize backup upload.";
