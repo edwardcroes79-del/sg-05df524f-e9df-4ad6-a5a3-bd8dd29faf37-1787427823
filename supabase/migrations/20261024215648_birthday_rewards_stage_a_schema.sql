@@ -15,7 +15,7 @@ AS $$
     );
 $$;
 
-CREATE OR REPLACE FUNCTION public.set_updated_at_timestamp()
+CREATE OR REPLACE FUNCTION public.set_birthday_rewards_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -60,7 +60,7 @@ CREATE TABLE public.customer_birthdays (
 CREATE TRIGGER set_customer_birthdays_updated_at
 BEFORE UPDATE ON public.customer_birthdays
 FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at_timestamp();
+EXECUTE FUNCTION public.set_birthday_rewards_updated_at();
 
 CREATE TABLE public.customer_notification_preferences (
   customer_id uuid PRIMARY KEY REFERENCES public.customers(id) ON DELETE CASCADE,
@@ -72,7 +72,7 @@ CREATE TABLE public.customer_notification_preferences (
 CREATE TRIGGER set_customer_notification_preferences_updated_at
 BEFORE UPDATE ON public.customer_notification_preferences
 FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at_timestamp();
+EXECUTE FUNCTION public.set_birthday_rewards_updated_at();
 
 CREATE TABLE public.business_birthday_reward_settings (
   business_id uuid PRIMARY KEY REFERENCES public.businesses(id) ON DELETE CASCADE,
@@ -91,7 +91,7 @@ CREATE TABLE public.business_birthday_reward_settings (
 CREATE TRIGGER set_business_birthday_reward_settings_updated_at
 BEFORE UPDATE ON public.business_birthday_reward_settings
 FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at_timestamp();
+EXECUTE FUNCTION public.set_birthday_rewards_updated_at();
 
 CREATE TABLE public.birthday_reward_awards (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
