@@ -226,38 +226,6 @@ ON public.business_birthday_reward_settings
 FOR SELECT
 USING (public.can_access_business(business_id));
 
-CREATE POLICY "business_birthday_reward_settings_insert_owner"
-ON public.business_birthday_reward_settings
-FOR INSERT
-WITH CHECK (
-  EXISTS (
-    SELECT 1
-    FROM public.businesses b
-    WHERE b.id = business_birthday_reward_settings.business_id
-      AND b.owner_id = auth.uid()
-  )
-);
-
-CREATE POLICY "business_birthday_reward_settings_update_owner"
-ON public.business_birthday_reward_settings
-FOR UPDATE
-USING (
-  EXISTS (
-    SELECT 1
-    FROM public.businesses b
-    WHERE b.id = business_birthday_reward_settings.business_id
-      AND b.owner_id = auth.uid()
-  )
-)
-WITH CHECK (
-  EXISTS (
-    SELECT 1
-    FROM public.businesses b
-    WHERE b.id = business_birthday_reward_settings.business_id
-      AND b.owner_id = auth.uid()
-  )
-);
-
 CREATE POLICY "business_birthday_reward_settings_insert_owner_admin"
 ON public.business_birthday_reward_settings
 FOR INSERT
