@@ -258,6 +258,53 @@ WITH CHECK (
   )
 );
 
+CREATE POLICY "business_birthday_reward_settings_insert_owner_admin"
+ON public.business_birthday_reward_settings
+FOR INSERT
+WITH CHECK (
+  public.is_super_admin_user(auth.uid())
+  OR public.check_business_ownership(business_id, auth.uid())
+  OR EXISTS (
+    SELECT 1
+    FROM public.business_users bu
+    WHERE bu.business_id = business_birthday_reward_settings.business_id
+      AND bu.user_id = auth.uid()
+      AND bu.status = 'active'
+      AND bu.role = ANY (ARRAY['owner'::text, 'admin'::text, 'corporate_admin'::text])
+      AND public.is_business_contract_accessible(bu.business_id)
+  )
+);
+
+CREATE POLICY "business_birthday_reward_settings_update_owner_admin"
+ON public.business_birthday_reward_settings
+FOR UPDATE
+USING (
+  public.is_super_admin_user(auth.uid())
+  OR public.check_business_ownership(business_id, auth.uid())
+  OR EXISTS (
+    SELECT 1
+    FROM public.business_users bu
+    WHERE bu.business_id = business_birthday_reward_settings.business_id
+      AND bu.user_id = auth.uid()
+      AND bu.status = 'active'
+      AND bu.role = ANY (ARRAY['owner'::text, 'admin'::text, 'corporate_admin'::text])
+      AND public.is_business_contract_accessible(bu.business_id)
+  )
+)
+WITH CHECK (
+  public.is_super_admin_user(auth.uid())
+  OR public.check_business_ownership(business_id, auth.uid())
+  OR EXISTS (
+    SELECT 1
+    FROM public.business_users bu
+    WHERE bu.business_id = business_birthday_reward_settings.business_id
+      AND bu.user_id = auth.uid()
+      AND bu.status = 'active'
+      AND bu.role = ANY (ARRAY['owner'::text, 'admin'::text, 'corporate_admin'::text])
+      AND public.is_business_contract_accessible(bu.business_id)
+  )
+);
+
 CREATE POLICY "birthday_reward_awards_select_own_customer"
 ON public.birthday_reward_awards
 FOR SELECT
