@@ -1,6 +1,6 @@
 ---
 title: Birthday Rewards Stage A Schema
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [birthday-rewards, schema, security]
@@ -17,7 +17,7 @@ Stage A is approved for migration draft only. Do not execute database changes ye
 - [x] Keep birthdays private from business users by default
 - [x] Enforce one award per customer, business, and birthday year
 - [x] Default business Birthday Rewards disabled and customer birthday notifications enabled
-- [ ] Include rollback notes and validation steps in the stage report
+- [x] Include rollback notes and validation steps in the stage report
 
 ## Acceptance
 The migration exists for review but has not been executed against the database.
