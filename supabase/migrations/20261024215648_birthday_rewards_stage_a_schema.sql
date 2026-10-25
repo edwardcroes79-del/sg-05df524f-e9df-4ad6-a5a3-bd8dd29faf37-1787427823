@@ -200,7 +200,7 @@ USING (public.is_super_admin_user(auth.uid()));
 CREATE POLICY "business_birthday_reward_settings_select_accessible_business"
 ON public.business_birthday_reward_settings
 FOR SELECT
-USING (public.can_access_business(business_id));
+USING (public.can_access_business(business_id, auth.uid()));
 
 CREATE POLICY "business_birthday_reward_settings_insert_owner_admin"
 ON public.business_birthday_reward_settings
