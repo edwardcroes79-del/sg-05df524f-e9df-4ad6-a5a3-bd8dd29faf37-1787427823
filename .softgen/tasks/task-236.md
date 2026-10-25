@@ -1,6 +1,6 @@
 ---
 title: Birthday Rewards Option A Draft
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [birthday-rewards, migration, review]
@@ -13,12 +13,12 @@ position: 236
 Revise the existing Birthday Rewards Stage A migration draft only. Do not apply migrations, execute write SQL, modify production data, deploy, enable cron, send notifications, or activate Birthday Rewards. Option A removes external notification preference storage and supports in-app celebration discovery from the award ledger after a successful committed birthday stamp award.
 
 ## Checklist
-- [ ] Remove customer notification preference table and related trigger, policies, grants, indexes, and comments from the Stage A draft
-- [ ] Add minimal in-app celebration acknowledgement to the birthday award ledger
-- [ ] Keep correction audit history private and Super Admin-only
-- [ ] Verify owner/Super Admin business settings authorization remains scoped and staff are excluded
-- [ ] Validate the revised draft with available project checks
-- [ ] Report final specification, rollback SQL, security protections, planned UI changes, and blockers
+- [x] Remove customer notification preference table and related trigger, policies, grants, indexes, and comments from the Stage A draft
+- [x] Add minimal in-app celebration acknowledgement to the birthday award ledger
+- [x] Keep correction audit history private and Super Admin-only
+- [x] Verify owner/Super Admin business settings authorization remains scoped and staff are excluded
+- [x] Validate the revised draft with available project checks
+- [x] Report final specification, rollback SQL, security protections, planned UI changes, and blockers
 
 ## Acceptance
 The migration draft is revised for Option A review only and remains unapplied.
