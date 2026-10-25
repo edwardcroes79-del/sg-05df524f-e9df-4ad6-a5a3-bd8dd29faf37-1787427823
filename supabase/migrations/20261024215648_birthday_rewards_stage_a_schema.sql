@@ -84,18 +84,6 @@ CREATE TABLE public.customer_birthday_corrections (
   )
 );
 
-CREATE TABLE public.customer_notification_preferences (
-  customer_id uuid PRIMARY KEY REFERENCES public.customers(id) ON DELETE CASCADE,
-  birthday_rewards_email_enabled boolean NOT NULL DEFAULT true,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-CREATE TRIGGER set_customer_notification_preferences_updated_at
-BEFORE UPDATE ON public.customer_notification_preferences
-FOR EACH ROW
-EXECUTE FUNCTION public.set_birthday_rewards_updated_at();
-
 CREATE TABLE public.business_birthday_reward_settings (
   business_id uuid PRIMARY KEY REFERENCES public.businesses(id) ON DELETE CASCADE,
   enabled boolean NOT NULL DEFAULT false,
@@ -130,26 +118,21 @@ CREATE TABLE public.birthday_reward_awards (
   last_error text,
   reserved_at timestamptz,
   awarded_at timestamptz,
-  notification_status text,
-  notified_at timestamptz,
+  celebration_seen_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT birthday_reward_awards_year_reasonable CHECK (birthday_year BETWEEN 2000 AND 2200),
   CONSTRAINT birthday_reward_awards_status_valid CHECK (
     status IN ('reserved', 'awarded', 'failed', 'skipped')
   ),
-  CONSTRAINT birthday_reward_awards_notification_status_valid CHECK (
-    notification_status IS NULL
-    OR notification_status IN ('pending', 'sent', 'failed', 'skipped')
-  ),
   CONSTRAINT birthday_reward_awards_attempt_count_nonnegative CHECK (attempt_count >= 0),
   CONSTRAINT birthday_reward_awards_awarded_requires_stamp CHECK (
     status <> 'awarded'
     OR (stamp_transaction_id IS NOT NULL AND awarded_at IS NOT NULL)
   ),
-  CONSTRAINT birthday_reward_awards_notification_requires_award CHECK (
-    notification_status IS NULL
-    OR status = 'awarded'
+  CONSTRAINT birthday_reward_awards_celebration_requires_award CHECK (
+    celebration_seen_at IS NULL
+    OR (status = 'awarded' AND stamp_transaction_id IS NOT NULL AND awarded_at IS NOT NULL)
   ),
   CONSTRAINT birthday_reward_awards_unique_customer_business_year UNIQUE (customer_id, business_id, birthday_year)
 );
@@ -172,16 +155,15 @@ ON public.birthday_reward_awards (status, updated_at);
 CREATE INDEX birthday_reward_awards_birthday_date_status_idx
 ON public.birthday_reward_awards (birthday_date, status);
 
-CREATE INDEX birthday_reward_awards_notification_status_idx
-ON public.birthday_reward_awards (notification_status, updated_at)
-WHERE notification_status IS NOT NULL;
+CREATE INDEX birthday_reward_awards_unseen_celebration_idx
+ON public.birthday_reward_awards (customer_id, awarded_at DESC)
+WHERE status = 'awarded' AND celebration_seen_at IS NULL;
 
 CREATE INDEX customer_birthdays_birth_date_idx
 ON public.customer_birthdays (birth_month, birth_day);
 
 ALTER TABLE public.customer_birthdays ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.customer_birthday_corrections ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.customer_notification_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.business_birthday_reward_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.birthday_reward_awards ENABLE ROW LEVEL SECURITY;
 
@@ -214,50 +196,6 @@ CREATE POLICY "customer_birthday_corrections_select_super_admin"
 ON public.customer_birthday_corrections
 FOR SELECT
 USING (public.is_super_admin_user(auth.uid()));
-
-CREATE POLICY "customer_notification_preferences_select_own"
-ON public.customer_notification_preferences
-FOR SELECT
-USING (
-  EXISTS (
-    SELECT 1
-    FROM public.customers c
-    WHERE c.id = customer_notification_preferences.customer_id
-      AND c.user_id = auth.uid()
-  )
-);
-
-CREATE POLICY "customer_notification_preferences_insert_own"
-ON public.customer_notification_preferences
-FOR INSERT
-WITH CHECK (
-  EXISTS (
-    SELECT 1
-    FROM public.customers c
-    WHERE c.id = customer_notification_preferences.customer_id
-      AND c.user_id = auth.uid()
-  )
-);
-
-CREATE POLICY "customer_notification_preferences_update_own"
-ON public.customer_notification_preferences
-FOR UPDATE
-USING (
-  EXISTS (
-    SELECT 1
-    FROM public.customers c
-    WHERE c.id = customer_notification_preferences.customer_id
-      AND c.user_id = auth.uid()
-  )
-)
-WITH CHECK (
-  EXISTS (
-    SELECT 1
-    FROM public.customers c
-    WHERE c.id = customer_notification_preferences.customer_id
-      AND c.user_id = auth.uid()
-  )
-);
 
 CREATE POLICY "business_birthday_reward_settings_select_accessible_business"
 ON public.business_birthday_reward_settings
@@ -323,22 +261,47 @@ USING (
   )
 );
 
+CREATE POLICY "birthday_reward_awards_acknowledge_own_celebration"
+ON public.birthday_reward_awards
+FOR UPDATE
+USING (
+  status = 'awarded'
+  AND celebration_seen_at IS NULL
+  AND stamp_transaction_id IS NOT NULL
+  AND awarded_at IS NOT NULL
+  AND EXISTS (
+    SELECT 1
+    FROM public.customers c
+    WHERE c.id = birthday_reward_awards.customer_id
+      AND c.user_id = auth.uid()
+  )
+)
+WITH CHECK (
+  status = 'awarded'
+  AND celebration_seen_at IS NOT NULL
+  AND stamp_transaction_id IS NOT NULL
+  AND awarded_at IS NOT NULL
+  AND EXISTS (
+    SELECT 1
+    FROM public.customers c
+    WHERE c.id = birthday_reward_awards.customer_id
+      AND c.user_id = auth.uid()
+  )
+);
+
 REVOKE ALL ON public.customer_birthdays FROM anon, authenticated;
 REVOKE ALL ON public.customer_birthday_corrections FROM anon, authenticated;
-REVOKE ALL ON public.customer_notification_preferences FROM anon, authenticated;
 REVOKE ALL ON public.business_birthday_reward_settings FROM anon, authenticated;
 REVOKE ALL ON public.birthday_reward_awards FROM anon, authenticated;
 
 GRANT SELECT, INSERT ON public.customer_birthdays TO authenticated;
 GRANT SELECT ON public.customer_birthday_corrections TO authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.customer_notification_preferences TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.business_birthday_reward_settings TO authenticated;
-GRANT SELECT ON public.birthday_reward_awards TO authenticated;
+GRANT SELECT, UPDATE (celebration_seen_at) ON public.birthday_reward_awards TO authenticated;
 
 COMMENT ON TABLE public.customer_birthdays IS 'Private customer birthday month/day registration. Customers can register once; corrections are server-side Super Admin only.';
 COMMENT ON TABLE public.customer_birthday_corrections IS 'Append-only Super Admin correction history for customer birthday changes. Not exposed to businesses or customers.';
-COMMENT ON TABLE public.customer_notification_preferences IS 'Customer-owned notification preferences separate from stamp receipt email preferences.';
 COMMENT ON TABLE public.business_birthday_reward_settings IS 'Per-business Birthday Rewards opt-in settings. Disabled by default.';
-COMMENT ON TABLE public.birthday_reward_awards IS 'Birthday Rewards idempotency ledger. Enforces one award per customer, business, and birthday year.';
+COMMENT ON TABLE public.birthday_reward_awards IS 'Birthday Rewards idempotency ledger and in-app celebration acknowledgement state. Enforces one award per customer, business, and birthday year.';
 
 COMMIT;
