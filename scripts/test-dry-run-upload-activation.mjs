@@ -52,7 +52,7 @@ const compiledDir = path.join(tempRoot, "compiled");
 fs.mkdirSync(compiledDir, { recursive: true });
 
 function compileModule(sourcePath) {
-  const outputPath = path.join(compiledDir, sourcePath.replace(/^src\//, "").replace(/\.ts$/, ".cjs"));
+  const outputPath = path.join(compiledDir, sourcePath.replace(/^src\//, "").replace(/\.ts$/, ".js"));
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   const source = fs.readFileSync(sourcePath, "utf8");
   const transpiled = ts.transpileModule(source, {
