@@ -253,6 +253,7 @@ export default function AdminDashboard() {
   const [restoreDestinationLabel, setRestoreDestinationLabel] = useState("");
   const [restoreDestinationProjectRef, setRestoreDestinationProjectRef] = useState("");
   const [restoreDestinationConfirmed, setRestoreDestinationConfirmed] = useState(false);
+  const restoreWritesUnavailable = true;
 
   const handleLogout = async () => {
     try {
@@ -2833,8 +2834,8 @@ export default function AdminDashboard() {
       setBackupValidationReport(result.report);
       const validationFailureSummary = summarizeBackupValidationFailure(result.report, result.error || "The uploaded backup failed validation.");
       toast({
-        title: result.report?.valid ? "Validated — Ready to Restore" : "Backup rejected",
-        description: result.report?.valid ? "The uploaded backup is compatible, intact, and ready for a restore dry run. Restore was not started." : validationFailureSummary,
+        title: result.report?.valid ? "Validated — Ready for Preflight" : "Backup rejected",
+        description: result.report?.valid ? "The uploaded backup is compatible, intact, and ready for a restore dry run. Restore writes remain disabled until a verified destination connection is configured." : validationFailureSummary,
         variant: result.report?.valid ? "default" : "destructive",
       });
     } catch (err: any) {
@@ -2851,6 +2852,15 @@ export default function AdminDashboard() {
 
     if (!file.name.endsWith(".tar.gz")) {
       toast({ title: "Invalid file type", description: "Upload a Royalty Stamp .tar.gz backup package.", variant: "destructive" });
+      return;
+    }
+
+    if (mode === "restore") {
+      toast({
+        title: "Restore writes disabled",
+        description: "This server has no separately authorized destination Supabase connection to verify. Run dry-run preflight only until Softgen/admin configures and authorizes a destination connection.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -2897,9 +2907,9 @@ export default function AdminDashboard() {
         title: result.report?.valid ? (mode === "restore" ? "Restore completed" : "Dry run completed") : "Restore blocked",
         description: result.report?.valid
           ? mode === "restore"
-            ? "Production restore completed and was logged."
-            : "The backup passed restore validation without modifying production data."
-          : "The backup was rejected before production data was modified.",
+            ? "Restore report returned as valid. Verify server-side audit logs before treating this as completed."
+            : "The backup preflight completed without recovery writes. Review blockers and warnings; this is not a restore."
+          : "The backup was rejected before any recovery write operation.",
         variant: result.report?.valid ? "default" : "destructive",
       });
 
@@ -4221,12 +4231,12 @@ export default function AdminDashboard() {
                         <div>
                           <div className="flex items-center gap-2">
                             {backupValidationReport.valid ? <ShieldCheck className="h-5 w-5 text-emerald-600" /> : <ShieldAlert className="h-5 w-5 text-destructive" />}
-                            <h3 className="font-heading text-lg font-semibold">{backupValidationReport.valid ? "Validated — Ready to Restore" : "Backup rejected"}</h3>
+                            <h3 className="font-heading text-lg font-semibold">{backupValidationReport.valid ? "Validated — Ready for Preflight" : "Backup rejected"}</h3>
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">{backupValidationReport.file_name}</p>
                         </div>
                         <Badge variant={backupValidationReport.valid ? "default" : "destructive"}>
-                          {backupValidationReport.valid ? "Ready to Restore" : "Blocked"}
+                          {backupValidationReport.valid ? "Ready for Preflight" : "Blocked"}
                         </Badge>
                       </div>
 
@@ -4283,7 +4293,7 @@ export default function AdminDashboard() {
                     <AlertTriangle className="h-5 w-5" /> Disaster Recovery Center
                   </CardTitle>
                   <CardDescription>
-                    Explicit destination identification and validation are required before any recovery operations.
+                    Explicit destination identification is required for dry-run context. Restore writes remain disabled until the server has a separately authorized destination Supabase connection and can verify the actual connected project.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -4292,12 +4302,12 @@ export default function AdminDashboard() {
                   <div className="rounded-xl border bg-background p-4 space-y-4">
                     <div>
                       <h3 className="font-semibold text-foreground">1. Destination Identification</h3>
-                      <p className="text-sm text-muted-foreground">Explicitly identify this target environment.</p>
+                      <p className="text-sm text-muted-foreground">Identify the intended target environment for reporting only. These fields do not change the server's actual Supabase connection.</p>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <Label htmlFor="dest-label">Destination Label (e.g., Staging, Production)</Label>
-                        <Input id="dest-label" value={restoreDestinationLabel} onChange={(e) => setRestoreDestinationLabel(e.target.value)} disabled={Boolean(restoringBackup)} placeholder="Production" />
+                        <Label htmlFor="dest-label">Destination Label (e.g., Authorized Test, Staging)</Label>
+                        <Input id="dest-label" value={restoreDestinationLabel} onChange={(e) => setRestoreDestinationLabel(e.target.value)} disabled={Boolean(restoringBackup)} placeholder="Authorized test project" />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="dest-ref">Destination Project Reference</Label>
@@ -4307,8 +4317,8 @@ export default function AdminDashboard() {
                     <label className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
                       <input type="checkbox" className="mt-1" checked={restoreDestinationConfirmed} onChange={(e) => setRestoreDestinationConfirmed(e.target.checked)} disabled={Boolean(restoringBackup)} />
                       <span>
-                        <span className="block font-semibold text-foreground">Confirm destination for recovery writes</span>
-                        <span className="block text-xs text-muted-foreground">I confirm the selected destination is correct. Required for write operations.</span>
+                        <span className="block font-semibold text-foreground">Acknowledge destination intent</span>
+                        <span className="block text-xs text-muted-foreground">This confirms what you intend to review. It does not authorize restore writes or prove the actual database destination.</span>
                       </span>
                     </label>
                   </div>
@@ -4348,8 +4358,8 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex-1 space-y-3">
                           <div>
-                            <p className="font-semibold text-destructive">3. Production Restore</p>
-                            <p className="mt-1 text-sm text-muted-foreground">Creates a safety backup, then restores data. Requires explicit confirmation.</p>
+                            <p className="font-semibold text-destructive">3. Restore Writes Disabled</p>
+                            <p className="mt-1 text-sm text-muted-foreground">A real restore requires a separately authorized destination connection verified server-side. This project currently supports dry-run preflight only.</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="restore-confirmation">Type RESTORE ROYALTY STAMP BACKUP</Label>
@@ -4361,20 +4371,23 @@ export default function AdminDashboard() {
                               disabled={Boolean(restoringBackup) || !restoreDestinationConfirmed}
                             />
                           </div>
-                          <Label className={`inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow transition-colors ${Boolean(restoringBackup) || restoreConfirmation !== "RESTORE ROYALTY STAMP BACKUP" || !restoreDestinationConfirmed ? 'opacity-50 cursor-not-allowed' : 'hover:bg-destructive/90'}`}>
+                          <Label className={`inline-flex h-10 cursor-not-allowed items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground opacity-50 shadow transition-colors`}>
                             {restoringBackup === "restore" ? (
                               <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Restoring...</span>
                             ) : (
-                              <span className="flex items-center gap-2"><UploadCloud className="h-4 w-4" /> Upload & Restore</span>
+                              <span className="flex items-center gap-2"><UploadCloud className="h-4 w-4" /> Restore Upload Disabled</span>
                             )}
                             <Input
                               type="file"
                               accept=".tar.gz,application/gzip,application/x-gzip"
                               className="hidden"
-                              disabled={Boolean(restoringBackup) || restoreConfirmation !== "RESTORE ROYALTY STAMP BACKUP" || !restoreDestinationConfirmed}
+                              disabled
                               onChange={(event) => handleRestoreBackupUpload(event, "restore")}
                             />
                           </Label>
+                          <p className="rounded-lg border border-destructive/20 bg-background p-3 text-xs text-destructive">
+                            Restore writes are fail-closed. A typed label, project reference, checkbox, or confirmation phrase cannot authorize writes without an independently verified destination connection on the server.
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -4386,7 +4399,7 @@ export default function AdminDashboard() {
                         <div>
                           <div className="flex items-center gap-2">
                             {restoreReport.valid ? <ShieldCheck className="h-5 w-5 text-emerald-600" /> : <ShieldAlert className="h-5 w-5 text-destructive" />}
-                            <h3 className="font-heading text-lg font-semibold">{!restoreReport.valid ? "Restore blocked" : restoreReport.preflight?.destructive_write_blockers?.length > 0 ? "Preflight Blocked" : restoreReport.restore_mode === "dry_run" ? "Preflight Ready" : "Restore Report"}</h3>
+                            <h3 className="font-heading text-lg font-semibold">{!restoreReport.valid ? "Restore blocked" : restoreReport.preflight?.destructive_write_blockers?.length > 0 ? "Preflight Blocked" : restoreReport.restore_mode === "dry_run" ? "Preflight Complete — Writes Not Authorized" : "Restore Report"}</h3>
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">Job ID: {restoreReport.restore_job_id}</p>
                           {restoreReport.safety_backup_job_id && (

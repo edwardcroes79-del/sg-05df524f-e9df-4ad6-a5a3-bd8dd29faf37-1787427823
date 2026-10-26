@@ -216,15 +216,16 @@ export async function restoreBackupPackage(params: {
   destination?: RestoreDestinationConfirmation;
 }): Promise<BackupRestoreReport> {
   const { admin, adminUserId, uploadedPackagePath, fileName, fileSizeBytes, confirmation, mode, tempDir, destination } = params;
+
+  if (confirmation !== restoreConfirmationPhrase) {
+    throw new Error(`Restore requires exact confirmation phrase: ${restoreConfirmationPhrase}`);
+  }
+
+  assertRestoreDestinationSafety(mode, destination);
+
   const restoreJobId = await createRestoreJob(admin, adminUserId, mode);
 
   try {
-    if (confirmation !== restoreConfirmationPhrase) {
-      throw new Error(`Restore requires exact confirmation phrase: ${restoreConfirmationPhrase}`);
-    }
-
-    assertRestoreDestinationSafety(mode, destination);
-
     const validation = await validateBackupArchive(uploadedPackagePath, fileName, fileSizeBytes);
     if (!validation.valid) {
       const report: BackupRestoreReport = {

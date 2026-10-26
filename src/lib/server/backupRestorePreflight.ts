@@ -38,6 +38,8 @@ export type BackupRestorePreflightReport = {
   destination_label?: string;
   destination_project_ref_confirmed: boolean;
   configured_project_ref_match?: boolean;
+  actual_destination_project_ref_verified: boolean;
+  restore_writes_supported: boolean;
   dependency_order: string[];
   table_analysis: RestorePreflightTableAnalysis[];
   storage_inventory: RestorePreflightStorageInventory[];
@@ -223,6 +225,14 @@ function getConfiguredSupabaseProjectRef() {
   }
 }
 
+function hasSeparatelyAuthorizedRestoreDestinationConnection() {
+  return false;
+}
+
+function getRestoreWritesUnavailableMessage() {
+  return "Restore writes are disabled because this server has no separately authorized destination Supabase connection to verify. A typed label, project reference, checkbox, or phrase confirms intent only; it does not change or prove the actual database destination.";
+}
+
 export function assertRestoreDestinationSafety(mode: RestoreMode, destination?: RestoreDestinationConfirmation) {
   if (mode !== "restore") return;
 
@@ -238,8 +248,16 @@ export function assertRestoreDestinationSafety(mode: RestoreMode, destination?: 
   }
 
   const configuredProjectRef = getConfiguredSupabaseProjectRef();
-  if (configuredProjectRef && destinationProjectRef !== configuredProjectRef) {
-    throw new Error("Restore destination confirmation does not match the configured Supabase project reference.");
+  if (!configuredProjectRef) {
+    throw new Error("Restore destination cannot be verified because the configured Supabase project reference is unavailable.");
+  }
+
+  if (destinationProjectRef !== configuredProjectRef) {
+    throw new Error("Restore destination confirmation does not match the configured Supabase project reference. This server cannot write to a different project without a separately authorized destination connection.");
+  }
+
+  if (!hasSeparatelyAuthorizedRestoreDestinationConnection()) {
+    throw new Error(getRestoreWritesUnavailableMessage());
   }
 }
 
@@ -260,9 +278,29 @@ export async function buildRestorePreflightReport(params: {
   const configuredProjectRef = getConfiguredSupabaseProjectRef();
   const destinationProjectRef = String(destination?.destinationProjectRef || "").trim();
   const destinationLabel = String(destination?.destinationLabel || "").trim();
+  const actualDestinationProjectRefVerified = Boolean(configuredProjectRef && destinationProjectRef && configuredProjectRef === destinationProjectRef);
+  const restoreWritesSupported = hasSeparatelyAuthorizedRestoreDestinationConnection();
 
   const rowsByTable = await readArchiveTableRows(archive);
   const tableAnalysis = buildTableAnalysis(rowsByTable);
+
+  if (destinationLabel && destinationProjectRef) {
+    addCheck(checks, "passed", "Destination intent captured", `Requested destination "${destinationLabel}" with project reference ${destinationProjectRef}.`);
+  } else {
+    addCheck(checks, "not_checked", "Destination intent captured", "Destination label and project reference were not both provided.");
+  }
+
+  if (actualDestinationProjectRefVerified) {
+    addCheck(checks, "warning", "Actual connection identity", "The requested project reference matches the currently configured Supabase URL. This verifies only the current runtime connection identity and does not authorize restore writes.");
+  } else if (configuredProjectRef && destinationProjectRef) {
+    addCheck(checks, "not_checked", "Actual connection identity", "The requested project reference does not match the currently configured Supabase URL, and no separate destination connection is configured for cross-project restore writes.");
+  } else {
+    addCheck(checks, "not_checked", "Actual connection identity", "The actual destination connection cannot be verified from the provided information.");
+  }
+
+  if (!restoreWritesSupported) {
+    addCheck(checks, mode === "restore" ? "blocked" : "not_checked", "Restore write capability", getRestoreWritesUnavailableMessage());
+  }
 
   const duplicateTables = tableAnalysis.filter((table) => table.duplicate_primary_keys.length > 0);
   if (duplicateTables.length > 0) {
@@ -306,8 +344,16 @@ export async function buildRestorePreflightReport(params: {
       destructiveWriteBlockers.push(`Restore writes require exact destination confirmation phrase: ${restoreWriteConfirmationPhrase}.`);
     }
 
+    if (!configuredProjectRef) {
+      destructiveWriteBlockers.push("Restore destination cannot be verified because the configured Supabase project reference is unavailable.");
+    }
+
     if (configuredProjectRef && destinationProjectRef && configuredProjectRef !== destinationProjectRef) {
       destructiveWriteBlockers.push("Confirmed destination project reference does not match the configured Supabase project reference.");
+    }
+
+    if (!restoreWritesSupported) {
+      destructiveWriteBlockers.push(getRestoreWritesUnavailableMessage());
     }
   }
 
@@ -316,6 +362,8 @@ export async function buildRestorePreflightReport(params: {
     destination_label: destinationLabel || undefined,
     destination_project_ref_confirmed: Boolean(destinationProjectRef),
     configured_project_ref_match: configuredProjectRef && destinationProjectRef ? configuredProjectRef === destinationProjectRef : undefined,
+    actual_destination_project_ref_verified: actualDestinationProjectRefVerified,
+    restore_writes_supported: restoreWritesSupported,
     dependency_order: requiredTables.filter((table) => rowsByTable.has(table)),
     table_analysis: tableAnalysis,
     storage_inventory: storageInventory,
