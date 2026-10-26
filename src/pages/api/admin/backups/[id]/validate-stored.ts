@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
+import { buildBackupVerificationEvidenceRecord } from "@/lib/server/backupVerificationEvidence";
 import { verifyStoredBackupPackage } from "@/lib/server/backupStoredPackageVerification";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -14,6 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rawId = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
     const backupId = String(rawId || "").trim();
     const report = await verifyStoredBackupPackage(createServiceClient(), backupId);
+    const verificationEvidence = buildBackupVerificationEvidenceRecord(report);
 
     const statusCode = report.status === "VALIDATED"
       ? 200
@@ -26,6 +28,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(statusCode).json({
       success: report.status === "VALIDATED",
       report,
+      verification_evidence: verificationEvidence,
+      persistence: verificationEvidence.persistence,
     });
   } catch (err: any) {
     const message = err.message || "Stored backup package verification failed";

@@ -1,4 +1,5 @@
 import { backupVersion } from "./backupConfig";
+import { extractBackupVerificationEvidenceFromManifest, summarizeBackupVerificationEvidence, type BackupVerificationEvidenceSummary } from "./backupVerificationEvidence";
 import { buildRestorePointInventory, type BackupJobForRestorePoint } from "./backupRestorePointInventory";
 import { buildDatabaseSchemaRecoveryInventory, type DatabaseSchemaRecoveryCategory } from "./databaseSchemaRecoveryManifest";
 import type { SchemaDependencyEvidenceType, SchemaDependencyPlan } from "./schemaDependencyPlanner";
@@ -31,7 +32,8 @@ export type SchemaRecoveryReviewReport = {
     consistency_model: string;
     consistency_classification: string;
     supported_package_complete: boolean;
-    stored_package_verification_status: "not_recorded" | "available_from_session_only";
+    stored_package_verification_status: BackupVerificationEvidenceSummary["status"];
+    latest_stored_package_verification: BackupVerificationEvidenceSummary;
   };
   schema_inventory: {
     version: string;
@@ -121,8 +123,9 @@ function buildFindings(input: {
   categories: DatabaseSchemaRecoveryCategory[];
   plan?: SchemaDependencyPlan;
   latestRestorePoint: ReturnType<typeof buildRestorePointInventory>["restore_points"][number] | undefined;
+  verificationEvidence: BackupVerificationEvidenceSummary;
 }): SchemaRecoveryReviewFinding[] {
-  const { categories, plan, latestRestorePoint } = input;
+  const { categories, plan, latestRestorePoint, verificationEvidence } = input;
 
   return [
     {
@@ -157,11 +160,13 @@ function buildFindings(input: {
     {
       key: "stored_package_verification",
       label: "Stored package verification",
-      status: "unverified",
-      evidence_source: "Recorded evidence only",
-      details: "This review endpoint does not retrieve or download stored backup packages. Stored package validation remains user-initiated and session-visible where available.",
-      blockers: ["No persisted stored-package verification evidence is read by this report."],
-      warnings: ["A valid package checksum is not proof of historical consistency or full-project recoverability."],
+      status: verificationEvidence.evidence_available && verificationEvidence.status === "verified" ? "verified" : "unverified",
+      evidence_source: "Previously recorded verification evidence only",
+      details: verificationEvidence.evidence_available
+        ? `Latest recorded package verification status is ${verificationEvidence.status}. Evidence reflects only the recorded event at ${verificationEvidence.verification_completed_at || "unknown time"}.`
+        : "No persisted verification evidence is available. This review endpoint does not retrieve or download stored backup packages.",
+      blockers: verificationEvidence.blockers,
+      warnings: verificationEvidence.warnings,
     },
     {
       key: "full_project_recovery",
@@ -191,9 +196,14 @@ export function buildSchemaRecoveryReviewReport(input: BuildSchemaRecoveryReview
   });
   const restorePointInventory = buildRestorePointInventory(backupJobs);
   const latestRestorePoint = restorePointInventory.restore_points[0];
+  const latestEvidenceRecord = backupJobs
+    .map((job) => extractBackupVerificationEvidenceFromManifest(job.manifest, job.id))
+    .filter((record): record is NonNullable<typeof record> => Boolean(record))
+    .sort((left, right) => String(right.verification_completed_at || "").localeCompare(String(left.verification_completed_at || "")))[0] || null;
+  const verificationEvidence = summarizeBackupVerificationEvidence(latestEvidenceRecord);
   const plan = schemaInventory.schema_dependency_plan;
   const dependencyCounts = countDependencyEvidence(plan);
-  const findings = buildFindings({ categories: schemaInventory.categories, plan, latestRestorePoint });
+  const findings = buildFindings({ categories: schemaInventory.categories, plan, latestRestorePoint, verificationEvidence });
 
   const blockers = unique([
     ...schemaInventory.summary.blockers,
@@ -224,7 +234,8 @@ export function buildSchemaRecoveryReviewReport(input: BuildSchemaRecoveryReview
       consistency_model: latestRestorePoint?.consistency_model || "unknown",
       consistency_classification: latestRestorePoint?.consistency_classification || "unknown",
       supported_package_complete: Boolean(latestRestorePoint?.supported_package_complete),
-      stored_package_verification_status: "not_recorded",
+      stored_package_verification_status: verificationEvidence.status,
+      latest_stored_package_verification: verificationEvidence,
     },
     schema_inventory: {
       version: schemaInventory.schema_recovery_manifest_version,
