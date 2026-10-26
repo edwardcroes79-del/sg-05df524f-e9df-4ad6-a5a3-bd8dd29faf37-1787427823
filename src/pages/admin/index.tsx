@@ -136,6 +136,19 @@ function getRestorePointStatusBadgeVariant(status: string) {
   return "secondary";
 }
 
+function getReviewStatusBadgeVariant(status?: string | null) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "verified") return "default";
+  if (normalized === "blocked" || normalized === "missing" || normalized === "failed") return "destructive";
+  return "secondary";
+}
+
+function getReviewStatusLabel(status?: string | null) {
+  const normalized = String(status || "unverified").replace(/_/g, " ");
+  if (normalized === "repository evidence only") return "Repository evidence only";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
 function getDateTimeLocalValue(value?: string | null) {
   if (!value) return "";
   const parsed = new Date(value);
@@ -273,6 +286,9 @@ export default function AdminDashboard() {
   const [checkingRestorePoint, setCheckingRestorePoint] = useState(false);
   const [storedPackageValidationReports, setStoredPackageValidationReports] = useState<Record<string, any>>({});
   const [validatingStoredBackupId, setValidatingStoredBackupId] = useState<string | null>(null);
+  const [schemaRecoveryReview, setSchemaRecoveryReview] = useState<any | null>(null);
+  const [schemaRecoveryReviewError, setSchemaRecoveryReviewError] = useState<string | null>(null);
+  const [loadingSchemaRecoveryReview, setLoadingSchemaRecoveryReview] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -967,6 +983,22 @@ export default function AdminDashboard() {
         if (restorePointsResponse.ok) {
           const restorePointsResult = await restorePointsResponse.json();
           setRestorePointInventory(restorePointsResult.inventory || null);
+        }
+
+        const schemaRecoveryReviewResponse = await fetch("/api/admin/backups/schema-recovery-review", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+            "Accept": "application/json",
+          },
+        });
+
+        const schemaRecoveryReviewResult = await schemaRecoveryReviewResponse.json().catch(() => ({}));
+        if (schemaRecoveryReviewResponse.ok && schemaRecoveryReviewResult.success) {
+          setSchemaRecoveryReview(schemaRecoveryReviewResult.report || null);
+          setSchemaRecoveryReviewError(null);
+        } else {
+          setSchemaRecoveryReview(null);
+          setSchemaRecoveryReviewError(schemaRecoveryReviewResult.error || "Schema recovery review is unavailable.");
         }
       }
       setBackups(backupsData);
@@ -2844,6 +2876,32 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleRefreshSchemaRecoveryReview = async () => {
+    try {
+      setLoadingSchemaRecoveryReview(true);
+      setSchemaRecoveryReviewError(null);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/backups/schema-recovery-review", {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || "Schema recovery review failed.");
+
+      setSchemaRecoveryReview(result.report || null);
+    } catch (err: any) {
+      setSchemaRecoveryReviewError(err.message || "Schema recovery review failed.");
+      toast({ title: "Schema recovery review failed", description: err.message, variant: "destructive" });
+    } finally {
+      setLoadingSchemaRecoveryReview(false);
+    }
+  };
+
   const handleValidateBackupUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -4582,27 +4640,183 @@ export default function AdminDashboard() {
                   
                   {/* Destination Identification */}
                   <div className="rounded-xl border bg-background p-4 space-y-4">
-                    <div>
-                      <h3 className="font-semibold text-foreground">1. Destination Identification</h3>
-                      <p className="text-sm text-muted-foreground">Identify the intended target environment for reporting only. These fields do not change the server's actual Supabase connection.</p>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="dest-label">Destination Label (e.g., Authorized Test, Staging)</Label>
-                        <Input id="dest-label" value={restoreDestinationLabel} onChange={(e) => setRestoreDestinationLabel(e.target.value)} disabled={Boolean(restoringBackup)} placeholder="Authorized test project" />
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="font-semibold text-foreground">Schema Recovery Review</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Read-only evidence review for schema inventory, dependency planning, consistency limits, and recovery blockers. This does not validate stored package bytes or authorize restore writes.
+                        </p>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="dest-ref">Destination Project Reference</Label>
-                        <Input id="dest-ref" value={restoreDestinationProjectRef} onChange={(e) => setRestoreDestinationProjectRef(e.target.value)} disabled={Boolean(restoringBackup)} placeholder="xxxxxxxxx" />
-                      </div>
+                      <Button type="button" variant="outline" onClick={handleRefreshSchemaRecoveryReview} disabled={loadingSchemaRecoveryReview}>
+                        {loadingSchemaRecoveryReview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+                        Refresh review
+                      </Button>
                     </div>
-                    <label className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
-                      <input type="checkbox" className="mt-1" checked={restoreDestinationConfirmed} onChange={(e) => setRestoreDestinationConfirmed(e.target.checked)} disabled={Boolean(restoringBackup)} />
-                      <span>
-                        <span className="block font-semibold text-foreground">Acknowledge destination intent</span>
-                        <span className="block text-xs text-muted-foreground">This confirms what you intend to review. It does not authorize restore writes or prove the actual database destination.</span>
-                      </span>
-                    </label>
+
+                    {schemaRecoveryReviewError && (
+                      <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                        {schemaRecoveryReviewError}
+                      </div>
+                    )}
+
+                    {schemaRecoveryReview ? (
+                      <div className="space-y-4">
+                        <div className="grid gap-3 md:grid-cols-4">
+                          <div className="rounded-lg border bg-muted/30 p-3">
+                            <p className="text-xs text-muted-foreground">Overall readiness</p>
+                            <Badge variant={getReviewStatusBadgeVariant(schemaRecoveryReview.recovery_status?.full_project_recovery)}>
+                              {getReviewStatusLabel(schemaRecoveryReview.recovery_status?.full_project_recovery)}
+                            </Badge>
+                            <p className="mt-2 text-xs text-muted-foreground">Full-project recovery is not claimed without verified evidence.</p>
+                          </div>
+                          <div className="rounded-lg border bg-muted/30 p-3">
+                            <p className="text-xs text-muted-foreground">Schema inventory</p>
+                            <Badge variant={getReviewStatusBadgeVariant(schemaRecoveryReview.schema_inventory?.repository_inventory_available ? "repository_evidence_only" : "missing")}>
+                              {schemaRecoveryReview.schema_inventory?.repository_inventory_available ? "Repository evidence only" : "Missing"}
+                            </Badge>
+                            <p className="mt-2 font-mono text-xs text-muted-foreground">{Number(schemaRecoveryReview.schema_inventory?.migration_file_count || 0).toLocaleString()} migration file(s)</p>
+                          </div>
+                          <div className="rounded-lg border bg-muted/30 p-3">
+                            <p className="text-xs text-muted-foreground">Dependency planner</p>
+                            <Badge variant={getReviewStatusBadgeVariant(schemaRecoveryReview.dependency_plan?.readiness === "blocked" ? "blocked" : "repository_evidence_only")}>
+                              {String(schemaRecoveryReview.dependency_plan?.readiness || "inventory_only").replace(/_/g, " ")}
+                            </Badge>
+                            <p className="mt-2 text-xs text-muted-foreground">{Number(schemaRecoveryReview.dependency_plan?.unresolved_dependency_count || 0)} unresolved · {Number(schemaRecoveryReview.dependency_plan?.cycle_count || 0)} cycle(s)</p>
+                          </div>
+                          <div className="rounded-lg border bg-muted/30 p-3">
+                            <p className="text-xs text-muted-foreground">Restore writes</p>
+                            <Badge variant="destructive">Blocked</Badge>
+                            <p className="mt-2 text-xs text-muted-foreground">Restore writes remain blocked by design.</p>
+                          </div>
+                        </div>
+
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <div className="rounded-xl border bg-muted/20 p-4">
+                            <p className="font-semibold text-foreground">Schema inventory coverage</p>
+                            <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                              {schemaRecoveryReview.schema_inventory?.categories?.map((category: any) => (
+                                <div key={category.key} className="rounded-lg border bg-background p-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-semibold">{category.label}</p>
+                                    <Badge variant={getReviewStatusBadgeVariant(category.status)}>
+                                      {getReviewStatusLabel(category.status)}
+                                    </Badge>
+                                  </div>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    Captured by backup: {category.captured_by_backup_system ? "yes" : "no"} · Procedure: {String(category.recovery_procedure_status || "not implemented").replace(/_/g, " ")}
+                                  </p>
+                                  {category.blockers?.[0] && <p className="mt-2 text-xs text-destructive">{category.blockers[0]}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="rounded-xl border bg-muted/20 p-4">
+                            <p className="font-semibold text-foreground">Planner blockers and dependency evidence</p>
+                            <div className="mt-3 grid gap-3 md:grid-cols-3">
+                              <div className="rounded-lg bg-background p-3">
+                                <p className="text-xs text-muted-foreground">Explicit</p>
+                                <p className="font-mono text-lg font-semibold">{Number(schemaRecoveryReview.dependency_plan?.dependency_counts?.explicit || 0).toLocaleString()}</p>
+                              </div>
+                              <div className="rounded-lg bg-background p-3">
+                                <p className="text-xs text-muted-foreground">Inferred</p>
+                                <p className="font-mono text-lg font-semibold">{Number(schemaRecoveryReview.dependency_plan?.dependency_counts?.inferred || 0).toLocaleString()}</p>
+                              </div>
+                              <div className="rounded-lg bg-background p-3">
+                                <p className="text-xs text-muted-foreground">Unknown</p>
+                                <p className="font-mono text-lg font-semibold">{Number(schemaRecoveryReview.dependency_plan?.dependency_counts?.unknown || 0).toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                              <div className="rounded-lg bg-background p-3">
+                                <p className="text-xs text-muted-foreground">Missing definitions</p>
+                                <p className="font-mono text-sm font-semibold">{Number(schemaRecoveryReview.dependency_plan?.missing_definition_count || 0).toLocaleString()}</p>
+                              </div>
+                              <div className="rounded-lg bg-background p-3">
+                                <p className="text-xs text-muted-foreground">Unsupported object types</p>
+                                <p className="font-mono text-sm font-semibold">{Number(schemaRecoveryReview.dependency_plan?.unsupported_object_count || 0).toLocaleString()}</p>
+                              </div>
+                            </div>
+                            {schemaRecoveryReview.dependency_plan?.cycles?.length > 0 && (
+                              <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+                                <p className="text-sm font-semibold text-destructive">Detected dependency cycles</p>
+                                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-destructive">
+                                  {schemaRecoveryReview.dependency_plan.cycles.slice(0, 5).map((cycle: any, index: number) => (
+                                    <li key={`${cycle.node_ids?.join("-")}-${index}`}>{cycle.node_ids?.join(" → ")}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {schemaRecoveryReview.dependency_plan?.missing_definitions?.length > 0 && (
+                              <div className="mt-3 rounded-lg border bg-background p-3">
+                                <p className="text-sm font-semibold text-foreground">Missing definitions</p>
+                                <p className="mt-1 break-words font-mono text-xs text-muted-foreground">
+                                  {schemaRecoveryReview.dependency_plan.missing_definitions.slice(0, 8).join(", ")}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                          {[
+                            ["Database consistency", schemaRecoveryReview.recovery_status?.database_consistency],
+                            ["Storage recovery", schemaRecoveryReview.recovery_status?.storage_recovery],
+                            ["Auth recovery", schemaRecoveryReview.recovery_status?.auth_recovery],
+                            ["DB-to-Storage validation", schemaRecoveryReview.recovery_status?.database_to_storage_validation],
+                            ["Full-project recovery", schemaRecoveryReview.recovery_status?.full_project_recovery],
+                          ].map(([label, status]) => (
+                            <div key={label} className="rounded-lg border bg-muted/20 p-3">
+                              <p className="text-xs text-muted-foreground">{label}</p>
+                              <Badge className="mt-2" variant={getReviewStatusBadgeVariant(String(status))}>
+                                {getReviewStatusLabel(String(status))}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+
+                        {schemaRecoveryReview.findings?.length > 0 && (
+                          <div className="rounded-xl border bg-muted/20 p-4">
+                            <p className="font-semibold text-foreground">Evidence sources and major findings</p>
+                            <div className="mt-3 grid gap-2 md:grid-cols-2">
+                              {schemaRecoveryReview.findings.map((finding: any) => (
+                                <div key={finding.key} className="rounded-lg border bg-background p-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-semibold">{finding.label}</p>
+                                    <Badge variant={getReviewStatusBadgeVariant(finding.status)}>
+                                      {getReviewStatusLabel(finding.status)}
+                                    </Badge>
+                                  </div>
+                                  <p className="mt-1 text-xs text-muted-foreground">{finding.details}</p>
+                                  <p className="mt-2 text-[11px] font-medium text-muted-foreground">Source: {finding.evidence_source}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {schemaRecoveryReview.blockers?.length > 0 && (
+                          <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+                            <p className="mb-2 text-sm font-semibold text-destructive">Recovery blockers</p>
+                            <ul className="max-h-72 list-disc space-y-1 overflow-y-auto pl-5 text-sm text-destructive">
+                              {schemaRecoveryReview.blockers.slice(0, 25).map((blocker: string) => <li key={blocker}>{blocker}</li>)}
+                            </ul>
+                          </div>
+                        )}
+
+                        <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                          Stored package verification is not started automatically from this review. Use the existing per-restore-point validation action when a Superadmin intentionally wants to retrieve and verify stored archive bytes.
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                        Schema recovery review evidence has not loaded yet. Refresh the review to fetch the read-only report.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Destination Identification */}
+                  <div className="rounded-xl border bg-background p-4 space-y-4">
                   </div>
 
                   {/* Dry Run & Restore */}

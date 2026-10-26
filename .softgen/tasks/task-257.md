@@ -13,11 +13,11 @@ position: 257
 Build a read-only Disaster Recovery review page and authenticated Superadmin-only API that consolidate existing schema recovery inventory, schema dependency planner, backup validation status, restore-point consistency evidence, complete recovery manifest status, and blockers. The endpoint and UI must report evidence only; they must not execute SQL, query or modify production, switch Supabase projects, download packages automatically, enable restore writes, expose secrets, deploy, or modify Stamp Flow or Quick Stamp. Use existing server-side authorization conventions and established DR manifest/planner modules. Preserve legacy backup compatibility and restore-write blocking.
 
 ## Checklist
-- [ ] Inspect existing DR manifest/planner modules, backup validation modules, Superadmin dashboard authorization patterns, tests, and Tasks 250-256
-- [ ] Implement a read-only Superadmin-only API that aggregates repository-derived schema recovery evidence, planner readiness, consistency status, missing evidence, blockers, and warnings without write side effects
-- [ ] Add a Schema Recovery Review section/page to the existing Disaster Recovery Center with clear non-green states for unverified or blocked components
-- [ ] Validate API output shape, authorization rejection paths, partial evidence handling, and no full-project recovery claims without evidence
-- [ ] Add focused tests for Superadmin authorization, read-only behavior, aggregation, blockers, missing evidence, cycles, and restore-safeguard preservation
+- [x] Inspect existing DR manifest/planner modules, backup validation modules, Superadmin dashboard authorization patterns, tests, and Tasks 250-256
+- [x] Implement a read-only Superadmin-only API that aggregates repository-derived schema recovery evidence, planner readiness, consistency status, missing evidence, blockers, and warnings without write side effects
+- [x] Add a Schema Recovery Review section/page to the existing Disaster Recovery Center with clear non-green states for unverified or blocked components
+- [x] Validate API output shape, authorization rejection paths, partial evidence handling, and no full-project recovery claims without evidence
+- [x] Add focused tests for Superadmin authorization, read-only behavior, aggregation, blockers, missing evidence, cycles, and restore-safeguard preservation
 - [ ] Run focused tests and static checks, then report files changed, safety guarantees, limitations, and remaining blockers
 
 ## Acceptance
