@@ -133,7 +133,7 @@ function buildRoadmap(review: SchemaRecoveryReviewReport): RecoveryRoadmapItem[]
       phase: "Application and operational recovery",
       recovery_capability: "Source, deploy config, secrets, webhooks, callbacks, and integrations",
       current_evidence: "Review report identifies these as external runbook requirements.",
-      gap: "Backup packages do not include deployment/provider state or secret values.",
+      gap: "Backup packages do not include deployment/provider state or confidential configuration contents.",
       required_prerequisite: "Version-control, deployment, domain, callback, webhook, and secret-manager runbooks.",
       safe_next_action: "Create a non-secret operational recovery checklist.",
       validation_method: "Operator review with confidential configuration values kept outside browser-visible exports.",
