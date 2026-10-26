@@ -5,6 +5,7 @@ const evidenceSource = fs.readFileSync("src/lib/server/backupVerificationEvidenc
 const reviewSource = fs.readFileSync("src/lib/server/schemaRecoveryReviewReport.ts", "utf8");
 const reviewApiSource = fs.readFileSync("src/pages/api/admin/backups/schema-recovery-review.ts", "utf8");
 const validateStoredSource = fs.readFileSync("src/pages/api/admin/backups/[id]/validate-stored.ts", "utf8");
+const adminSource = fs.readFileSync("src/pages/admin/index.tsx", "utf8");
 
 assert.match(evidenceSource, /export const backupVerificationEvidenceVersion = "2026-10-26\.backup-verification-evidence-v1"/);
 assert.match(evidenceSource, /"verified" \| "failed" \| "incomplete" \| "not_verified"/);
@@ -35,5 +36,10 @@ assert.doesNotMatch(reviewSource, /verifyStoredBackupPackage\s*\(/);
 assert.doesNotMatch(reviewApiSource, /validate-stored/);
 assert.doesNotMatch(reviewApiSource, /verifyStoredBackupPackage/);
 assert.doesNotMatch(reviewApiSource, /storage\.from\(.*download/);
+
+assert.match(adminSource, /Stored package verification evidence/);
+assert.match(adminSource, /latest_stored_package_verification/);
+assert.match(adminSource, /This review never downloads or revalidates stored archives automatically/);
+assert.match(adminSource, /Package integrity evidence is separate from historical consistency/);
 
 console.log("backup verification evidence tests passed");
