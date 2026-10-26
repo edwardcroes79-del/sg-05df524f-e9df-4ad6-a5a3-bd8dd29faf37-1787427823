@@ -1,6 +1,6 @@
 ---
 title: Birthday Rewards Stage B1 Award Function
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [birthday-rewards, stage-b, migration, rpc]
@@ -16,8 +16,8 @@ Implement Stage B1 only for Royalty Stamp Birthday Rewards. Stage A is already a
 - [x] Confirm production schema, Stage A objects, helper functions, stamp/reward/card tables, constraints, indexes, policies, and grants with read-only inspection
 - [x] Draft a new Stage B migration for the birthday award RPC and supporting eligibility index only
 - [x] Preserve existing stamp issuance, Quick Stamp QR, anti-fraud checks, reward redemption, analytics definitions, and public RPC signatures
-- [ ] Verify transaction safety for award ledger, stamp transaction, card count, and reward creation consistency
-- [ ] Calculate migration checksum and report SQL, affected objects, rollback limitations, unresolved risks, and approval needed before application
+- [x] Verify transaction safety for award ledger, stamp transaction, card count, and reward creation consistency
+- [x] Calculate migration checksum and report SQL, affected objects, rollback limitations, unresolved risks, and approval needed before application
 
 ## Acceptance
 Stage B1 produces a reviewed migration draft only; no migration is applied and production behavior remains unchanged.
