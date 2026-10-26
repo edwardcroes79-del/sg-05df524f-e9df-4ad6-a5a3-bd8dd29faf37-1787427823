@@ -229,7 +229,9 @@ try {
   const backupConfig = await import(modulePaths.get("@/lib/server/backupConfig"));
   const archive = buildMinimalBackupArchive(backupConfig);
   const handlerModule = await import(modulePaths.get("@/pages/api/admin/backups/restore-upload"));
-  const handler = handlerModule.default;
+  const handler = handlerModule.default?.default || handlerModule.default || handlerModule;
+
+  assert.equal(typeof handler, "function");
 
   const req = Readable.from(archive);
   req.method = "POST";
