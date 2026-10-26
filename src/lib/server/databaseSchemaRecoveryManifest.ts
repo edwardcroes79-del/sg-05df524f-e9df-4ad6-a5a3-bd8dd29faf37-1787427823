@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import { buildSchemaDependencyPlan, validateSchemaDependencyPlan, type SchemaDependencyPlan } from "./schemaDependencyPlanner";
 
 export const databaseSchemaRecoveryManifestVersion = "2026-10-26.database-schema-recovery-v1";
 export const databaseSchemaRecoveryGenerator = "royalty-stamp-dr-database-schema-recovery-v1";
@@ -69,6 +70,10 @@ export type DatabaseSchemaRecoverySummary = {
   migration_history_available: boolean;
   complete_schema_recovery_supported: boolean;
   implemented_recovery_procedure_available: boolean;
+  dependency_plan_available: boolean;
+  dependency_plan_readiness: "inventory_only" | "partially_plannable" | "blocked" | "ready_for_review";
+  dependency_plan_unresolved_count: number;
+  dependency_plan_cycle_count: number;
   validation_status: "repository_derived_unverified" | "blocked" | "malformed";
   blockers: string[];
   warnings: string[];
@@ -98,6 +103,7 @@ export type DatabaseSchemaRecoveryInventory = {
   };
   expected_migration_version?: string;
   categories: DatabaseSchemaRecoveryCategory[];
+  schema_dependency_plan?: SchemaDependencyPlan;
   future_recovery_sequence: string[];
   summary: DatabaseSchemaRecoverySummary;
 };
@@ -441,7 +447,7 @@ function buildCategories(repo: RepositorySchemaEvidence): DatabaseSchemaRecovery
   ];
 }
 
-function summarize(categories: DatabaseSchemaRecoveryCategory[], repo: RepositorySchemaEvidence): DatabaseSchemaRecoverySummary {
+function summarize(categories: DatabaseSchemaRecoveryCategory[], repo: RepositorySchemaEvidence, schemaDependencyPlan?: SchemaDependencyPlan): DatabaseSchemaRecoverySummary {
   const blockers = Array.from(new Set(categories.flatMap((item) => item.blockers.map((blocker) => `${item.label}: ${blocker}`))));
   const inventoryComplete = requiredDatabaseSchemaRecoveryCategoryKeys.every((key) => categories.some((item) => item.key === key));
   const completeSchemaReady = false;
@@ -453,6 +459,10 @@ function summarize(categories: DatabaseSchemaRecoveryCategory[], repo: Repositor
     migration_history_available: repo.migrationFiles.length > 0,
     complete_schema_recovery_supported: completeSchemaReady,
     implemented_recovery_procedure_available: false,
+    dependency_plan_available: Boolean(schemaDependencyPlan),
+    dependency_plan_readiness: schemaDependencyPlan?.summary.readiness || "inventory_only",
+    dependency_plan_unresolved_count: schemaDependencyPlan?.summary.unresolved_dependency_count || 0,
+    dependency_plan_cycle_count: schemaDependencyPlan?.summary.cycle_count || 0,
     validation_status: inventoryComplete ? "repository_derived_unverified" : "blocked",
     blockers,
     warnings: [
@@ -465,13 +475,20 @@ function summarize(categories: DatabaseSchemaRecoveryCategory[], repo: Repositor
 
 export function buildDatabaseSchemaRecoveryInventory(input: BuildDatabaseSchemaRecoveryInventoryInput): DatabaseSchemaRecoveryInventory {
   const projectRoot = input.projectRoot || process.cwd();
+  const generatedAt = input.generatedAt || new Date().toISOString();
   const repo = analyzeRepositorySchemaEvidence(projectRoot);
   const categories = buildCategories(repo);
+  const schemaDependencyPlan = buildSchemaDependencyPlan({
+    backupId: input.backupId,
+    inputInventoryVersion: databaseSchemaRecoveryManifestVersion,
+    generatedAt,
+    projectRoot,
+  });
 
   return {
     schema_recovery_manifest_version: databaseSchemaRecoveryManifestVersion,
     generated_by: databaseSchemaRecoveryGenerator,
-    generated_at: input.generatedAt || new Date().toISOString(),
+    generated_at: generatedAt,
     backup_id: input.backupId,
     backup_version: input.backupVersion,
     schema_source: "repository_derived",
@@ -492,6 +509,7 @@ export function buildDatabaseSchemaRecoveryInventory(input: BuildDatabaseSchemaR
     },
     expected_migration_version: repo.latestMigrationFile,
     categories,
+    schema_dependency_plan: schemaDependencyPlan,
     future_recovery_sequence: [
       "Verify the backup package and archive integrity.",
       "Verify schema definitions and repository migration history are available.",
@@ -504,7 +522,7 @@ export function buildDatabaseSchemaRecoveryInventory(input: BuildDatabaseSchemaR
       "Confirm security policies and permissions.",
       "Record a recovery report and unresolved blockers.",
     ],
-    summary: summarize(categories, repo),
+    summary: summarize(categories, repo, schemaDependencyPlan),
   };
 }
 
@@ -602,7 +620,16 @@ export function validateDatabaseSchemaRecoveryInventory(manifest: unknown, backu
     if (summary.implemented_recovery_procedure_available === true) {
       errors.push("database_schema_recovery summary falsely claims an implemented schema recovery procedure.");
     }
+    if (summary.dependency_plan_available === true && !manifest.schema_dependency_plan) {
+      errors.push("database_schema_recovery summary claims a dependency plan is available, but schema_dependency_plan is missing.");
+    }
   }
+
+  const schemaDependencyPlanValidation = validateSchemaDependencyPlan(manifest.schema_dependency_plan, backupId);
+  if (!schemaDependencyPlanValidation.valid) {
+    errors.push(...schemaDependencyPlanValidation.errors);
+  }
+  warnings.push(...schemaDependencyPlanValidation.warnings);
 
   return {
     valid: errors.length === 0,

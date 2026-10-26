@@ -30,6 +30,8 @@ export type RestorePointSummary = {
   database_schema_recovery_present: boolean;
   schema_recovery_inventory_available: boolean;
   complete_schema_recovery_supported: boolean;
+  schema_dependency_plan_available: boolean;
+  schema_dependency_plan_readiness: string | null;
   available_for_selected_timestamp: boolean;
   total_records: number;
   total_storage_files: number;
@@ -241,6 +243,8 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
     database_schema_recovery_present: Boolean(manifest?.database_schema_recovery),
     schema_recovery_inventory_available: Boolean(schemaRecoverySummary?.repository_inventory_available),
     complete_schema_recovery_supported: Boolean(schemaRecoverySummary?.complete_schema_recovery_supported),
+    schema_dependency_plan_available: Boolean(schemaRecoverySummary?.dependency_plan_available),
+    schema_dependency_plan_readiness: schemaRecoverySummary?.dependency_plan_readiness || null,
     available_for_selected_timestamp: selectedMatches,
     total_records: sumRecordCounts(manifest),
     total_storage_files: sumStorageObjects(manifest),
