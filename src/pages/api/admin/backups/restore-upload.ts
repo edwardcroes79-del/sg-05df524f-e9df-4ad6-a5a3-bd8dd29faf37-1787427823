@@ -5,6 +5,7 @@ import { Transform } from "stream";
 import { pipeline } from "stream/promises";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
+import { isRestoreWriteConfirmation } from "@/lib/server/backupRestorePreflight";
 import { restoreBackupPackage, type RestoreMode } from "@/lib/server/backupRestoreEngine";
 
 export const config = {
@@ -32,6 +33,20 @@ function getConfirmation(req: NextApiRequest) {
   const rawConfirmation = req.headers["x-restore-confirmation"];
   const confirmation = Array.isArray(rawConfirmation) ? rawConfirmation[0] : rawConfirmation;
   return decodeURIComponent(String(confirmation || ""));
+}
+
+function getHeaderValue(req: NextApiRequest, header: string) {
+  const rawValue = req.headers[header];
+  const value = Array.isArray(rawValue) ? rawValue[0] : rawValue;
+  return decodeURIComponent(String(value || "")).trim();
+}
+
+function getRestoreDestination(req: NextApiRequest) {
+  return {
+    destinationLabel: getHeaderValue(req, "x-restore-destination-label"),
+    destinationProjectRef: getHeaderValue(req, "x-restore-destination-project-ref"),
+    restoreWritesConfirmed: isRestoreWriteConfirmation(getHeaderValue(req, "x-restore-writes-confirmed")),
+  };
 }
 
 async function writeRequestToTempFile(req: NextApiRequest, filePath: string) {
@@ -88,6 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       confirmation: getConfirmation(req),
       mode: getRestoreMode(req),
       tempDir,
+      destination: getRestoreDestination(req),
     });
 
     return res.status(report.valid ? 200 : 422).json({
@@ -95,9 +111,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       report,
     });
   } catch (err: any) {
-    return res.status(500).json({
+    const message = err.message || "Backup restore failed";
+    const lower = message.toLowerCase();
+    const status = lower.includes("authorization")
+      ? 401
+      : lower.includes("confirmation") || lower.includes("destination") || lower.includes("preflight") || lower.includes("requires")
+        ? 400
+        : 500;
+
+    return res.status(status).json({
       success: false,
-      error: err.message || "Backup restore failed",
+      error: status === 500 ? "Backup restore failed" : message,
     });
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true });

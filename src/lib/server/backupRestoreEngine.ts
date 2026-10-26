@@ -4,6 +4,12 @@ import { backupVersion, requiredBuckets, requiredTables, type BackupManifest } f
 import { createBackupPackage } from "@/lib/server/backupEngine";
 import { extractBackupArchive, type ExtractedBackupArchive } from "@/lib/server/backupRestoreArchive";
 import { validateBackupArchive, type BackupValidationReport } from "@/lib/server/backupValidator";
+import {
+  assertRestoreDestinationSafety,
+  buildRestorePreflightReport,
+  type BackupRestorePreflightReport,
+  type RestoreDestinationConfirmation,
+} from "@/lib/server/backupRestorePreflight";
 
 export type RestoreMode = "dry_run" | "restore";
 
@@ -28,6 +34,7 @@ export type BackupRestoreReport = {
   backup_version?: string;
   safety_backup_job_id?: string | null;
   validation: BackupValidationReport;
+  preflight?: BackupRestorePreflightReport;
   table_results: RestoreTableResult[];
   storage_results: RestoreStorageResult[];
   restored_records: number;
@@ -154,7 +161,13 @@ async function restoreStorage(admin: SupabaseClient, archive: ExtractedBackupArc
   return results;
 }
 
-function buildDryRunReport(restoreJobId: string, mode: RestoreMode, validation: BackupValidationReport, archive: ExtractedBackupArchive): BackupRestoreReport {
+function buildDryRunReport(
+  restoreJobId: string,
+  mode: RestoreMode,
+  validation: BackupValidationReport,
+  archive: ExtractedBackupArchive,
+  preflight: BackupRestorePreflightReport
+): BackupRestoreReport {
   const tableResults = getRestoreOrder(archive.manifest).map((table) => {
     const manifestTable = archive.manifest.tables.find((item) => item.table === table);
     return {
@@ -180,13 +193,14 @@ function buildDryRunReport(restoreJobId: string, mode: RestoreMode, validation: 
     backup_id: archive.manifest.backup_id,
     backup_version: archive.manifest.backup_version,
     validation,
+    preflight,
     table_results: tableResults,
     storage_results: storageResults,
     restored_records: 0,
     restored_files: 0,
     restored_storage_bytes: 0,
     errors: [],
-    warnings: validation.warnings,
+    warnings: preflight.warnings,
   };
 }
 
@@ -199,14 +213,17 @@ export async function restoreBackupPackage(params: {
   confirmation: string;
   mode: RestoreMode;
   tempDir: string;
+  destination?: RestoreDestinationConfirmation;
 }): Promise<BackupRestoreReport> {
-  const { admin, adminUserId, uploadedPackagePath, fileName, fileSizeBytes, confirmation, mode, tempDir } = params;
+  const { admin, adminUserId, uploadedPackagePath, fileName, fileSizeBytes, confirmation, mode, tempDir, destination } = params;
   const restoreJobId = await createRestoreJob(admin, adminUserId, mode);
 
   try {
     if (confirmation !== restoreConfirmationPhrase) {
       throw new Error(`Restore requires exact confirmation phrase: ${restoreConfirmationPhrase}`);
     }
+
+    assertRestoreDestinationSafety(mode, destination);
 
     const validation = await validateBackupArchive(uploadedPackagePath, fileName, fileSizeBytes);
     if (!validation.valid) {
@@ -243,8 +260,19 @@ export async function restoreBackupPackage(params: {
       throw new Error("Backup version changed between validation and restore extraction.");
     }
 
+    const preflight = await buildRestorePreflightReport({
+      archive,
+      validation,
+      mode,
+      destination,
+    });
+
+    if (preflight.destructive_write_blockers.length > 0) {
+      throw new Error(`Restore preflight blocked: ${preflight.destructive_write_blockers.join(" ")}`);
+    }
+
     if (mode === "dry_run") {
-      const dryRunReport = buildDryRunReport(restoreJobId, mode, validation, archive);
+      const dryRunReport = buildDryRunReport(restoreJobId, mode, validation, archive, preflight);
       await updateRestoreJob(admin, restoreJobId, {
         status: "completed",
         backup_id: archive.manifest.backup_id,
@@ -287,13 +315,14 @@ export async function restoreBackupPackage(params: {
       backup_version: archive.manifest.backup_version,
       safety_backup_job_id: safetyBackup.backupId,
       validation,
+      preflight,
       table_results: tableResults,
       storage_results: storageResults,
       restored_records: tableResults.reduce((sum, item) => sum + item.records_restored, 0),
       restored_files: storageResults.reduce((sum, item) => sum + item.files_restored, 0),
       restored_storage_bytes: storageResults.reduce((sum, item) => sum + item.bytes_restored, 0),
       errors: [],
-      warnings: validation.warnings,
+      warnings: preflight.warnings,
     };
 
     await updateRestoreJob(admin, restoreJobId, {
