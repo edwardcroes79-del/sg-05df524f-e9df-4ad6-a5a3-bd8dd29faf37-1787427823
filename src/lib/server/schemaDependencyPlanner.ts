@@ -266,8 +266,9 @@ function parseSqlFiles(files: SqlFile[]) {
 
     eachMatch(file.content, /\bcreate\s+policy\s+([a-zA-Z0-9_."-]+)\s+on\s+([a-zA-Z0-9_."-]+)/gi, (match) => {
       const node = addNode(nodes, "rls_policy", `${match[2]}.${match[1]}`, location(match.index));
+      const statement = file.content.slice(match.index, file.content.indexOf(";", match.index) === -1 ? file.content.length : file.content.indexOf(";", match.index) + 1);
       addDependency(node, objectId("schema_table", match[2]), "explicit", location(match.index), "CREATE POLICY ON identifies table dependency.");
-      if (/\bauth\./i.test(match[0])) addDependency(node, objectId("function", "auth.uid"), "unknown", location(match.index), "Policy references auth helper behavior that is not defined in repository migrations.");
+      if (/\bauth\./i.test(statement)) addDependency(node, objectId("function", "auth.uid"), "unknown", location(match.index), "Policy references auth helper behavior that is not defined in repository migrations.");
     });
 
     eachMatch(file.content, /\balter\s+table\s+([a-zA-Z0-9_."-]+)\s+(?:enable|force)\s+row\s+level\s+security/gi, (match) => {
