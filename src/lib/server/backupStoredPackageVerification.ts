@@ -33,6 +33,8 @@ export type StoredBackupVerificationReport = {
   complete_recovery_summary?: BackupManifest["complete_recovery_manifest"]["summary"];
   restore_point_consistency_present: boolean;
   restore_point_consistency_summary?: NonNullable<BackupManifest["restore_point_consistency"]>["summary"];
+  database_schema_recovery_present: boolean;
+  database_schema_recovery_summary?: NonNullable<BackupManifest["database_schema_recovery"]>["summary"];
   total_records_verified?: number;
   total_storage_files_verified?: number;
   checks: StoredBackupVerificationCheck[];
@@ -122,6 +124,8 @@ function buildReport(params: {
     complete_recovery_summary: manifest?.complete_recovery_manifest?.summary || validation?.complete_recovery_manifest?.summary,
     restore_point_consistency_present: Boolean(manifest?.restore_point_consistency || validation?.restore_point_consistency?.present),
     restore_point_consistency_summary: manifest?.restore_point_consistency?.summary || validation?.restore_point_consistency?.summary,
+    database_schema_recovery_present: Boolean(manifest?.database_schema_recovery || validation?.database_schema_recovery?.present),
+    database_schema_recovery_summary: manifest?.database_schema_recovery?.summary || validation?.database_schema_recovery?.summary,
     total_records_verified: manifest ? sumRecords(manifest) : validation?.total_records,
     total_storage_files_verified: manifest ? sumFiles(manifest) : validation?.total_files,
     checks,

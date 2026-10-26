@@ -14,6 +14,7 @@ export type BackupPackagePart = {
 };
 
 import type { CompleteRecoveryManifest } from "@/lib/server/completeRecoveryManifest";
+import type { DatabaseSchemaRecoveryInventory } from "@/lib/server/databaseSchemaRecoveryManifest";
 import type { RestorePointConsistencyManifest } from "@/lib/server/restorePointConsistencyManifest";
 
 export type TableManifest = {
@@ -58,6 +59,7 @@ export type BackupManifest = {
   package_parts?: BackupPackagePart[];
   complete_recovery_manifest?: CompleteRecoveryManifest;
   restore_point_consistency?: RestorePointConsistencyManifest;
+  database_schema_recovery?: DatabaseSchemaRecoveryInventory;
   auth_notice: string;
 };
 

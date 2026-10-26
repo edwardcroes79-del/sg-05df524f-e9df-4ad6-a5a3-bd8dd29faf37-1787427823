@@ -3,6 +3,7 @@ import fs from "fs";
 import zlib from "zlib";
 import { backupVersion, requiredBuckets, requiredTables, type BackupManifest } from "@/lib/server/backupConfig";
 import { validateCompleteRecoveryManifest, type CompleteRecoveryManifestSummary } from "@/lib/server/completeRecoveryManifest";
+import { validateDatabaseSchemaRecoveryInventory, type DatabaseSchemaRecoverySummary } from "@/lib/server/databaseSchemaRecoveryManifest";
 import { validateRestorePointConsistencyManifest, type RestorePointConsistencySummary } from "@/lib/server/restorePointConsistencyManifest";
 
 type EntryInfo = {
@@ -43,6 +44,11 @@ export type BackupValidationReport = {
     present: boolean;
     legacy: boolean;
     summary?: RestorePointConsistencySummary;
+  };
+  database_schema_recovery?: {
+    present: boolean;
+    legacy: boolean;
+    summary?: DatabaseSchemaRecoverySummary;
   };
 };
 
@@ -335,6 +341,25 @@ export async function validateBackupArchive(filePath: string, fileName: string, 
     }
     warnings.push(...restorePointConsistencyValidation.warnings);
 
+    const databaseSchemaRecoveryValidation = validateDatabaseSchemaRecoveryInventory(manifest.database_schema_recovery, manifest.backup_id);
+    if (databaseSchemaRecoveryValidation.valid) {
+      checks.push({
+        name: "Database schema recovery inventory",
+        status: databaseSchemaRecoveryValidation.legacy ? "warning" : "passed",
+        details: databaseSchemaRecoveryValidation.legacy
+          ? "Package uses legacy manifest format without database schema recovery evidence."
+          : "Database schema recovery inventory structure is valid and does not claim live schema capture or complete schema recovery.",
+      });
+    } else {
+      checks.push({
+        name: "Database schema recovery inventory",
+        status: "failed",
+        details: databaseSchemaRecoveryValidation.errors.join(" "),
+      });
+      errors.push(...databaseSchemaRecoveryValidation.errors);
+    }
+    warnings.push(...databaseSchemaRecoveryValidation.warnings);
+
     const checksumErrorCount = errors.filter((error) => error.toLowerCase().includes("checksum") || error.toLowerCase().includes("missing from archive") || error.toLowerCase().includes("record count")).length;
     addCheck(checks, "Integrity checksums", checksumErrorCount === 0, checksumErrorCount === 0 ? "All listed file checksums, sizes, and record counts match." : `${checksumErrorCount} integrity issue(s) detected.`);
 
@@ -363,6 +388,11 @@ export async function validateBackupArchive(filePath: string, fileName: string, 
         present: Boolean(manifest.restore_point_consistency),
         legacy: restorePointConsistencyValidation.legacy,
         summary: manifest.restore_point_consistency?.summary,
+      },
+      database_schema_recovery: {
+        present: Boolean(manifest.database_schema_recovery),
+        legacy: databaseSchemaRecoveryValidation.legacy,
+        summary: manifest.database_schema_recovery?.summary,
       },
     };
   } catch (error: any) {

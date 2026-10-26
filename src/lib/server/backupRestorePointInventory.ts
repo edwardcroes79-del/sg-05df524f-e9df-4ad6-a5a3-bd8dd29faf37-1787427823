@@ -27,6 +27,9 @@ export type RestorePointSummary = {
   restore_point_consistency_present: boolean;
   consistency_model: string | null;
   consistency_classification: string | null;
+  database_schema_recovery_present: boolean;
+  schema_recovery_inventory_available: boolean;
+  complete_schema_recovery_supported: boolean;
   available_for_selected_timestamp: boolean;
   total_records: number;
   total_storage_files: number;
@@ -181,6 +184,7 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
     && missingRequiredBuckets.length === 0;
   const completeRecoverySummary = manifest?.complete_recovery_manifest?.summary;
   const consistencySummary = manifest?.restore_point_consistency?.summary;
+  const schemaRecoverySummary = manifest?.database_schema_recovery?.summary;
   const selectedMatches = Boolean(selectedAt)
     && (sameRestorePointMinute(job.completed_at, selectedAt) || sameRestorePointMinute(manifest?.created_at, selectedAt) || sameRestorePointMinute(job.created_at, selectedAt));
 
@@ -195,8 +199,10 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
   if (missingRequiredBuckets.length > 0) blockers.push(`Required bucket exports missing: ${missingRequiredBuckets.join(", ")}.`);
   if (!manifest?.complete_recovery_manifest) blockers.push("Complete recovery manifest v1 is missing; this is a legacy supported-package backup, not a complete project recovery point.");
   if (!manifest?.restore_point_consistency) blockers.push("Restore-point consistency manifest v1 is missing; this is a legacy backup with no explicit consistency evidence.");
+  if (!manifest?.database_schema_recovery) blockers.push("Database schema recovery inventory is missing; schema reconstruction evidence is unavailable for this package.");
   if (completeRecoverySummary?.blockers?.length) blockers.push(...completeRecoverySummary.blockers);
   if (consistencySummary?.blockers?.length) blockers.push(...consistencySummary.blockers);
+  if (schemaRecoverySummary?.blockers?.length) blockers.push(...schemaRecoverySummary.blockers);
 
   warnings.push("This restore point covers only the components currently included in the backup package; it is not a complete historical project restore point.");
   warnings.push("A timestamp is available only when backed by a completed backup package at that recorded time or a separately verified provider PITR mechanism.");
@@ -232,6 +238,9 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
     restore_point_consistency_present: Boolean(manifest?.restore_point_consistency),
     consistency_model: manifest?.restore_point_consistency?.consistency_model || null,
     consistency_classification: consistencySummary?.classification || null,
+    database_schema_recovery_present: Boolean(manifest?.database_schema_recovery),
+    schema_recovery_inventory_available: Boolean(schemaRecoverySummary?.repository_inventory_available),
+    complete_schema_recovery_supported: Boolean(schemaRecoverySummary?.complete_schema_recovery_supported),
     available_for_selected_timestamp: selectedMatches,
     total_records: sumRecordCounts(manifest),
     total_storage_files: sumStorageObjects(manifest),

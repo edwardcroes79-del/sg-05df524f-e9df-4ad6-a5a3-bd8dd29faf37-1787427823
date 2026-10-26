@@ -20,6 +20,7 @@ import {
   type TableManifest,
 } from "@/lib/server/backupConfig";
 import { buildCompleteRecoveryManifest } from "@/lib/server/completeRecoveryManifest";
+import { buildDatabaseSchemaRecoveryInventory } from "@/lib/server/databaseSchemaRecoveryManifest";
 import { buildRestorePointConsistencyManifest, markRestorePointConsistencyPackageCompleted } from "@/lib/server/restorePointConsistencyManifest";
 import { addBufferToTar, addFileToTar, finishTar, safeArchivePath, sha256Buffer, writeChunk } from "@/lib/server/backupTar";
 import { BackupCancelledError, assertBackupCanContinue, cleanupBackupArtifacts, markJobHeartbeat } from "@/lib/server/backupLifecycle";
@@ -227,6 +228,11 @@ function buildManifest(
     file_list: fileList,
     sha256_checksums: checksums,
     restore_point_consistency: restorePointConsistency,
+    database_schema_recovery: buildDatabaseSchemaRecoveryInventory({
+      backupId,
+      backupVersion,
+      generatedAt: startedAt,
+    }),
     complete_recovery_manifest: buildCompleteRecoveryManifest({
       backupId,
       backupVersion,
