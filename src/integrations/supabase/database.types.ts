@@ -298,6 +298,109 @@ export type Database = {
         }
         Relationships: []
       }
+      birthday_reward_awards: {
+        Row: {
+          attempt_count: number
+          awarded_at: string | null
+          birthday_date: string
+          birthday_year: number
+          business_id: string
+          celebration_seen_at: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          last_error: string | null
+          loyalty_card_id: string
+          loyalty_program_id: string
+          reserved_at: string | null
+          reward_id: string | null
+          stamp_transaction_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          awarded_at?: string | null
+          birthday_date: string
+          birthday_year: number
+          business_id: string
+          celebration_seen_at?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          last_error?: string | null
+          loyalty_card_id: string
+          loyalty_program_id: string
+          reserved_at?: string | null
+          reward_id?: string | null
+          stamp_transaction_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          awarded_at?: string | null
+          birthday_date?: string
+          birthday_year?: number
+          business_id?: string
+          celebration_seen_at?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          last_error?: string | null
+          loyalty_card_id?: string
+          loyalty_program_id?: string
+          reserved_at?: string | null
+          reward_id?: string | null
+          stamp_transaction_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "birthday_reward_awards_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "birthday_reward_awards_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "birthday_reward_awards_loyalty_card_id_fkey"
+            columns: ["loyalty_card_id"]
+            isOneToOne: false
+            referencedRelation: "customer_loyalty_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "birthday_reward_awards_loyalty_program_id_fkey"
+            columns: ["loyalty_program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "birthday_reward_awards_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "birthday_reward_awards_stamp_transaction_id_fkey"
+            columns: ["stamp_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "stamp_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_addon_subscriptions: {
         Row: {
           addon_id: string
@@ -392,6 +495,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "business_anti_fraud_settings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_birthday_reward_settings: {
+        Row: {
+          bonus_stamps: number
+          business_id: string
+          created_at: string
+          enabled: boolean
+          greeting_template: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bonus_stamps?: number
+          business_id: string
+          created_at?: string
+          enabled?: boolean
+          greeting_template?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bonus_stamps?: number
+          business_id?: string
+          created_at?: string
+          enabled?: boolean
+          greeting_template?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_birthday_reward_settings_business_id_fkey"
             columns: ["business_id"]
             isOneToOne: true
             referencedRelation: "businesses"
@@ -727,6 +868,106 @@ export type Database = {
             columns: ["email_log_id"]
             isOneToOne: false
             referencedRelation: "email_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_birthday_corrections: {
+        Row: {
+          corrected_at: string
+          corrected_by_admin_user_id: string
+          correction_reason: string
+          customer_id: string
+          id: string
+          metadata: Json
+          new_birth_day: number
+          new_birth_month: number
+          previous_birth_day: number
+          previous_birth_month: number
+        }
+        Insert: {
+          corrected_at?: string
+          corrected_by_admin_user_id: string
+          correction_reason: string
+          customer_id: string
+          id?: string
+          metadata?: Json
+          new_birth_day: number
+          new_birth_month: number
+          previous_birth_day: number
+          previous_birth_month: number
+        }
+        Update: {
+          corrected_at?: string
+          corrected_by_admin_user_id?: string
+          correction_reason?: string
+          customer_id?: string
+          id?: string
+          metadata?: Json
+          new_birth_day?: number
+          new_birth_month?: number
+          previous_birth_day?: number
+          previous_birth_month?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_birthday_corrections_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_birthdays: {
+        Row: {
+          birth_day: number
+          birth_month: number
+          corrected_at: string | null
+          corrected_by_admin_user_id: string | null
+          correction_reason: string | null
+          created_at: string
+          customer_id: string
+          previous_birth_day: number | null
+          previous_birth_month: number | null
+          registered_at: string
+          registered_by_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          birth_day: number
+          birth_month: number
+          corrected_at?: string | null
+          corrected_by_admin_user_id?: string | null
+          correction_reason?: string | null
+          created_at?: string
+          customer_id: string
+          previous_birth_day?: number | null
+          previous_birth_month?: number | null
+          registered_at?: string
+          registered_by_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          birth_day?: number
+          birth_month?: number
+          corrected_at?: string | null
+          corrected_by_admin_user_id?: string | null
+          correction_reason?: string | null
+          created_at?: string
+          customer_id?: string
+          previous_birth_day?: number | null
+          previous_birth_month?: number | null
+          registered_at?: string
+          registered_by_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_birthdays_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -2019,6 +2260,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin_user: { Args: { p_user_id?: string }; Returns: boolean }
+      is_valid_birth_month_day: {
+        Args: { p_day: number; p_month: number }
+        Returns: boolean
+      }
       issue_stamp: {
         Args: {
           p_business_id: string
