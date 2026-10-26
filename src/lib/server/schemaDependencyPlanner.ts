@@ -478,7 +478,14 @@ function parseSqlFiles(files: SqlFile[]) {
     });
 
     eachMatch(file.content, /\bgrant\s+[\s\S]{1,300}?\bon\s+(?:table|function|sequence|schema)?\s*([a-zA-Z0-9_."-]+)/gi, (match) => {
-      addNode(nodes, "grant", `grant on ${match[1]} ${sha256(match[0]).slice(0, 12)}`, location(match.index));
+      const node = addNode(nodes, "grant", `grant on ${match[1]} ${sha256(match[0]).slice(0, 12)}`, location(match.index));
+      const statement = file.content.slice(match.index, file.content.indexOf(";", match.index) === -1 ? file.content.length : file.content.indexOf(";", match.index) + 1);
+      const roleMatch = /\bto\s+([^;]+)/i.exec(statement);
+      if (roleMatch) {
+        roleMatch[1].split(",").map((role) => normalizeName(role)).filter((role) => role === "authenticated" || role === "anon").forEach((role) => {
+          addDependency(node, objectId("missing_definition", role), "explicit", location(match.index), "GRANT target role is a Supabase-managed database role dependency.");
+        });
+      }
     });
 
     eachMatch(file.content, /\bcreate\s+(aggregate|operator|collation|publication|subscription)\b/gi, (match) => {
