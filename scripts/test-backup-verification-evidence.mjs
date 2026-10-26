@@ -14,7 +14,7 @@ assert.match(evidenceSource, /full_project_recovery_status: "blocked"/);
 assert.match(evidenceSource, /must not infer historical consistency from package integrity/);
 assert.match(evidenceSource, /must not infer full-project recovery from package integrity/);
 assert.match(evidenceSource, /No existing authorized persistence mechanism/);
-assert.match(evidenceSource, /service[_-]\?role/);
+assert.match(evidenceSource, /service\[_-\]\?role/);
 assert.match(evidenceSource, /extractBackupVerificationEvidenceFromManifest/);
 assert.match(evidenceSource, /summarizeBackupVerificationEvidence/);
 
