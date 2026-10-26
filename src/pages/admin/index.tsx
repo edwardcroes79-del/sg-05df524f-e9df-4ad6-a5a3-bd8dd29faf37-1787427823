@@ -131,8 +131,8 @@ function formatBackupUploadSize(bytes: number) {
 }
 
 function getRestorePointStatusBadgeVariant(status: string) {
-  if (status === "recoverable" || status === "available") return "default";
-  if (status === "blocked" || status === "unsupported" || status === "unavailable") return "destructive";
+  if (status === "recoverable" || status === "available" || status === "VALIDATED") return "default";
+  if (status === "blocked" || status === "unsupported" || status === "unavailable" || status === "INVALID" || status === "INCOMPLETE" || status === "BLOCKED") return "destructive";
   return "secondary";
 }
 
@@ -271,6 +271,8 @@ export default function AdminDashboard() {
   const [restorePointInventory, setRestorePointInventory] = useState<any | null>(null);
   const [restorePointSelectedAt, setRestorePointSelectedAt] = useState("");
   const [checkingRestorePoint, setCheckingRestorePoint] = useState(false);
+  const [storedPackageValidationReports, setStoredPackageValidationReports] = useState<Record<string, any>>({});
+  const [validatingStoredBackupId, setValidatingStoredBackupId] = useState<string | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -2806,6 +2808,42 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleValidateStoredRestorePoint = async (backupId: string) => {
+    try {
+      setValidatingStoredBackupId(backupId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch(`/api/admin/backups/${encodeURIComponent(backupId)}/validate-stored`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!result.report) throw new Error(result.error || "Stored backup verification failed.");
+
+      setStoredPackageValidationReports((current) => ({
+        ...current,
+        [backupId]: result.report,
+      }));
+
+      toast({
+        title: result.report.status === "VALIDATED" ? "Stored package validated" : `Stored package ${String(result.report.status || "not verified").toLowerCase().replace("_", " ")}`,
+        description: result.report.status === "VALIDATED"
+          ? "Actual archive bytes were retrieved and passed implemented package checks. This is not full-project recovery proof."
+          : (result.report.errors || []).slice(0, 2).join(" ") || "Review the structured validation result for blockers and warnings.",
+        variant: result.report.status === "VALIDATED" ? "default" : "destructive",
+      });
+    } catch (err: any) {
+      toast({ title: "Stored backup verification failed", description: err.message, variant: "destructive" });
+    } finally {
+      setValidatingStoredBackupId(null);
+    }
+  };
+
   const handleValidateBackupUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -4319,6 +4357,16 @@ export default function AdminDashboard() {
                             >
                               Select time
                             </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleValidateStoredRestorePoint(point.backup_id)}
+                              disabled={validatingStoredBackupId === point.backup_id}
+                            >
+                              {validatingStoredBackupId === point.backup_id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                              Validate stored package
+                            </Button>
                           </div>
 
                           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -4356,6 +4404,64 @@ export default function AdminDashboard() {
                               <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
                                 {point.blockers.map((blocker: string) => <li key={blocker}>{blocker}</li>)}
                               </ul>
+                            </div>
+                          )}
+
+                          {storedPackageValidationReports[point.backup_id] && (
+                            <div className="mt-4 rounded-xl border bg-muted/20 p-4">
+                              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                  <p className="font-semibold text-foreground">Stored archive byte verification</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    Checked {new Date(storedPackageValidationReports[point.backup_id].generated_at).toLocaleString(locale)}. This validates the supported package only, not full-project recoverability.
+                                  </p>
+                                </div>
+                                <Badge variant={getRestorePointStatusBadgeVariant(storedPackageValidationReports[point.backup_id].status)}>
+                                  {String(storedPackageValidationReports[point.backup_id].status).replace("_", " ")}
+                                </Badge>
+                              </div>
+
+                              <div className="mt-3 grid gap-3 md:grid-cols-4">
+                                <div className="rounded-lg bg-background p-3">
+                                  <p className="text-xs text-muted-foreground">Archive bytes</p>
+                                  <p className="text-sm font-semibold">{storedPackageValidationReports[point.backup_id].archive_retrieved ? "Retrieved" : "Not verified"}</p>
+                                </div>
+                                <div className="rounded-lg bg-background p-3">
+                                  <p className="text-xs text-muted-foreground">Checksum</p>
+                                  <p className="text-sm font-semibold">{storedPackageValidationReports[point.backup_id].package_sha256_verified ? "Verified" : "Not verified"}</p>
+                                </div>
+                                <div className="rounded-lg bg-background p-3">
+                                  <p className="text-xs text-muted-foreground">Confirmed size</p>
+                                  <p className="font-mono text-sm font-semibold">{storedPackageValidationReports[point.backup_id].package_size_bytes_retrieved ? formatBackupUploadSize(Number(storedPackageValidationReports[point.backup_id].package_size_bytes_retrieved)) : "-"}</p>
+                                </div>
+                                <div className="rounded-lg bg-background p-3">
+                                  <p className="text-xs text-muted-foreground">Version</p>
+                                  <p className="font-mono text-sm font-semibold">{storedPackageValidationReports[point.backup_id].package_version || "-"}</p>
+                                </div>
+                              </div>
+
+                              {storedPackageValidationReports[point.backup_id].errors?.length > 0 && (
+                                <div className="mt-3 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+                                  <p className="mb-2 text-sm font-semibold text-destructive">Validation blockers</p>
+                                  <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                                    {storedPackageValidationReports[point.backup_id].errors.map((error: string) => <li key={error}>{error}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+
+                              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                                {storedPackageValidationReports[point.backup_id].checks?.map((check: any) => (
+                                  <div key={`${check.name}-${check.details}`} className="rounded-lg border bg-background p-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="text-sm font-semibold">{check.name}</p>
+                                      <Badge variant={check.status === "passed" ? "default" : check.status === "warning" || check.status === "not_verified" ? "secondary" : "destructive"}>
+                                        {String(check.status).replace("_", " ")}
+                                      </Badge>
+                                    </div>
+                                    <p className="mt-1 text-xs text-muted-foreground">{check.details}</p>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
