@@ -17,6 +17,7 @@ assert.match(evidenceSource, /No existing authorized persistence mechanism/);
 assert.match(evidenceSource, /service\[_-\]\?role/);
 assert.match(evidenceSource, /extractBackupVerificationEvidenceFromManifest/);
 assert.match(evidenceSource, /summarizeBackupVerificationEvidence/);
+assert.match(evidenceSource, /Successful package verification does not prove historical consistency or full-project recoverability/);
 
 assert.match(validateStoredSource, /requireSuperAdmin\(req\)/);
 assert.match(validateStoredSource, /buildBackupVerificationEvidenceRecord\(report\)/);
@@ -30,7 +31,6 @@ assert.doesNotMatch(validateStoredSource, /\.delete\s*\(/);
 assert.match(reviewSource, /extractBackupVerificationEvidenceFromManifest/);
 assert.match(reviewSource, /summarizeBackupVerificationEvidence/);
 assert.match(reviewSource, /latest_stored_package_verification/);
-assert.match(reviewSource, /Successful package verification does not prove historical consistency or full-project recoverability/);
 assert.match(reviewSource, /This review endpoint does not retrieve or download stored backup packages/);
 assert.doesNotMatch(reviewSource, /verifyStoredBackupPackage\s*\(/);
 assert.doesNotMatch(reviewApiSource, /validate-stored/);
