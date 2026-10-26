@@ -25,7 +25,7 @@ assert.match(dryRunSection, /Selected:/);
 assert.match(dryRunSection, /Destination-specific checks remain not verified/);
 
 assert.match(restoreSection, /Restore Upload Disabled/);
-assert.match(restoreSection, /<Input[\s\S]{0,180}disabled[\s\S]{0,180}handleRestoreBackupUpload\(event, "restore"\)/);
+assert.match(restoreSection, /type="file"[\s\S]*?disabled[\s\S]*?onChange=\{\(event\) => handleRestoreBackupUpload\(event, "restore"\)\}/);
 assert.match(restoreSection, /Restore writes are fail-closed/);
 
 assert.match(apiSource, /requireSuperAdmin\(req\)/);
