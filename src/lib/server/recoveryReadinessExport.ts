@@ -6,8 +6,7 @@ export type RecoveryReadinessClassification =
   | "best_effort_export"
   | "internally_validated_package"
   | "database_consistent_snapshot"
-  | "cross_component_consistent_restore_point"
-  | "full_project_recoverable_restore_point";
+  | "cross_component_consistent_restore_point";
 
 export type RecoveryRoadmapItem = {
   priority: number;
@@ -55,7 +54,6 @@ export type RecoveryReadinessExport = {
 };
 
 function classifyCurrentRecovery(review: SchemaRecoveryReviewReport): RecoveryReadinessClassification {
-  if (review.recovery_status.full_project_recovery === "verified") return "full_project_recoverable_restore_point";
   if (review.backup_evidence.consistency_classification === "cross_component_consistent_restore_point") return "cross_component_consistent_restore_point";
   if (review.backup_evidence.consistency_classification === "database_consistent_snapshot") return "database_consistent_snapshot";
   if (review.backup_evidence.stored_package_verification_status === "verified") return "internally_validated_package";
