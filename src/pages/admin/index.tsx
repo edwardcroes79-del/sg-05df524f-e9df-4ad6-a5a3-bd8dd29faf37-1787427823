@@ -4690,6 +4690,45 @@ export default function AdminDashboard() {
                           </div>
                         </div>
 
+                        <div className="rounded-xl border bg-muted/20 p-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <p className="font-semibold text-foreground">Stored package verification evidence</p>
+                              <p className="text-sm text-muted-foreground">
+                                Recorded evidence only. This review never downloads or revalidates stored archives automatically.
+                              </p>
+                            </div>
+                            <Badge variant={getReviewStatusBadgeVariant(schemaRecoveryReview.backup_evidence?.stored_package_verification_status === "verified" ? "verified" : "unverified")}>
+                              {getReviewStatusLabel(schemaRecoveryReview.backup_evidence?.stored_package_verification_status || "not_verified")}
+                            </Badge>
+                          </div>
+                          <div className="mt-3 grid gap-3 md:grid-cols-4">
+                            <div className="rounded-lg bg-background p-3">
+                              <p className="text-xs text-muted-foreground">Evidence available</p>
+                              <p className="text-sm font-semibold">{schemaRecoveryReview.backup_evidence?.latest_stored_package_verification?.evidence_available ? "Yes" : "No"}</p>
+                            </div>
+                            <div className="rounded-lg bg-background p-3">
+                              <p className="text-xs text-muted-foreground">Verified at</p>
+                              <p className="text-xs font-semibold">
+                                {schemaRecoveryReview.backup_evidence?.latest_stored_package_verification?.verification_completed_at
+                                  ? new Date(schemaRecoveryReview.backup_evidence.latest_stored_package_verification.verification_completed_at).toLocaleString(locale)
+                                  : "Not verified"}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-background p-3">
+                              <p className="text-xs text-muted-foreground">Validator</p>
+                              <p className="break-words font-mono text-xs font-semibold">{schemaRecoveryReview.backup_evidence?.latest_stored_package_verification?.validator_version || "-"}</p>
+                            </div>
+                            <div className="rounded-lg bg-background p-3">
+                              <p className="text-xs text-muted-foreground">Persistence</p>
+                              <p className="text-sm font-semibold">{String(schemaRecoveryReview.backup_evidence?.latest_stored_package_verification?.persistence_status || "blocked").replace(/_/g, " ")}</p>
+                            </div>
+                          </div>
+                          <p className="mt-3 rounded-lg border bg-background p-3 text-xs text-muted-foreground">
+                            Package integrity evidence is separate from historical consistency, schema recovery, Auth recovery, Storage recovery, and full-project recoverability.
+                          </p>
+                        </div>
+
                         <div className="grid gap-4 lg:grid-cols-2">
                           <div className="rounded-xl border bg-muted/20 p-4">
                             <p className="font-semibold text-foreground">Schema inventory coverage</p>
