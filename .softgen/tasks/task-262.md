@@ -10,14 +10,14 @@ position: 262
 ---
 
 ## Notes
-Investigate and fix the Disaster Recovery Center Preflight Dry Run upload button, which is currently greyed out and does not open the file picker. Restore writes must remain disabled. Work must be evidence-based and safe: no database, Storage, Auth, environment, project-link, deployment, Stamp Flow, Quick Stamp, SQL, migration, reset, destructive, restore, or project relink changes. Trace the full flow from `src/pages/admin/index.tsx` button to file input to `src/pages/api/admin/backups/restore-upload.ts`, preserving server-side Superadmin authorization and restore-write safeguards. Dry Run should allow archive-only validation without requiring an authorized restore destination unless a specific destination-only check genuinely requires it; such checks must be reported as not verified or blocked, not used to block archive validation.
+Root cause found in `src/pages/admin/index.tsx`: the Preflight Dry Run label/input were disabled when `!restoreDestinationLabel || !restoreDestinationProjectRef`, but the Destination Identification section is currently empty, so an authorized Superadmin cannot populate those values and the hidden file input remains disabled. The server dry-run path in `src/lib/server/backupRestoreEngine.ts` also created `restore_jobs` and `audit_logs` rows before archive validation, so it was not read-only. The fix enables archive-only dry-run file selection without destination fields, shows selected filename and size, keeps destination checks as not verified when absent, returns structured BLOCKED dry-run reports, and keeps Restore Upload disabled.
 
 ## Checklist
-- [ ] Inspect admin UI, restore-upload API, preflight engine, restore engine, archive validation utilities, and recent DR task reports
-- [ ] Identify the exact current-code cause of the inactive Dry Run upload button
-- [ ] Implement the smallest safe fix so Upload for Dry Run opens the file picker and supports archive-only validation
-- [ ] Preserve the Restore Writes Disabled panel and all server-side restore-write safeguards
-- [ ] Add focused tests for enabled Dry Run upload, file-picker wiring, file selection UI state, archive-only validation without destination authorization, invalid/oversized errors, server authorization, no restore-write invocation, and disabled restore upload
+- [x] Inspect admin UI, restore-upload API, preflight engine, restore engine, archive validation utilities, and recent DR task reports
+- [x] Identify the exact current-code cause of the inactive Dry Run upload button
+- [x] Implement the smallest safe fix so Upload for Dry Run opens the file picker and supports archive-only validation
+- [x] Preserve the Restore Writes Disabled panel and all server-side restore-write safeguards
+- [x] Add focused tests for enabled Dry Run upload, file-picker wiring, file selection UI state, archive-only validation without destination authorization, invalid/oversized errors, server authorization, no restore-write invocation, and disabled restore upload
 - [ ] Run focused tests and static checks, then report actual results and safety confirmation
 
 ## Acceptance

@@ -125,6 +125,8 @@ function isRoyaltyStampBackupUploadName(name: string) {
 
 const backupValidationUploadLimitBytes = 250 * 1024 * 1024;
 const backupValidationUploadLimitMb = backupValidationUploadLimitBytes / 1024 / 1024;
+const restoreDryRunUploadLimitBytes = 1024 * 1024 * 1024;
+const restoreDryRunUploadLimitMb = restoreDryRunUploadLimitBytes / 1024 / 1024;
 
 function formatBackupUploadSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
@@ -290,6 +292,7 @@ export default function AdminDashboard() {
   const [schemaRecoveryReviewError, setSchemaRecoveryReviewError] = useState<string | null>(null);
   const [loadingSchemaRecoveryReview, setLoadingSchemaRecoveryReview] = useState(false);
   const [exportingRecoveryReadinessReport, setExportingRecoveryReadinessReport] = useState(false);
+  const [dryRunUploadInfo, setDryRunUploadInfo] = useState<{ name: string; sizeBytes: number } | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -3056,7 +3059,18 @@ export default function AdminDashboard() {
     if (!file) return;
 
     if (!file.name.endsWith(".tar.gz")) {
+      setDryRunUploadInfo(null);
       toast({ title: "Invalid file type", description: "Upload a Royalty Stamp .tar.gz backup package.", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > restoreDryRunUploadLimitBytes) {
+      setDryRunUploadInfo(null);
+      toast({
+        title: "Backup package too large",
+        description: `Dry-run preflight supports packages up to ${restoreDryRunUploadLimitMb} MB. This file is ${formatBackupUploadSize(file.size)}.`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -3067,6 +3081,10 @@ export default function AdminDashboard() {
         variant: "destructive",
       });
       return;
+    }
+
+    if (mode === "dry_run") {
+      setDryRunUploadInfo({ name: file.name, sizeBytes: file.size });
     }
 
     const confirmationPhrase = "RESTORE ROYALTY STAMP BACKUP";
@@ -4946,8 +4964,8 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex-1">
                           <p className="font-semibold">2. Preflight Dry Run</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Validate archive integrity, dependencies, and conflicts against this destination.</p>
-                          <Label className={`mt-4 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors ${!restoreDestinationLabel || !restoreDestinationProjectRef ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted'}`}>
+                          <p className="mt-1 text-sm text-muted-foreground">Validate archive integrity, dependencies, and package conflicts without restore writes. Destination-specific checks remain not verified unless a separately authorized destination exists.</p>
+                          <Label className="mt-4 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-muted">
                             {restoringBackup === "dry_run" ? (
                               <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking...</span>
                             ) : (
@@ -4957,10 +4975,15 @@ export default function AdminDashboard() {
                               type="file"
                               accept=".tar.gz,application/gzip,application/x-gzip"
                               className="hidden"
-                              disabled={Boolean(restoringBackup) || !restoreDestinationLabel || !restoreDestinationProjectRef}
+                              disabled={Boolean(restoringBackup)}
                               onChange={(event) => handleRestoreBackupUpload(event, "dry_run")}
                             />
                           </Label>
+                          {dryRunUploadInfo && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Selected: <span className="font-medium text-foreground">{dryRunUploadInfo.name}</span> · {formatBackupUploadSize(dryRunUploadInfo.sizeBytes)}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>

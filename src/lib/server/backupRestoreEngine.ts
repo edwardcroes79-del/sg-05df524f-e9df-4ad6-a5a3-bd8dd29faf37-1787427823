@@ -187,7 +187,7 @@ function buildDryRunReport(
     }));
 
   return {
-    valid: true,
+    valid: preflight.destructive_write_blockers.length === 0,
     restore_mode: mode,
     restore_job_id: restoreJobId,
     backup_id: archive.manifest.backup_id,
@@ -199,7 +199,7 @@ function buildDryRunReport(
     restored_records: 0,
     restored_files: 0,
     restored_storage_bytes: 0,
-    errors: [],
+    errors: preflight.destructive_write_blockers,
     warnings: preflight.warnings,
   };
 }
@@ -223,7 +223,7 @@ export async function restoreBackupPackage(params: {
 
   assertRestoreDestinationSafety(mode, destination);
 
-  const restoreJobId = await createRestoreJob(admin, adminUserId, mode);
+  const restoreJobId = mode === "dry_run" ? `dry-run-${Date.now()}` : await createRestoreJob(admin, adminUserId, mode);
 
   try {
     const validation = await validateBackupArchive(uploadedPackagePath, fileName, fileSizeBytes);
@@ -244,14 +244,16 @@ export async function restoreBackupPackage(params: {
         warnings: validation.warnings,
       };
 
-      await updateRestoreJob(admin, restoreJobId, {
-        status: "failed",
-        backup_id: validation.backup_id || null,
-        backup_version: validation.backup_version || null,
-        report,
-        error_message: "Backup validation failed before restore.",
-        completed_at: new Date().toISOString(),
-      });
+      if (mode !== "dry_run") {
+        await updateRestoreJob(admin, restoreJobId, {
+          status: "failed",
+          backup_id: validation.backup_id || null,
+          backup_version: validation.backup_version || null,
+          report,
+          error_message: "Backup validation failed before restore.",
+          completed_at: new Date().toISOString(),
+        });
+      }
 
       return report;
     }
@@ -269,35 +271,15 @@ export async function restoreBackupPackage(params: {
     });
 
     if (preflight.destructive_write_blockers.length > 0) {
+      if (mode === "dry_run") {
+        return buildDryRunReport(restoreJobId, mode, validation, archive, preflight);
+      }
+
       throw new Error(`Restore preflight blocked: ${preflight.destructive_write_blockers.join(" ")}`);
     }
 
     if (mode === "dry_run") {
-      const dryRunReport = buildDryRunReport(restoreJobId, mode, validation, archive, preflight);
-      await updateRestoreJob(admin, restoreJobId, {
-        status: "completed",
-        backup_id: archive.manifest.backup_id,
-        backup_version: archive.manifest.backup_version,
-        manifest: archive.manifest,
-        report: dryRunReport,
-        completed_at: new Date().toISOString(),
-      });
-
-      await admin.from("audit_logs").insert({
-        admin_user_id: adminUserId,
-        action: "dry_run_backup_restore",
-        target_type: "restore_job",
-        target_id: restoreJobId,
-        metadata: {
-          backup_id: archive.manifest.backup_id,
-          backup_version: archive.manifest.backup_version,
-          validation_valid: validation.valid,
-          tables: archive.manifest.tables.length,
-          buckets: archive.manifest.buckets.length,
-        },
-      });
-
-      return dryRunReport;
+      return buildDryRunReport(restoreJobId, mode, validation, archive, preflight);
     }
 
     const safetyBackup = await createBackupPackage(admin, adminUserId);
@@ -354,28 +336,30 @@ export async function restoreBackupPackage(params: {
     return report;
   } catch (error: any) {
     const message = error.message || "Backup restore failed";
-    await updateRestoreJob(admin, restoreJobId, {
-      status: "failed",
-      error_message: message,
-      report: {
-        valid: false,
-        restore_mode: mode,
-        restore_job_id: restoreJobId,
-        errors: [message],
-      },
-      completed_at: new Date().toISOString(),
-    });
+    if (mode !== "dry_run") {
+      await updateRestoreJob(admin, restoreJobId, {
+        status: "failed",
+        error_message: message,
+        report: {
+          valid: false,
+          restore_mode: mode,
+          restore_job_id: restoreJobId,
+          errors: [message],
+        },
+        completed_at: new Date().toISOString(),
+      });
 
-    await admin.from("audit_logs").insert({
-      admin_user_id: adminUserId,
-      action: "restore_backup_package_failed",
-      target_type: "restore_job",
-      target_id: restoreJobId,
-      metadata: {
-        error: message,
-        restore_mode: mode,
-      },
-    });
+      await admin.from("audit_logs").insert({
+        admin_user_id: adminUserId,
+        action: "restore_backup_package_failed",
+        target_type: "restore_job",
+        target_id: restoreJobId,
+        metadata: {
+          error: message,
+          restore_mode: mode,
+        },
+      });
+    }
 
     throw error;
   }
