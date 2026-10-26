@@ -21,6 +21,9 @@ export type RestorePointSummary = {
   package_size_bytes: number | null;
   supported_package_complete: boolean;
   full_project_recovery_complete: boolean;
+  complete_recovery_manifest_present: boolean;
+  complete_recovery_inventory_complete: boolean;
+  actual_package_contents_verified: boolean;
   available_for_selected_timestamp: boolean;
   total_records: number;
   total_storage_files: number;
@@ -173,6 +176,7 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
     && packageMetadataComplete
     && missingRequiredTables.length === 0
     && missingRequiredBuckets.length === 0;
+  const completeRecoverySummary = manifest?.complete_recovery_manifest?.summary;
   const selectedMatches = Boolean(selectedAt)
     && (sameRestorePointMinute(job.completed_at, selectedAt) || sameRestorePointMinute(manifest?.created_at, selectedAt) || sameRestorePointMinute(job.created_at, selectedAt));
 
@@ -185,6 +189,8 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
   if (!packageMetadataComplete) blockers.push("Package metadata or checksum inventory is incomplete.");
   if (missingRequiredTables.length > 0) blockers.push(`Required table exports missing: ${missingRequiredTables.join(", ")}.`);
   if (missingRequiredBuckets.length > 0) blockers.push(`Required bucket exports missing: ${missingRequiredBuckets.join(", ")}.`);
+  if (!manifest?.complete_recovery_manifest) blockers.push("Complete recovery manifest v1 is missing; this is a legacy supported-package backup, not a complete project recovery point.");
+  if (completeRecoverySummary?.blockers?.length) blockers.push(...completeRecoverySummary.blockers);
 
   warnings.push("This restore point covers only the components currently included in the backup package; it is not a complete historical project restore point.");
   warnings.push("A timestamp is available only when backed by a completed backup package at that recorded time or a separately verified provider PITR mechanism.");
@@ -210,7 +216,10 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
     package_sha256_available: Boolean(job.package_sha256),
     package_size_bytes: job.package_size_bytes,
     supported_package_complete: supportedPackageComplete,
-    full_project_recovery_complete: false,
+    full_project_recovery_complete: Boolean(completeRecoverySummary?.full_project_recovery_complete),
+    complete_recovery_manifest_present: Boolean(manifest?.complete_recovery_manifest),
+    complete_recovery_inventory_complete: Boolean(completeRecoverySummary?.recovery_inventory_complete),
+    actual_package_contents_verified: Boolean(completeRecoverySummary?.actual_package_contents_verified),
     available_for_selected_timestamp: selectedMatches,
     total_records: sumRecordCounts(manifest),
     total_storage_files: sumStorageObjects(manifest),

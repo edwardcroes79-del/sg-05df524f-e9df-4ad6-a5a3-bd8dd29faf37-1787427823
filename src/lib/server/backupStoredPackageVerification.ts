@@ -29,6 +29,8 @@ export type StoredBackupVerificationReport = {
   package_sha256_expected_available: boolean;
   package_sha256_verified: boolean;
   validation?: BackupValidationReport;
+  complete_recovery_manifest_present: boolean;
+  complete_recovery_summary?: BackupManifest["complete_recovery_manifest"]["summary"];
   total_records_verified?: number;
   total_storage_files_verified?: number;
   checks: StoredBackupVerificationCheck[];
@@ -114,6 +116,8 @@ function buildReport(params: {
     package_sha256_expected_available: Boolean(job?.package_sha256),
     package_sha256_verified: packageSha256Verified,
     validation,
+    complete_recovery_manifest_present: Boolean(manifest?.complete_recovery_manifest || validation?.complete_recovery_manifest?.present),
+    complete_recovery_summary: manifest?.complete_recovery_manifest?.summary || validation?.complete_recovery_manifest?.summary,
     total_records_verified: manifest ? sumRecords(manifest) : validation?.total_records,
     total_storage_files_verified: manifest ? sumFiles(manifest) : validation?.total_files,
     checks,

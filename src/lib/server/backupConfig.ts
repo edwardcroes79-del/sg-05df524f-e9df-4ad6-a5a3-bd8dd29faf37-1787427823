@@ -13,6 +13,8 @@ export type BackupPackagePart = {
   sha256: string;
 };
 
+import type { CompleteRecoveryManifest } from "@/lib/server/completeRecoveryManifest";
+
 export type TableManifest = {
   table: string;
   path: string;
@@ -53,6 +55,7 @@ export type BackupManifest = {
   file_list: BackupFileEntry[];
   sha256_checksums: Record<string, string>;
   package_parts?: BackupPackagePart[];
+  complete_recovery_manifest?: CompleteRecoveryManifest;
   auth_notice: string;
 };
 

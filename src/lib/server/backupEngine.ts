@@ -19,6 +19,7 @@ import {
   type StorageObjectManifest,
   type TableManifest,
 } from "@/lib/server/backupConfig";
+import { buildCompleteRecoveryManifest } from "@/lib/server/completeRecoveryManifest";
 import { addBufferToTar, addFileToTar, finishTar, safeArchivePath, sha256Buffer, writeChunk } from "@/lib/server/backupTar";
 import { BackupCancelledError, assertBackupCanContinue, cleanupBackupArtifacts, markJobHeartbeat } from "@/lib/server/backupLifecycle";
 
@@ -223,6 +224,17 @@ function buildManifest(
     total_storage_bytes: bucketManifests.reduce((sum, bucket) => sum + bucket.total_bytes, 0),
     file_list: fileList,
     sha256_checksums: checksums,
+    complete_recovery_manifest: buildCompleteRecoveryManifest({
+      backupId,
+      backupVersion,
+      createdAt: startedAt,
+      requiredTables,
+      requiredBuckets,
+      tables: tableManifests,
+      buckets: bucketManifests,
+      fileList,
+      sha256Checksums: checksums,
+    }),
     auth_notice: "Supabase Auth users are not included in this package and require platform-level Auth export/restore support.",
   } satisfies BackupManifest;
 }

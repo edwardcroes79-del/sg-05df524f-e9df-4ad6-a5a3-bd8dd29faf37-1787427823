@@ -13,12 +13,12 @@ position: 253
 Implement a versioned `complete_recovery_manifest` section for Royalty Stamp backups. The manifest must inventory all components required for complete historical project recovery, record available evidence and verification status honestly, and prevent supported backup packages from being misrepresented as complete project recovery points. This task must preserve existing backup format compatibility, not implement real restoration, not export secrets, not change database schema/data, not run SQL/migrations/restores, not enable restore writes, and not modify Stamp Flow or Quick Stamp. Tests must use isolated fixtures or mocks only.
 
 ## Checklist
-- [ ] Inspect current backup manifest types, backup creation, validator, restore-point inventory, stored-package verification, preflight, and test setup
-- [ ] Define typed complete recovery manifest v1 statuses, components, evidence, blockers, and deterministic summary
-- [ ] Integrate complete recovery manifest generation into backup creation without weakening existing manifest fields or adding secret exports
-- [ ] Extend validation to recognize and validate complete recovery manifest v1 when present while preserving legacy package compatibility
-- [ ] Update restore-point and stored-package verification reporting to use the new manifest evidence when available
-- [ ] Add focused isolated tests for legacy packages, incomplete packages, malformed manifests, false full-recovery claims, status/evidence conflicts, and valid inventory-but-unverified recovery
+- [x] Inspect current backup manifest types, backup creation, validator, restore-point inventory, stored-package verification, preflight, and test setup
+- [x] Define typed complete recovery manifest v1 statuses, components, evidence, blockers, and deterministic summary
+- [x] Integrate complete recovery manifest generation into backup creation without weakening existing manifest fields or adding secret exports
+- [x] Extend validation to recognize and validate complete recovery manifest v1 when present while preserving legacy package compatibility
+- [x] Update restore-point and stored-package verification reporting to use the new manifest evidence when available
+- [x] Add focused isolated tests for legacy packages, incomplete packages, malformed manifests, false full-recovery claims, status/evidence conflicts, and valid inventory-but-unverified recovery
 - [ ] Run static checks and relevant automated tests, then report files changed, rules, limitations, and safety confirmation
 
 ## Acceptance

@@ -2,6 +2,7 @@ import crypto from "crypto";
 import fs from "fs";
 import zlib from "zlib";
 import { backupVersion, requiredBuckets, requiredTables, type BackupManifest } from "@/lib/server/backupConfig";
+import { validateCompleteRecoveryManifest, type CompleteRecoveryManifestSummary } from "@/lib/server/completeRecoveryManifest";
 
 type EntryInfo = {
   path: string;
@@ -32,6 +33,11 @@ export type BackupValidationReport = {
   checks: BackupValidationCheck[];
   errors: string[];
   warnings: string[];
+  complete_recovery_manifest?: {
+    present: boolean;
+    legacy: boolean;
+    summary?: CompleteRecoveryManifestSummary;
+  };
 };
 
 function parseTarString(buffer: Buffer, start: number, length: number) {
@@ -285,6 +291,25 @@ export async function validateBackupArchive(filePath: string, fileName: string, 
       addWarning(checks, warnings, "Manifest self-checksum", "Archive manifest does not include its own checksum; this is expected for earlier Phase 2 backups and does not block validation.");
     }
 
+    const completeRecoveryManifestValidation = validateCompleteRecoveryManifest(manifest.complete_recovery_manifest, manifest.backup_id);
+    if (completeRecoveryManifestValidation.valid) {
+      checks.push({
+        name: "Complete recovery manifest",
+        status: completeRecoveryManifestValidation.legacy ? "warning" : "passed",
+        details: completeRecoveryManifestValidation.legacy
+          ? "Package uses legacy manifest format without complete recovery inventory; treat as supported-package backup only."
+          : "Complete recovery manifest structure is valid and does not claim unsupported full-project recovery.",
+      });
+    } else {
+      checks.push({
+        name: "Complete recovery manifest",
+        status: "failed",
+        details: completeRecoveryManifestValidation.errors.join(" "),
+      });
+      errors.push(...completeRecoveryManifestValidation.errors);
+    }
+    warnings.push(...completeRecoveryManifestValidation.warnings);
+
     const checksumErrorCount = errors.filter((error) => error.toLowerCase().includes("checksum") || error.toLowerCase().includes("missing from archive") || error.toLowerCase().includes("record count")).length;
     addCheck(checks, "Integrity checksums", checksumErrorCount === 0, checksumErrorCount === 0 ? "All listed file checksums, sizes, and record counts match." : `${checksumErrorCount} integrity issue(s) detected.`);
 
@@ -304,6 +329,11 @@ export async function validateBackupArchive(filePath: string, fileName: string, 
       checks,
       errors,
       warnings,
+      complete_recovery_manifest: {
+        present: Boolean(manifest.complete_recovery_manifest),
+        legacy: completeRecoveryManifestValidation.legacy,
+        summary: manifest.complete_recovery_manifest?.summary,
+      },
     };
   } catch (error: any) {
     errors.push(error.message || "Backup validation failed.");
