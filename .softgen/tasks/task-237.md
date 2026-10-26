@@ -13,9 +13,9 @@ position: 237
 Implement Stage B1 only for Royalty Stamp Birthday Rewards. Stage A is already applied in production project bmpiuvpnefobspimkyte and must not be repeated. Draft a new migration for the dedicated transactional birthday-award function using stamp_type birthday_bonus, oldest eligible active card selection, America/Aruba processing, leap-day rules, earned-only eligibility, and one award per customer/business/year. Do not apply the migration, run production award batches, deploy, activate Birthday Rewards, configure cron, or send notifications. Before any migration application, report complete SQL, checksum, affected objects, and rollback limitations.
 
 ## Checklist
-- [ ] Confirm production schema, Stage A objects, helper functions, stamp/reward/card tables, constraints, indexes, policies, and grants with read-only inspection
-- [ ] Draft a new Stage B migration for the birthday award RPC and supporting eligibility index only
-- [ ] Preserve existing stamp issuance, Quick Stamp QR, anti-fraud checks, reward redemption, analytics definitions, and public RPC signatures
+- [x] Confirm production schema, Stage A objects, helper functions, stamp/reward/card tables, constraints, indexes, policies, and grants with read-only inspection
+- [x] Draft a new Stage B migration for the birthday award RPC and supporting eligibility index only
+- [x] Preserve existing stamp issuance, Quick Stamp QR, anti-fraud checks, reward redemption, analytics definitions, and public RPC signatures
 - [ ] Verify transaction safety for award ledger, stamp transaction, card count, and reward creation consistency
 - [ ] Calculate migration checksum and report SQL, affected objects, rollback limitations, unresolved risks, and approval needed before application
 
