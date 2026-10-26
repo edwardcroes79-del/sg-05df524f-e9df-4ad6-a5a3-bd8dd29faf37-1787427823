@@ -14,6 +14,7 @@ export type BackupPackagePart = {
 };
 
 import type { CompleteRecoveryManifest } from "@/lib/server/completeRecoveryManifest";
+import type { RestorePointConsistencyManifest } from "@/lib/server/restorePointConsistencyManifest";
 
 export type TableManifest = {
   table: string;
@@ -56,6 +57,7 @@ export type BackupManifest = {
   sha256_checksums: Record<string, string>;
   package_parts?: BackupPackagePart[];
   complete_recovery_manifest?: CompleteRecoveryManifest;
+  restore_point_consistency?: RestorePointConsistencyManifest;
   auth_notice: string;
 };
 

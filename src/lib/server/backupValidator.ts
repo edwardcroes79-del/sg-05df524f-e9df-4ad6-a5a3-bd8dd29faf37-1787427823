@@ -3,6 +3,7 @@ import fs from "fs";
 import zlib from "zlib";
 import { backupVersion, requiredBuckets, requiredTables, type BackupManifest } from "@/lib/server/backupConfig";
 import { validateCompleteRecoveryManifest, type CompleteRecoveryManifestSummary } from "@/lib/server/completeRecoveryManifest";
+import { validateRestorePointConsistencyManifest, type RestorePointConsistencySummary } from "@/lib/server/restorePointConsistencyManifest";
 
 type EntryInfo = {
   path: string;
@@ -37,6 +38,11 @@ export type BackupValidationReport = {
     present: boolean;
     legacy: boolean;
     summary?: CompleteRecoveryManifestSummary;
+  };
+  restore_point_consistency?: {
+    present: boolean;
+    legacy: boolean;
+    summary?: RestorePointConsistencySummary;
   };
 };
 
@@ -310,6 +316,25 @@ export async function validateBackupArchive(filePath: string, fileName: string, 
     }
     warnings.push(...completeRecoveryManifestValidation.warnings);
 
+    const restorePointConsistencyValidation = validateRestorePointConsistencyManifest(manifest.restore_point_consistency, manifest.backup_id);
+    if (restorePointConsistencyValidation.valid) {
+      checks.push({
+        name: "Restore-point consistency manifest",
+        status: restorePointConsistencyValidation.legacy ? "warning" : "passed",
+        details: restorePointConsistencyValidation.legacy
+          ? "Package uses legacy manifest format without explicit restore-point consistency evidence; treat as best-effort only."
+          : "Restore-point consistency manifest structure is valid and does not claim unsupported snapshot or full-project consistency.",
+      });
+    } else {
+      checks.push({
+        name: "Restore-point consistency manifest",
+        status: "failed",
+        details: restorePointConsistencyValidation.errors.join(" "),
+      });
+      errors.push(...restorePointConsistencyValidation.errors);
+    }
+    warnings.push(...restorePointConsistencyValidation.warnings);
+
     const checksumErrorCount = errors.filter((error) => error.toLowerCase().includes("checksum") || error.toLowerCase().includes("missing from archive") || error.toLowerCase().includes("record count")).length;
     addCheck(checks, "Integrity checksums", checksumErrorCount === 0, checksumErrorCount === 0 ? "All listed file checksums, sizes, and record counts match." : `${checksumErrorCount} integrity issue(s) detected.`);
 
@@ -333,6 +358,11 @@ export async function validateBackupArchive(filePath: string, fileName: string, 
         present: Boolean(manifest.complete_recovery_manifest),
         legacy: completeRecoveryManifestValidation.legacy,
         summary: manifest.complete_recovery_manifest?.summary,
+      },
+      restore_point_consistency: {
+        present: Boolean(manifest.restore_point_consistency),
+        legacy: restorePointConsistencyValidation.legacy,
+        summary: manifest.restore_point_consistency?.summary,
       },
     };
   } catch (error: any) {

@@ -24,6 +24,9 @@ export type RestorePointSummary = {
   complete_recovery_manifest_present: boolean;
   complete_recovery_inventory_complete: boolean;
   actual_package_contents_verified: boolean;
+  restore_point_consistency_present: boolean;
+  consistency_model: string | null;
+  consistency_classification: string | null;
   available_for_selected_timestamp: boolean;
   total_records: number;
   total_storage_files: number;
@@ -177,6 +180,7 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
     && missingRequiredTables.length === 0
     && missingRequiredBuckets.length === 0;
   const completeRecoverySummary = manifest?.complete_recovery_manifest?.summary;
+  const consistencySummary = manifest?.restore_point_consistency?.summary;
   const selectedMatches = Boolean(selectedAt)
     && (sameRestorePointMinute(job.completed_at, selectedAt) || sameRestorePointMinute(manifest?.created_at, selectedAt) || sameRestorePointMinute(job.created_at, selectedAt));
 
@@ -190,10 +194,15 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
   if (missingRequiredTables.length > 0) blockers.push(`Required table exports missing: ${missingRequiredTables.join(", ")}.`);
   if (missingRequiredBuckets.length > 0) blockers.push(`Required bucket exports missing: ${missingRequiredBuckets.join(", ")}.`);
   if (!manifest?.complete_recovery_manifest) blockers.push("Complete recovery manifest v1 is missing; this is a legacy supported-package backup, not a complete project recovery point.");
+  if (!manifest?.restore_point_consistency) blockers.push("Restore-point consistency manifest v1 is missing; this is a legacy backup with no explicit consistency evidence.");
   if (completeRecoverySummary?.blockers?.length) blockers.push(...completeRecoverySummary.blockers);
+  if (consistencySummary?.blockers?.length) blockers.push(...consistencySummary.blockers);
 
   warnings.push("This restore point covers only the components currently included in the backup package; it is not a complete historical project restore point.");
   warnings.push("A timestamp is available only when backed by a completed backup package at that recorded time or a separately verified provider PITR mechanism.");
+  if (manifest?.restore_point_consistency?.consistency_model === "best_effort_sequential_export") {
+    warnings.push("This restore point is explicitly classified as a best-effort sequential export, not a transactionally consistent database snapshot.");
+  }
 
   const components = [
     ...buildSupportedPackageComponents({
@@ -220,6 +229,9 @@ export function buildRestorePointSummary(job: BackupJobForRestorePoint, selected
     complete_recovery_manifest_present: Boolean(manifest?.complete_recovery_manifest),
     complete_recovery_inventory_complete: Boolean(completeRecoverySummary?.recovery_inventory_complete),
     actual_package_contents_verified: Boolean(completeRecoverySummary?.actual_package_contents_verified),
+    restore_point_consistency_present: Boolean(manifest?.restore_point_consistency),
+    consistency_model: manifest?.restore_point_consistency?.consistency_model || null,
+    consistency_classification: consistencySummary?.classification || null,
     available_for_selected_timestamp: selectedMatches,
     total_records: sumRecordCounts(manifest),
     total_storage_files: sumStorageObjects(manifest),

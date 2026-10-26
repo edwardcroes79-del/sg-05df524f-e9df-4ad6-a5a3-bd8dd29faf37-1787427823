@@ -20,6 +20,7 @@ import {
   type TableManifest,
 } from "@/lib/server/backupConfig";
 import { buildCompleteRecoveryManifest } from "@/lib/server/completeRecoveryManifest";
+import { buildRestorePointConsistencyManifest, markRestorePointConsistencyPackageCompleted } from "@/lib/server/restorePointConsistencyManifest";
 import { addBufferToTar, addFileToTar, finishTar, safeArchivePath, sha256Buffer, writeChunk } from "@/lib/server/backupTar";
 import { BackupCancelledError, assertBackupCanContinue, cleanupBackupArtifacts, markJobHeartbeat } from "@/lib/server/backupLifecycle";
 
@@ -207,6 +208,7 @@ function buildManifest(
   bucketManifests: BackupManifest["buckets"],
   fileList: BackupFileEntry[],
   checksums: Record<string, string>,
+  restorePointConsistency: BackupManifest["restore_point_consistency"],
 ) {
   return {
     app: "aruba-royalty-stamp",
@@ -224,6 +226,7 @@ function buildManifest(
     total_storage_bytes: bucketManifests.reduce((sum, bucket) => sum + bucket.total_bytes, 0),
     file_list: fileList,
     sha256_checksums: checksums,
+    restore_point_consistency: restorePointConsistency,
     complete_recovery_manifest: buildCompleteRecoveryManifest({
       backupId,
       backupVersion,
@@ -250,6 +253,7 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
   if (jobError) throw jobError;
 
   const backupId = job.id as string;
+  const restorePointId = crypto.randomUUID();
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), `royalty-stamp-backup-${backupId}-`));
   const packageName = `royalty-stamp-backup-${startedAt.replace(/[:.]/g, "-")}-${backupId}.tar.gz`;
   const packagePath = path.join(tempDir, packageName);
@@ -265,6 +269,7 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
   const checksums: Record<string, string> = {};
 
   try {
+    const databaseExportStartedAt = new Date().toISOString();
     for (const table of requiredTables) {
       await assertBackupCanContinue(admin, backupId);
       await markJobHeartbeat(admin, backupId);
@@ -274,15 +279,24 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
       tableManifests.push({ table, path: exported.archivePath, record_count: exported.recordCount, bytes: exported.bytes, sha256: exported.sha256 });
       fileList.push({ path: exported.archivePath, size: exported.bytes, sha256: exported.sha256, source_type: "database", source_name: table });
     }
+    const databaseExportCompletedAt = new Date().toISOString();
 
+    const storageInventoryStartedAt = new Date().toISOString();
+    const bucketObjectPaths: Array<{ bucket: string; objects: string[] }> = [];
     for (const bucket of requiredBuckets) {
       await assertBackupCanContinue(admin, backupId);
       await markJobHeartbeat(admin, backupId);
       const objects = await listBucketObjects(admin, bucket, backupId);
+      bucketObjectPaths.push({ bucket, objects });
+    }
+    const storageInventoryCompletedAt = new Date().toISOString();
+
+    const storageDownloadStartedAt = new Date().toISOString();
+    for (const bucketInventory of bucketObjectPaths) {
       const objectManifests: StorageObjectManifest[] = [];
 
-      for (const objectPath of objects) {
-        const downloaded = await downloadStorageObject(admin, bucket, objectPath, backupId);
+      for (const objectPath of bucketInventory.objects) {
+        const downloaded = await downloadStorageObject(admin, bucketInventory.bucket, objectPath, backupId);
         await addBufferToTar(gzip, downloaded.manifest.archive_path, downloaded.buffer);
         checksums[downloaded.manifest.archive_path] = downloaded.manifest.sha256;
         objectManifests.push(downloaded.manifest);
@@ -291,19 +305,36 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
           size: downloaded.manifest.bytes,
           sha256: downloaded.manifest.sha256,
           source_type: "storage",
-          source_name: bucket,
+          source_name: bucketInventory.bucket,
         });
       }
 
       bucketManifests.push({
-        bucket,
+        bucket: bucketInventory.bucket,
         object_count: objectManifests.length,
         total_bytes: objectManifests.reduce((sum, item) => sum + item.bytes, 0),
         objects: objectManifests,
       });
     }
+    const storageDownloadCompletedAt = new Date().toISOString();
 
-    const manifest = buildManifest(backupId, startedAt, createdBy ?? "system:scheduler", tableManifests, bucketManifests, fileList, checksums);
+    const packageFinalizationAt = new Date().toISOString();
+    const restorePointConsistency = buildRestorePointConsistencyManifest({
+      restorePointId,
+      backupId,
+      declaredTimestamp: startedAt,
+      phaseTimings: {
+        database_export_started_at: databaseExportStartedAt,
+        database_export_completed_at: databaseExportCompletedAt,
+        storage_inventory_started_at: storageInventoryStartedAt,
+        storage_inventory_completed_at: storageInventoryCompletedAt,
+        storage_download_started_at: storageDownloadStartedAt,
+        storage_download_completed_at: storageDownloadCompletedAt,
+        package_finalization_at: packageFinalizationAt,
+      },
+    });
+
+    const manifest = buildManifest(backupId, startedAt, createdBy ?? "system:scheduler", tableManifests, bucketManifests, fileList, checksums, restorePointConsistency);
     await assertBackupCanContinue(admin, backupId);
     await markJobHeartbeat(admin, backupId);
     const manifestBuffer = Buffer.from(JSON.stringify(manifest, null, 2));
@@ -320,9 +351,11 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
     await markJobHeartbeat(admin, backupId);
     const uploadedPackage = await uploadBackupPackage(admin, backupId, packagePath, packageName, packageStats.size);
     await assertBackupCanContinue(admin, backupId);
-    const storedManifest = uploadedPackage.parts.length > 0
+    const completedAt = new Date().toISOString();
+    const manifestWithPackageParts = uploadedPackage.parts.length > 0
       ? { ...manifest, package_parts: uploadedPackage.parts }
       : manifest;
+    const storedManifest = markRestorePointConsistencyPackageCompleted(manifestWithPackageParts, completedAt);
 
     await updateJob(admin, backupId, {
       status: "completed",
@@ -330,7 +363,7 @@ export async function createBackupPackage(admin: SupabaseClient, createdBy: stri
       package_sha256: packageSha256,
       package_size_bytes: packageStats.size,
       manifest: storedManifest,
-      completed_at: new Date().toISOString(),
+      completed_at: completedAt,
     });
 
     return {
