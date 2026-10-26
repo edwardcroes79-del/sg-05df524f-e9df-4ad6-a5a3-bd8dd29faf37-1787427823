@@ -69,6 +69,7 @@ export type SchemaRecoveryReviewReport = {
     cycles: Array<{ node_ids: string[] }>;
     missing_definitions: string[];
     unsupported_object_types: string[];
+    classified_blockers: NonNullable<SchemaDependencyPlan["summary"]["classified_blockers"]>;
   };
   recovery_status: {
     database_consistency: ReviewStatus;
@@ -271,6 +272,7 @@ export function buildSchemaRecoveryReviewReport(input: BuildSchemaRecoveryReview
       cycles: plan?.cycles || [],
       missing_definitions: plan?.missing_definitions || [],
       unsupported_object_types: plan?.unsupported_object_types || [],
+      classified_blockers: plan?.summary.classified_blockers || [],
     },
     recovery_status: {
       database_consistency: latestRestorePoint?.consistency_model === "best_effort_sequential_export" ? "unverified" : "missing",

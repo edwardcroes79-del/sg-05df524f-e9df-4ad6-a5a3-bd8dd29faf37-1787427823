@@ -22,6 +22,29 @@ export type SchemaDependencyCategory =
 
 export type SchemaDependencyEvidenceType = "explicit" | "inferred" | "unknown";
 export type SchemaDependencyReadiness = "inventory_only" | "partially_plannable" | "blocked" | "ready_for_review";
+export type SchemaRecoveryBlockerClassification =
+  | "missing_definition"
+  | "repository_evidence_only"
+  | "provider_managed_dependency"
+  | "live_state_unverified"
+  | "unsupported_object"
+  | "recovery_procedure_missing"
+  | "parser_artifact"
+  | "unknown";
+
+export type SchemaDependencyBlocker = {
+  id: string;
+  object_category: string;
+  object_name: string;
+  severity: "critical" | "high" | "medium" | "low";
+  classification: SchemaRecoveryBlockerClassification;
+  evidence_source: string;
+  reason: string;
+  resolvable_from_repository: boolean;
+  required_capability_or_authorization: string;
+  recommended_next_action: string;
+  source_locations: SchemaDependencySourceLocation[];
+};
 
 export type SchemaDependencySourceLocation = {
   file: string;
@@ -62,6 +85,7 @@ export type SchemaDependencyPlanSummary = {
   missing_definition_count: number;
   unsupported_object_count: number;
   readiness: SchemaDependencyReadiness;
+  classified_blockers: SchemaDependencyBlocker[];
   live_database_verified: false;
   executable_sql_generated: false;
   restore_authorized: false;
@@ -138,6 +162,181 @@ function normalizeName(value: string) {
 
 function objectId(category: SchemaDependencyCategory, name: string) {
   return `${category}:${normalizeName(name)}`;
+}
+
+function stableBlockerId(classification: string, objectCategory: string, objectName: string) {
+  return `schema-blocker-${sha256(`${classification}:${objectCategory}:${objectName}`).slice(0, 16)}`;
+}
+
+function isPotentialRelationReference(value: string) {
+  const normalized = normalizeName(value);
+  if (!normalized || normalized === "." || normalized.endsWith(".") || /^\d+$/.test(normalized)) return false;
+  if (["select", "from", "join", "where", "on", "using", "true", "false", "null", "new", "old", "excluded", "anon."].includes(normalized)) return false;
+  return true;
+}
+
+function resolvePublicSchemaDependencyAliases(nodes: Map<string, SchemaDependencyNode>) {
+  for (const node of nodes.values()) {
+    const replacements = new Map<string, string>();
+
+    for (const dependencyId of node.dependency_ids) {
+      if (nodes.has(dependencyId) || !dependencyId.startsWith("schema_table:")) continue;
+      const dependencyName = dependencyId.slice("schema_table:".length);
+      if (dependencyName.includes(".")) continue;
+
+      const publicDependencyId = objectId("schema_table", `public.${dependencyName}`);
+      if (nodes.has(publicDependencyId)) replacements.set(dependencyId, publicDependencyId);
+    }
+
+    if (replacements.size === 0) continue;
+
+    node.dependency_ids = Array.from(new Set(node.dependency_ids.map((dependencyId) => replacements.get(dependencyId) || dependencyId)));
+    node.dependency_evidence = node.dependency_evidence.map((evidence) => ({
+      ...evidence,
+      dependency_id: replacements.get(evidence.dependency_id) || evidence.dependency_id,
+      details: replacements.has(evidence.dependency_id)
+        ? `${evidence.details} Unqualified public-schema reference resolved to the repository-defined public schema table.`
+        : evidence.details,
+    }));
+  }
+}
+
+function classifyMissingDefinition(node: SchemaDependencyNode): SchemaDependencyBlocker {
+  const name = node.name;
+  const source = node.source_locations[0]?.file || "repository migration parser";
+
+  if (name === "auth.uid") {
+    return {
+      id: stableBlockerId("provider_managed_dependency", "function", name),
+      object_category: "function",
+      object_name: name,
+      severity: "high",
+      classification: "provider_managed_dependency",
+      evidence_source: source,
+      reason: "RLS policy evidence references Supabase Auth helper auth.uid(), which is provider-managed and not defined by project migrations.",
+      resolvable_from_repository: false,
+      required_capability_or_authorization: "Supabase Auth runtime support in an independently authorized destination project.",
+      recommended_next_action: "Verify the destination Supabase project provides Auth helper functions before any schema reconstruction review.",
+      source_locations: node.source_locations,
+    };
+  }
+
+  if (name === "auth.users") {
+    return {
+      id: stableBlockerId("provider_managed_dependency", "schema_table", name),
+      object_category: "schema_table",
+      object_name: name,
+      severity: "high",
+      classification: "provider_managed_dependency",
+      evidence_source: source,
+      reason: "Repository evidence references Supabase-managed auth.users. Auth users and identities are outside the public table backup and must not be recreated from app migrations.",
+      resolvable_from_repository: false,
+      required_capability_or_authorization: "Provider-supported Supabase Auth export/restore or independently verified Auth compatibility.",
+      recommended_next_action: "Keep auth.users as an external provider dependency and verify Auth recovery separately.",
+      source_locations: node.source_locations,
+    };
+  }
+
+  if (name === "authenticated" || name === "anon") {
+    return {
+      id: stableBlockerId("provider_managed_dependency", "database_role", name),
+      object_category: "database_role",
+      object_name: name,
+      severity: "medium",
+      classification: "provider_managed_dependency",
+      evidence_source: source,
+      reason: "Repository grant/policy evidence references Supabase-managed database roles.",
+      resolvable_from_repository: false,
+      required_capability_or_authorization: "Supabase destination role compatibility verification.",
+      recommended_next_action: "Verify provider-managed roles exist on the authorized destination; do not recreate them from application migrations.",
+      source_locations: node.source_locations,
+    };
+  }
+
+  if (/^\d+$/.test(name) || name.endsWith(".") || name.includes("__")) {
+    return {
+      id: stableBlockerId("parser_artifact", node.category, name),
+      object_category: node.category,
+      object_name: name,
+      severity: "low",
+      classification: "parser_artifact",
+      evidence_source: source,
+      reason: "The reference shape is not a valid recoverable database object from repository evidence and is produced by conservative SQL text parsing.",
+      resolvable_from_repository: true,
+      required_capability_or_authorization: "Parser refinement only; no database access required.",
+      recommended_next_action: "Keep the entry visible as parser evidence and refine parsing rules if it appears in review output.",
+      source_locations: node.source_locations,
+    };
+  }
+
+  return {
+    id: stableBlockerId("missing_definition", node.category, name),
+    object_category: node.category,
+    object_name: name,
+    severity: "high",
+    classification: "missing_definition",
+    evidence_source: source,
+    reason: "A repository migration references this object, but no usable definition was found in repository evidence.",
+    resolvable_from_repository: false,
+    required_capability_or_authorization: "Repository definition, provider capability, or authorized non-mutating schema verification.",
+    recommended_next_action: "Locate the defining migration or keep this blocker until a safe live schema verification/export is authorized.",
+    source_locations: node.source_locations,
+  };
+}
+
+function buildClassifiedBlockers(nodes: SchemaDependencyNode[], cycles: SchemaDependencyCycle[], unsupportedObjectTypes: string[]): SchemaDependencyBlocker[] {
+  const cycleBlockers = cycles.map((cycle) => ({
+    id: stableBlockerId("unknown", "dependency_cycle", cycle.node_ids.join("->")),
+    object_category: "dependency_cycle",
+    object_name: cycle.node_ids.join(" -> "),
+    severity: "high" as const,
+    classification: "unknown" as const,
+    evidence_source: "repository migration dependency graph",
+    reason: "A dependency cycle was detected and cannot be safely force-ordered from repository evidence alone.",
+    resolvable_from_repository: false,
+    required_capability_or_authorization: "Human schema review and, if needed, an authorized non-mutating catalog comparison.",
+    recommended_next_action: "Review the cycle and decide whether constraints must be deferred or split in a future recovery plan.",
+    source_locations: [] as SchemaDependencySourceLocation[],
+  }));
+
+  const missingBlockers = nodes
+    .filter((node) => !node.definition_available || node.category === "missing_definition")
+    .map(classifyMissingDefinition);
+
+  const unsupportedBlockers = nodes
+    .filter((node) => node.category === "unsupported")
+    .map((node) => ({
+      id: stableBlockerId("unsupported_object", node.category, node.name),
+      object_category: node.name.split(" ")[0] || "unsupported",
+      object_name: node.name,
+      severity: "medium" as const,
+      classification: "unsupported_object" as const,
+      evidence_source: node.source_locations[0]?.file || "repository migration parser",
+      reason: "Repository migrations contain a database object type that the non-mutating planner inventories but does not know how to order for reconstruction.",
+      resolvable_from_repository: false,
+      required_capability_or_authorization: "Planner support for this object type and human review before recovery planning.",
+      recommended_next_action: "Add parser/planner support or document an external provider/manual recovery step for this object type.",
+      source_locations: node.source_locations,
+    }));
+
+  const unsupportedTypeBlockers = unsupportedObjectTypes
+    .filter((typeName) => !unsupportedBlockers.some((blocker) => blocker.object_category === typeName))
+    .map((typeName) => ({
+      id: stableBlockerId("unsupported_object", "unsupported_type", typeName),
+      object_category: typeName,
+      object_name: typeName,
+      severity: "medium" as const,
+      classification: "unsupported_object" as const,
+      evidence_source: "repository migration parser",
+      reason: "An unsupported database object type was detected.",
+      resolvable_from_repository: false,
+      required_capability_or_authorization: "Planner support and human review.",
+      recommended_next_action: "Classify this object type before future recovery planning.",
+      source_locations: [] as SchemaDependencySourceLocation[],
+    }));
+
+  return [...cycleBlockers, ...missingBlockers, ...unsupportedBlockers, ...unsupportedTypeBlockers]
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
 function lineOf(content: string, index: number) {
@@ -242,7 +441,9 @@ function parseSqlFiles(files: SqlFile[]) {
       const node = addNode(nodes, "function", match[1], location(match.index));
       const slice = file.content.slice(match.index, Math.min(file.content.length, match.index + 5000));
       eachMatch(slice, /\b(?:from|join|update|into)\s+([a-zA-Z0-9_."-]+)/gi, (tableMatch) => {
-        addDependency(node, objectId("schema_table", tableMatch[1]), "inferred", location(match.index + tableMatch.index), "Function/procedure body references a relation-like name.");
+        if (isPotentialRelationReference(tableMatch[1])) {
+          addDependency(node, objectId("schema_table", tableMatch[1]), "inferred", location(match.index + tableMatch.index), "Function/procedure body references a relation-like name.");
+        }
       });
     });
 
@@ -285,6 +486,8 @@ function parseSqlFiles(files: SqlFile[]) {
       addNode(nodes, "unsupported", `${match[1]} ${sha256(match[0]).slice(0, 12)}`, location(match.index), false);
     });
   }
+
+  resolvePublicSchemaDependencyAliases(nodes);
 
   for (const node of Array.from(nodes.values())) {
     for (const dependencyId of node.dependency_ids) {
@@ -351,11 +554,8 @@ function summarize(nodes: SchemaDependencyNode[], cycles: SchemaDependencyCycle[
     acc[node.category] = (acc[node.category] || 0) + 1;
     return acc;
   }, {});
-  const blockers = [
-    ...cycles.map((cycle) => `Cycle detected: ${cycle.node_ids.join(" -> ")}.`),
-    ...missing.map((node) => `Missing usable definition for ${node.name}.`),
-    ...unsupportedObjectTypes.map((item) => `Unsupported database object type detected: ${item}.`),
-  ];
+  const classifiedBlockers = buildClassifiedBlockers(nodes, cycles, unsupportedObjectTypes);
+  const blockers = classifiedBlockers.map((blocker) => `${blocker.classification}: ${blocker.object_name} — ${blocker.reason}`);
   const readiness: SchemaDependencyReadiness = nodes.length === 0
     ? "inventory_only"
     : blockers.length > 0
@@ -372,6 +572,7 @@ function summarize(nodes: SchemaDependencyNode[], cycles: SchemaDependencyCycle[
     missing_definition_count: missing.length,
     unsupported_object_count: unsupportedObjectTypes.length,
     readiness,
+    classified_blockers: classifiedBlockers,
     live_database_verified: false,
     executable_sql_generated: false,
     restore_authorized: false,
@@ -430,6 +631,7 @@ export function validateSchemaDependencyPlan(plan: unknown, backupId: string): S
     if (summary.executable_sql_generated === true) errors.push("schema_dependency_plan must not claim executable SQL generation.");
     if (summary.restore_authorized === true) errors.push("schema_dependency_plan must not claim restore authorization.");
     if (!["inventory_only", "partially_plannable", "blocked", "ready_for_review"].includes(String(summary.readiness))) errors.push("schema_dependency_plan readiness is unsupported.");
+    if (summary.classified_blockers !== undefined && !Array.isArray(summary.classified_blockers)) errors.push("schema_dependency_plan summary classified_blockers must be an array when present.");
   }
 
   for (const node of Array.isArray(plan.nodes) ? plan.nodes : []) {

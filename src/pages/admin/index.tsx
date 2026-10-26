@@ -4837,9 +4837,34 @@ export default function AdminDashboard() {
                         {schemaRecoveryReview.blockers?.length > 0 && (
                           <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
                             <p className="mb-2 text-sm font-semibold text-destructive">Recovery blockers</p>
-                            <ul className="max-h-72 list-disc space-y-1 overflow-y-auto pl-5 text-sm text-destructive">
-                              {schemaRecoveryReview.blockers.slice(0, 25).map((blocker: string) => <li key={blocker}>{blocker}</li>)}
-                            </ul>
+                            {schemaRecoveryReview.dependency_plan?.classified_blockers?.length > 0 ? (
+                              <div className="max-h-80 space-y-2 overflow-y-auto">
+                                {schemaRecoveryReview.dependency_plan.classified_blockers.slice(0, 25).map((blocker: any) => (
+                                  <div key={blocker.id} className="rounded-lg border bg-background p-3 text-sm">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <p className="font-semibold text-foreground">{blocker.object_name}</p>
+                                      <div className="flex flex-wrap gap-1">
+                                        <Badge variant={getReviewStatusBadgeVariant(blocker.severity === "critical" || blocker.severity === "high" ? "blocked" : "unverified")}>
+                                          {String(blocker.severity || "unknown").toUpperCase()}
+                                        </Badge>
+                                        <Badge variant="secondary">{String(blocker.classification || "unknown").replace(/_/g, " ")}</Badge>
+                                      </div>
+                                    </div>
+                                    <p className="mt-1 text-xs text-muted-foreground">{blocker.reason}</p>
+                                    <p className="mt-2 text-[11px] text-muted-foreground">
+                                      Category: {blocker.object_category} · Source: {blocker.evidence_source}
+                                    </p>
+                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                      Next action: {blocker.recommended_next_action}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <ul className="max-h-72 list-disc space-y-1 overflow-y-auto pl-5 text-sm text-destructive">
+                                {schemaRecoveryReview.blockers.slice(0, 25).map((blocker: string) => <li key={blocker}>{blocker}</li>)}
+                              </ul>
+                            )}
                           </div>
                         )}
 
