@@ -204,7 +204,7 @@ function buildStorageInventory(archive: ExtractedBackupArchive) {
       return {
         bucket: bucket.bucket,
         files_seen: bucket.object_count || 0,
-        bytes_seen: bucket.bytes || 0,
+        bytes_seen: bucket.total_bytes || 0,
         missing_files_in_archive: missingFiles,
       };
     });
