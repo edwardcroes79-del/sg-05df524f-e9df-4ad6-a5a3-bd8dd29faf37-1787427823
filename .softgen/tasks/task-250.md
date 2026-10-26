@@ -1,6 +1,6 @@
 ---
 title: Disaster recovery destination safety hardening
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [disaster-recovery, restore, destination-safety, super-admin]
@@ -10,7 +10,7 @@ position: 250
 ---
 
 ## Notes
-Continue from completed Tasks 248 and 249. Resolve the destination-validation architecture issue without rebuilding the Disaster Recovery system. Inspect how the server creates its Supabase client, where the actual project URL is configured, how destination reference is validated, and whether any separately authorized destination connection exists. If no safe destination connection exists, keep restore writes blocked and implement safe application-layer checks/UI that explain the limitation. Do not run restore requests, SQL, migrations, database operations, environment changes, clone investigation, deployments, or Stamp Flow/Quick Stamp changes.
+Continue from completed Tasks 248 and 249. Resolve the destination-validation architecture issue without rebuilding the Disaster Recovery system. Inspected how the server creates its Supabase client, where the actual project URL is configured, how destination reference is validated, and whether any separately authorized destination connection exists. No safe separate destination connection exists in the current code, so restore writes remain fail-closed. No restore requests, SQL, migrations, database operations, environment changes, clone investigation, deployments, or Stamp Flow/Quick Stamp changes were performed.
 
 ## Checklist
 - [x] Inspect `backupRestorePreflight.ts`, `backupRestoreEngine.ts`, `restore-upload.ts`, and admin UI destination flow
@@ -18,7 +18,7 @@ Continue from completed Tasks 248 and 249. Resolve the destination-validation ar
 - [x] Determine whether a separately authorized destination connection exists
 - [x] Harden server-side fail-closed destination identity verification without weakening environment matching
 - [x] Update Disaster Recovery Center UI to accurately explain that restore writes remain blocked without a verified destination connection
-- [ ] Run safe local project checks only and report files changed, safeguards verified, and remaining blocker
+- [x] Run safe local project checks only and report files changed, safeguards verified, and remaining blocker
 
 ## Acceptance
 Server-side restore writes remain blocked unless the actual connected destination can be independently verified against the intended destination.
