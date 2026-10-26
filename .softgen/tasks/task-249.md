@@ -1,6 +1,6 @@
 ---
 title: Disaster Recovery Center UI Implementation
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [disaster-recovery, backups, restore, admin-ui]
@@ -13,11 +13,11 @@ position: 249
 Implement the Disaster Recovery Center UI and connect it to the existing backend preflight logic. Ensure the UI includes backup archive selection, explicit destination identification (Label, Project Ref, Confirmation), and a comprehensive dry-run preflight report display (PASS, WARNING, BLOCKED, NOT VERIFIED). Do NOT execute a real restore, overwrite database records, or bypass server-side validation. Maintain a clean, professional, beginner-friendly interface.
 
 ## Checklist
-- [ ] Locate existing Backup/Restore UI components (likely in `src/pages/admin/index.tsx` or `src/components/admin/`).
-- [ ] Add Archive Selection/Upload UI.
-- [ ] Add Explicit Destination Identification fields (Label, Project Ref, Confirmation Checkbox).
-- [ ] Connect UI to `api/admin/backups/restore-upload` with `mode=dry_run`.
-- [ ] Build Dry-Run Preflight Report UI mapping to `BackupRestoreReport` & `BackupRestorePreflightReport` types.
-- [ ] Build Recovery Readiness Summary.
-- [ ] Verify validation errors and UI state handling.
-- [ ] Run project checks (lint, typescript) and report exact files changed.
+- [x] Locate existing Backup/Restore UI components (likely in `src/pages/admin/index.tsx` or `src/components/admin/`).
+- [x] Add Archive Selection/Upload UI.
+- [x] Add Explicit Destination Identification fields (Label, Project Ref, Confirmation Checkbox).
+- [x] Connect UI to `api/admin/backups/restore-upload` with `mode=dry_run`.
+- [x] Build Dry-Run Preflight Report UI mapping to `BackupRestoreReport` & `BackupRestorePreflightReport` types.
+- [x] Build Recovery Readiness Summary.
+- [x] Verify validation errors and UI state handling.
+- [x] Run project checks (lint, typescript) and report exact files changed.
