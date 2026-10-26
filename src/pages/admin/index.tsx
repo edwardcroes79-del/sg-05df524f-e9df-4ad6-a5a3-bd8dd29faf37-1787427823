@@ -130,6 +130,20 @@ function formatBackupUploadSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
+function getRestorePointStatusBadgeVariant(status: string) {
+  if (status === "recoverable" || status === "available") return "default";
+  if (status === "blocked" || status === "unsupported" || status === "unavailable") return "destructive";
+  return "secondary";
+}
+
+function getDateTimeLocalValue(value?: string | null) {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return "";
+  const offsetMs = parsed.getTimezoneOffset() * 60 * 1000;
+  return new Date(parsed.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 const activeBackupStatuses = new Set(["queued", "running"]);
 
 function hasActiveBackupJobs(backups: any[]) {
@@ -254,6 +268,9 @@ export default function AdminDashboard() {
   const [restoreDestinationProjectRef, setRestoreDestinationProjectRef] = useState("");
   const [restoreDestinationConfirmed, setRestoreDestinationConfirmed] = useState(false);
   const restoreWritesUnavailable = true;
+  const [restorePointInventory, setRestorePointInventory] = useState<any | null>(null);
+  const [restorePointSelectedAt, setRestorePointSelectedAt] = useState("");
+  const [checkingRestorePoint, setCheckingRestorePoint] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -937,6 +954,17 @@ export default function AdminDashboard() {
         if (backupsResponse.ok) {
           const backupsResult = await backupsResponse.json();
           backupsData = backupsResult.backups || [];
+        }
+
+        const restorePointsResponse = await fetch("/api/admin/backups/restore-points", {
+          headers: {
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (restorePointsResponse.ok) {
+          const restorePointsResult = await restorePointsResponse.json();
+          setRestorePointInventory(restorePointsResult.inventory || null);
         }
       }
       setBackups(backupsData);
@@ -2747,6 +2775,37 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCheckRestorePointTime = async (selectedAt: string) => {
+    setRestorePointSelectedAt(selectedAt);
+
+    if (!selectedAt) {
+      await fetchAdminData();
+      return;
+    }
+
+    try {
+      setCheckingRestorePoint(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch(`/api/admin/backups/restore-points?selectedAt=${encodeURIComponent(selectedAt)}`, {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) throw new Error(result.error || "Restore-point inventory failed.");
+
+      setRestorePointInventory(result.inventory || null);
+    } catch (err: any) {
+      toast({ title: "Restore-point check failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCheckingRestorePoint(false);
+    }
+  };
+
   const handleValidateBackupUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -4171,6 +4230,142 @@ export default function AdminDashboard() {
                       )}
                     </TableBody>
                   </Table>
+                </CardContent>
+              </Card>
+
+              <Card className="border-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <History className="h-5 w-5 text-primary" /> Historical Restore Points
+                  </CardTitle>
+                  <CardDescription>
+                    Select a verified backup date/time and review which project components are actually recoverable from the available package. This is inventory only; restore writes remain disabled.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5">
+                  <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+                    <div className="space-y-2">
+                      <Label htmlFor="restore-point-time">Restore date/time</Label>
+                      <Input
+                        id="restore-point-time"
+                        type="datetime-local"
+                        value={restorePointSelectedAt}
+                        onChange={(event) => setRestorePointSelectedAt(event.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        A timestamp is available only when it matches a completed backup package time. A timestamp alone cannot reconstruct historical state.
+                      </p>
+                    </div>
+                    <Button type="button" variant="outline" onClick={() => handleCheckRestorePointTime(restorePointSelectedAt)} disabled={checkingRestorePoint}>
+                      {checkingRestorePoint ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
+                      Check time
+                    </Button>
+                  </div>
+
+                  <div className="rounded-xl border bg-muted/30 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="font-semibold text-foreground">Historical availability</p>
+                        <p className="text-sm text-muted-foreground">
+                          {restorePointInventory?.selected_timestamp_status === "available"
+                            ? "A completed backup package exists for the selected time."
+                            : restorePointInventory?.selected_timestamp_status === "unavailable"
+                              ? "No completed backup package or verified provider PITR exists for the selected time."
+                              : "No historical timestamp selected yet."}
+                        </p>
+                      </div>
+                      <Badge variant={getRestorePointStatusBadgeVariant(restorePointInventory?.selected_timestamp_status || "not_selected")}>
+                        {String(restorePointInventory?.selected_timestamp_status || "NOT SELECTED").replace("_", " ").toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 grid gap-2 md:grid-cols-3">
+                      <div className="rounded-lg bg-background p-3">
+                        <p className="text-xs text-muted-foreground">Provider PITR</p>
+                        <p className="text-sm font-semibold">{restorePointInventory?.provider_pitr?.verified ? "Verified" : "Not verified"}</p>
+                      </div>
+                      <div className="rounded-lg bg-background p-3">
+                        <p className="text-xs text-muted-foreground">Restore writes</p>
+                        <p className="text-sm font-semibold text-destructive">{restorePointInventory?.restore_writes_supported ? "Supported" : "Blocked"}</p>
+                      </div>
+                      <div className="rounded-lg bg-background p-3">
+                        <p className="text-xs text-muted-foreground">Full project recovery</p>
+                        <p className="text-sm font-semibold text-destructive">{restorePointInventory?.full_project_recovery_supported ? "Supported" : "Not complete"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {restorePointInventory?.restore_points?.length > 0 ? (
+                    <div className="space-y-3">
+                      {restorePointInventory.restore_points.slice(0, 5).map((point: any) => (
+                        <div key={point.backup_id} className="rounded-xl border bg-background p-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-semibold text-foreground">{new Date(point.created_at).toLocaleString(locale)}</p>
+                                <Badge variant={point.supported_package_complete ? "default" : "destructive"}>
+                                  {point.supported_package_complete ? "SUPPORTED PACKAGE COMPLETE" : "PACKAGE INCOMPLETE"}
+                                </Badge>
+                                <Badge variant={point.full_project_recovery_complete ? "default" : "destructive"}>
+                                  {point.full_project_recovery_complete ? "FULL PROJECT READY" : "FULL PROJECT BLOCKED"}
+                                </Badge>
+                              </div>
+                              <p className="mt-1 font-mono text-xs text-muted-foreground">Backup ID: {point.backup_id}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCheckRestorePointTime(getDateTimeLocalValue(point.completed_at || point.created_at))}
+                            >
+                              Select time
+                            </Button>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-3">
+                            <div className="rounded-lg bg-muted/40 p-3">
+                              <p className="text-xs text-muted-foreground">Records in manifest</p>
+                              <p className="font-mono text-sm font-semibold">{Number(point.total_records || 0).toLocaleString()}</p>
+                            </div>
+                            <div className="rounded-lg bg-muted/40 p-3">
+                              <p className="text-xs text-muted-foreground">Storage files</p>
+                              <p className="font-mono text-sm font-semibold">{Number(point.total_storage_files || 0).toLocaleString()}</p>
+                            </div>
+                            <div className="rounded-lg bg-muted/40 p-3">
+                              <p className="text-xs text-muted-foreground">Package size</p>
+                              <p className="font-mono text-sm font-semibold">{point.package_size_bytes ? formatBackupUploadSize(Number(point.package_size_bytes)) : "-"}</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid gap-2 md:grid-cols-2">
+                            {point.components?.map((component: any) => (
+                              <div key={component.key} className="rounded-lg border bg-muted/20 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-sm font-semibold">{component.label}</p>
+                                  <Badge variant={getRestorePointStatusBadgeVariant(component.status)}>
+                                    {String(component.status).replace("_", " ").toUpperCase()}
+                                  </Badge>
+                                </div>
+                                <p className="mt-1 text-xs text-muted-foreground">{component.details}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {point.blockers?.length > 0 && (
+                            <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+                              <p className="mb-2 text-sm font-semibold text-destructive">Restore-point blockers</p>
+                              <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                                {point.blockers.map((blocker: string) => <li key={blocker}>{blocker}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                      No completed backup restore points are available in the current inventory.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
