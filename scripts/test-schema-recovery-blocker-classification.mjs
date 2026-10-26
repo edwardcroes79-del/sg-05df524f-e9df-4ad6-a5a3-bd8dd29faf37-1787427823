@@ -78,6 +78,10 @@ assert.equal(byName.get("auth.uid")?.classification, "provider_managed_dependenc
 assert.equal(byName.get("auth.uid")?.object_category, "function");
 assert.equal(byName.get("auth.users")?.classification, "provider_managed_dependency");
 assert.equal(byName.get("auth.users")?.object_category, "schema_table");
+assert.equal(byName.get("authenticated")?.classification, "provider_managed_dependency");
+assert.equal(byName.get("authenticated")?.object_category, "database_role");
+assert.equal(byName.get("anon")?.classification, "provider_managed_dependency");
+assert.equal(byName.get("anon")?.object_category, "database_role");
 assert.equal(blockers.some((blocker) => blocker.object_category === "subscription" && blocker.classification === "unsupported_object"), true);
 
 assert.equal(plan.missing_definitions.some((item) => item === "schema_table:business_users"), false);
