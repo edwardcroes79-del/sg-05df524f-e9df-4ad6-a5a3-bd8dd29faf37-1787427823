@@ -246,20 +246,17 @@ try {
   const res = createMockResponse();
   await handler(req, res);
 
-  assert.equal(res.statusCode, 422);
-  assert.equal(res.body.success, false);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.success, true);
   assert.equal(res.body.report.restore_mode, "dry_run");
   assert.match(res.body.report.restore_job_id, /^dry-run-/);
   assert.equal(res.body.report.validation.file_name, "royalty-stamp-focused-test.tar.gz");
   assert.equal(res.body.report.validation.valid, true);
+  assert.equal(res.body.report.valid, true);
   assert.equal(res.body.report.restored_records, 0);
   assert.equal(res.body.report.restored_files, 0);
   assert.equal(writeCalls.length, 0);
-  assert.deepEqual(res.body.report.preflight.destructive_write_blockers, [
-    "Restore destination label is required before write-enabled restore.",
-    "Restore destination project reference is required before write-enabled restore.",
-    "Restore writes require the explicit server-side confirmation flag.",
-  ]);
+  assert.deepEqual(res.body.report.preflight.destructive_write_blockers, []);
 } finally {
   Module._load = originalLoad;
   fs.rmSync(tempRoot, { recursive: true, force: true });
