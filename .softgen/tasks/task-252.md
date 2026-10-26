@@ -1,6 +1,6 @@
 ---
 title: Stored backup package verification
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [disaster-recovery, backups, validation, restore-points]
@@ -10,7 +10,28 @@ position: 252
 ---
 
 ## Notes
-Implement a strictly non-mutating stored backup package verification flow for the Disaster Recovery Center. The endpoint must require Super Admin authorization, accept a backup identifier rather than arbitrary storage paths, resolve the backup job and stored archive server-side, retrieve the actual archive bytes without modifying storage or database records, run the existing archive validation rules, compare archive evidence against backup job metadata where available, and return structured validation statuses: VALIDATED, INVALID, INCOMPLETE, NOT_VERIFIED, BLOCKED. The UI must allow validating an individual historical restore point and show current-session validation results without persisting them. Restore writes remain blocked. Do not run SQL, migrations, restores, project switching, deployments, or modify Stamp Flow / Quick Stamp.
+Implemented a strictly non-mutating stored backup package verification flow for the Disaster Recovery Center. The endpoint requires Super Admin authorization, accepts a backup identifier rather than arbitrary storage paths, resolves the backup job and stored archive server-side, retrieves the actual archive bytes without modifying storage or database records, runs the existing archive validation rules, compares archive evidence against backup job metadata where available, and returns structured validation statuses: VALIDATED, INVALID, INCOMPLETE, NOT_VERIFIED, BLOCKED. The UI allows validating an individual historical restore point and shows current-session validation results without persisting them. Restore writes remain blocked. No SQL, migrations, restores, project switching, deployments, or Stamp Flow / Quick Stamp modifications were performed.
+
+Files changed:
+- `src/lib/server/backupStoredPackageVerification.ts`
+- `src/pages/api/admin/backups/[id]/validate-stored.ts`
+- `src/pages/admin/index.tsx`
+- `.softgen/tasks/task-252.md`
+
+Validation flow:
+- Resolves `backup_jobs` by trusted UUID backup ID.
+- Rejects unsafe or mismatched Storage paths.
+- Reconstructs single-part or manifest-listed multipart packages from `system-backups`.
+- Verifies package SHA-256, size, part checksums, manifest identity, backup version, required table exports, required bucket exports, record totals, and storage file totals where evidence exists.
+- Runs `validateBackupArchive()` against the actual retrieved package bytes.
+- Returns structured checks, errors, warnings, confirmed counts, and a clear statement that package validation does not prove full-project recoverability.
+
+Checks performed:
+- `check_for_errors` passed with no CSS, lint, TypeScript, or server errors.
+
+Remaining limitations:
+- This validates supported package bytes only; it does not add schema recovery, Auth user recovery, destination restore writes, deployment recovery, environment/secret recovery, or external integration recovery.
+- Runtime storage retrieval could not be exercised without making a live authorized request against stored backup objects, which was outside this task’s safety limits.
 
 ## Checklist
 - [x] Inspect current backup job storage references, archive validation, restore-point inventory, restore preflight, restore engine, backup list endpoint, restore-upload endpoint, and admin UI
@@ -18,7 +39,7 @@ Implement a strictly non-mutating stored backup package verification flow for th
 - [x] Ensure validation retrieves actual archive bytes safely, uses size limits, and runs existing archive validation without creating restore jobs or audit logs
 - [x] Compare archive manifest/checksum/size/version/count evidence against backup job metadata and return structured findings
 - [x] Integrate a Disaster Recovery Center action to validate an individual historical restore point and display session-only results
-- [ ] Run static checks and non-destructive validation where available, then report limitations and safety confirmation
+- [x] Run static checks and non-destructive validation where available, then report limitations and safety confirmation
 
 ## Acceptance
 A Super Admin can validate whether a stored backup package exists, is retrievable, intact, and consistent with implemented package validation rules.
