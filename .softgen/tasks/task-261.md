@@ -1,6 +1,6 @@
 ---
 title: Downloadable disaster recovery readiness report
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [disaster-recovery, readiness-report, export, superadmin]
@@ -10,9 +10,27 @@ position: 261
 ---
 
 ## Notes
-Build a read-only Superadmin-only export feature in the Disaster Recovery Center that downloads a portable recovery readiness JSON report. The export must reuse the existing Schema Recovery Review architecture as the source of truth and must not perform restore operations, archive downloads, SQL execution, migrations, project switching, or write-enabling actions. The report must preserve blockers, unverified statuses, evidence limitations, verification references, provider requirements, and the warning that it is not a backup or proof of recoverability. PDF is optional only if already supported without substantial dependency/security risk.
+Built a read-only Superadmin-only JSON export feature in the Disaster Recovery Center. The export reuses the existing Schema Recovery Review architecture as the source of truth and wraps it in a portable recovery readiness report with report version, generated timestamp from the review report, current recovery classification, overall readiness limitations, schema inventory, dependency planner status, classified blockers, consistency limitations, component recovery status, stored-package verification evidence references, provider requirements, application/deployment/integration requirements, prioritized recovery roadmap, warnings, and excluded operations.
 
-Safety boundaries: no production database modification, no Supabase relink/switch, no SQL/migrations/restores/resets/destructive commands, no database/Storage/Auth/environment/credentials/deployment changes, no secret exposure, no automatic archive download/revalidation, no Stamp Flow or Quick Stamp changes, and no weakening restore-write safeguards. Protected Supabase project reference bmpiuvpnefobspimkyte remains protected.
+The report explicitly states that it is not a backup, restore point, archive validation, restore authorization, SQL plan, or proof that Royalty Stamp can be restored to an arbitrary historical date and time. PDF export was not implemented because no existing PDF generation mechanism was present in the inspected project dependencies.
+
+Files created or modified:
+- src/lib/server/recoveryReadinessExport.ts
+- src/pages/api/admin/backups/recovery-readiness-report.ts
+- src/pages/admin/index.tsx
+- scripts/test-recovery-readiness-export.mjs
+- .softgen/tasks/task-261.md
+
+Actual validation results:
+- node scripts/test-recovery-readiness-export.mjs: passed
+- Targeted eslint/tsc command for the export files: completed successfully
+- check_for_errors: passed with no CSS, linting, type checking, or server errors found
+
+Safety confirmation:
+No database, Storage, Auth, environment, project-link, deployment, Stamp Flow, or Quick Stamp changes occurred. No SQL, migrations, restores, resets, destructive commands, backup archive downloads, stored-package revalidation, or restore-write safeguard changes occurred. Restore writes remain blocked.
+
+Recommended next task:
+Design an authorized persistent evidence store for stored-package verification outcomes so future exports can include durable validation history without re-downloading backup archives.
 
 ## Checklist
 - [x] Inspect Schema Recovery Review report/API, admin Disaster Recovery Center UI, DR manifest/planner modules, restore point inventory, authorization patterns, tests, and Tasks 254-259
@@ -20,7 +38,7 @@ Safety boundaries: no production database modification, no Supabase relink/switc
 - [x] Add an Export Recovery Readiness Report action to the Disaster Recovery Center that downloads a safe JSON filename and shows clear errors
 - [x] Ensure the export excludes secrets, customer records, raw backup contents, restore controls, archive revalidation, and unsupported full-project recovery claims
 - [x] Add focused tests for authorization, JSON structure/version, unresolved blockers, unverified statuses, no full recovery claims, secret/customer-data exclusion, API failure handling, no archive download/revalidation, no write side effects, and compatibility
-- [ ] Run focused tests and static checks, then report actual results, files changed, limitations, and safety confirmation
+- [x] Run focused tests and static checks, then report actual results, files changed, limitations, and safety confirmation
 
 ## Acceptance
 A Superadmin can download a JSON recovery readiness report from the Disaster Recovery Center.
