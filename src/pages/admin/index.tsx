@@ -289,6 +289,7 @@ export default function AdminDashboard() {
   const [schemaRecoveryReview, setSchemaRecoveryReview] = useState<any | null>(null);
   const [schemaRecoveryReviewError, setSchemaRecoveryReviewError] = useState<string | null>(null);
   const [loadingSchemaRecoveryReview, setLoadingSchemaRecoveryReview] = useState(false);
+  const [exportingRecoveryReadinessReport, setExportingRecoveryReadinessReport] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -2902,6 +2903,55 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleExportRecoveryReadinessReport = async () => {
+    try {
+      setExportingRecoveryReadinessReport(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/backups/recovery-readiness-report", {
+        headers: {
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!response.ok) {
+        const errorBody = contentType.includes("application/json")
+          ? await response.json().catch(() => ({}))
+          : { error: await response.text().catch(() => "Recovery readiness report export failed.") };
+        throw new Error(errorBody.error || "Recovery readiness report export failed.");
+      }
+
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Recovery readiness report returned ${contentType || "unknown content type"} instead of JSON.`);
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get("content-disposition") || "";
+      const fileNameMatch = disposition.match(/filename="([^"]+)"/);
+      const fileName = fileNameMatch?.[1] || `royalty-stamp-recovery-readiness-report-${new Date().toISOString().slice(0, 10)}.json`;
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+
+      toast({
+        title: "Recovery readiness report exported",
+        description: "The JSON report is evidence only. It is not a backup, restore point, or proof of recoverability.",
+      });
+    } catch (err: any) {
+      toast({ title: "Recovery readiness export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setExportingRecoveryReadinessReport(false);
+    }
+  };
+
   const handleValidateBackupUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -4650,6 +4700,10 @@ export default function AdminDashboard() {
                       <Button type="button" variant="outline" onClick={handleRefreshSchemaRecoveryReview} disabled={loadingSchemaRecoveryReview}>
                         {loadingSchemaRecoveryReview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
                         Refresh review
+                      </Button>
+                      <Button type="button" variant="outline" onClick={handleExportRecoveryReadinessReport} disabled={exportingRecoveryReadinessReport}>
+                        {exportingRecoveryReadinessReport ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        Export Recovery Readiness Report
                       </Button>
                     </div>
 

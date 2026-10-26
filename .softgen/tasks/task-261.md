@@ -15,11 +15,11 @@ Build a read-only Superadmin-only export feature in the Disaster Recovery Center
 Safety boundaries: no production database modification, no Supabase relink/switch, no SQL/migrations/restores/resets/destructive commands, no database/Storage/Auth/environment/credentials/deployment changes, no secret exposure, no automatic archive download/revalidation, no Stamp Flow or Quick Stamp changes, and no weakening restore-write safeguards. Protected Supabase project reference bmpiuvpnefobspimkyte remains protected.
 
 ## Checklist
-- [ ] Inspect Schema Recovery Review report/API, admin Disaster Recovery Center UI, DR manifest/planner modules, restore point inventory, authorization patterns, tests, and Tasks 254-259
-- [ ] Add a Superadmin-only read-only JSON export endpoint that reuses existing review-report data and adds a portable readiness export envelope, roadmap, provider requirements, and explicit non-recoverability disclaimer
-- [ ] Add an Export Recovery Readiness Report action to the Disaster Recovery Center that downloads a safe JSON filename and shows clear errors
-- [ ] Ensure the export excludes secrets, customer records, raw backup contents, restore controls, archive revalidation, and unsupported full-project recovery claims
-- [ ] Add focused tests for authorization, JSON structure/version, unresolved blockers, unverified statuses, no full recovery claims, secret/customer-data exclusion, API failure handling, no archive download/revalidation, no write side effects, and compatibility
+- [x] Inspect Schema Recovery Review report/API, admin Disaster Recovery Center UI, DR manifest/planner modules, restore point inventory, authorization patterns, tests, and Tasks 254-259
+- [x] Add a Superadmin-only read-only JSON export endpoint that reuses existing review-report data and adds a portable readiness export envelope, roadmap, provider requirements, and explicit non-recoverability disclaimer
+- [x] Add an Export Recovery Readiness Report action to the Disaster Recovery Center that downloads a safe JSON filename and shows clear errors
+- [x] Ensure the export excludes secrets, customer records, raw backup contents, restore controls, archive revalidation, and unsupported full-project recovery claims
+- [x] Add focused tests for authorization, JSON structure/version, unresolved blockers, unverified statuses, no full recovery claims, secret/customer-data exclusion, API failure handling, no archive download/revalidation, no write side effects, and compatibility
 - [ ] Run focused tests and static checks, then report actual results, files changed, limitations, and safety confirmation
 
 ## Acceptance
