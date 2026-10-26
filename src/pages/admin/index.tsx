@@ -2865,18 +2865,6 @@ export default function AdminDashboard() {
     }
 
     const confirmationPhrase = "RESTORE ROYALTY STAMP BACKUP";
-    if (mode === "restore" && restoreConfirmation !== confirmationPhrase) {
-      toast({
-        title: "Restore confirmation required",
-        description: `Type ${confirmationPhrase} exactly before restoring production data.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (mode === "restore" && !window.confirm("This will restore production database records and Storage files from the uploaded backup after creating a safety backup. Continue?")) {
-      return;
-    }
 
     try {
       setRestoringBackup(mode);
@@ -2891,7 +2879,7 @@ export default function AdminDashboard() {
           "Content-Type": "application/gzip",
           "X-Backup-Filename": encodeURIComponent(file.name),
           "X-Restore-Mode": mode,
-          "X-Restore-Confirmation": encodeURIComponent(mode === "restore" ? restoreConfirmation : confirmationPhrase),
+          "X-Restore-Confirmation": encodeURIComponent(confirmationPhrase),
           "X-Restore-Destination-Label": encodeURIComponent(restoreDestinationLabel),
           "X-Restore-Destination-Project-Ref": encodeURIComponent(restoreDestinationProjectRef),
           "X-Restore-Writes-Confirmed": encodeURIComponent(restoreDestinationConfirmed ? "CONFIRM_DESTINATION_RESTORE_WRITES" : ""),
@@ -2904,21 +2892,14 @@ export default function AdminDashboard() {
 
       setRestoreReport(result.report);
       toast({
-        title: result.report?.valid ? (mode === "restore" ? "Restore completed" : "Dry run completed") : "Restore blocked",
+        title: result.report?.valid ? "Dry run completed" : "Restore blocked",
         description: result.report?.valid
-          ? mode === "restore"
-            ? "Restore report returned as valid. Verify server-side audit logs before treating this as completed."
-            : "The backup preflight completed without recovery writes. Review blockers and warnings; this is not a restore."
+          ? "The backup preflight completed without recovery writes. Review blockers and warnings; this is not a restore."
           : "The backup was rejected before any recovery write operation.",
         variant: result.report?.valid ? "default" : "destructive",
       });
-
-      if (mode === "restore" && result.report?.valid) {
-        setRestoreConfirmation("");
-        await fetchAdminData();
-      }
     } catch (err: any) {
-      toast({ title: mode === "restore" ? "Restore failed" : "Dry run failed", description: err.message, variant: "destructive" });
+      toast({ title: "Dry run failed", description: err.message, variant: "destructive" });
     } finally {
       setRestoringBackup(null);
     }
