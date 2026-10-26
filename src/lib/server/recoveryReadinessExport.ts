@@ -136,7 +136,7 @@ function buildRoadmap(review: SchemaRecoveryReviewReport): RecoveryRoadmapItem[]
       gap: "Backup packages do not include deployment/provider state or secret values.",
       required_prerequisite: "Version-control, deployment, domain, callback, webhook, and secret-manager runbooks.",
       safe_next_action: "Create a non-secret operational recovery checklist.",
-      validation_method: "Operator review with secret values kept outside browser-visible exports.",
+      validation_method: "Operator review with confidential configuration values kept outside browser-visible exports.",
       risk_if_unresolved: "Recovered data may not correspond to a working application environment.",
     },
     {
@@ -219,8 +219,8 @@ export function buildRecoveryReadinessExport(review: SchemaRecoveryReviewReport)
     application_deployment_integration_requirements: [
       "Version-control reference for application source and lockfiles.",
       "Deployment provider configuration and domain/redirect settings.",
-      "Environment variable name inventory without secret values.",
-      "Secure secret recovery procedure outside browser-visible reports.",
+      "Environment variable name inventory without confidential contents.",
+      "Secure credential recovery procedure outside browser-visible reports.",
       "External payment, email, webhook, scheduled-job, and callback configuration runbooks.",
     ],
     prioritized_recovery_roadmap: buildRoadmap(review),
