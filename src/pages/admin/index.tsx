@@ -250,6 +250,9 @@ export default function AdminDashboard() {
   const [restoreConfirmation, setRestoreConfirmation] = useState("");
   const [restoringBackup, setRestoringBackup] = useState<"dry_run" | "restore" | null>(null);
   const [restoreReport, setRestoreReport] = useState<any | null>(null);
+  const [restoreDestinationLabel, setRestoreDestinationLabel] = useState("");
+  const [restoreDestinationProjectRef, setRestoreDestinationProjectRef] = useState("");
+  const [restoreDestinationConfirmed, setRestoreDestinationConfirmed] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -2879,6 +2882,9 @@ export default function AdminDashboard() {
           "X-Backup-Filename": encodeURIComponent(file.name),
           "X-Restore-Mode": mode,
           "X-Restore-Confirmation": encodeURIComponent(mode === "restore" ? restoreConfirmation : confirmationPhrase),
+          "X-Restore-Destination-Label": encodeURIComponent(restoreDestinationLabel),
+          "X-Restore-Destination-Project-Ref": encodeURIComponent(restoreDestinationProjectRef),
+          "X-Restore-Writes-Confirmed": encodeURIComponent(restoreDestinationConfirmed ? "CONFIRM_DESTINATION_RESTORE_WRITES" : ""),
         },
         body: file,
       });
@@ -4274,22 +4280,40 @@ export default function AdminDashboard() {
               <Card className="border-destructive/30">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="h-5 w-5" /> Safe Restore
+                    <AlertTriangle className="h-5 w-5" /> Disaster Recovery Center
                   </CardTitle>
                   <CardDescription>
-                    Run a restore dry run first, then restore only after explicit confirmation. Every restore validates the backup again before writing and creates a safety backup when technically possible.
+                    Explicit destination identification and validation are required before any recovery operations.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                    <p className="font-semibold">Production safety rules</p>
-                    <ul className="mt-2 list-disc space-y-1 pl-5">
-                      <li>Dry run validates and reports restore impact without modifying production data.</li>
-                      <li>Production restore requires the exact confirmation phrase.</li>
-                      <li>Authentication credentials and secrets are not restored from uploaded backups.</li>
-                    </ul>
+                <CardContent className="space-y-6">
+                  
+                  {/* Destination Identification */}
+                  <div className="rounded-xl border bg-background p-4 space-y-4">
+                    <div>
+                      <h3 className="font-semibold text-foreground">1. Destination Identification</h3>
+                      <p className="text-sm text-muted-foreground">Explicitly identify this target environment.</p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="dest-label">Destination Label (e.g., Staging, Production)</Label>
+                        <Input id="dest-label" value={restoreDestinationLabel} onChange={(e) => setRestoreDestinationLabel(e.target.value)} disabled={Boolean(restoringBackup)} placeholder="Production" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="dest-ref">Destination Project Reference</Label>
+                        <Input id="dest-ref" value={restoreDestinationProjectRef} onChange={(e) => setRestoreDestinationProjectRef(e.target.value)} disabled={Boolean(restoringBackup)} placeholder="xxxxxxxxx" />
+                      </div>
+                    </div>
+                    <label className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3 text-sm">
+                      <input type="checkbox" className="mt-1" checked={restoreDestinationConfirmed} onChange={(e) => setRestoreDestinationConfirmed(e.target.checked)} disabled={Boolean(restoringBackup)} />
+                      <span>
+                        <span className="block font-semibold text-foreground">Confirm destination for recovery writes</span>
+                        <span className="block text-xs text-muted-foreground">I confirm the selected destination is correct. Required for write operations.</span>
+                      </span>
+                    </label>
                   </div>
 
+                  {/* Dry Run & Restore */}
                   <div className="grid gap-4 lg:grid-cols-2">
                     <div className="rounded-xl border bg-background p-4">
                       <div className="flex items-start gap-3">
@@ -4297,9 +4321,9 @@ export default function AdminDashboard() {
                           <ShieldCheck className="h-5 w-5" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-semibold">Restore dry run</p>
-                          <p className="mt-1 text-sm text-muted-foreground">Validate restore order, database records, Storage files, manifest, and checksums without modifying production.</p>
-                          <Label className="mt-4 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors hover:bg-muted">
+                          <p className="font-semibold">2. Preflight Dry Run</p>
+                          <p className="mt-1 text-sm text-muted-foreground">Validate archive integrity, dependencies, and conflicts against this destination.</p>
+                          <Label className={`mt-4 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm transition-colors ${!restoreDestinationLabel || !restoreDestinationProjectRef ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted'}`}>
                             {restoringBackup === "dry_run" ? (
                               <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking...</span>
                             ) : (
@@ -4309,7 +4333,7 @@ export default function AdminDashboard() {
                               type="file"
                               accept=".tar.gz,application/gzip,application/x-gzip"
                               className="hidden"
-                              disabled={Boolean(restoringBackup)}
+                              disabled={Boolean(restoringBackup) || !restoreDestinationLabel || !restoreDestinationProjectRef}
                               onChange={(event) => handleRestoreBackupUpload(event, "dry_run")}
                             />
                           </Label>
@@ -4324,8 +4348,8 @@ export default function AdminDashboard() {
                         </div>
                         <div className="flex-1 space-y-3">
                           <div>
-                            <p className="font-semibold text-destructive">Production restore</p>
-                            <p className="mt-1 text-sm text-muted-foreground">Creates a safety backup, then restores database records and Storage files from the uploaded package.</p>
+                            <p className="font-semibold text-destructive">3. Production Restore</p>
+                            <p className="mt-1 text-sm text-muted-foreground">Creates a safety backup, then restores data. Requires explicit confirmation.</p>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor="restore-confirmation">Type RESTORE ROYALTY STAMP BACKUP</Label>
@@ -4334,10 +4358,10 @@ export default function AdminDashboard() {
                               value={restoreConfirmation}
                               onChange={(event) => setRestoreConfirmation(event.target.value)}
                               placeholder="RESTORE ROYALTY STAMP BACKUP"
-                              disabled={Boolean(restoringBackup)}
+                              disabled={Boolean(restoringBackup) || !restoreDestinationConfirmed}
                             />
                           </div>
-                          <Label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive/90">
+                          <Label className={`inline-flex h-10 cursor-pointer items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground shadow transition-colors ${Boolean(restoringBackup) || restoreConfirmation !== "RESTORE ROYALTY STAMP BACKUP" || !restoreDestinationConfirmed ? 'opacity-50 cursor-not-allowed' : 'hover:bg-destructive/90'}`}>
                             {restoringBackup === "restore" ? (
                               <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Restoring...</span>
                             ) : (
@@ -4347,7 +4371,7 @@ export default function AdminDashboard() {
                               type="file"
                               accept=".tar.gz,application/gzip,application/x-gzip"
                               className="hidden"
-                              disabled={Boolean(restoringBackup) || restoreConfirmation !== "RESTORE ROYALTY STAMP BACKUP"}
+                              disabled={Boolean(restoringBackup) || restoreConfirmation !== "RESTORE ROYALTY STAMP BACKUP" || !restoreDestinationConfirmed}
                               onChange={(event) => handleRestoreBackupUpload(event, "restore")}
                             />
                           </Label>
@@ -4357,73 +4381,156 @@ export default function AdminDashboard() {
                   </div>
 
                   {restoreReport && (
-                    <div className={`rounded-xl border p-4 ${restoreReport.valid ? "border-emerald-200 bg-emerald-50" : "border-destructive/30 bg-destructive/5"}`}>
+                    <div className={`rounded-xl border p-4 ${restoreReport.valid && (!restoreReport.preflight || restoreReport.preflight.destructive_write_blockers.length === 0) ? "border-emerald-200 bg-emerald-50" : "border-destructive/30 bg-destructive/5"}`}>
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="flex items-center gap-2">
                             {restoreReport.valid ? <ShieldCheck className="h-5 w-5 text-emerald-600" /> : <ShieldAlert className="h-5 w-5 text-destructive" />}
-                            <h3 className="font-heading text-lg font-semibold">{restoreReport.valid ? "Restore report" : "Restore blocked"}</h3>
+                            <h3 className="font-heading text-lg font-semibold">{!restoreReport.valid ? "Restore blocked" : restoreReport.preflight?.destructive_write_blockers?.length > 0 ? "Preflight Blocked" : restoreReport.restore_mode === "dry_run" ? "Preflight Ready" : "Restore Report"}</h3>
                           </div>
                           <p className="mt-1 text-sm text-muted-foreground">Job ID: {restoreReport.restore_job_id}</p>
                           {restoreReport.safety_backup_job_id && (
                             <p className="mt-1 text-sm text-muted-foreground">Safety backup: {restoreReport.safety_backup_job_id}</p>
                           )}
                         </div>
-                        <Badge variant={restoreReport.valid ? "default" : "destructive"}>{restoreReport.restore_mode}</Badge>
+                        <Badge variant={!restoreReport.valid || (restoreReport.preflight?.destructive_write_blockers && restoreReport.preflight.destructive_write_blockers.length > 0) ? "destructive" : "default"}>{restoreReport.restore_mode}</Badge>
                       </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-                        <div className="rounded-lg bg-background/70 p-3">
-                          <p className="text-xs text-muted-foreground">Records restored</p>
-                          <p className="font-mono text-sm font-semibold">{Number(restoreReport.restored_records || 0).toLocaleString()}</p>
-                        </div>
-                        <div className="rounded-lg bg-background/70 p-3">
-                          <p className="text-xs text-muted-foreground">Files restored</p>
-                          <p className="font-mono text-sm font-semibold">{Number(restoreReport.restored_files || 0).toLocaleString()}</p>
-                        </div>
-                        <div className="rounded-lg bg-background/70 p-3">
-                          <p className="text-xs text-muted-foreground">Tables checked</p>
-                          <p className="font-mono text-sm font-semibold">{Number(restoreReport.table_results?.length || 0).toLocaleString()}</p>
-                        </div>
-                        <div className="rounded-lg bg-background/70 p-3">
-                          <p className="text-xs text-muted-foreground">Buckets checked</p>
-                          <p className="font-mono text-sm font-semibold">{Number(restoreReport.storage_results?.length || 0).toLocaleString()}</p>
-                        </div>
-                      </div>
+                      {restoreReport.preflight && (
+                        <div className="mt-6 space-y-4">
+                           <h4 className="font-semibold">Preflight Checks</h4>
+                           <div className="grid gap-2 md:grid-cols-2">
+                             {restoreReport.preflight.checks?.map((check: any) => (
+                               <div key={`${check.name}-${check.details}`} className={`rounded-lg border p-3 ${check.status === 'passed' ? 'bg-emerald-500/5 border-emerald-500/20' : check.status === 'blocked' ? 'bg-destructive/5 border-destructive/20' : check.status === 'warning' ? 'bg-amber-500/5 border-amber-500/20' : 'bg-muted/50 border-muted'}`}>
+                                 <div className="flex items-center justify-between gap-2">
+                                   <p className="text-sm font-semibold">{check.name}</p>
+                                   <Badge variant={check.status === "passed" ? "default" : check.status === "warning" ? "secondary" : check.status === "blocked" ? "destructive" : "outline"} className={check.status === "passed" ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""}>{check.status.replace("_", " ").toUpperCase()}</Badge>
+                                 </div>
+                                 <p className="mt-1 text-xs text-muted-foreground">{check.details}</p>
+                               </div>
+                             ))}
+                           </div>
 
-                      {restoreReport.errors?.length > 0 && (
-                        <div className="mt-4 rounded-lg border border-destructive/20 bg-background/70 p-3">
-                          <p className="mb-2 text-sm font-semibold text-destructive">Restore errors</p>
-                          <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
-                            {restoreReport.errors.map((error: string) => <li key={error}>{error}</li>)}
-                          </ul>
+                           {restoreReport.preflight.destructive_write_blockers?.length > 0 && (
+                             <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3">
+                               <p className="mb-2 text-sm font-semibold text-destructive">Blocking Errors</p>
+                               <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                                 {restoreReport.preflight.destructive_write_blockers.map((error: string) => <li key={error}>{error}</li>)}
+                               </ul>
+                             </div>
+                           )}
+
+                           {restoreReport.preflight.warnings?.length > 0 && (
+                             <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
+                               <p className="mb-2 text-sm font-semibold text-amber-700">Warnings</p>
+                               <ul className="list-disc space-y-1 pl-5 text-sm text-amber-700">
+                                 {restoreReport.preflight.warnings.map((warning: string) => <li key={warning}>{warning}</li>)}
+                               </ul>
+                             </div>
+                           )}
+                           
+                           {(restoreReport.preflight.table_analysis?.length > 0 || restoreReport.preflight.storage_inventory?.length > 0) && (
+                              <div className="grid gap-4 lg:grid-cols-2 pt-2">
+                                {restoreReport.preflight.table_analysis?.length > 0 && (
+                                  <div>
+                                    <p className="mb-2 text-sm font-semibold text-foreground">Table Analysis</p>
+                                    <div className="max-h-56 overflow-y-auto rounded-lg border bg-background/70">
+                                      {restoreReport.preflight.table_analysis.map((table: any) => (
+                                        <div key={table.table} className="flex flex-col border-b px-3 py-2 text-sm last:border-b-0">
+                                          <div className="flex items-center justify-between">
+                                            <span className="truncate font-medium">{table.table}</span>
+                                            <span className="font-mono text-muted-foreground">{table.records_seen.toLocaleString()} records</span>
+                                          </div>
+                                          {(table.duplicate_primary_keys?.length > 0 || table.missing_reference_count > 0) && (
+                                             <div className="mt-1 text-xs text-destructive">
+                                               {table.duplicate_primary_keys?.length > 0 && <span>{table.duplicate_primary_keys.length} duplicates. </span>}
+                                               {table.missing_reference_count > 0 && <span>{table.missing_reference_count} missing refs.</span>}
+                                             </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {restoreReport.preflight.storage_inventory?.length > 0 && (
+                                  <div>
+                                    <p className="mb-2 text-sm font-semibold text-foreground">Storage Inventory</p>
+                                    <div className="max-h-56 overflow-y-auto rounded-lg border bg-background/70">
+                                      {restoreReport.preflight.storage_inventory.map((bucket: any) => (
+                                        <div key={bucket.bucket} className="flex flex-col border-b px-3 py-2 text-sm last:border-b-0">
+                                          <div className="flex items-center justify-between">
+                                            <span className="truncate font-medium">{bucket.bucket}</span>
+                                            <span className="font-mono text-muted-foreground">{bucket.files_seen.toLocaleString()} files</span>
+                                          </div>
+                                          {bucket.missing_files_in_archive > 0 && (
+                                             <p className="mt-1 text-xs text-destructive">{bucket.missing_files_in_archive} missing from archive</p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                           )}
                         </div>
                       )}
 
-                      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                        <div>
-                          <p className="mb-2 text-sm font-semibold text-foreground">Database restore plan</p>
-                          <div className="max-h-56 overflow-y-auto rounded-lg border bg-background/70">
-                            {restoreReport.table_results?.map((table: any) => (
-                              <div key={table.table} className="flex items-center justify-between border-b px-3 py-2 text-sm last:border-b-0">
-                                <span className="truncate text-muted-foreground">{table.table}</span>
-                                <span className="font-mono">{Number(table.records_restored || table.records_seen || 0).toLocaleString()}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="mb-2 text-sm font-semibold text-foreground">Storage restore plan</p>
-                          <div className="max-h-56 overflow-y-auto rounded-lg border bg-background/70">
-                            {restoreReport.storage_results?.map((bucket: any) => (
-                              <div key={bucket.bucket} className="flex items-center justify-between border-b px-3 py-2 text-sm last:border-b-0">
-                                <span className="truncate text-muted-foreground">{bucket.bucket}</span>
-                                <span className="font-mono">{Number(bucket.files_restored || bucket.files_seen || 0).toLocaleString()} files</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
+                      {!restoreReport.preflight && (
+                         <>
+                           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                             <div className="rounded-lg bg-background/70 p-3">
+                               <p className="text-xs text-muted-foreground">Records restored</p>
+                               <p className="font-mono text-sm font-semibold">{Number(restoreReport.restored_records || 0).toLocaleString()}</p>
+                             </div>
+                             <div className="rounded-lg bg-background/70 p-3">
+                               <p className="text-xs text-muted-foreground">Files restored</p>
+                               <p className="font-mono text-sm font-semibold">{Number(restoreReport.restored_files || 0).toLocaleString()}</p>
+                             </div>
+                             <div className="rounded-lg bg-background/70 p-3">
+                               <p className="text-xs text-muted-foreground">Tables checked</p>
+                               <p className="font-mono text-sm font-semibold">{Number(restoreReport.table_results?.length || 0).toLocaleString()}</p>
+                             </div>
+                             <div className="rounded-lg bg-background/70 p-3">
+                               <p className="text-xs text-muted-foreground">Buckets checked</p>
+                               <p className="font-mono text-sm font-semibold">{Number(restoreReport.storage_results?.length || 0).toLocaleString()}</p>
+                             </div>
+                           </div>
+
+                           {restoreReport.errors?.length > 0 && (
+                             <div className="mt-4 rounded-lg border border-destructive/20 bg-background/70 p-3">
+                               <p className="mb-2 text-sm font-semibold text-destructive">Restore errors</p>
+                               <ul className="list-disc space-y-1 pl-5 text-sm text-destructive">
+                                 {restoreReport.errors.map((error: string) => <li key={error}>{error}</li>)}
+                               </ul>
+                             </div>
+                           )}
+
+                           <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                             <div>
+                               <p className="mb-2 text-sm font-semibold text-foreground">Database restore plan</p>
+                               <div className="max-h-56 overflow-y-auto rounded-lg border bg-background/70">
+                                 {restoreReport.table_results?.map((table: any) => (
+                                   <div key={table.table} className="flex items-center justify-between border-b px-3 py-2 text-sm last:border-b-0">
+                                     <span className="truncate text-muted-foreground">{table.table}</span>
+                                     <span className="font-mono">{Number(table.records_restored || table.records_seen || 0).toLocaleString()}</span>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                             <div>
+                               <p className="mb-2 text-sm font-semibold text-foreground">Storage restore plan</p>
+                               <div className="max-h-56 overflow-y-auto rounded-lg border bg-background/70">
+                                 {restoreReport.storage_results?.map((bucket: any) => (
+                                   <div key={bucket.bucket} className="flex items-center justify-between border-b px-3 py-2 text-sm last:border-b-0">
+                                     <span className="truncate text-muted-foreground">{bucket.bucket}</span>
+                                     <span className="font-mono">{Number(bucket.files_restored || bucket.files_seen || 0).toLocaleString()} files</span>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+                           </div>
+                         </>
+                      )}
                     </div>
                   )}
                 </CardContent>
