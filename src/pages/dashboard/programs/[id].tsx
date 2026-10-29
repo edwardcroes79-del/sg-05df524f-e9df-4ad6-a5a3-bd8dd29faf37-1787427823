@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Trash2, QrCode, Upload, RefreshCw, Sparkles, Layout, Palette, Gift, Check, ShieldAlert } from "lucide-react";
 import { LoyaltyCard } from "@/components/LoyaltyCard";
+import { IconPicker } from "@/components/dashboard/IconPicker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -916,45 +917,21 @@ export default function EditProgram() {
                         
                         <div className="grid sm:grid-cols-2 gap-4 bg-muted/10 p-4 rounded-xl border">
                           <div className="space-y-2">
-                            <Label htmlFor="stamp_icon_select" className="text-sm font-medium">{t("dashboard.customizer.icons.stamp")}</Label>
-                            <select
-                              id="stamp_icon_select"
-                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                              value={customization.stamp_icon}
-                              onChange={(e) => setCustomization((prev) => ({ ...prev, stamp_icon: e.target.value }))}>
-                              
-                              <option value="Star">⭐ Star</option>
-                              <option value="Coffee">☕ Coffee Cup</option>
-                              <option value="Scissors">✂️ Scissors</option>
-                              <option value="Utensils">🍴 Utensils</option>
-                              <option value="Car">🚗 Car</option>
-                              <option value="Dumbbell">🏋️ Dumbbell</option>
-                              <option value="Heart">❤️ Heart</option>
-                              <option value="Crown">👑 Crown</option>
-                              <option value="ShoppingBag">🛍️ Shopping Bag</option>
-                              <option value="Pizza">🍕 Pizza Slice</option>
-                              <option value="Sun">☀️ Sun</option>
-                              <option value="Smile">😊 Smile</option>
-                              <option value="Brush">💅 Nail Brush</option>
-                              <option value="Compass">🧭 Compass</option>
-                              <option value="Flame">🔥 Fire</option>
-                            </select>
+                            <Label className="text-sm font-medium">{t("dashboard.customizer.icons.stamp")}</Label>
+                            <IconPicker 
+                              label={t("dashboard.customizer.icons.stamp")} 
+                              value={customization.stamp_icon} 
+                              onChange={(val) => setCustomization((prev) => ({ ...prev, stamp_icon: val }))} 
+                            />
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="reward_icon_select" className="text-sm font-medium">{t("dashboard.customizer.icons.reward")}</Label>
-                            <select
-                              id="reward_icon_select"
-                              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                              value={customization.reward_icon}
-                              onChange={(e) => setCustomization((prev) => ({ ...prev, reward_icon: e.target.value }))}>
-                              
-                              <option value="Gift">🎁 Gift Box</option>
-                              <option value="Crown">👑 Crown</option>
-                              <option value="Coffee">☕ Coffee / Drink</option>
-                              <option value="Utensils">🍴 Food Meal</option>
-                              <option value="Shield">🛡️ Security Shield</option>
-                            </select>
+                            <Label className="text-sm font-medium">{t("dashboard.customizer.icons.reward")}</Label>
+                            <IconPicker 
+                              label={t("dashboard.customizer.icons.reward")} 
+                              value={customization.reward_icon} 
+                              onChange={(val) => setCustomization((prev) => ({ ...prev, reward_icon: val }))} 
+                            />
                           </div>
                         </div>
                       </div>

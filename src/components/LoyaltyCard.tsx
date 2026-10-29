@@ -2,15 +2,29 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Coffee, Scissors, Car, Dumbbell, Utensils, Gift, Star, Check, Sparkles, Heart, Crown, CupSoda, ShoppingBag,
-  Brush, Smile, Compass, Sun, Pizza, Flame, Sparkle, Shield
+  Brush, Smile, Compass, Sun, Pizza, Flame, Sparkle, Shield,
+  Cake, Wine, Beer, IceCream, Croissant, Martini, 
+  Droplet, Flower, Wrench, Settings, Fuel, Battery, Bike, 
+  ShoppingCart, Tag, Shirt, Store, Plane, Tent, Hotel, Luggage, Camera, MapPin, Palmtree, 
+  Briefcase, Laptop, Phone, Calendar, FileText, Calculator, 
+  Building, Home, Trophy, Medal, Diamond, Award, 
+  Ticket, Percent, PartyPopper, Moon, Leaf, TreePine, PawPrint, 
+  Mail, MessageCircle, Globe, Link
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 
 export const STAMP_ICONS: Record<string, React.ElementType> = {
-  Coffee, Scissors, Car, Dumbbell, Utensils, Star, Gift, Sparkles, Heart, Crown, CupSoda, ShoppingBag,
-  Brush, Smile, Compass, Sun, Pizza, Flame, Sparkle, Shield
+  Coffee, Scissors, Car, Dumbbell, Utensils, Gift, Star, Check, Sparkles, Heart, Crown, CupSoda, ShoppingBag,
+  Brush, Smile, Compass, Sun, Pizza, Flame, Sparkle, Shield,
+  Cake, Wine, Beer, IceCream, Croissant, Martini,
+  Droplet, Flower, Wrench, Settings, Fuel, Battery, Bike,
+  ShoppingCart, Tag, Shirt, Store, Plane, Tent, Hotel, Luggage, Camera, MapPin, Palmtree,
+  Briefcase, Laptop, Phone, Calendar, FileText, Calculator,
+  Building, Home, Trophy, Medal, Diamond, Award,
+  Ticket, Percent, PartyPopper, Moon, Leaf, TreePine, PawPrint,
+  Mail, MessageCircle, Globe, Link
 };
 
 export interface TemplateCustomization {
@@ -113,8 +127,8 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
   const overrideText = customization?.text_color;
   
   // Resolve branding assets
-  const Icon = STAMP_ICONS[customization?.stamp_icon || stampIcon || "Star"] || Star;
-  const RewardIcon = STAMP_ICONS[customization?.reward_icon || "Gift"] || Gift;
+  const Icon = customization?.stamp_icon === "None" ? null : (STAMP_ICONS[customization?.stamp_icon || stampIcon || "Star"] || Star);
+  const RewardIcon = customization?.reward_icon === "None" ? null : (STAMP_ICONS[customization?.reward_icon || "Gift"] || Gift);
   const stamps = Array.from({ length: stampTarget }, (_, i) => i);
   const logoUrl = customization?.card_logo_url;
   const bannerUrl = customization?.card_banner_url;
@@ -241,9 +255,9 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
                   } as React.CSSProperties}
                 >
                   {isStamped ? (
-                    theme.layout === "gradient" ? <Icon className="w-5 h-5 fill-current" /> : <Check className="w-5 h-5" strokeWidth={3} />
+                    theme.layout === "gradient" && Icon ? <Icon className="w-5 h-5 fill-current" /> : <Check className="w-5 h-5" strokeWidth={3} />
                   ) : (
-                    <Icon className="w-4 h-4 opacity-50" />
+                    Icon ? <Icon className="w-4 h-4 opacity-50" /> : null
                   )}
                 </div>
               </div>
@@ -258,12 +272,14 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
             <span className="text-sm font-extrabold truncate block">{rewardTitle || t("dashboard.customizer.card.unlockedReward")}</span>
           </div>
           
-          <div
-            className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-black/5"
-            style={{ color: primaryColor, backgroundColor: secondaryColor ? `${secondaryColor}22` : undefined }}
-          >
-            <RewardIcon className="w-5 h-5" />
-          </div>
+          {RewardIcon && (
+            <div
+              className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-black/5"
+              style={{ color: primaryColor, backgroundColor: secondaryColor ? `${secondaryColor}22` : undefined }}
+            >
+              <RewardIcon className="w-5 h-5" />
+            </div>
+          )}
         </div>
 
         {/* Text Details Section */}
