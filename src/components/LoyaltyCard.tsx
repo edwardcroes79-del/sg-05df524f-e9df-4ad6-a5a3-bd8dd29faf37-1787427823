@@ -205,9 +205,6 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
           </div>
           
           <div className="flex flex-col items-end shrink-0 ml-4">
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-black/10 text-inherit">
-              {t(getThemeBadgeKey(templateId))}
-            </span>
             <span className="text-xs font-mono font-bold mt-1.5 opacity-80">
               {t("dashboard.customizer.card.stampsLabel", { current: currentStamps, target: stampTarget })}
             </span>
