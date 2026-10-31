@@ -53,3 +53,18 @@ assert.match(loaderBody, /eq\("status", "redeemed"\)/, "redeemed count unchanged
 assert.match(overview, /await loadStatsAndActivity\(resolvedBusinessId\);/, "initial load uses shared loader");
 
 console.log("perf phase 1 optimization 2 tests passed");
+
+const customersPage = read("src/pages/dashboard/customers.tsx");
+assert.match(customersPage, /const loadCardsPage = async \(resolvedBusinessId: string, page: number\)/, "page loader takes explicit page");
+assert.match(customersPage, /const startIndex = \(page - 1\) \* itemsPerPage;/, "range uses requested page, not stale state");
+assert.match(customersPage, /handlePageChange\(Math\.max\(1, currentPage - 1\)\)/, "previous button passes target page");
+assert.match(customersPage, /handlePageChange\(currentPage \+ 1\)/, "next button passes target page");
+assert.doesNotMatch(customersPage, /setCurrentPage\(prev => prev \+ 1\);\s*fetchBusinessAndCustomers\(\);/, "stale pagination pattern removed");
+for (const key of ["excel_member_export", "excel_member_import", "bulk_member_removal", "vip_member_identification"]) {
+  assert.match(customersPage, new RegExp(`checkBusinessEntitlement\\(resolvedBusinessId, "${key}"\\)`), `${key} entitlement still checked`);
+}
+assert.match(customersPage, /new Set\(\(memberRowsResult\.data \|\| \[\]\)\.map\(\(row: any\) => row\.customer_id\)\)\.size/, "distinct member count semantics unchanged");
+assert.match(customersPage, /\{ count: 'exact' \}\)\s*\.eq\("business_id", resolvedBusinessId\)\s*\.eq\("status", "active"\)/, "total count query unchanged");
+assert.match(customersPage, /redeem_reward_tx/, "redemption workflow unchanged");
+
+console.log("perf phase 1 optimization 4 tests passed");

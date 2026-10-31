@@ -134,7 +134,63 @@ export default function CustomersDashboard() {
     fetchBusinessAndCustomers();
   }, []);
 
-  const fetchBusinessAndCustomers = async () => {
+  const loadCardsPage = async (resolvedBusinessId: string, page: number) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage - 1;
+
+    const { data: cardsData, error: cardsError, count } = await (supabase
+      .from("customer_loyalty_cards") as any)
+      .select(`
+        id,
+        current_stamps,
+        total_stamps,
+        rewards_earned,
+        status,
+        is_vip,
+        created_at,
+        updated_at,
+        customer:customers (
+          id,
+          name,
+          email,
+          phone,
+          avatar,
+          created_at
+        ),
+        loyalty_programs (
+          id,
+          name,
+          stamp_target,
+          reward_title
+        )
+      `, { count: 'exact' })
+      .eq("business_id", resolvedBusinessId)
+      .eq("status", "active")
+      .range(startIndex, endIndex);
+
+    if (cardsError) throw cardsError;
+
+    setTotalCount(count || 0);
+    const typedCards = (cardsData || []).filter((c: any) => c.customer) as unknown as CustomerLoyaltyCard[];
+    setCards(typedCards);
+  };
+
+  const checkBusinessEntitlement = async (businessId: string, key: string) => {
+    const { data, error } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
+      p_business_id: businessId,
+      p_key: key,
+      p_fallback: false,
+    });
+
+    if (error) {
+      console.error(`Unable to verify ${key} entitlement:`, error);
+      return false;
+    }
+
+    return data === true;
+  };
+
+  const fetchBusinessAndCustomers = async (page: number = currentPage) => {
     try {
       setLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
@@ -194,125 +250,70 @@ export default function CustomersDashboard() {
       
       setBusiness({ id: resolvedBusinessId });
 
-      const { data: exportEntitlement, error: exportEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
-        p_business_id: resolvedBusinessId,
-        p_key: "excel_member_export",
-        p_fallback: false,
-      });
+      const [
+        exportAllowed,
+        importAllowed,
+        bulkRemovalAllowed,
+        vipAllowed,
+        programsResult,
+        effectiveLimitResult,
+        memberRowsResult,
+      ] = await Promise.all([
+        checkBusinessEntitlement(resolvedBusinessId, "excel_member_export"),
+        checkBusinessEntitlement(resolvedBusinessId, "excel_member_import"),
+        checkBusinessEntitlement(resolvedBusinessId, "bulk_member_removal"),
+        checkBusinessEntitlement(resolvedBusinessId, "vip_member_identification"),
+        supabase
+          .from("loyalty_programs")
+          .select("id, name")
+          .eq("business_id", resolvedBusinessId)
+          .eq("active", true)
+          .order("created_at", { ascending: true }),
+        (supabase.rpc as any)("get_business_effective_numeric_limit", {
+          p_business_id: resolvedBusinessId,
+          p_key: "max_customers",
+          p_fallback: 300,
+        }),
+        supabase
+          .from("customer_loyalty_cards")
+          .select("customer_id")
+          .eq("business_id", resolvedBusinessId)
+          .eq("status", "active")
+          .not("customer_id", "is", null),
+        loadCardsPage(resolvedBusinessId, page),
+      ]);
 
-      if (exportEntitlementError) {
-        console.error("Unable to verify Excel member export entitlement:", exportEntitlementError);
-        setCanExportMembers(false);
-      } else {
-        setCanExportMembers(exportEntitlement === true);
-      }
+      setCanExportMembers(exportAllowed);
+      setCanImportMembers(importAllowed);
+      setCanBulkRemoveMembers(bulkRemovalAllowed);
+      setCanIdentifyVipMembers(vipAllowed);
 
-      const { data: importEntitlement, error: importEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
-        p_business_id: resolvedBusinessId,
-        p_key: "excel_member_import",
-        p_fallback: false,
-      });
+      if (programsResult.error) throw programsResult.error;
+      setBusinessPrograms((programsResult.data || []) as LoyaltyProgramOption[]);
 
-      if (importEntitlementError) {
-        console.error("Unable to verify Excel member import entitlement:", importEntitlementError);
-        setCanImportMembers(false);
-      } else {
-        setCanImportMembers(importEntitlement === true);
-      }
-
-      const { data: bulkRemovalEntitlement, error: bulkRemovalEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
-        p_business_id: resolvedBusinessId,
-        p_key: "bulk_member_removal",
-        p_fallback: false,
-      });
-
-      if (bulkRemovalEntitlementError) {
-        console.error("Unable to verify bulk member removal entitlement:", bulkRemovalEntitlementError);
-        setCanBulkRemoveMembers(false);
-      } else {
-        setCanBulkRemoveMembers(bulkRemovalEntitlement === true);
-      }
-
-      const { data: vipEntitlement, error: vipEntitlementError } = await (supabase.rpc as any)("get_business_boolean_entitlement", {
-        p_business_id: resolvedBusinessId,
-        p_key: "vip_member_identification",
-        p_fallback: false,
-      });
-
-      if (vipEntitlementError) {
-        console.error("Unable to verify VIP member identification entitlement:", vipEntitlementError);
-        setCanIdentifyVipMembers(false);
-      } else {
-        setCanIdentifyVipMembers(vipEntitlement === true);
-      }
-
-      const { data: programsData, error: programsError } = await supabase
-        .from("loyalty_programs")
-        .select("id, name")
-        .eq("business_id", resolvedBusinessId)
-        .eq("active", true)
-        .order("created_at", { ascending: true });
-
-      if (programsError) throw programsError;
-      setBusinessPrograms((programsData || []) as LoyaltyProgramOption[]);
-
-      const { data: effectiveLimit } = await (supabase.rpc as any)("get_business_effective_numeric_limit", {
-        p_business_id: resolvedBusinessId,
-        p_key: "max_customers",
-        p_fallback: 300,
-      });
-      setEffectiveCustomerLimit(Number(effectiveLimit ?? 300));
-
-      const { data: memberRows } = await supabase
-        .from("customer_loyalty_cards")
-        .select("customer_id")
-        .eq("business_id", resolvedBusinessId)
-        .eq("status", "active")
-        .not("customer_id", "is", null);
-      setCurrentMemberCount(new Set((memberRows || []).map((row: any) => row.customer_id)).size);
-
-      // 2. Fetch customers associated via loyalty cards with pagination
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const endIndex = startIndex + itemsPerPage - 1;
-
-      const { data: cardsData, error: cardsError, count } = await (supabase
-        .from("customer_loyalty_cards") as any)
-        .select(`
-          id,
-          current_stamps,
-          total_stamps,
-          rewards_earned,
-          status,
-          is_vip,
-          created_at,
-          updated_at,
-          customer:customers (
-            id,
-            name,
-            email,
-            phone,
-            avatar,
-            created_at
-          ),
-          loyalty_programs (
-            id,
-            name,
-            stamp_target,
-            reward_title
-          )
-        `, { count: 'exact' })
-        .eq("business_id", resolvedBusinessId)
-        .eq("status", "active")
-        .range(startIndex, endIndex);
-
-      if (cardsError) throw cardsError;
-
-      setTotalCount(count || 0);
-      // Type assert to verify the join conforms correctly
-      const typedCards = (cardsData || []).filter(c => c.customer) as unknown as CustomerLoyaltyCard[];
-      setCards(typedCards);
+      setEffectiveCustomerLimit(Number(effectiveLimitResult.data ?? 300));
+      setCurrentMemberCount(new Set((memberRowsResult.data || []).map((row: any) => row.customer_id)).size);
     } catch (err: any) {
       console.error("Error loading customers:", err);
+      toast({
+        title: t("dashboard.customers.queryFailed"),
+        description: err.message || t("dashboard.customers.loadFailed"),
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePageChange = async (nextPage: number) => {
+    if (!business?.id) return;
+
+    try {
+      setLoading(true);
+      setCurrentPage(nextPage);
+      await loadCardsPage(business.id, nextPage);
+    } catch (err: any) {
+      console.error("Error loading customers page:", err);
       toast({
         title: t("dashboard.customers.queryFailed"),
         description: err.message || t("dashboard.customers.loadFailed"),
@@ -1019,10 +1020,7 @@ export default function CustomersDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setCurrentPage(prev => Math.max(1, prev - 1));
-                  fetchBusinessAndCustomers();
-                }}
+                onClick={() => void handlePageChange(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
               >
                 {t("dashboard.customers.previous")}
@@ -1030,10 +1028,7 @@ export default function CustomersDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  setCurrentPage(prev => prev + 1);
-                  fetchBusinessAndCustomers();
-                }}
+                onClick={() => void handlePageChange(currentPage + 1)}
                 disabled={currentPage * itemsPerPage >= totalCount}
               >
                 {t("dashboard.customers.next")}
@@ -1433,7 +1428,7 @@ export default function CustomersDashboard() {
             open={reconcileDialogOpen}
             programs={businessPrograms}
             onOpenChange={setReconcileDialogOpen}
-            onCompleted={fetchBusinessAndCustomers}
+            onCompleted={() => fetchBusinessAndCustomers()}
           />
         )}
 
