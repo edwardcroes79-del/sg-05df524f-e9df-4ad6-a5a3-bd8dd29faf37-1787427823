@@ -113,7 +113,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   
   const fetchSecurityAlertsSummary = async (businessId: string, accessToken: string) => {
     try {
-      const response = await fetch(`/api/business/security-alerts?businessId=${encodeURIComponent(businessId)}&limit=1`, {
+      const response = await fetch(`/api/business/security-alerts?businessId=${encodeURIComponent(businessId)}&limit=1&summary=1`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -190,8 +190,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       });
 
     pollInterval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       void refreshSummary();
-    }, 15000);
+    }, 60000);
 
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === "visible") {

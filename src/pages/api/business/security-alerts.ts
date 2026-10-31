@@ -115,44 +115,44 @@ async function getAuthenticatedUserId(req: NextApiRequest) {
 }
 
 async function canManageBusiness(admin: SupabaseClient, businessId: string, userId: string) {
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("is_super_admin")
-    .eq("id", userId)
-    .maybeSingle();
+  const [profileResult, businessResult, roleResult] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("is_super_admin")
+      .eq("id", userId)
+      .maybeSingle(),
+    admin
+      .from("businesses")
+      .select("owner_id")
+      .eq("id", businessId)
+      .maybeSingle(),
+    admin
+      .from("business_users")
+      .select("role, status")
+      .eq("business_id", businessId)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .in("role", ["owner", "admin", "corporate_admin"])
+      .maybeSingle(),
+  ]);
 
-  if (profileError) {
+  if (profileResult.error) {
     throw new Error("Unable to verify user permissions");
   }
 
-  if (profile?.is_super_admin) return true;
+  if (profileResult.data?.is_super_admin) return true;
 
-  const { data: business, error: businessError } = await admin
-    .from("businesses")
-    .select("owner_id")
-    .eq("id", businessId)
-    .maybeSingle();
-
-  if (businessError) {
+  if (businessResult.error) {
     throw new Error("Unable to verify business permissions");
   }
 
-  if (business?.owner_id === userId) return true;
+  if (businessResult.data?.owner_id === userId) return true;
 
-  const { data: businessUser, error: roleError } = await admin
-    .from("business_users")
-    .select("role, status")
-    .eq("business_id", businessId)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .in("role", ["owner", "admin", "corporate_admin"])
-    .maybeSingle();
-
-  if (roleError) {
+  if (roleResult.error) {
     throw new Error("Unable to verify business role");
   }
 
-  return Boolean(businessUser);
+  return Boolean(roleResult.data);
 }
 
 function normalizeId(value: string | string[] | undefined, fieldName: string) {
@@ -228,8 +228,13 @@ async function loadAlertDetails(admin: SupabaseClient, alerts: SecurityAlertRow[
     );
   }));
 
+  const staffNeedingAuthLookup = allowedStaffIds.filter((staffId) => {
+    const profile = staffById.get(staffId);
+    return !(profile?.full_name?.trim() && profile?.email?.trim());
+  });
+
   const authIdentities = await Promise.all(
-    allowedStaffIds.map(async (staffId): Promise<StaffAuthIdentity | null> => {
+    staffNeedingAuthLookup.map(async (staffId): Promise<StaffAuthIdentity | null> => {
       try {
         const { data, error } = await admin.auth.admin.getUserById(staffId);
 
@@ -304,6 +309,20 @@ async function listAlerts(req: NextApiRequest, res: NextApiResponse<ApiResponse>
 
   if (!(await canManageBusiness(admin, businessId, userId))) {
     return res.status(403).json({ error: "Only a Business Owner/Admin can access security alerts" });
+  }
+
+  if (req.query.summary === "1") {
+    const { count: unreadOnlyCount, error: unreadOnlyError } = await admin
+      .from("anti_fraud_security_alerts")
+      .select("id", { count: "exact", head: true })
+      .eq("business_id", businessId)
+      .is("read_at", null);
+
+    if (unreadOnlyError) {
+      return res.status(500).json({ error: "Unable to load security alerts" });
+    }
+
+    return res.status(200).json({ unreadCount: Number(unreadOnlyCount || 0) });
   }
 
   const [{ data: alerts, error: alertsError }, { count, error: countError }] = await Promise.all([
