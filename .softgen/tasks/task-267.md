@@ -1,6 +1,6 @@
 ---
 title: Application performance slowdown investigation
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [performance, investigation, supabase, realtime, frontend]
@@ -10,20 +10,34 @@ position: 267
 ---
 
 ## Notes
-User reports a sudden, noticeable slowdown despite low active user counts. Investigate first and report the root cause, evidence, bottlenecks, prioritized fixes, and a safe optimization plan before implementing anything. Do not assume user count is the cause. Do not change schema, run migrations, modify production data, or alter features, permissions, RLS, or business logic. Do not modify Stamp Flow or Quick Stamp.
+Investigation finished using read-only checks only. No code, schema, data, policy, or configuration changes were made. The repair is waiting for user approval.
 
-Early evidence already seen in source (to be confirmed):
-- `src/pages/dashboard/index.tsx`: the realtime channel re-runs the full `fetchDashboardData` (around 10 queries, sets loading=true) on every stamp insert and every reward change for the business.
-- `src/pages/dashboard/customers.tsx`: runs sequential entitlement RPCs (4 plus 1 per owned business) and downloads all active membership rows just to count them. The pagination handlers call fetch with a stale `currentPage`.
-- `src/pages/customer/rewards.tsx`: the realtime handler re-queries the customer and all rewards on every reward event.
+Root cause: how the app queries the database, not the number of users. Three patterns multiply each other:
+1. Realtime (live updates) change polling dominates database time.
+2. Permission rules run a function per row on rewards, stamp transactions, and loyalty cards. Stamp transactions also look up the customers table per row.
+3. The app refetches far too often: full dashboard reloads on every live event, a 15-second security-alert poll, and a chain of 8–10 one-after-another checks in the shared dashboard layout on every page.
+
+Evidence (statistics accumulated since 2026-08-22):
+- 17 of 60 connections in use; database about 21 MB.
+- Realtime change-polling query: about 2.07M calls, about 13.7M ms total (top query by far).
+- Realtime setup query: about 35.7k calls, pointing to channels being opened and closed repeatedly.
+- Stamp transaction count queries average about 415 ms on about 1,130 rows.
+- Businesses table (13 rows): about 2.5M full scans.
+- Tables sending live updates: customer_loyalty_cards, loyalty_programs, rewards, stamp_transactions.
+- Supabase API metadata refresh: about 1,830 runs at about 97 ms each (secondary).
+
+Not verified: exact date of the slowdown, Vercel production metrics, connection pooling and Realtime connection limits.
+
+Proposed Phase 1 (no database changes): lighter security-alert checks, grouped live-event refreshes, parallel and reused dashboard layout checks, customers page count and pagination fixes.
+Proposed Phase 2 (separate approval): faster permission checks with identical access rules, plus supporting indexes.
 
 ## Checklist
-- [ ] Inspect shared layouts/providers (DashboardLayout, CustomerLayout, CorporateBrandingContext, I18nProvider, _app) for repeated fetches, intervals, and subscriptions
-- [ ] Inventory all Supabase realtime channels and setInterval/polling loops across the app
-- [ ] Review server logs, PM2 process CPU/RAM, and recent commits for a change correlating with the slowdown
-- [ ] Run read-only DB diagnostics where access allows (table sizes, index coverage on hot filter columns, slow query stats if exposed)
-- [ ] Check backup scheduler and other background jobs for repeated execution
-- [ ] Deliver report: root cause, evidence, bottlenecks, prioritized fixes, safe plan; stop for approval
+- [x] Inspect shared layouts/providers (DashboardLayout, CustomerLayout, CorporateBrandingContext, I18nProvider, _app) for repeated fetches, intervals, and subscriptions
+- [x] Inventory all Supabase realtime channels and setInterval/polling loops across the app
+- [x] Review server logs, PM2 process CPU/RAM, and recent commits for a change correlating with the slowdown
+- [x] Run read-only DB diagnostics where access allows (table sizes, index coverage on hot filter columns, slow query stats if exposed)
+- [x] Check backup scheduler and other background jobs for repeated execution
+- [x] Deliver report: root cause, evidence, bottlenecks, prioritized fixes, safe plan; stop for approval
 
 ## Acceptance
 - The report identifies an evidence-backed root cause, or explicitly states what could not be verified.
