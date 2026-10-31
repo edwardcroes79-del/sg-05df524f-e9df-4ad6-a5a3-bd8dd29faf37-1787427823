@@ -41,3 +41,15 @@ assert.match(layout, /channel\(`owner_stamp_notifications_\$\{business\.id\}`\)/
 assert.match(layout, /supabase\.removeChannel\(channel\);[\s\S]*supabase\.removeChannel\(channel\);/, "both realtime channels cleaned up");
 
 console.log("perf phase 1 optimization 3 tests passed");
+
+const overview = read("src/pages/dashboard/index.tsx");
+assert.match(overview, /table: 'stamp_transactions', filter: `business_id=eq\.\$\{businessId\}`/, "stamp realtime subscription preserved");
+assert.match(overview, /table: 'rewards', filter: `business_id=eq\.\$\{businessId\}`/, "reward realtime subscription preserved");
+assert.match(overview, /setTimeout\(\(\) => \{\s*void loadStatsAndActivity\(businessId\);\s*\}, 1500\);/, "live events debounced into stats-only refresh");
+assert.match(overview, /clearTimeout\(refreshTimeout\);\s*\}\s*supabase\.removeChannel\(channel\);/, "debounce timer and channel cleaned up");
+const loaderBody = overview.slice(overview.indexOf("const loadStatsAndActivity"), overview.indexOf("const fetchDashboardData"));
+assert.doesNotMatch(loaderBody, /setLoading\(/, "live refresh does not show skeletons");
+assert.match(loaderBody, /eq\("status", "redeemed"\)/, "redeemed count unchanged");
+assert.match(overview, /await loadStatsAndActivity\(resolvedBusinessId\);/, "initial load uses shared loader");
+
+console.log("perf phase 1 optimization 2 tests passed");

@@ -145,28 +145,91 @@ export default function DashboardOverview() {
   useEffect(() => {
     if (!businessId) return;
 
+    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+    const scheduleLiveRefresh = () => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
+      refreshTimeout = setTimeout(() => {
+        void loadStatsAndActivity(businessId);
+      }, 1500);
+    };
+
     const channel = supabase.channel(`business_dashboard_${businessId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'stamp_transactions', filter: `business_id=eq.${businessId}` },
         () => {
-          // Refresh the dashboard stats and recent activity when a stamp is issued
-          fetchDashboardData();
+          scheduleLiveRefresh();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'rewards', filter: `business_id=eq.${businessId}` },
         () => {
-          fetchDashboardData();
+          scheduleLiveRefresh();
         }
       )
       .subscribe();
 
     return () => {
+      if (refreshTimeout) {
+        clearTimeout(refreshTimeout);
+      }
       supabase.removeChannel(channel);
     };
   }, [businessId]);
+
+  const loadStatsAndActivity = async (resolvedBusinessId: string) => {
+    try {
+      const [
+        { data: uniqueCustomersData },
+        { count: activeCards },
+        { count: stampsIssued },
+        { count: rewardsEarned },
+        { count: rewardsRedeemed },
+        { data: activityData }
+      ] = await Promise.all([
+        supabase
+          .from("customer_loyalty_cards")
+          .select("customer_id")
+          .eq("business_id", resolvedBusinessId)
+          .eq("status", "active"),
+        supabase.from("customer_loyalty_cards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId).eq("status", "active"),
+        supabase.from("stamp_transactions").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId),
+        supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId),
+        supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId).eq("status", "redeemed"),
+        supabase.from("stamp_transactions")
+          .select(`
+            id, 
+            created_at, 
+            stamp_number,
+            customer_loyalty_cards (
+              customer:customers (
+                name
+              )
+            )
+          `)
+          .eq("business_id", resolvedBusinessId)
+          .order("created_at", { ascending: false })
+          .limit(5)
+      ]);
+
+      const uniqueCustomerCount = uniqueCustomersData ? new Set(uniqueCustomersData.map(c => c.customer_id)).size : 0;
+
+      setStats({
+        customers: uniqueCustomerCount,
+        activeCards: activeCards || 0,
+        stampsIssued: stampsIssued || 0,
+        rewardsEarned: rewardsEarned || 0,
+        rewardsRedeemed: rewardsRedeemed || 0,
+      });
+
+      setRecentActivity(activityData || []);
+    } catch (error) {
+      console.error("Error refreshing dashboard stats:", error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -279,52 +342,7 @@ export default function DashboardOverview() {
       // Update cache
       localStorage.setItem(`last_known_plan_id_${resolvedBusinessId}`, subscriptionPlan || "starter");
 
-      // Unique Customer Count
-      const { data: uniqueCustomersData } = await supabase
-        .from("customer_loyalty_cards")
-        .select("customer_id")
-        .eq("business_id", resolvedBusinessId)
-        .eq("status", "active");
-        
-      const uniqueCustomerCount = uniqueCustomersData ? new Set(uniqueCustomersData.map(c => c.customer_id)).size : 0;
-
-      // Real Data Fetching
-      const [
-        { count: activeCards },
-        { count: stampsIssued },
-        { count: rewardsEarned },
-        { count: rewardsRedeemed },
-        { data: activityData }
-      ] = await Promise.all([
-        supabase.from("customer_loyalty_cards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId).eq("status", "active"),
-        supabase.from("stamp_transactions").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId),
-        supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId),
-        supabase.from("rewards").select("*", { count: "exact", head: true }).eq("business_id", resolvedBusinessId).eq("status", "redeemed"),
-        supabase.from("stamp_transactions")
-          .select(`
-            id, 
-            created_at, 
-            stamp_number,
-            customer_loyalty_cards (
-              customer:customers (
-                name
-              )
-            )
-          `)
-          .eq("business_id", resolvedBusinessId)
-          .order("created_at", { ascending: false })
-          .limit(5)
-      ]);
-
-      setStats({
-        customers: uniqueCustomerCount,
-        activeCards: activeCards || 0,
-        stampsIssued: stampsIssued || 0,
-        rewardsEarned: rewardsEarned || 0,
-        rewardsRedeemed: rewardsRedeemed || 0,
-      });
-
-      setRecentActivity(activityData || []);
+      await loadStatsAndActivity(resolvedBusinessId);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
