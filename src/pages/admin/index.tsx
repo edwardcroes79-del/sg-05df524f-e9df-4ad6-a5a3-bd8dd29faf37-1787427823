@@ -2647,8 +2647,6 @@ export default function AdminDashboard() {
         title: "Settings Saved",
         description: "Public Website footer content has been updated successfully.",
       });
-
-      await fetchAdminData();
     } catch (err: any) {
       toast({
         title: "Error saving settings",
@@ -2755,7 +2753,7 @@ export default function AdminDashboard() {
       }
 
       toast({ title: "Backup deleted", description: "The backup package was removed." });
-      await fetchAdminData();
+      await (backupReportsRequestedRef.current ? loadBackupReports() : loadBackupList(session.access_token));
     } catch (err: any) {
       toast({ title: "Delete failed", description: err.message, variant: "destructive" });
     } finally {
@@ -5475,7 +5473,8 @@ export default function AdminDashboard() {
                   if (error) throw error;
                   toast({ title: "Page saved", description: "The page content has been updated successfully." });
                   setEditingPage(null);
-                  fetchAdminData();
+                  const { data: refreshedPages } = await supabase.from("website_pages").select("*").order("title");
+                  if (refreshedPages) setPages(refreshedPages);
                 } catch(e: any) {
                   toast({ title: "Error saving page", description: e.message, variant: "destructive" });
                 } finally {

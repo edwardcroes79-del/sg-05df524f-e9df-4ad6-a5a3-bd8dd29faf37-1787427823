@@ -29,18 +29,18 @@ export default function Login() {
   const { t } = useI18n();
   const safeReturnUrl = normalizeInternalReturnPath(returnUrl);
 
-  const routeUser = async () => {
+  const routeUser = async (knownUserId?: string) => {
     if (safeReturnUrl) {
       router.push(safeReturnUrl);
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    const userId = knownUserId ?? (await supabase.auth.getUser()).data.user?.id;
+    if (userId) {
       const { data: profile } = await supabase
         .from("profiles")
         .select("is_super_admin, role")
-        .eq("id", user.id)
+        .eq("id", userId)
         .maybeSingle();
 
       if (profile?.is_super_admin || profile?.role === 'super_admin') {
@@ -56,7 +56,7 @@ export default function Login() {
       const { data: businessUser } = await supabase
         .from("business_users")
         .select("business_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
         
       if (businessUser?.business_id) {
@@ -95,7 +95,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: signInData, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -124,7 +124,7 @@ export default function Login() {
         description: t("auth.login.success"),
       });
       
-      await routeUser();
+      await routeUser(signInData.user?.id);
       
     } catch (err: any) {
       toast({
