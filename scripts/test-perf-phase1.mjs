@@ -23,3 +23,18 @@ assert.match(layout, /if \(document\.visibilityState !== "visible"\) return;\s*v
 assert.match(layout, /table: "anti_fraud_security_alerts"/, "realtime alert channel preserved");
 
 console.log("perf phase 1 optimization 1 tests passed");
+
+const mfaIndex = layout.indexOf("await getMfaRouteRequirement()");
+const snapshotApplyIndex = layout.indexOf("applySnapshot(cachedSnapshot)");
+assert.ok(mfaIndex > 0 && mfaIndex < snapshotApplyIndex, "cached snapshot only applied after session + MFA checks");
+assert.match(layout, /cachedSnapshot\.userId === session\.user\.id/, "snapshot scoped to signed-in user");
+assert.match(layout, /DASHBOARD_SNAPSHOT_MAX_AGE_MS = 5 \* 60 \* 1000/, "snapshot max age 5 minutes");
+assert.match(layout, /rpc\("get_business_dashboard_access_status"\)/, "access status check still runs every load");
+assert.match(layout, /rpc\("business_has_active_quick_stamp_qr"/, "quick stamp access check unchanged");
+assert.match(layout, /get_business_boolean_entitlement/, "entitlement checks unchanged");
+assert.match(layout, /if \(!resolvedBusiness\) \{\s*dashboardLayoutSnapshot = null;/, "no-business clears snapshot");
+assert.match(layout, /const handleLogout = async \(\) => \{\s*dashboardLayoutSnapshot = null;/, "logout clears snapshot");
+assert.match(layout, /if \(!hasFreshSnapshot \|\| cachedSnapshot\?\.activeLocationId !== activeLocationValue\)/, "location event deduplicated");
+assert.ok((layout.match(/await Promise\.all\(\[/g) || []).length >= 2, "layout checks run in parallel");
+
+console.log("perf phase 1 optimization 3 tests passed");

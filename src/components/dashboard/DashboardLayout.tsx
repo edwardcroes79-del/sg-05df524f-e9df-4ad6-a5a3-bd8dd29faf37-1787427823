@@ -64,6 +64,49 @@ function isContractExpiredForDashboard(businessRecord: any) {
   return businessRecord.contract_status === "expired" || contractEnd <= today;
 }
 
+type DashboardLayoutSnapshot = {
+  userId: string;
+  savedAt: number;
+  isSuperAdmin: boolean;
+  business: any;
+  isExpiredContract: boolean;
+  securityAlertsVisible: boolean;
+  securityUnreadCount: number;
+  quickStampQrEnabled: boolean;
+  advancedAnalyticsEnabled: boolean;
+  locationsManagementEnabled: boolean;
+  corporateBrandingEnabled: boolean;
+  corporateBranding: CorporateBrandingSettings | null;
+  dashboardLocations: DashboardLocation[];
+  activeLocationId: string;
+  isTrial: boolean;
+  isExpiredTrial: boolean;
+  trialDaysLeft: number;
+};
+
+const DASHBOARD_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
+let dashboardLayoutSnapshot: DashboardLayoutSnapshot | null = null;
+
+async function loadSecurityAlertsSummary(businessId: string, accessToken: string) {
+  try {
+    const response = await fetch(`/api/business/security-alerts?businessId=${encodeURIComponent(businessId)}&limit=1&summary=1`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      return { visible: false, unreadCount: 0 };
+    }
+
+    const payload = await response.json();
+    return { visible: true, unreadCount: Number(payload.unreadCount || 0) };
+  } catch (securityAlertError) {
+    console.error("Security alerts summary error:", securityAlertError);
+    return { visible: false, unreadCount: 0 };
+  }
+}
+
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -112,175 +155,35 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
   
   const fetchSecurityAlertsSummary = async (businessId: string, accessToken: string) => {
-    try {
-      const response = await fetch(`/api/business/security-alerts?businessId=${encodeURIComponent(businessId)}&limit=1&summary=1`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!response.ok) {
-        setSecurityAlertsVisible(false);
-        setSecurityUnreadCount(0);
-        return;
-      }
-
-      const payload = await response.json();
-      setSecurityAlertsVisible(true);
-      setSecurityUnreadCount(Number(payload.unreadCount || 0));
-    } catch (securityAlertError) {
-      console.error("Security alerts summary error:", securityAlertError);
-      setSecurityAlertsVisible(false);
-      setSecurityUnreadCount(0);
-    }
+    const summary = await loadSecurityAlertsSummary(businessId, accessToken);
+    setSecurityAlertsVisible(summary.visible);
+    setSecurityUnreadCount(summary.unreadCount);
   };
 
-  useEffect(() => {
-    if (!business?.id || !securityAlertsVisible) return;
-
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
-    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
-    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    const refreshSummary = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await fetchSecurityAlertsSummary(business.id, session.access_token);
-    };
-
-    const scheduleSummaryRefresh = (delayMs = 750) => {
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
-
-      refreshTimeout = setTimeout(() => {
-        void refreshSummary();
-      }, delayMs);
-    };
-
-    const channel = supabase
-      .channel(`security_alert_badge_${business.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "anti_fraud_security_alerts",
-          filter: `business_id=eq.${business.id}`,
-        },
-        () => {
-          scheduleSummaryRefresh();
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          scheduleSummaryRefresh(0);
-          return;
-        }
-
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          if (reconnectTimeout) {
-            clearTimeout(reconnectTimeout);
-          }
-
-          reconnectTimeout = setTimeout(() => {
-            scheduleSummaryRefresh(0);
-          }, 1000);
-        }
-      });
-
-    pollInterval = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      void refreshSummary();
-    }, 60000);
-
-    const handleVisibilityOrFocus = () => {
-      if (document.visibilityState === "visible") {
-        scheduleSummaryRefresh(0);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
-    window.addEventListener("focus", handleVisibilityOrFocus);
-
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-      }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
-      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
-      window.removeEventListener("focus", handleVisibilityOrFocus);
-      supabase.removeChannel(channel);
-    };
-  }, [business?.id, securityAlertsVisible]);
-  
-  useEffect(() => {
-    if (!business?.id || !business?.owner_id || !currentUserId) return;
-    if (business.owner_id !== currentUserId) return;
-
-    const channel = supabase
-      .channel(`owner_stamp_notifications_${business.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "stamp_transactions",
-          filter: `business_id=eq.${business.id}`,
-        },
-        (payload) => {
-          const transaction = payload.new as {
-            staff_user_id?: string | null;
-            customer_id?: string | null;
-          };
-
-          if (!transaction.staff_user_id || transaction.staff_user_id === currentUserId) {
-            return;
-          }
-
-          void (async () => {
-            const [{ data: staffProfile }, { data: customer }] = await Promise.all([
-              supabase
-                .from("profiles")
-                .select("full_name, email")
-                .eq("id", transaction.staff_user_id)
-                .maybeSingle(),
-              transaction.customer_id
-                ? supabase
-                    .from("customers")
-                    .select("name")
-                    .eq("id", transaction.customer_id)
-                    .maybeSingle()
-                : Promise.resolve({ data: null }),
-            ]);
-
-            const staffName = staffProfile?.full_name || staffProfile?.email || t("dashboard.notifications.staffFallback");
-            const customerName = customer?.name || "";
-
-            toast({
-              title: t("dashboard.notifications.stampIssuedTitle"),
-              description: customerName
-                ? t("dashboard.notifications.stampIssuedDescriptionWithCustomer", { staffName, customerName })
-                : t("dashboard.notifications.stampIssuedDescription", { staffName }),
-            });
-          })();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [business?.id, business?.owner_id, currentUserId, toast]);
+  const applySnapshot = (snapshot: DashboardLayoutSnapshot) => {
+    setIsSuperAdmin(snapshot.isSuperAdmin);
+    setBusiness(snapshot.business);
+    setHasNoBusiness(false);
+    setIsExpiredContract(snapshot.isExpiredContract);
+    setSecurityAlertsVisible(snapshot.securityAlertsVisible);
+    setSecurityUnreadCount(snapshot.securityUnreadCount);
+    setQuickStampQrEnabled(snapshot.quickStampQrEnabled);
+    setAdvancedAnalyticsEnabled(snapshot.advancedAnalyticsEnabled);
+    setLocationsManagementEnabled(snapshot.locationsManagementEnabled);
+    setCorporateBrandingEnabled(snapshot.corporateBrandingEnabled);
+    setCorporateBranding(snapshot.corporateBranding);
+    setDashboardLocations(snapshot.dashboardLocations);
+    setActiveLocationId(snapshot.activeLocationId);
+    setIsTrial(snapshot.isTrial);
+    setIsExpiredTrial(snapshot.isExpiredTrial);
+    setTrialDaysLeft(snapshot.trialDaysLeft);
+    setLoading(false);
+  };
 
   const checkUserAndBusiness = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
+      dashboardLayoutSnapshot = null;
       router.push("/auth/login");
       return;
     }
@@ -293,50 +196,54 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Check if is super admin
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_super_admin")
-      .eq("id", session.user.id)
-      .maybeSingle();
+    const cachedSnapshot = dashboardLayoutSnapshot;
+    const hasFreshSnapshot = Boolean(
+      cachedSnapshot &&
+      cachedSnapshot.userId === session.user.id &&
+      Date.now() - cachedSnapshot.savedAt < DASHBOARD_SNAPSHOT_MAX_AGE_MS
+    );
 
-    if (profile?.is_super_admin) {
-      setIsSuperAdmin(true);
+    if (hasFreshSnapshot && cachedSnapshot) {
+      applySnapshot(cachedSnapshot);
     }
 
     try {
-      const { data: workspaceRows, error: workspaceError } = await (supabase as any)
-        .rpc("get_business_dashboard_access_status");
+      const [profileResult, workspaceResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("is_super_admin")
+          .eq("id", session.user.id)
+          .maybeSingle(),
+        (supabase as any).rpc("get_business_dashboard_access_status"),
+      ]);
 
-      if (workspaceError) {
-        console.error("Dashboard access status error:", workspaceError);
+      const isSuperAdminUser = Boolean(profileResult.data?.is_super_admin);
+      setIsSuperAdmin(isSuperAdminUser);
+
+      if (workspaceResult.error) {
+        console.error("Dashboard access status error:", workspaceResult.error);
       }
 
+      const workspaceRows = workspaceResult.data;
       const resolvedBusiness = Array.isArray(workspaceRows) ? workspaceRows[0] : workspaceRows;
 
       if (!resolvedBusiness) {
+        dashboardLayoutSnapshot = null;
         setHasNoBusiness(true);
         setLoading(false);
         return;
       }
 
+      const isExpiredContractValue =
+        resolvedBusiness.access_state === "contract_expired" || isContractExpiredForDashboard(resolvedBusiness);
+
       setBusiness(resolvedBusiness);
-      setIsExpiredContract(
-        resolvedBusiness.access_state === "contract_expired" || isContractExpiredForDashboard(resolvedBusiness)
-      );
-      await fetchSecurityAlertsSummary(resolvedBusiness.id, session.access_token);
-
-      const { data: hasQuickStampAddon, error: quickStampAccessError } = await (supabase as any)
-        .rpc("business_has_active_quick_stamp_qr", {
-          p_business_id: resolvedBusiness.id,
-        });
-
-      if (quickStampAccessError) {
-        console.error("Quick Issue Stamp access error:", quickStampAccessError);
-      }
+      setHasNoBusiness(false);
+      setIsExpiredContract(isExpiredContractValue);
 
       const entitlementKeys = ["quick_stamp_qr", "advanced_analytics", "corporate_branding"] as const;
-      const entitlementEntries = await Promise.all(entitlementKeys.map(async (key) => {
+
+      const entitlementsPromise = Promise.all(entitlementKeys.map(async (key) => {
         const { data, error } = await (supabase as any).rpc("get_business_boolean_entitlement", {
           p_business_id: resolvedBusiness.id,
           p_key: key,
@@ -351,86 +258,136 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         return [key, Boolean(data)] as const;
       }));
 
-      const featureEntitlements = Object.fromEntries(entitlementEntries) as Record<typeof entitlementKeys[number], boolean>;
+      const brandingPromise = entitlementsPromise.then(async (entries) => {
+        const entitlements = Object.fromEntries(entries) as Record<typeof entitlementKeys[number], boolean>;
 
-      setQuickStampQrEnabled(Boolean(hasQuickStampAddon) || featureEntitlements.quick_stamp_qr);
-      setAdvancedAnalyticsEnabled(featureEntitlements.advanced_analytics);
-      setLocationsManagementEnabled(false);
-      setCorporateBrandingEnabled(false);
-
-      try {
-        const locationResponse = await fetch(`/api/business/locations?business_id=${resolvedBusiness.id}`, {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (locationResponse.ok) {
-          const locationBody = await locationResponse.json();
-          const availableLocations = ((locationBody.locations || []) as DashboardLocation[])
-            .filter((location) => location.status !== "inactive");
-          const hasLocationManagement = Number(locationBody.maxLocations || 0) > 0;
-
-          setLocationsManagementEnabled(hasLocationManagement && resolvedBusiness.owner_id === session.user.id);
-          setDashboardLocations(availableLocations);
-
-          if (typeof window !== "undefined" && availableLocations.length > 0) {
-            const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
-            const nextLocationId = storedLocationId === "all" || availableLocations.some((location) => location.id === storedLocationId)
-              ? storedLocationId || "all"
-              : availableLocations[0].id;
-            publishActiveLocationChange(resolvedBusiness.id, nextLocationId);
-            setActiveLocationId(nextLocationId);
-          } else {
-            setActiveLocationId("");
-          }
-        } else {
-          setLocationsManagementEnabled(false);
-          setDashboardLocations([]);
-          setActiveLocationId("");
+        if (!entitlements.corporate_branding) {
+          return { branding: null as CorporateBrandingSettings | null, enabled: false };
         }
-      } catch (locationError) {
-        console.error("Dashboard authorized location switcher error:", locationError);
-        setLocationsManagementEnabled(false);
-        setDashboardLocations([]);
-        setActiveLocationId("");
-      }
 
-      if (featureEntitlements.corporate_branding) {
         try {
           const brandingResult = await fetchCorporateBranding(resolvedBusiness.id, session.access_token);
           const canUseCorporateBranding = brandingResult.status === "available";
-          setCorporateBranding(canUseCorporateBranding ? brandingResult.branding : null);
-          setCorporateBrandingEnabled(canUseCorporateBranding && brandingResult.can_manage);
+          return {
+            branding: canUseCorporateBranding ? brandingResult.branding : null,
+            enabled: canUseCorporateBranding && brandingResult.can_manage,
+          };
         } catch (brandingError) {
           console.error("Corporate branding load error:", brandingError);
-          setCorporateBranding(null);
-          setCorporateBrandingEnabled(false);
+          return { branding: null as CorporateBrandingSettings | null, enabled: false };
         }
-      } else {
-        setCorporateBranding(null);
-        setCorporateBrandingEnabled(false);
+      });
+
+      const locationsPromise = (async () => {
+        try {
+          const locationResponse = await fetch(`/api/business/locations?business_id=${resolvedBusiness.id}`, {
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (!locationResponse.ok) {
+            return null;
+          }
+
+          return await locationResponse.json();
+        } catch (locationError) {
+          console.error("Dashboard authorized location switcher error:", locationError);
+          return null;
+        }
+      })();
+
+      const [
+        securitySummary,
+        quickStampResult,
+        entitlementEntries,
+        brandingValue,
+        locationBody,
+        planResult,
+      ] = await Promise.all([
+        loadSecurityAlertsSummary(resolvedBusiness.id, session.access_token),
+        (supabase as any).rpc("business_has_active_quick_stamp_qr", {
+          p_business_id: resolvedBusiness.id,
+        }),
+        entitlementsPromise,
+        brandingPromise,
+        locationsPromise,
+        supabase
+          .from("subscription_plans")
+          .select("is_trial, trial_days")
+          .eq("id", resolvedBusiness.subscription_plan || "starter")
+          .maybeSingle(),
+      ]);
+
+      if (quickStampResult.error) {
+        console.error("Quick Issue Stamp access error:", quickStampResult.error);
       }
 
-      // Fetch Plan data to check for trial status
-      const { data: planData } = await supabase
-        .from("subscription_plans")
-        .select("is_trial, trial_days")
-        .eq("id", resolvedBusiness.subscription_plan || 'starter')
-        .maybeSingle();
+      const featureEntitlements = Object.fromEntries(entitlementEntries) as Record<typeof entitlementKeys[number], boolean>;
+      const quickStampEnabledValue = Boolean(quickStampResult.data) || featureEntitlements.quick_stamp_qr;
+
+      let locationsEnabledValue = false;
+      let availableLocations: DashboardLocation[] = [];
+      let activeLocationValue = "";
+
+      if (locationBody) {
+        availableLocations = ((locationBody.locations || []) as DashboardLocation[])
+          .filter((location) => location.status !== "inactive");
+        const hasLocationManagement = Number(locationBody.maxLocations || 0) > 0;
+        locationsEnabledValue = hasLocationManagement && resolvedBusiness.owner_id === session.user.id;
+
+        if (typeof window !== "undefined" && availableLocations.length > 0) {
+          const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
+          activeLocationValue = storedLocationId === "all" || availableLocations.some((location) => location.id === storedLocationId)
+            ? storedLocationId || "all"
+            : availableLocations[0].id;
+
+          if (!hasFreshSnapshot || cachedSnapshot?.activeLocationId !== activeLocationValue) {
+            publishActiveLocationChange(resolvedBusiness.id, activeLocationValue);
+          }
+        }
+      }
+
+      let isTrialValue = false;
+      let isExpiredTrialValue = false;
+      let trialDaysLeftValue = 0;
+      const planData = planResult.data;
 
       if (planData?.is_trial && resolvedBusiness.trial_end) {
-        setIsTrial(true);
+        isTrialValue = true;
         const now = new Date();
         const trialEnd = new Date(resolvedBusiness.trial_end);
-        
+
         if (now > trialEnd) {
-          setIsExpiredTrial(true);
+          isExpiredTrialValue = true;
         } else {
           const diffTime = Math.abs(trialEnd.getTime() - now.getTime());
-          setTrialDaysLeft(Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+          trialDaysLeftValue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         }
       }
+
+      const nextSnapshot: DashboardLayoutSnapshot = {
+        userId: session.user.id,
+        savedAt: Date.now(),
+        isSuperAdmin: isSuperAdminUser,
+        business: resolvedBusiness,
+        isExpiredContract: isExpiredContractValue,
+        securityAlertsVisible: securitySummary.visible,
+        securityUnreadCount: securitySummary.unreadCount,
+        quickStampQrEnabled: quickStampEnabledValue,
+        advancedAnalyticsEnabled: featureEntitlements.advanced_analytics,
+        locationsManagementEnabled: locationsEnabledValue,
+        corporateBrandingEnabled: brandingValue.enabled,
+        corporateBranding: brandingValue.branding,
+        dashboardLocations: availableLocations,
+        activeLocationId: activeLocationValue,
+        isTrial: isTrialValue,
+        isExpiredTrial: isExpiredTrialValue,
+        trialDaysLeft: trialDaysLeftValue,
+      };
+
+      dashboardLayoutSnapshot = nextSnapshot;
+      applySnapshot(nextSnapshot);
     } catch (err) {
       console.error("Dashboard layout error:", err);
     } finally {
@@ -439,6 +396,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   const handleLogout = async () => {
+    dashboardLayoutSnapshot = null;
     await supabase.auth.signOut();
     router.push("/");
   };
