@@ -1,6 +1,6 @@
 ---
 title: Performance Phase 1 optimizations
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [performance, frontend, api, realtime]
@@ -39,3 +39,12 @@ Before metrics: database query-statistics snapshot (call counts and total time f
 - Dashboard pages make fewer sequential requests and there is no 15-second background alert polling; security alerts still appear.
 - Stamps and rewards still update live without a manual refresh.
 - Customer counts and pagination are accurate; no database, Stamp Flow, or Quick Stamp changes.
+
+## Results
+- Rollback point: git tag perf-phase1-baseline (0d43485).
+- Optimization 1: lightweight security-alert check (unread count only), 60s polling only while the tab is visible, permission checks run at once, staff account lookups only when needed.
+- Optimization 2: dashboard home live events grouped (1.5s) into a stats-only refresh with no skeletons.
+- Optimization 3: shared layout checks run in 2 parallel batches; last verified result kept per user for 5 minutes and re-checked in the background; location signal only on real change. The two live-update effects were accidentally removed, then restored and covered by tests.
+- Optimization 4: customers page loads everything at once; pagination now loads the requested page and only the member list. The distinct member count is kept (a correct count query would need a database change).
+- Validation: scripts/test-perf-phase1.mjs passes all 4 sections (source-level tests); ESLint is clean; check_for_errors is clean; no protected or migration files changed.
+- Pending: live owner/staff/customer/superadmin testing and before/after database statistics after the user publishes.
