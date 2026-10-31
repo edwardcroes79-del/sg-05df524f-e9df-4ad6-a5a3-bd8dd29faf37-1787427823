@@ -293,6 +293,7 @@ export default function AdminDashboard() {
   const [loadingSchemaRecoveryReview, setLoadingSchemaRecoveryReview] = useState(false);
   const [exportingRecoveryReadinessReport, setExportingRecoveryReadinessReport] = useState(false);
   const [dryRunUploadInfo, setDryRunUploadInfo] = useState<{ name: string; sizeBytes: number } | null>(null);
+  const backupReportsRequestedRef = useRef(false);
 
   const handleLogout = async () => {
     try {
@@ -609,6 +610,13 @@ export default function AdminDashboard() {
     };
   }, [stopBackupPolling]);
 
+  useEffect(() => {
+    if (isAdmin !== true || activeAdminTab !== "backups" || backupReportsRequestedRef.current) return;
+    backupReportsRequestedRef.current = true;
+    setLoadingSchemaRecoveryReview(true);
+    void loadBackupReports().finally(() => setLoadingSchemaRecoveryReview(false));
+  }, [isAdmin, activeAdminTab]);
+
   const checkAdmin = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -636,8 +644,7 @@ export default function AdminDashboard() {
       }
 
       setIsAdmin(true);
-      await fetchAdminData();
-      await fetchMfaFactors();
+      await Promise.all([fetchAdminData(), fetchMfaFactors()]);
     } catch (err) {
       console.error(err);
       router.push("/dashboard");
@@ -728,182 +735,261 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchAdminApiList = async (path: string, accessToken: string, key: string, fallbackError: string) => {
+    const response = await fetch(path, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+      },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result.error || fallbackError);
+    }
+    return (result[key] || []) as any[];
+  };
+
+  const loadBackupList = async (accessToken: string) => {
+    try {
+      let backupsData: any[] = [];
+      const backupsResponse = await fetch("/api/admin/backups", {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+        },
+      });
+      if (backupsResponse.ok) {
+        const backupsResult = await backupsResponse.json();
+        backupsData = backupsResult.backups || [];
+      }
+      setBackups(backupsData);
+      const activeBackups = hasActiveBackupJobs(backupsData);
+      setRunningBackup(activeBackups);
+      if (activeBackups) {
+        startBackupPolling();
+      }
+    } catch (err) {
+      console.error("Error loading backups:", err);
+    }
+  };
+
+  const loadBackupReports = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    await Promise.all([
+      loadBackupList(session.access_token),
+      (async () => {
+        try {
+          const restorePointsResponse = await fetch("/api/admin/backups/restore-points", {
+            headers: {
+              "Authorization": `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (restorePointsResponse.ok) {
+            const restorePointsResult = await restorePointsResponse.json();
+            setRestorePointInventory(restorePointsResult.inventory || null);
+          }
+        } catch (err) {
+          console.error("Error loading restore points:", err);
+        }
+      })(),
+      (async () => {
+        try {
+          const schemaRecoveryReviewResponse = await fetch("/api/admin/backups/schema-recovery-review", {
+            headers: {
+              "Authorization": `Bearer ${session.access_token}`,
+              "Accept": "application/json",
+            },
+          });
+
+          const schemaRecoveryReviewResult = await schemaRecoveryReviewResponse.json().catch(() => ({}));
+          if (schemaRecoveryReviewResponse.ok && schemaRecoveryReviewResult.success) {
+            setSchemaRecoveryReview(schemaRecoveryReviewResult.report || null);
+            setSchemaRecoveryReviewError(null);
+          } else {
+            setSchemaRecoveryReview(null);
+            setSchemaRecoveryReviewError(schemaRecoveryReviewResult.error || "Schema recovery review is unavailable.");
+          }
+        } catch (err) {
+          console.error("Error loading schema recovery review:", err);
+          setSchemaRecoveryReviewError("Schema recovery review is unavailable.");
+        }
+      })(),
+    ]);
+  };
+
   const fetchAdminData = async () => {
     try {
-      // 1. Fetch Subscription Plans through the secure Super Admin API so metadata and entitlements stay database-driven.
-      let plansData: any[] = [];
       const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
 
-      if (session) {
-        const plansResponse = await fetch("/api/admin/plans", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (plansResponse.ok) {
-          const plansResult = await plansResponse.json();
-          plansData = plansResult.plans || [];
-        } else {
-          const plansResult = await plansResponse.json().catch(() => ({}));
-          throw new Error(plansResult.error || t("admin.api.failedLoadPlans"));
-        }
+      if (accessToken) {
+        void loadBackupList(accessToken);
       }
 
-      setPlans(plansData);
+      const apiListOrEmpty = (path: string, key: string, fallbackError: string) =>
+        accessToken ? fetchAdminApiList(path, accessToken, key, fallbackError) : Promise.resolve([] as any[]);
 
-      let addonsData: any[] = [];
-      if (session) {
-        const addonsResponse = await fetch("/api/admin/addons", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-        });
+      const [
+        plansResult,
+        addonsResult,
+        businessAddonsResult,
+        businessesResult,
+        paymentsResult,
+        notificationReadsResult,
+        contractRemindersResult,
+        customersResult,
+        unconfirmedResult,
+        countsResult,
+        footerResult,
+        pagesResult,
+        bankResult,
+      ] = await Promise.allSettled([
+        apiListOrEmpty("/api/admin/plans", "plans", t("admin.api.failedLoadPlans")),
+        apiListOrEmpty("/api/admin/addons", "addons", t("admin.api.failedLoadAddons")),
+        apiListOrEmpty("/api/admin/business-addons", "businessAddons", t("admin.api.failedLoadBusinessAddons")),
+        supabase
+          .from("businesses")
+          .select(`
+            id,
+            business_name,
+            slug,
+            status,
+            subscription_plan,
+            created_at,
+            owner_id,
+            trial_start,
+            trial_end,
+            contract_term_months,
+            contract_start_date,
+            contract_end_date,
+            contract_status,
+            renewal_date,
+            approval_email_status,
+            approval_email_error,
+            admin_notify_status,
+            admin_notify_error,
+            email_logs (
+              id, email_type, status, attempt_count, error_message, sent_at
+            )
+          `)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("subscription_payments")
+          .select(`
+            *,
+            businesses!inner(business_name, slug)
+          `)
+          .order("created_at", { ascending: false }),
+        (supabase as any)
+          .from("super_admin_notification_reads")
+          .select("source_type, source_id, read_at"),
+        (supabase as any)
+          .from("contract_reminders")
+          .select(`
+            id,
+            business_id,
+            contract_end_date,
+            reminder_type,
+            recipient_type,
+            status,
+            sent_at,
+            created_at,
+            businesses (
+              id,
+              business_name,
+              subscription_plan,
+              contract_term_months,
+              contract_end_date
+            )
+          `)
+          .eq("recipient_type", "super_admin")
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("customers")
+          .select("id, user_id, name, email, phone, avatar, created_at")
+          .order("created_at", { ascending: false })
+          .limit(100),
+        (async () => {
+          if (!accessToken) return null;
+          const unconfirmedResponse = await fetch("/api/admin/unconfirmed-users", {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          });
+          if (!unconfirmedResponse.ok) return [] as UnconfirmedAuthUser[];
+          const unconfirmedJson = await unconfirmedResponse.json();
+          return (unconfirmedJson.users || []) as UnconfirmedAuthUser[];
+        })(),
+        Promise.all([
+          supabase.from("businesses").select("*", { count: "exact", head: true }),
+          supabase.from("customers").select("*", { count: "exact", head: true }),
+          supabase.from("stamp_transactions").select("*", { count: "exact", head: true }),
+        ]),
+        supabase
+          .from("website_settings")
+          .select("value")
+          .eq("key", "footer")
+          .maybeSingle(),
+        supabase
+          .from("website_pages")
+          .select("*")
+          .order("title"),
+        supabase
+          .from("website_settings")
+          .select("value")
+          .eq("key", "bank_details")
+          .maybeSingle(),
+      ]);
 
-        if (addonsResponse.ok) {
-          const addonsResult = await addonsResponse.json();
-          addonsData = addonsResult.addons || [];
-        } else {
-          const addonsResult = await addonsResponse.json().catch(() => ({}));
-          throw new Error(addonsResult.error || t("admin.api.failedLoadAddons"));
-        }
-      }
+      const settledValue = <T,>(result: PromiseSettledResult<T>, label: string): T | undefined => {
+        if (result.status === "fulfilled") return result.value;
+        console.error(`Error fetching admin ${label}:`, result.reason);
+        return undefined;
+      };
 
-      setAddons(addonsData);
+      const plansData = settledValue(plansResult, "plans");
+      if (plansData) setPlans(plansData);
 
-      let businessAddonsData: any[] = [];
-      if (session) {
-        const businessAddonsResponse = await fetch("/api/admin/business-addons", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-        });
+      const addonsData = settledValue(addonsResult, "add-ons");
+      if (addonsData) setAddons(addonsData);
 
-        if (businessAddonsResponse.ok) {
-          const businessAddonsResult = await businessAddonsResponse.json();
-          businessAddonsData = businessAddonsResult.businessAddons || [];
-        } else {
-          const businessAddonsResult = await businessAddonsResponse.json().catch(() => ({}));
-          throw new Error(businessAddonsResult.error || t("admin.api.failedLoadBusinessAddons"));
-        }
-      }
+      const businessAddonsData = settledValue(businessAddonsResult, "business add-ons");
+      if (businessAddonsData) setBusinessAddonSubscriptions(businessAddonsData);
 
-      setBusinessAddonSubscriptions(businessAddonsData);
+      const bizData = settledValue(businessesResult, "businesses")?.data || [];
+      setBusinesses(bizData);
 
-      // 2. Fetch Businesses
-      const { data: bizData } = await supabase
-        .from("businesses")
-        .select(`
-          id,
-          business_name,
-          slug,
-          status,
-          subscription_plan,
-          created_at,
-          owner_id,
-          trial_start,
-          trial_end,
-          contract_term_months,
-          contract_start_date,
-          contract_end_date,
-          contract_status,
-          renewal_date,
-          approval_email_status,
-          approval_email_error,
-          admin_notify_status,
-          admin_notify_error,
-          email_logs (
-            id, email_type, status, attempt_count, error_message, sent_at
-          )
-        `)
-        .order("created_at", { ascending: false });
-      setBusinesses(bizData || []);
+      setPayments(settledValue(paymentsResult, "payments")?.data || []);
 
-      // 3. Fetch Payments
-      const { data: paymentsData } = await supabase
-        .from("subscription_payments")
-        .select(`
-          *,
-          businesses!inner(business_name, slug)
-        `)
-        .order("created_at", { ascending: false });
-      setPayments(paymentsData || []);
-
-      const { data: notificationReadsData } = await (supabase as any)
-        .from("super_admin_notification_reads")
-        .select("source_type, source_id, read_at");
-
+      const notificationReadsData = settledValue(notificationReadsResult, "notification reads")?.data;
       const readsMap = (notificationReadsData || []).reduce((acc: Record<string, string>, row: any) => {
         acc[notificationKey(row.source_type, row.source_id)] = row.read_at;
         return acc;
       }, {});
       setNotificationReads(readsMap);
 
-      const { data: contractReminderData } = await (supabase as any)
-        .from("contract_reminders")
-        .select(`
-          id,
-          business_id,
-          contract_end_date,
-          reminder_type,
-          recipient_type,
-          status,
-          sent_at,
-          created_at,
-          businesses (
-            id,
-            business_name,
-            subscription_plan,
-            contract_term_months,
-            contract_end_date
-          )
-        `)
-        .eq("recipient_type", "super_admin")
-        .order("created_at", { ascending: false })
-        .limit(50);
+      setContractReminders(settledValue(contractRemindersResult, "contract reminders")?.data || []);
 
-      setContractReminders(contractReminderData || []);
+      setCustomers(settledValue(customersResult, "customers")?.data || []);
 
-      // 4. Fetch Customers
-      const { data: customersData } = await supabase
-        .from("customers")
-        .select("id, user_id, name, email, phone, avatar, created_at")
-        .order("created_at", { ascending: false })
-        .limit(100);
-      setCustomers(customersData || []);
-
-      if (session) {
-        const unconfirmedResponse = await fetch("/api/admin/unconfirmed-users", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (unconfirmedResponse.ok) {
-          const unconfirmedResult = await unconfirmedResponse.json();
-          setUnconfirmedUsers(unconfirmedResult.users || []);
-        } else {
-          setUnconfirmedUsers([]);
-        }
+      const unconfirmedData = settledValue(unconfirmedResult, "unconfirmed users");
+      if (unconfirmedData !== null) {
+        setUnconfirmedUsers(unconfirmedData || []);
       }
 
-      // 5. Fetch Platform Stats
-      const [
-        { count: totalBiz },
-        { count: totalCust },
-        { count: totalStamps }
-      ] = await Promise.all([
-        supabase.from("businesses").select("*", { count: "exact", head: true }),
-        supabase.from("customers").select("*", { count: "exact", head: true }),
-        supabase.from("stamp_transactions").select("*", { count: "exact", head: true })
-      ]);
+      const counts = settledValue(countsResult, "platform stats");
+      const totalBiz = counts?.[0]?.count;
+      const totalCust = counts?.[1]?.count;
+      const totalStamps = counts?.[2]?.count;
 
-      const trialPlanIds = (plansData || []).filter(p => p.is_trial).map(p => p.id);
+      const trialPlanIds = (plansData || []).filter((p: any) => p.is_trial).map((p: any) => p.id);
       const now = new Date();
       let activeTrials = 0;
       let expiredTrials = 0;
 
-      (bizData || []).forEach(biz => {
+      bizData.forEach((biz: any) => {
         if (biz.subscription_plan && trialPlanIds.includes(biz.subscription_plan)) {
           if (biz.trial_end && new Date(biz.trial_end) < now) {
             expiredTrials++;
@@ -915,20 +1001,14 @@ export default function AdminDashboard() {
 
       setGlobalStats({
         totalBusinesses: totalBiz || 0,
-        activeSubscribers: bizData?.filter(b => b.subscription_plan && b.status === "active").length || 0,
+        activeSubscribers: bizData.filter((b: any) => b.subscription_plan && b.status === "active").length || 0,
         totalCustomers: totalCust || 0,
         totalStamps: totalStamps || 0,
         activeTrials,
         expiredTrials,
       });
 
-      // 6. Fetch Website/Footer Settings
-      const { data: footerData } = await supabase
-        .from("website_settings")
-        .select("value")
-        .eq("key", "footer")
-        .maybeSingle();
-
+      const footerData = settledValue(footerResult, "footer settings")?.data;
       if (footerData && footerData.value) {
         const val = footerData.value as any;
         setFooterSettings({
@@ -937,20 +1017,10 @@ export default function AdminDashboard() {
         });
       }
 
-      // 7. Fetch Website Pages
-      const { data: pagesData } = await supabase
-        .from("website_pages")
-        .select("*")
-        .order("title");
+      const pagesData = settledValue(pagesResult, "website pages")?.data;
       if (pagesData) setPages(pagesData);
 
-      // 8. Fetch Bank Details
-      const { data: bankData } = await supabase
-        .from("website_settings")
-        .select("value")
-        .eq("key", "bank_details")
-        .maybeSingle();
-
+      const bankData = settledValue(bankResult, "bank details")?.data;
       if (bankData && bankData.value) {
         const val = bankData.value as any;
         setBankDetails({
@@ -964,54 +1034,6 @@ export default function AdminDashboard() {
           additionalInstructions: val.additionalInstructions || "",
         });
       }
-
-      // 9. Fetch Backups
-      let backupsData: any[] = [];
-      if (session) {
-        const backupsResponse = await fetch("/api/admin/backups", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-        });
-        if (backupsResponse.ok) {
-          const backupsResult = await backupsResponse.json();
-          backupsData = backupsResult.backups || [];
-        }
-
-        const restorePointsResponse = await fetch("/api/admin/backups/restore-points", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (restorePointsResponse.ok) {
-          const restorePointsResult = await restorePointsResponse.json();
-          setRestorePointInventory(restorePointsResult.inventory || null);
-        }
-
-        const schemaRecoveryReviewResponse = await fetch("/api/admin/backups/schema-recovery-review", {
-          headers: {
-            "Authorization": `Bearer ${session.access_token}`,
-            "Accept": "application/json",
-          },
-        });
-
-        const schemaRecoveryReviewResult = await schemaRecoveryReviewResponse.json().catch(() => ({}));
-        if (schemaRecoveryReviewResponse.ok && schemaRecoveryReviewResult.success) {
-          setSchemaRecoveryReview(schemaRecoveryReviewResult.report || null);
-          setSchemaRecoveryReviewError(null);
-        } else {
-          setSchemaRecoveryReview(null);
-          setSchemaRecoveryReviewError(schemaRecoveryReviewResult.error || "Schema recovery review is unavailable.");
-        }
-      }
-      setBackups(backupsData);
-      const activeBackups = hasActiveBackupJobs(backupsData);
-      setRunningBackup(activeBackups);
-      if (activeBackups) {
-        startBackupPolling();
-      }
-
     } catch (err) {
       console.error("Error fetching admin data:", err);
     }
@@ -2817,7 +2839,7 @@ export default function AdminDashboard() {
     setRestorePointSelectedAt(selectedAt);
 
     if (!selectedAt) {
-      await fetchAdminData();
+      await loadBackupReports();
       return;
     }
 
