@@ -36,5 +36,8 @@ assert.match(layout, /if \(!resolvedBusiness\) \{\s*dashboardLayoutSnapshot = nu
 assert.match(layout, /const handleLogout = async \(\) => \{\s*dashboardLayoutSnapshot = null;/, "logout clears snapshot");
 assert.match(layout, /if \(!hasFreshSnapshot \|\| cachedSnapshot\?\.activeLocationId !== activeLocationValue\)/, "location event deduplicated");
 assert.ok((layout.match(/await Promise\.all\(\[/g) || []).length >= 2, "layout checks run in parallel");
+assert.match(layout, /channel\(`security_alert_badge_\$\{business\.id\}`\)/, "security alert realtime effect present");
+assert.match(layout, /channel\(`owner_stamp_notifications_\$\{business\.id\}`\)/, "owner stamp notification realtime effect present");
+assert.match(layout, /supabase\.removeChannel\(channel\);[\s\S]*supabase\.removeChannel\(channel\);/, "both realtime channels cleaned up");
 
 console.log("perf phase 1 optimization 3 tests passed");
