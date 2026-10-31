@@ -1,6 +1,6 @@
 ---
 title: Admin login and dashboard performance fixes
-status: in_progress
+status: done
 priority: high
 type: bug
 tags: [performance, admin, auth]
@@ -26,3 +26,12 @@ Rollback point for this task: git tag perf-admin-baseline.
 - Superadmin login redirects correctly and the dashboard appears without waiting for backup reports.
 - Opening the Backups tab loads all three reports, and backup/restore keeps working.
 - No authentication, permission, Stamp Flow, Quick Stamp, or database changes.
+
+## Results
+- Rollback point: perf-admin-baseline (aad279c). perf-phase1-baseline (0d43485) is preserved.
+- Fix 1: restore points and the schema review load only when the Backups tab is first opened. The backups list still loads in the background on entry, so backup polling starts as before.
+- Fix 2: 13 independent requests load in one parallel batch (allSettled), and the security-verification factors load alongside them.
+- Fix 3: login reuses the signed-in user from the sign-in result. The security-verification and role checks are unchanged.
+- Fix 4: scoped refreshes for backup delete, footer save, and page save. Other actions keep the single parallel batch, which never includes the backup reports.
+- Validation: scripts/test-admin-perf.mjs passes for all 4 fixes (source-level tests). ESLint is clean, check_for_errors is clean, and no protected or migration files changed.
+- Pending: live Superadmin testing and measured timings after publish.
