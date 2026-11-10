@@ -1,6 +1,6 @@
 ---
 title: Issue Stamp UI Improvement
-status: in_progress
+status: done
 priority: medium
 type: feature
 tags: [ui, dashboard, scan]
@@ -17,14 +17,14 @@ Improve the Issue Stamp interface (dashboard/scan.tsx).
 - STRICT: UI changes only. Do not modify Supabase database schemas, RLS policies, stamp issuance logic, QR code generation, or any existing business/staff workflows.
 
 ## Checklist
-- [ ] Locate and remove the Hardware Scanner (USB) UI elements.
-- [ ] Polish "Select Program" dropdown spacing and hierarchy.
-- [ ] Polish "Scanning Options" buttons (Camera vs Manual).
-- [ ] Polish "Customer Search" field styling and clear intuition.
-- [ ] Polish "Scan Customer Phone" visual separation.
-- [ ] Polish "Issue Stamp" button presentation and spacing.
-- [ ] Verify responsiveness.
-- [ ] Run type and lint checks.
+- [x] Locate and remove the Hardware Scanner (USB) UI elements.
+- [x] Polish "Select Program" dropdown spacing and hierarchy.
+- [x] Polish "Scanning Options" buttons (Camera vs Manual).
+- [x] Polish "Customer Search" field styling and clear intuition.
+- [x] Polish "Scan Customer Phone" visual separation.
+- [x] Polish "Issue Stamp" button presentation and spacing.
+- [x] Verify responsiveness.
+- [x] Run type and lint checks.
 
 ## Acceptance
 - Hardware scanner section is hidden.
