@@ -892,20 +892,24 @@ export default function ScanQR() {
           </Card>
         ) : (
           <Card className="border-primary/20 shadow-sm overflow-hidden">
-            <CardHeader className="bg-muted/30 border-b">
-              <CardTitle className="text-lg">{t("dashboard.scan.selectProgramTitle")}</CardTitle>
-              <CardDescription>{t("dashboard.scan.selectProgramDescription")}</CardDescription>
-              <div className="mt-4">
-                <Select value={selectedProgramId} onValueChange={handleSelectedProgramChange} disabled={processing || !!scanResult || !!pendingRewardQR}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("dashboard.scan.selectProgramPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {programs.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <CardHeader className="bg-muted/30 border-b pb-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-xl">{t("dashboard.scan.selectProgramTitle")}</CardTitle>
+                  <CardDescription className="mt-1">{t("dashboard.scan.selectProgramDescription")}</CardDescription>
+                </div>
+                <div className="w-full md:w-64 shrink-0">
+                  <Select value={selectedProgramId} onValueChange={handleSelectedProgramChange} disabled={processing || !!scanResult || !!pendingRewardQR}>
+                    <SelectTrigger className="h-12 bg-background border-primary/20 shadow-sm transition-colors focus:ring-primary/30">
+                      <SelectValue placeholder={t("dashboard.scan.selectProgramPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {programs.map(p => (
+                        <SelectItem key={p.id} value={p.id} className="py-3 cursor-pointer">{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardHeader>
 
@@ -968,104 +972,130 @@ export default function ScanQR() {
                       <p className="text-muted-foreground text-lg mb-6">{scanResult.message}</p>
                     </>
                   )}
-                  <Button onClick={resetScanner} size="lg" className="w-full sm:w-auto mt-2">
+                  <Button onClick={resetScanner} size="lg" className="w-full sm:w-auto mt-2 font-semibold">
                     {t("dashboard.scan.scanNextCustomer")}
                   </Button>
                 </div>
               ) : (
-                <div className="p-6">
-                  <div className="flex gap-2 mb-6">
-                    <Button 
-                      variant={scanMode === "camera" ? "default" : "outline"} 
-                      className="flex-1"
+                <div className="p-6 md:p-8">
+                  <div className="flex p-1 bg-muted/60 rounded-xl mb-8 shadow-inner">
+                    <button 
+                      type="button"
+                      className={cn(
+                        "flex-1 flex items-center justify-center py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200",
+                        scanMode === "camera" 
+                          ? "bg-background shadow-md text-primary" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      )}
                       onClick={() => setScanMode("camera")}
                     >
-                      <Camera className="w-4 h-4 mr-2" /> {t("dashboard.scan.camera")}
-                    </Button>
-                    <Button 
-                      variant={scanMode === "manual" ? "default" : "outline"} 
-                      className="flex-1"
+                      <Camera className="w-5 h-5 mr-2" /> {t("dashboard.scan.camera")}
+                    </button>
+                    <button 
+                      type="button"
+                      className={cn(
+                        "flex-1 flex items-center justify-center py-3 px-4 rounded-lg text-sm font-bold transition-all duration-200",
+                        scanMode === "manual" 
+                          ? "bg-background shadow-md text-primary" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      )}
                       onClick={() => setScanMode("manual")}
                     >
-                      <Keyboard className="w-4 h-4 mr-2" /> {t("dashboard.scan.manualUsb")}
-                    </Button>
+                      <Keyboard className="w-5 h-5 mr-2" /> {t("dashboard.scan.manualUsb")}
+                    </button>
                   </div>
 
                   {scanMode === "camera" ? (
-                    <div className="rounded-xl overflow-hidden bg-black text-white relative min-h-[300px] flex flex-col items-center justify-center">
-                      
-                      {cameraError ? (
-                        <div className="p-6 text-center max-w-sm flex flex-col items-center gap-3 z-20">
-                          <AlertTriangle className="w-12 h-12 text-amber-500 animate-pulse" />
-                          <h3 className="font-bold text-lg text-white">{t("dashboard.scan.cameraOffline")}</h3>
-                          <p className="text-sm text-slate-400 leading-normal">{cameraError}</p>
-                          {cameras.length > 1 && (
-                            <Button size="sm" onClick={switchCamera} className="mt-2 font-bold">
-                              {t("dashboard.scan.tryAnotherCamera")}
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          <div id="qr-reader" className="w-full h-full min-h-[300px] !border-none flex items-center justify-center relative" />
-                          
-                          {/* Sleek Overlay Viewfinder HUD */}
-                          {isScanning && !processing && (
-                            <div className="absolute inset-0 border-[30px] border-black/50 pointer-events-none flex items-center justify-center z-10">
-                              <div className="w-[190px] h-[190px] border-2 border-dashed border-primary/85 rounded-lg relative shadow-[0_0_20px_rgba(20,250,200,0.1)]">
-                                {/* Active scanner corner brackets */}
-                                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-primary" />
-                                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-primary" />
-                                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-primary" />
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-primary" />
-                              </div>
+                    <div className="space-y-4">
+                      <div className="text-center mb-4">
+                        <h3 className="text-lg font-semibold text-foreground">Scan Customer Phone</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Point the camera at the customer's QR code to issue a stamp or redeem a reward.</p>
+                      </div>
+                      <div className="rounded-2xl overflow-hidden bg-black text-white relative min-h-[350px] flex flex-col items-center justify-center shadow-lg border border-border/50">
+                        
+                        {cameraError ? (
+                          <div className="p-6 text-center max-w-sm flex flex-col items-center gap-4 z-20">
+                            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-2">
+                              <AlertTriangle className="w-8 h-8 text-amber-500" />
                             </div>
-                          )}
-                        </>
-                      )}
+                            <h3 className="font-bold text-xl text-white">{t("dashboard.scan.cameraOffline")}</h3>
+                            <p className="text-sm text-slate-300 leading-relaxed">{cameraError}</p>
+                            {cameras.length > 1 && (
+                              <Button size="default" onClick={switchCamera} className="mt-4 font-bold bg-white text-black hover:bg-gray-200">
+                                {t("dashboard.scan.tryAnotherCamera")}
+                              </Button>
+                            )}
+                          </div>
+                        ) : (
+                          <>
+                            <div id="qr-reader" className="w-full h-full min-h-[350px] !border-none flex items-center justify-center relative" />
+                            
+                            {/* Sleek Overlay Viewfinder HUD */}
+                            {isScanning && !processing && (
+                              <div className="absolute inset-0 border-[40px] border-black/60 pointer-events-none flex items-center justify-center z-10 transition-all duration-500">
+                                <div className="w-[220px] h-[220px] border-2 border-dashed border-primary/80 rounded-xl relative shadow-[0_0_30px_rgba(var(--primary),0.2)]">
+                                  {/* Active scanner corner brackets */}
+                                  <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg" />
+                                  <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg" />
+                                  <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg" />
+                                  <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg" />
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
 
-                      {/* Camera Selection HUD Controls */}
-                      {scanMode === "camera" && cameras.length > 1 && !cameraError && !processing && (
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="sm"
-                          className="absolute bottom-4 right-4 bg-black/80 hover:bg-black border-white/20 hover:border-white/40 text-white z-20 font-bold gap-1.5 shadow-md h-9"
-                          onClick={switchCamera}
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" /> {t("dashboard.scan.switchCamera")}
-                        </Button>
-                      )}
+                        {/* Camera Selection HUD Controls */}
+                        {scanMode === "camera" && cameras.length > 1 && !cameraError && !processing && (
+                          <Button 
+                            type="button"
+                            variant="secondary" 
+                            size="sm"
+                            className="absolute bottom-6 right-6 bg-black/70 hover:bg-black border border-white/20 text-white z-20 font-bold gap-2 shadow-xl h-10 px-4 backdrop-blur-sm transition-all"
+                            onClick={switchCamera}
+                          >
+                            <RefreshCw className="w-4 h-4" /> {t("dashboard.scan.switchCamera")}
+                          </Button>
+                        )}
 
-                      {processing && (
-                        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-30">
-                          <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
-                          <p className="font-bold text-lg text-white">{t("dashboard.scan.processingStamp")}</p>
-                        </div>
-                      )}
+                        {processing && (
+                          <div className="absolute inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center z-30">
+                            <Loader2 className="h-12 w-12 text-primary animate-spin mb-6" />
+                            <p className="font-bold text-xl text-foreground">{t("dashboard.scan.processingStamp")}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : (
-                    <form onSubmit={handleManualSubmit} className="space-y-6 py-4">
+                    <form onSubmit={handleManualSubmit} className="space-y-8 py-2">
                       <div className="space-y-4">
                         {canSearchSendStamp ? (
-                          <div className="space-y-2 text-left">
-                            <label className="text-sm font-medium">{t("dashboard.scan.searchCustomersLabel")}</label>
+                          <div className="space-y-4 text-left bg-muted/30 p-6 rounded-2xl border border-border/60 shadow-sm">
+                            <div>
+                              <label className="text-lg font-bold text-foreground block mb-1">
+                                {t("dashboard.scan.searchCustomersLabel")}
+                              </label>
+                              <p className="text-sm text-muted-foreground">Search for a registered customer to issue a stamp directly to their account.</p>
+                            </div>
                             <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
                               <PopoverTrigger asChild>
                                 <Button
                                   variant="outline"
                                   role="combobox"
                                   aria-expanded={customerSearchOpen}
-                                  className="w-full justify-between font-normal bg-background"
+                                  className={cn(
+                                    "w-full justify-between font-normal bg-background h-14 shadow-sm text-base transition-colors",
+                                    selectedCustomer ? "border-primary/50 ring-1 ring-primary/20" : ""
+                                  )}
                                   disabled={processing}
                                 >
                                   {selectedCustomer
                                     ? customers.find((c) => c.id === selectedCustomer)?.name || t("dashboard.scan.customerSelected")
-                                    : t("dashboard.scan.searchByNameEmailPhone")}
-                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    : <span className="text-muted-foreground">{t("dashboard.scan.searchByNameEmailPhone")}</span>}
+                                  <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-full p-0 max-w-[calc(100vw-3rem)] sm:max-w-md" align="start">
+                              <PopoverContent className="w-full p-0 max-w-[calc(100vw-3rem)] sm:max-w-md shadow-xl border-border/60 rounded-xl" align="start">
                                 <Command shouldFilter={false}>
                                   <CommandInput
                                     placeholder={t("dashboard.scan.searchCustomersPlaceholder")}
@@ -1074,16 +1104,22 @@ export default function ScanQR() {
                                       setCustomerSearchTerm(value);
                                       void searchRegisteredCustomers(value);
                                     }}
+                                    className="h-12 text-base"
                                   />
-                                  <CommandList>
-                                    <CommandEmpty>
-                                      {customerSearchLoading ? t("dashboard.scan.searchingCustomers") : t("dashboard.scan.noRegisteredCustomers")}
+                                  <CommandList className="max-h-[300px]">
+                                    <CommandEmpty className="py-6 text-center text-muted-foreground">
+                                      {customerSearchLoading ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                          <Loader2 className="h-4 w-4 animate-spin" /> {t("dashboard.scan.searchingCustomers")}
+                                        </span>
+                                      ) : t("dashboard.scan.noRegisteredCustomers")}
                                     </CommandEmpty>
                                     <CommandGroup>
                                       {customers.map((c) => (
                                         <CommandItem
                                           key={c.id}
                                           value={c.id}
+                                          className="py-3 px-4 cursor-pointer data-[selected=true]:bg-primary/5"
                                           onSelect={() => {
                                             setSelectedCustomer(c.id === selectedCustomer ? "" : c.id);
                                             setManualCode("");
@@ -1092,13 +1128,13 @@ export default function ScanQR() {
                                         >
                                           <Check
                                             className={cn(
-                                              "mr-2 h-4 w-4",
+                                              "mr-3 h-5 w-5 text-primary",
                                               selectedCustomer === c.id ? "opacity-100" : "opacity-0"
                                             )}
                                           />
-                                          <div className="flex flex-col">
-                                            <span>{c.name}</span>
-                                            <span className="text-xs text-muted-foreground">
+                                          <div className="flex flex-col gap-0.5">
+                                            <span className="font-semibold text-foreground">{c.name}</span>
+                                            <span className="text-xs text-muted-foreground font-medium">
                                               {[c.email, c.phone].filter(Boolean).join(" • ")}
                                             </span>
                                           </div>
@@ -1111,35 +1147,28 @@ export default function ScanQR() {
                             </Popover>
                           </div>
                         ) : (
-                          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-left text-sm text-amber-900">
-                            Search & Send Stamp is off for this staff account. QR/NFC and hardware scanner stamping remain available.
+                          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-left text-sm text-amber-900 shadow-sm flex items-start gap-4">
+                            <div className="bg-amber-100 p-2 rounded-full shrink-0">
+                              <AlertTriangle className="h-5 w-5 text-amber-600" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-base mb-1">Search Restricted</p>
+                              <p className="leading-relaxed">Search & Send Stamp is off for this staff account. QR/NFC stamping remain available.</p>
+                            </div>
                           </div>
                         )}
-                        
-                        <div className="relative flex py-2 items-center">
-                          <div className="flex-grow border-t border-border"></div>
-                          <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs font-medium uppercase tracking-wider">{t("dashboard.scan.orScanPhone")}</span>
-                          <div className="flex-grow border-t border-border"></div>
-                        </div>
-
-                        <div className="space-y-2 text-left">
-                          <label className="text-sm font-medium">{t("dashboard.scan.hardwareScanner")}</label>
-                          <Input 
-                            placeholder={t("dashboard.scan.hardwarePlaceholder")}
-                            value={manualCode}
-                            onChange={(e) => {
-                              setManualCode(e.target.value);
-                              setSelectedCustomer(""); // clear dropdown selection if typing
-                            }}
-                            disabled={processing}
-                            autoFocus
-                          />
-                          <p className="text-xs text-muted-foreground">{t("dashboard.scan.hardwareHelp")}</p>
-                        </div>
                       </div>
-                      <Button type="submit" className="w-full" disabled={(!manualCode && (!selectedCustomer || !canSearchSendStamp)) || processing}>
-                        {processing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("dashboard.scan.processing")}</> : t("dashboard.scan.issueStamp")}
-                      </Button>
+                      
+                      <div className="pt-2">
+                        <Button 
+                          type="submit" 
+                          size="lg"
+                          className="w-full h-14 text-lg font-bold shadow-md hover:shadow-lg transition-all" 
+                          disabled={(!selectedCustomer || !canSearchSendStamp) || processing}
+                        >
+                          {processing ? <><Loader2 className="mr-3 h-5 w-5 animate-spin" /> {t("dashboard.scan.processing")}</> : t("dashboard.scan.issueStamp")}
+                        </Button>
+                      </div>
                     </form>
                   )}
                 </div>
