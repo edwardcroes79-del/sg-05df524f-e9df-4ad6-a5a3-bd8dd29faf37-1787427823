@@ -58,19 +58,16 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
       .maybeSingle();
 
     if (!customerData) {
-      const { data: newCustomer, error } = await supabase
-        .from("customers")
-        .insert({
-          user_id: session.user.id,
-          name: session.user.user_metadata?.full_name || session.user.email?.split("@")[0] || "Customer",
-          email: session.user.email
-        })
-        .select("id, user_id, name, email, phone, avatar, created_at")
-        .single();
+      // If the authenticated user is NOT a registered customer, log them out and bounce them
+      await supabase.auth.signOut();
       
-      if (!error && newCustomer) {
-        setCustomer(newCustomer);
+      const lastQrPath = typeof window !== "undefined" ? localStorage.getItem("last_qr_path") : null;
+      if (lastQrPath) {
+        router.push(`/auth/customer?returnUrl=${encodeURIComponent(lastQrPath)}`);
+      } else {
+        router.push("/auth/customer");
       }
+      return;
     } else {
       setCustomer(customerData);
     }

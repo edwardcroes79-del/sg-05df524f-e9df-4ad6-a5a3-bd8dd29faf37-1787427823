@@ -299,14 +299,65 @@ export default function CustomerAuth() {
         title: t("auth.customer.welcomeBackTitle"),
         description: t("auth.customer.welcomeBackDescription"),
       });
-      
-      // Return back to join program QR page
-      if (safeReturnUrl) {
-        router.push(safeReturnUrl);
-      } else {
-        router.push("/customer");
+
+      // Role resolution check to prevent Staff from inadvertently accessing customer portal
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, is_super_admin")
+        .eq("id", data.user?.id)
+        .maybeSingle();
+
+      const { data: customerRecord } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("user_id", data.user?.id)
+        .maybeSingle();
+
+      // If user has a customer record, allow them through to customer routes
+      if (customerRecord) {
+        if (safeReturnUrl) {
+          router.push(safeReturnUrl);
+        } else {
+          router.push("/customer");
+        }
+        return;
       }
-      
+
+      // If they are explicitly marked as a customer via profile but missing customer row
+      // (CustomerLayout will handle dropping them back to login if they lack the customer row entirely)
+      if (profile?.role === "customer") {
+        if (safeReturnUrl) {
+          router.push(safeReturnUrl);
+        } else {
+          router.push("/customer");
+        }
+        return;
+      }
+
+      // If they are not a customer but are super admin
+      if (profile?.is_super_admin || profile?.role === "super_admin") {
+         router.push("/admin");
+         return;
+      }
+
+      // Otherwise, assume they are staff/owner and check business routing
+      const { data: businessUser } = await supabase
+        .from("business_users")
+        .select("business_id")
+        .eq("user_id", data.user?.id)
+        .maybeSingle();
+
+      if (businessUser?.business_id) {
+        router.push("/dashboard");
+      } else {
+        // Fallback if no roles apply or they have no customer account
+        if (safeReturnUrl) {
+          router.push(safeReturnUrl);
+        } else {
+           router.push("/customer");
+        }
+      }
+
     } catch (err: any) {
       toast({
         title: t("auth.customer.error"),
