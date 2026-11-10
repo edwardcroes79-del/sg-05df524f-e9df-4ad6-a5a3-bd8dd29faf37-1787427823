@@ -26,10 +26,12 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
   const router = useRouter();
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   const [customer, setCustomer] = useState<any>(null);
 
   useEffect(() => {
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAuth = async () => {
