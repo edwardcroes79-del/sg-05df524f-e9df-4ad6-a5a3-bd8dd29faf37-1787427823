@@ -58,7 +58,30 @@ export function CustomerLayout({ children }: CustomerLayoutProps) {
       .maybeSingle();
 
     if (!customerData) {
-      // If the authenticated user is NOT a registered customer, log them out and bounce them
+      // If the authenticated user is NOT a registered customer, check if they are staff/admin
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, is_super_admin")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (profile?.is_super_admin || profile?.role === "super_admin") {
+        router.push("/admin");
+        return;
+      }
+
+      const { data: businessUser } = await supabase
+        .from("business_users")
+        .select("business_id")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (businessUser?.business_id) {
+        router.push("/dashboard");
+        return;
+      }
+
+      // If they have no valid role at all, log them out
       await supabase.auth.signOut();
       
       const lastQrPath = typeof window !== "undefined" ? localStorage.getItem("last_qr_path") : null;
