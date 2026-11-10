@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle, ChevronsUpDown, Check } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle, ChevronsUpDown, Check, UserSearch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/contexts/I18nProvider";
@@ -1000,7 +1000,7 @@ export default function ScanQR() {
                       )}
                       onClick={() => setScanMode("manual")}
                     >
-                      <Keyboard className="w-5 h-5 mr-2" /> {t("dashboard.scan.manualUsb")}
+                      <UserSearch className="w-5 h-5 mr-2" /> Find Customer
                     </button>
                   </div>
 
