@@ -384,7 +384,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setHasNoBusiness(false);
       setIsExpiredContract(isExpiredContractValue);
 
-      const entitlementKeys = ["quick_stamp_qr", "advanced_analytics", "corporate_branding"] as const;
+      const entitlementKeys = ["quick_stamp_qr", "advanced_analytics", "corporate_branding", "location_management"] as const;
 
       const entitlementsPromise = Promise.all(entitlementKeys.map(async (key) => {
         const { data, error } = await (supabase as any).rpc("get_business_boolean_entitlement", {
@@ -421,7 +421,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         }
       });
 
-      const locationsPromise = (async () => {
+      const locationsPromise = entitlementsPromise.then(async (entries) => {
+        const entitlements = Object.fromEntries(entries) as Record<typeof entitlementKeys[number], boolean>;
+        
+        if (!entitlements.location_management) {
+          return null;
+        }
+
         try {
           const locationResponse = await fetch(`/api/business/locations?business_id=${resolvedBusiness.id}`, {
             headers: {
@@ -438,7 +444,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           console.error("Dashboard authorized location switcher error:", locationError);
           return null;
         }
-      })();
+      });
 
       const [
         securitySummary,
