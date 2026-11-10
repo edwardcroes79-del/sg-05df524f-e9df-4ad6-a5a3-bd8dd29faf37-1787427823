@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, XCircle, Loader2, Camera, Keyboard, RefreshCw, AlertTriangle, ChevronsUpDown, Check, UserSearch } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, Camera, RefreshCw, AlertTriangle, ChevronsUpDown, Check, UserSearch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/contexts/I18nProvider";
