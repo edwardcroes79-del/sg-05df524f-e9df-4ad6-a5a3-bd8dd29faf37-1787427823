@@ -127,6 +127,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Email, password, and name are required" });
     }
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedName = String(name).trim();
+
+    if (!normalizedEmail || !normalizedName) {
+      return res.status(400).json({ error: "A valid email and name are required" });
+    }
+
     const turnstileResult = await verifyTurnstileToken(turnstileToken, getRequestIp(req));
 
     if (!turnstileResult.ok) {
@@ -149,11 +156,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: "signup",
-      email: email,
+      email: normalizedEmail,
       password: password,
       options: {
         data: {
-          full_name: name,
+          full_name: normalizedName,
+          name: normalizedName,
+          registration_type: "customer",
+          role: "customer",
         },
         redirectTo: redirectUrl
       }
@@ -161,6 +171,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (linkError) {
       return res.status(400).json({ error: linkError.message });
+    }
+
+    const registeredUserId = linkData?.user?.id;
+
+    if (!registeredUserId) {
+      return res.status(500).json({ error: "Failed to create customer account. Please try again." });
+    }
+
+    const { error: customerError } = await supabaseAdmin
+      .from("customers")
+      .upsert(
+        {
+          user_id: registeredUserId,
+          name: normalizedName,
+          email: normalizedEmail,
+        },
+        {
+          onConflict: "user_id",
+          ignoreDuplicates: true,
+        }
+      );
+
+    if (customerError) {
+      console.error("Customer row synchronization failed:", customerError.message);
+      return res.status(500).json({ error: "Customer account could not be synchronized. Please try again." });
     }
 
     const actionLink = linkData?.properties?.action_link;
@@ -202,7 +237,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const htmlBody = `
       <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; color: #1e293b;">
         <h2 style="color: #fb7185;">Verify Your Account</h2>
-        <p>Hi ${name},</p>
+        <p>Hi ${normalizedName},</p>
         <p>Thank you for joining Royalty Stamp! Please confirm your email address to start collecting rewards.</p>
         
         <div style="margin: 30px 0;">
