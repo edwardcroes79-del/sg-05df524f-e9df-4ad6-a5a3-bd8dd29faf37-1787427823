@@ -195,6 +195,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (customerError) {
       console.error("Customer row synchronization failed:", customerError.message);
+
+      const { error: rollbackError } = await supabaseAdmin.auth.admin.deleteUser(registeredUserId);
+
+      if (rollbackError) {
+        console.error("Customer auth rollback failed:", rollbackError.message);
+      }
+
       return res.status(500).json({ error: "Customer account could not be synchronized. Please try again." });
     }
 
@@ -253,7 +260,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await transporter.sendMail({
       from: `"${fromName}" <${fromEmail}>`,
-      to: email,
+      to: normalizedEmail,
       subject: "Verify your Royalty Stamp account",
       html: htmlBody,
     });
