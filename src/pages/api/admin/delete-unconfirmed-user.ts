@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
-
-type ActivityCounts = Record<string, number>;
+import { evaluateUnconfirmedUser } from "@/lib/server/unconfirmedUserEligibility";
 
 type DeleteSummary = {
+  accountType: string;
+  businessRowsDeleted: number;
   customerRowsDeleted: number;
   profileRowsDeleted: number;
   authUserDeleted: boolean;
@@ -18,57 +19,6 @@ function normalizeEmail(value: unknown) {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
-function getMetadataObject(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
-}
-
-function getMetadataText(metadata: Record<string, unknown>, key: string) {
-  const value = metadata[key];
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
-
-function hasMeaningfulActivity(activityCounts: ActivityCounts) {
-  return Object.values(activityCounts).some((count) => count > 0);
-}
-
-async function countByCustomerIds(
-  supabase: ReturnType<typeof createServiceClient>,
-  table: string,
-  column: string,
-  customerIds: string[]
-) {
-  if (customerIds.length === 0) return 0;
-
-  const { count, error } = await supabase
-    .from(table)
-    .select("*", { count: "exact", head: true })
-    .in(column, customerIds);
-
-  if (error) {
-    throw new Error(`Could not inspect ${table}: ${error.message}`);
-  }
-
-  return count || 0;
-}
-
-async function countByUserId(
-  supabase: ReturnType<typeof createServiceClient>,
-  table: string,
-  column: string,
-  userId: string
-) {
-  const { count, error } = await supabase
-    .from(table)
-    .select("*", { count: "exact", head: true })
-    .eq(column, userId);
-
-  if (error) {
-    throw new Error(`Could not inspect ${table}: ${error.message}`);
-  }
-
-  return count || 0;
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
@@ -79,12 +29,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const adminUserId = await requireSuperAdmin(req);
-    const { userId, emailConfirmation } = req.body as { userId?: unknown; emailConfirmation?: unknown };
+    const { userId: rawUserId, emailConfirmation } = req.body as { userId?: unknown; emailConfirmation?: unknown };
 
-    if (!isUuid(userId)) {
+    if (!isUuid(rawUserId)) {
       return res.status(400).json({ error: "A valid target user ID is required." });
     }
 
+    const userId = rawUserId.trim();
     const typedEmail = normalizeEmail(emailConfirmation);
 
     if (!typedEmail) {
@@ -116,86 +67,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(409).json({ error: "Deletion blocked because this account has successfully signed in before." });
     }
 
-    const metadata = getMetadataObject(targetUser.user_metadata);
-    const metadataRole = getMetadataText(metadata, "role");
-    const metadataRegistrationType = getMetadataText(metadata, "registration_type");
-    const hasBusinessMetadata = typeof metadata.phone === "string" || metadataRegistrationType === "business";
+    const eligibility = await evaluateUnconfirmedUser(supabase, targetUser);
 
-    const [
-      { data: customerRows, error: customerError },
-      { data: profile, error: profileError },
-      { data: ownedBusinesses, error: ownedBusinessesError },
-      { data: staffMemberships, error: staffMembershipsError },
-    ] = await Promise.all([
-      supabase.from("customers").select("id, user_id, name, email").eq("user_id", userId),
-      supabase.from("profiles").select("role, is_super_admin").eq("id", userId).maybeSingle(),
-      supabase.from("businesses").select("id").eq("owner_id", userId).limit(1),
-      supabase.from("business_users").select("id, role").eq("user_id", userId).limit(1),
-    ]);
-
-    if (customerError) throw customerError;
-    if (profileError) throw profileError;
-    if (ownedBusinessesError) throw ownedBusinessesError;
-    if (staffMembershipsError) throw staffMembershipsError;
-
-    const hasPrivilegedProfile = Boolean(profile?.is_super_admin) || Boolean(profile?.role && profile.role !== "customer");
-    const hasBusinessOwnership = Boolean(ownedBusinesses?.length);
-    const hasStaffMembership = Boolean(staffMemberships?.length);
-    const hasPrivilegedMetadata = Boolean(metadataRole && metadataRole !== "customer") || Boolean(metadataRegistrationType && metadataRegistrationType !== "customer") || hasBusinessMetadata;
-
-    if (hasPrivilegedProfile || hasBusinessOwnership || hasStaffMembership || hasPrivilegedMetadata) {
+    if (!eligibility.eligible) {
       return res.status(409).json({
-        error: "Deletion blocked because this account is connected to a business, staff, admin, or non-customer role.",
-      });
-    }
-
-    const hasCustomerEvidence = Boolean(customerRows?.length) ||
-      profile?.role === "customer" ||
-      metadataRole === "customer" ||
-      metadataRegistrationType === "customer" ||
-      typeof metadata.full_name === "string";
-
-    if (!hasCustomerEvidence) {
-      return res.status(409).json({
-        error: "Deletion blocked because this account is not verified as a customer registration.",
-      });
-    }
-
-    const customerIds = (customerRows || []).map((row) => row.id).filter(Boolean);
-
-    const activityCounts: ActivityCounts = {
-      customer_loyalty_cards: await countByCustomerIds(supabase, "customer_loyalty_cards", "customer_id", customerIds),
-      customer_loyalty_cards_by_user: await countByUserId(supabase, "customer_loyalty_cards", "user_id", userId),
-      stamp_transactions: await countByCustomerIds(supabase, "stamp_transactions", "customer_id", customerIds),
-      rewards: await countByCustomerIds(supabase, "rewards", "customer_id", customerIds),
-      reward_qr_tokens: await countByCustomerIds(supabase, "reward_qr_tokens", "customer_id", customerIds),
-      payment_transactions: await countByCustomerIds(supabase, "payment_transactions", "customer_id", customerIds),
-      customer_birthdays: await countByCustomerIds(supabase, "customer_birthdays", "customer_id", customerIds),
-      customer_birthday_corrections: await countByCustomerIds(supabase, "customer_birthday_corrections", "customer_id", customerIds),
-      birthday_reward_awards: await countByCustomerIds(supabase, "birthday_reward_awards", "customer_id", customerIds),
-      anti_fraud_security_alerts: await countByCustomerIds(supabase, "anti_fraud_security_alerts", "customer_id", customerIds),
-      anti_fraud_blocked_attempts: await countByCustomerIds(supabase, "anti_fraud_blocked_attempts", "customer_id", customerIds),
-    };
-
-    if (hasMeaningfulActivity(activityCounts)) {
-      return res.status(409).json({
-        error: "Deletion blocked because this account has loyalty, reward, payment, birthday, or anti-fraud activity that must be preserved.",
-        activityCounts,
+        error: eligibility.blockReason,
+        accountType: eligibility.accountType,
+        blockingCounts: eligibility.blockingCounts,
       });
     }
 
     const summary: DeleteSummary = {
+      accountType: eligibility.accountType,
+      businessRowsDeleted: 0,
       customerRowsDeleted: 0,
       profileRowsDeleted: 0,
       authUserDeleted: false,
       auditLogged: false,
     };
 
-    if (customerIds.length > 0) {
+    for (const businessId of eligibility.ownedBusinessIds) {
+      const { error: membershipError } = await supabase
+        .from("business_users")
+        .delete()
+        .eq("business_id", businessId)
+        .eq("user_id", userId);
+
+      if (membershipError) {
+        throw new Error(`Could not remove owner membership of empty business: ${membershipError.message}`);
+      }
+
+      const { count: deletedBusinessCount, error: businessError } = await supabase
+        .from("businesses")
+        .delete({ count: "exact" })
+        .eq("id", businessId)
+        .eq("owner_id", userId);
+
+      if (businessError) {
+        throw new Error(`Could not delete empty business registration: ${businessError.message}`);
+      }
+
+      summary.businessRowsDeleted += deletedBusinessCount || 0;
+    }
+
+    if (eligibility.customerIds.length > 0) {
       const { count: deletedCustomerCount, error: deleteCustomerError } = await supabase
         .from("customers")
         .delete({ count: "exact" })
-        .in("id", customerIds);
+        .in("id", eligibility.customerIds);
 
       if (deleteCustomerError) {
         throw new Error(`Could not delete orphaned customer record: ${deleteCustomerError.message}`);
@@ -223,7 +142,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     summary.authUserDeleted = true;
 
-    const deletedAt = new Date().toISOString();
     const { error: auditError } = await supabase.from("audit_logs").insert({
       admin_user_id: adminUserId,
       action: "unconfirmed_auth_user_deleted",
@@ -232,8 +150,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       metadata: {
         deleted_auth_user_id: userId,
         deleted_email: serverEmail,
+        account_type: eligibility.accountType,
         deletion_action_type: "unconfirmed_auth_user_permanent_delete",
-        deleted_at: deletedAt,
+        deleted_at: new Date().toISOString(),
+        business_rows_deleted: summary.businessRowsDeleted,
         customer_rows_deleted: summary.customerRowsDeleted,
         profile_rows_deleted: summary.profileRowsDeleted,
       },
@@ -247,7 +167,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       success: true,
-      message: `${targetUser.email} was permanently deleted.`,
+      message: `${targetUser.email} (${eligibility.accountType}) was permanently deleted.`,
       summary,
     });
   } catch (error: any) {
@@ -258,6 +178,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ? 401
         : 500;
 
-    return res.status(status).json({ error: status === 500 ? message : message });
+    return res.status(status).json({ error: message });
   }
 }
