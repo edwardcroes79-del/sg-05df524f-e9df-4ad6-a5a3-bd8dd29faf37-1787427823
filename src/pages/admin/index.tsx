@@ -36,7 +36,9 @@ type SuperAdminNotification = {
 };
 
 type UnconfirmedAuthUser = {
-  id: string;
+  id?: string | null;
+  auth_user_id?: string | null;
+  user_id?: string | null;
   email: string;
   created_at: string;
   confirmation_sent_at: string | null;
@@ -232,6 +234,10 @@ function summarizeBackupValidationFailure(report: any, fallback = "Backup valida
   }
 
   return fallback;
+}
+
+function getUnconfirmedAuthUserId(user: UnconfirmedAuthUser | null) {
+  return user?.auth_user_id || user?.id || user?.user_id || "";
 }
 
 export default function AdminDashboard() {
@@ -2602,7 +2608,13 @@ export default function AdminDashboard() {
     }
 
     try {
-      setDeletingUnconfirmedUserId(unconfirmedUserToDelete.id);
+      const targetUserId = getUnconfirmedAuthUserId(unconfirmedUserToDelete);
+
+      if (!targetUserId) {
+        throw new Error("The selected account is missing its Supabase Auth user ID. Refresh the list and try again.");
+      }
+
+      setDeletingUnconfirmedUserId(targetUserId);
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error(t("admin.common.notAuthenticated"));
 
@@ -2613,7 +2625,7 @@ export default function AdminDashboard() {
           "Authorization": `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
-          userId: unconfirmedUserToDelete.id,
+          userId: targetUserId,
           emailConfirmation: deleteUnconfirmedEmailConfirmation,
         }),
       });
@@ -2629,7 +2641,7 @@ export default function AdminDashboard() {
         description: result.message || `${unconfirmedUserToDelete.email} was permanently removed.`,
       });
 
-      setUnconfirmedUsers((current) => current.filter((user) => user.id !== unconfirmedUserToDelete.id));
+      setUnconfirmedUsers((current) => current.filter((user) => getUnconfirmedAuthUserId(user) !== targetUserId));
       setUnconfirmedUserToDelete(null);
       setDeleteUnconfirmedEmailConfirmation("");
       await fetchAdminData();
@@ -4119,7 +4131,7 @@ export default function AdminDashboard() {
                     </TableHeader>
                     <TableBody>
                       {unconfirmedUsers.map((user) => (
-                        <TableRow key={user.id}>
+                        <TableRow key={getUnconfirmedAuthUserId(user) || user.email}>
                           <TableCell>
                             <div className="font-semibold">{user.email}</div>
                           </TableCell>
@@ -4138,9 +4150,9 @@ export default function AdminDashboard() {
                                 size="sm"
                                 className="gap-2"
                                 onClick={() => handleResendConfirmationEmail(user)}
-                                disabled={resendingConfirmationId === user.id || deletingUnconfirmedUserId === user.id}
+                                disabled={resendingConfirmationId === getUnconfirmedAuthUserId(user) || deletingUnconfirmedUserId === getUnconfirmedAuthUserId(user)}
                               >
-                                {resendingConfirmationId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                                {resendingConfirmationId === getUnconfirmedAuthUserId(user) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                                 Resend Confirmation Email
                               </Button>
                               <Button
@@ -4152,9 +4164,9 @@ export default function AdminDashboard() {
                                   setUnconfirmedUserToDelete(user);
                                   setDeleteUnconfirmedEmailConfirmation("");
                                 }}
-                                disabled={resendingConfirmationId === user.id || deletingUnconfirmedUserId === user.id}
+                                disabled={resendingConfirmationId === getUnconfirmedAuthUserId(user) || deletingUnconfirmedUserId === getUnconfirmedAuthUserId(user)}
                               >
-                                {deletingUnconfirmedUserId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                {deletingUnconfirmedUserId === getUnconfirmedAuthUserId(user) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                 Delete User
                               </Button>
                             </div>
@@ -5469,7 +5481,7 @@ export default function AdminDashboard() {
         <Dialog
           open={!!unconfirmedUserToDelete}
           onOpenChange={(open) => {
-            if (!open && deletingUnconfirmedUserId !== unconfirmedUserToDelete.id) {
+            if (!open && deletingUnconfirmedUserId !== getUnconfirmedAuthUserId(unconfirmedUserToDelete)) {
               setUnconfirmedUserToDelete(null);
               setDeleteUnconfirmedEmailConfirmation("");
             }
@@ -5499,7 +5511,7 @@ export default function AdminDashboard() {
                 value={deleteUnconfirmedEmailConfirmation}
                 onChange={(event) => setDeleteUnconfirmedEmailConfirmation(event.target.value)}
                 placeholder={unconfirmedUserToDelete.email}
-                disabled={deletingUnconfirmedUserId === unconfirmedUserToDelete.id}
+                disabled={deletingUnconfirmedUserId === getUnconfirmedAuthUserId(unconfirmedUserToDelete)}
               />
             </div>
             <DialogFooter className="flex gap-2 justify-end pt-4">
@@ -5510,7 +5522,7 @@ export default function AdminDashboard() {
                   setUnconfirmedUserToDelete(null);
                   setDeleteUnconfirmedEmailConfirmation("");
                 }}
-                disabled={deletingUnconfirmedUserId === unconfirmedUserToDelete.id}
+                disabled={deletingUnconfirmedUserId === getUnconfirmedAuthUserId(unconfirmedUserToDelete)}
               >
                 Cancel
               </Button>
@@ -5519,12 +5531,12 @@ export default function AdminDashboard() {
                 variant="destructive"
                 onClick={handleDeleteUnconfirmedAuthUser}
                 disabled={
-                  deletingUnconfirmedUserId === unconfirmedUserToDelete.id ||
+                  deletingUnconfirmedUserId === getUnconfirmedAuthUserId(unconfirmedUserToDelete) ||
                   deleteUnconfirmedEmailConfirmation.trim().toLowerCase() !== unconfirmedUserToDelete.email.trim().toLowerCase()
                 }
                 className="gap-2"
               >
-                {deletingUnconfirmedUserId === unconfirmedUserToDelete.id ? (
+                {deletingUnconfirmedUserId === getUnconfirmedAuthUserId(unconfirmedUserToDelete) ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
                   </>

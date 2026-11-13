@@ -3,6 +3,8 @@ import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
 
 type SafeUnconfirmedUser = {
   id: string;
+  auth_user_id: string;
+  user_id: string;
   email: string;
   created_at: string;
   confirmation_sent_at: string | null;
@@ -62,6 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return {
           id: user.id,
+          auth_user_id: user.id,
+          user_id: user.id,
           email: user.email || "",
           created_at: user.created_at,
           confirmation_sent_at: user.confirmation_sent_at || null,

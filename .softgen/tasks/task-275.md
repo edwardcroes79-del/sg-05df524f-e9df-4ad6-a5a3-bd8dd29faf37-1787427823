@@ -10,7 +10,7 @@ position: 275
 ---
 
 ## Notes
-Follow-up bug: the Superadmin Delete Unconfirmed Account dialog accepts typed-email confirmation, but the delete endpoint returns "A valid target user ID is required." This indicates the selected unconfirmed user object is not carrying the Supabase Auth user ID into the POST body, or the field name is mismatched between the unconfirmed-users list endpoint, `UnconfirmedAuthUser` UI type, and delete request.
+Follow-up bug: the Superadmin Delete Unconfirmed Account dialog accepts typed-email confirmation, but the delete endpoint returns "A valid target user ID is required." The backend correctly requires a UUID. The fix must ensure the selected table row preserves and submits the real Supabase Auth user ID while keeping email as confirmation-only.
 
 Scope is strictly limited to fixing the ID-passing failure while preserving the existing server-side security checks.
 
@@ -23,10 +23,10 @@ Protected constraints:
 
 ## Checklist
 - [x] Reopen task evidence and convert this task back to in-progress for the bug fix.
-- [ ] Inspect how unconfirmed Auth users are retrieved and which ID field is returned.
-- [ ] Inspect how the Superadmin UI stores the unconfirmed user ID and submits the delete request.
-- [ ] Inspect how the delete endpoint validates and uses the target Auth user ID.
-- [ ] Fix the root ID field mismatch without weakening security checks.
+- [x] Inspect how unconfirmed Auth users are retrieved and which ID field is returned.
+- [x] Inspect how the Superadmin UI stores the unconfirmed user ID and submits the delete request.
+- [x] Inspect how the delete endpoint validates and uses the target Auth user ID.
+- [x] Fix the root ID field mismatch without weakening security checks.
 - [ ] Validate TypeScript/lint/build checks.
 - [ ] Document the exact root cause, files changed, backend security status, and test results.
 
