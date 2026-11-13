@@ -1,6 +1,6 @@
 ---
 title: Unconfirmed auth user deletion
-status: done
+status: in_progress
 priority: urgent
 type: bug
 tags: [superadmin, auth, security]
@@ -38,6 +38,11 @@ Validation:
 - [x] Fix the root ID field mismatch without weakening security checks.
 - [x] Validate TypeScript/lint/build checks.
 - [x] Document the exact root cause, files changed, backend security status, and test results.
+- [ ] Recurring bug: trace request parsing and UUID validator line-by-line against real Auth UUIDs of the 4 authorized test accounts
+- [ ] Fix the actual root cause (no validation removal, no email-as-ID substitution)
+- [ ] Verify eligibility of jecifi7859@art2mart.com, rozenberg.rayveline@gmail.con, ls-ras@hormaim.comcom, ruxandrawever@hotmail.com
+- [ ] Delete only eligible authorized accounts via Supabase Admin API and confirm removal from auth.users
+- [ ] Confirm audit log entries, no loyalty data touched, checks pass
 
 ## Acceptance
 The delete request sends the selected account’s real Supabase Auth user ID to the backend.
