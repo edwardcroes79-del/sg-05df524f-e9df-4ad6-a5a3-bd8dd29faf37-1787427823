@@ -1,0 +1,27 @@
+---
+title: Unconfirmed auth user deletion
+status: in_progress
+priority: urgent
+type: feature
+tags: [superadmin, auth, security]
+created_by: agent
+created_at: 2026-11-13T18:24:29Z
+position: 275
+---
+
+## Notes
+Add a protected Superadmin-only delete action to the existing Unconfirmed Auth Users section. The feature must only allow deletion of genuinely unconfirmed customer accounts that have never successfully signed in and have no important loyalty or financial activity. The delete operation must run server-side with Supabase Admin API, preserve existing resend-confirmation behavior, protect privileged roles, and refresh the list after success. Audit logging is required for successful deletions. Scope is limited to this functionality only.
+
+## Checklist
+- [ ] Inspect the current Unconfirmed Auth Users UI, list endpoint, resend-confirmation flow, and Superadmin auth guard.
+- [ ] Inspect the live schema for customer-linked records, loyalty activity, and any existing audit/security tables relevant to safe deletion.
+- [ ] Add a secure Superadmin-only server-side delete endpoint that re-verifies account eligibility, blocks confirmed/signed-in/privileged/active accounts, safely cleans up orphaned records, deletes the Auth user, and records an audit trail.
+- [ ] Update the Superadmin Unconfirmed Auth Users table to add a visually distinct Delete User action with typed-email confirmation dialog and double-submit protection.
+- [ ] Refresh the list after successful deletion and preserve clear success/error notifications and existing resend-confirmation behavior.
+- [ ] Validate that confirmed users, signed-in users, privileged accounts, and accounts with meaningful loyalty activity are protected.
+- [ ] Run project error checks and document changed files, database changes, security details, test results, and limitations.
+
+## Acceptance
+A Superadmin can permanently delete an eligible unconfirmed customer account from the existing Unconfirmed Auth Users section only after typed-email confirmation.
+Confirmed users, previously signed-in users, privileged accounts, and accounts with meaningful loyalty activity are blocked from deletion with clear server-validated errors.
+After a successful deletion, the account disappears from the Unconfirmed Auth Users list and the resend-confirmation flow still works for remaining accounts.
