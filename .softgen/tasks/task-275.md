@@ -10,46 +10,35 @@ position: 275
 ---
 
 ## Notes
-Follow-up bug: the Superadmin Delete Unconfirmed Account dialog accepted typed-email confirmation, but the delete endpoint returned "A valid target user ID is required." The backend correctly required a UUID. The root cause was an ID-field mapping risk between the unconfirmed-users API response and the admin UI delete payload: the UI depended on `user.id`, while the deletion flow needed an explicit, preserved Supabase Auth user ID.
+Root cause of "A valid target user ID is required": the UUID regex in src/pages/api/admin/delete-unconfirmed-user.ts was malformed (8-4-4-13, missing the fourth group and hyphen), so every real Supabase UUID was rejected. The earlier alias fix (auth_user_id/user_id) did not touch the regex. Fixed to strict RFC 4122 8-4-4-4-12; verified against the 4 real UUIDs (old=false, new=true).
 
-Fix applied:
-- `src/pages/api/admin/unconfirmed-users.ts` now returns explicit Auth ID aliases: `id`, `auth_user_id`, and `user_id`, all set from the Supabase Auth user ID.
-- `src/pages/admin/index.tsx` now normalizes the selected account ID through `getUnconfirmedAuthUserId(user)` and sends that normalized ID as `userId` to `/api/admin/delete-unconfirmed-user`.
-- Email remains confirmation-only and is not used as a substitute for the Auth user ID.
-- `src/pages/api/admin/delete-unconfirmed-user.ts` keeps UUID validation and all server-side eligibility checks.
+Extension to General and Business accounts:
+- New src/lib/server/unconfirmedUserEligibility.ts classifies server-side (business > customer > general) and blocks: Super Admin, non-allowlisted roles/registration types, staff memberships in other businesses, approved/active owned businesses, and any row in 20 user-reference columns, 10 customer-activity tables, 20 business-referencing tables, or other business_users members.
+- Endpoint removes an empty owned business only after all dependency counts are zero; owner membership is deleted explicitly first so cascades have nothing to remove.
+- Audit log now records account_type and rows removed.
+- Dialog shows account type.
+- No migrations, RLS, trigger, registration, confirmation, resend, Stamp Flow, or Quick Stamp changes.
 
-Security preserved:
-- Superadmin-only server guard remains in place.
-- Backend UUID validation remains in place.
-- Backend still independently loads the target Auth user before deletion.
-- Backend still blocks confirmed users, users with sign-in history, privileged/business/staff accounts, and accounts with meaningful loyalty/payment/reward/activity records.
-- Supabase service-role key remains server-only.
-- No customer registration, email confirmation, resend-confirmation behavior, Stamp Flow, Quick Stamp, loyalty tables, RLS, triggers, or auth settings were modified.
+Test results:
+- Customer: 4 authorized accounts deleted via UI; 0 remain in auth.users; 1 audit entry each.
+- Business (marilyndecuba01@gmail.com) and 6 General accounts: read-only pre-check shows zero dependencies; awaiting UI deletion by Superadmin.
+- Unauthenticated / invalid-token requests return 401.
+- TypeScript and ESLint clean on changed files; full lint run is OOM-killed by sandbox (pre-existing).
 
-Validation:
-- Project check passed after the fix: no CSS, linting, type checking, or server errors found.
-- No destructive live deletion was performed without a dedicated disposable test account.
+Rollback: revert the three code files; no database objects were changed.
 
 ## Checklist
-- [x] Reopen task evidence and convert this task back to in-progress for the bug fix.
-- [x] Inspect how unconfirmed Auth users are retrieved and which ID field is returned.
-- [x] Inspect how the Superadmin UI stores the unconfirmed user ID and submits the delete request.
-- [x] Inspect how the delete endpoint validates and uses the target Auth user ID.
-- [x] Fix the root ID field mismatch without weakening security checks.
-- [x] Validate TypeScript/lint/build checks.
-- [x] Document the exact root cause, files changed, backend security status, and test results.
-- [ ] Recurring bug: trace request parsing and UUID validator line-by-line against real Auth UUIDs of the 4 authorized test accounts
-- [ ] Fix the actual root cause (no validation removal, no email-as-ID substitution)
-- [ ] Verify eligibility of jecifi7859@art2mart.com, rozenberg.rayveline@gmail.con, ls-ras@hormaim.comcom, ruxandrawever@hotmail.com
-- [ ] Delete only eligible authorized accounts via Supabase Admin API and confirm removal from auth.users
-- [ ] Confirm audit log entries, no loyalty data touched, checks pass
-- [x] Extension: map every table referencing businesses (FKs) to build Business dependency checks
-- [x] Extension: allow General/Business types server-side with type-specific eligibility (still blocks admin/staff/privileged)
-- [x] Extension: Business deletion only for unused incomplete registrations (no programs, cards, staff, customers, stamps, rewards, subscriptions, payments); explicit non-cascading cleanup of the empty business row only
-- [x] Extension: show account type in confirmation dialog
-- [ ] Extension: test per category (Customer, General, Business) and report blocked accounts with reasons
+- [x] Trace ID flow from list API to Admin API delete
+- [x] Fix malformed UUID regex without weakening validation
+- [x] Verify eligibility of the 4 authorized customer test accounts
+- [x] Delete eligible customer test accounts and confirm removal from auth.users with audit entries
+- [x] Map every table referencing businesses and auth.users for dependency checks
+- [x] Allow General/Business types server-side with type-specific eligibility
+- [x] Non-cascading cleanup of empty business registrations only
+- [x] Show account type in confirmation dialog
+- [ ] Verify Business and General deletions via UI and confirm removal in Supabase
 
 ## Acceptance
-The delete request sends the selected account’s real Supabase Auth user ID to the backend.
-The backend keeps UUID validation and independent eligibility checks before deletion.
-The Unconfirmed Auth Users list, typed-email dialog, and resend-confirmation action continue working normally.
+- Eligible Customer, General, and Business unconfirmed accounts can be deleted by a Superadmin and disappear from Supabase Auth and the list.
+- Accounts with privileged roles, staff links, or loyalty/business data are blocked with a clear reason.
+- Resend confirmation and all protected flows continue working.
