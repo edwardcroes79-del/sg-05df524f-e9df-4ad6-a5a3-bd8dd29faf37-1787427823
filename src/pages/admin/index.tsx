@@ -5499,8 +5499,12 @@ export default function AdminDashboard() {
                 <p className="rounded-md border bg-muted/40 p-3 text-sm">
                   Account email: <span className="font-semibold text-foreground">{unconfirmedUserToDelete.email}</span>
                 </p>
+                <p className="flex items-center gap-2 text-sm">
+                  Account type:
+                  <Badge variant="secondary" className="capitalize">{unconfirmedUserToDelete.audience}</Badge>
+                </p>
                 <p className="text-xs font-semibold uppercase tracking-wider text-destructive">
-                  The server will re-check that the account is unconfirmed, has never signed in, is not privileged, and has no loyalty activity before deletion.
+                  The server will re-check that the account is unconfirmed, has never signed in, is not privileged or staff, and has no loyalty, payment, subscription, or business data before deletion.
                 </p>
               </DialogDescription>
             </DialogHeader>
