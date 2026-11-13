@@ -250,6 +250,9 @@ export default function AdminDashboard() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [unconfirmedUsers, setUnconfirmedUsers] = useState<UnconfirmedAuthUser[]>([]);
   const [resendingConfirmationId, setResendingConfirmationId] = useState<string | null>(null);
+  const [unconfirmedUserToDelete, setUnconfirmedUserToDelete] = useState<UnconfirmedAuthUser | null>(null);
+  const [deleteUnconfirmedEmailConfirmation, setDeleteUnconfirmedEmailConfirmation] = useState("");
+  const [deletingUnconfirmedUserId, setDeletingUnconfirmedUserId] = useState<string | null>(null);
   const [globalStats, setGlobalStats] = useState({
     totalBusinesses: 0,
     activeSubscribers: 0,
@@ -2583,6 +2586,64 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteUnconfirmedAuthUser = async () => {
+    if (!unconfirmedUserToDelete) return;
+
+    const typedEmail = deleteUnconfirmedEmailConfirmation.trim().toLowerCase();
+    const expectedEmail = unconfirmedUserToDelete.email.trim().toLowerCase();
+
+    if (typedEmail !== expectedEmail) {
+      toast({
+        title: "Email confirmation required",
+        description: "Type the exact email address before deleting this account.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setDeletingUnconfirmedUserId(unconfirmedUserToDelete.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/delete-unconfirmed-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId: unconfirmedUserToDelete.id,
+          emailConfirmation: deleteUnconfirmedEmailConfirmation,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Unconfirmed account deletion failed.");
+      }
+
+      toast({
+        title: "Unconfirmed account deleted",
+        description: result.message || `${unconfirmedUserToDelete.email} was permanently removed.`,
+      });
+
+      setUnconfirmedUsers((current) => current.filter((user) => user.id !== unconfirmedUserToDelete.id));
+      setUnconfirmedUserToDelete(null);
+      setDeleteUnconfirmedEmailConfirmation("");
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({
+        title: "Deletion blocked",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingUnconfirmedUserId(null);
+    }
+  };
+
   const handleDeleteBusiness = async () => {
     if (!businessToDelete) return;
 
@@ -4048,6 +4109,7 @@ export default function AdminDashboard() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Email</TableHead>
+                        <TableHead>Customer Name</TableHead>
                         <TableHead>Type</TableHead>
                         <TableHead>Created</TableHead>
                         <TableHead>Confirmation Sent</TableHead>
@@ -4060,8 +4122,8 @@ export default function AdminDashboard() {
                         <TableRow key={user.id}>
                           <TableCell>
                             <div className="font-semibold">{user.email}</div>
-                            {user.display_name && <div className="text-xs text-muted-foreground">{user.display_name}</div>}
                           </TableCell>
+                          <TableCell>{user.display_name || "-"}</TableCell>
                           <TableCell>
                             <Badge variant="secondary" className="capitalize">{user.audience}</Badge>
                           </TableCell>
@@ -4069,23 +4131,39 @@ export default function AdminDashboard() {
                           <TableCell>{user.confirmation_sent_at ? new Date(user.confirmation_sent_at).toLocaleString(locale) : "-"}</TableCell>
                           <TableCell>{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString(locale) : "-"}</TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="gap-2"
-                              onClick={() => handleResendConfirmationEmail(user)}
-                              disabled={resendingConfirmationId === user.id}
-                            >
-                              {resendingConfirmationId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                              Resend Confirmation Email
-                            </Button>
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => handleResendConfirmationEmail(user)}
+                                disabled={resendingConfirmationId === user.id || deletingUnconfirmedUserId === user.id}
+                              >
+                                {resendingConfirmationId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                                Resend Confirmation Email
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => {
+                                  setUnconfirmedUserToDelete(user);
+                                  setDeleteUnconfirmedEmailConfirmation("");
+                                }}
+                                disabled={resendingConfirmationId === user.id || deletingUnconfirmedUserId === user.id}
+                              >
+                                {deletingUnconfirmedUserId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                Delete User
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                       {unconfirmedUsers.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No unconfirmed auth users found.</TableCell>
+                          <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No unconfirmed auth users found.</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
@@ -5379,6 +5457,80 @@ export default function AdminDashboard() {
                 ) : (
                   <>
                     <Trash2 className="h-4 w-4" /> {t("admin.common.confirmDelete")}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {unconfirmedUserToDelete && (
+        <Dialog
+          open={!!unconfirmedUserToDelete}
+          onOpenChange={(open) => {
+            if (!open && deletingUnconfirmedUserId !== unconfirmedUserToDelete.id) {
+              setUnconfirmedUserToDelete(null);
+              setDeleteUnconfirmedEmailConfirmation("");
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <Trash2 className="h-5 w-5" /> Delete Unconfirmed Account
+              </DialogTitle>
+              <DialogDescription className="space-y-3 pt-2">
+                <p>
+                  Are you sure you want to permanently delete this unconfirmed account? This action cannot be undone.
+                </p>
+                <p className="rounded-md border bg-muted/40 p-3 text-sm">
+                  Account email: <span className="font-semibold text-foreground">{unconfirmedUserToDelete.email}</span>
+                </p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-destructive">
+                  The server will re-check that the account is unconfirmed, has never signed in, is not privileged, and has no loyalty activity before deletion.
+                </p>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="delete-unconfirmed-email">Type the email address to confirm deletion</Label>
+              <Input
+                id="delete-unconfirmed-email"
+                value={deleteUnconfirmedEmailConfirmation}
+                onChange={(event) => setDeleteUnconfirmedEmailConfirmation(event.target.value)}
+                placeholder={unconfirmedUserToDelete.email}
+                disabled={deletingUnconfirmedUserId === unconfirmedUserToDelete.id}
+              />
+            </div>
+            <DialogFooter className="flex gap-2 justify-end pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setUnconfirmedUserToDelete(null);
+                  setDeleteUnconfirmedEmailConfirmation("");
+                }}
+                disabled={deletingUnconfirmedUserId === unconfirmedUserToDelete.id}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteUnconfirmedAuthUser}
+                disabled={
+                  deletingUnconfirmedUserId === unconfirmedUserToDelete.id ||
+                  deleteUnconfirmedEmailConfirmation.trim().toLowerCase() !== unconfirmedUserToDelete.email.trim().toLowerCase()
+                }
+                className="gap-2"
+              >
+                {deletingUnconfirmedUserId === unconfirmedUserToDelete.id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4" /> Delete Account
                   </>
                 )}
               </Button>
