@@ -1,6 +1,6 @@
 ---
 title: Unconfirmed auth user deletion
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [superadmin, auth, security]
@@ -10,16 +10,25 @@ position: 275
 ---
 
 ## Notes
-Follow-up bug: the Superadmin Delete Unconfirmed Account dialog accepts typed-email confirmation, but the delete endpoint returns "A valid target user ID is required." The backend correctly requires a UUID. The fix must ensure the selected table row preserves and submits the real Supabase Auth user ID while keeping email as confirmation-only.
+Follow-up bug: the Superadmin Delete Unconfirmed Account dialog accepted typed-email confirmation, but the delete endpoint returned "A valid target user ID is required." The backend correctly required a UUID. The root cause was an ID-field mapping risk between the unconfirmed-users API response and the admin UI delete payload: the UI depended on `user.id`, while the deletion flow needed an explicit, preserved Supabase Auth user ID.
 
-Scope is strictly limited to fixing the ID-passing failure while preserving the existing server-side security checks.
+Fix applied:
+- `src/pages/api/admin/unconfirmed-users.ts` now returns explicit Auth ID aliases: `id`, `auth_user_id`, and `user_id`, all set from the Supabase Auth user ID.
+- `src/pages/admin/index.tsx` now normalizes the selected account ID through `getUnconfirmedAuthUserId(user)` and sends that normalized ID as `userId` to `/api/admin/delete-unconfirmed-user`.
+- Email remains confirmation-only and is not used as a substitute for the Auth user ID.
+- `src/pages/api/admin/delete-unconfirmed-user.ts` keeps UUID validation and all server-side eligibility checks.
 
-Protected constraints:
-- Do not change customer registration/synchronization from task 274.
-- Do not modify email confirmation or resend-confirmation behavior.
-- Do not weaken UUID validation or backend eligibility checks.
-- Do not modify Stamp Flow, Quick Stamp, loyalty transactions, rewards, unrelated RLS, triggers, or auth settings.
-- Do not perform destructive live deletion without a dedicated test account.
+Security preserved:
+- Superadmin-only server guard remains in place.
+- Backend UUID validation remains in place.
+- Backend still independently loads the target Auth user before deletion.
+- Backend still blocks confirmed users, users with sign-in history, privileged/business/staff accounts, and accounts with meaningful loyalty/payment/reward/activity records.
+- Supabase service-role key remains server-only.
+- No customer registration, email confirmation, resend-confirmation behavior, Stamp Flow, Quick Stamp, loyalty tables, RLS, triggers, or auth settings were modified.
+
+Validation:
+- Project check passed after the fix: no CSS, linting, type checking, or server errors found.
+- No destructive live deletion was performed without a dedicated disposable test account.
 
 ## Checklist
 - [x] Reopen task evidence and convert this task back to in-progress for the bug fix.
@@ -27,8 +36,8 @@ Protected constraints:
 - [x] Inspect how the Superadmin UI stores the unconfirmed user ID and submits the delete request.
 - [x] Inspect how the delete endpoint validates and uses the target Auth user ID.
 - [x] Fix the root ID field mismatch without weakening security checks.
-- [ ] Validate TypeScript/lint/build checks.
-- [ ] Document the exact root cause, files changed, backend security status, and test results.
+- [x] Validate TypeScript/lint/build checks.
+- [x] Document the exact root cause, files changed, backend security status, and test results.
 
 ## Acceptance
 The delete request sends the selected account’s real Supabase Auth user ID to the backend.
