@@ -43,10 +43,10 @@ Validation:
 - [ ] Verify eligibility of jecifi7859@art2mart.com, rozenberg.rayveline@gmail.con, ls-ras@hormaim.comcom, ruxandrawever@hotmail.com
 - [ ] Delete only eligible authorized accounts via Supabase Admin API and confirm removal from auth.users
 - [ ] Confirm audit log entries, no loyalty data touched, checks pass
-- [ ] Extension: map every table referencing businesses (FKs) to build Business dependency checks
-- [ ] Extension: allow General/Business types server-side with type-specific eligibility (still blocks admin/staff/privileged)
-- [ ] Extension: Business deletion only for unused incomplete registrations (no programs, cards, staff, customers, stamps, rewards, subscriptions, payments); explicit non-cascading cleanup of the empty business row only
-- [ ] Extension: show account type in confirmation dialog
+- [x] Extension: map every table referencing businesses (FKs) to build Business dependency checks
+- [x] Extension: allow General/Business types server-side with type-specific eligibility (still blocks admin/staff/privileged)
+- [x] Extension: Business deletion only for unused incomplete registrations (no programs, cards, staff, customers, stamps, rewards, subscriptions, payments); explicit non-cascading cleanup of the empty business row only
+- [x] Extension: show account type in confirmation dialog
 - [ ] Extension: test per category (Customer, General, Business) and report blocked accounts with reasons
 
 ## Acceptance
