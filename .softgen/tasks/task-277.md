@@ -1,6 +1,6 @@
 ---
 title: Manual overdue payment popup reminders
-status: done
+status: in_progress
 priority: urgent
 type: feature
 tags: [billing, superadmin, reminders]
@@ -21,6 +21,11 @@ Strict protections: do not modify customer registration/synchronization, invoice
 - [x] Add Superadmin UI section "Send Manual Payment Reminder" inside Payment Review → Overdue Reminders with business selection, status details, custom message, preview, send action, and history
 - [x] Add Business Admin popup titled "Payment Reminder" with custom message, optional invoice details, sent date, and Close only
 - [x] Validate TypeScript/lint/build checks and run non-destructive database/API verification
+- [ ] Follow-up: remove invoice/contract/payment-due gating from manual reminder business eligibility
+- [ ] Follow-up: allow optional manual amount, billing period, due date, and reference note in the Superadmin composer
+- [ ] Follow-up: store optional manual payment details without creating invoices, changing payment status, changing subscription status, or modifying contracts
+- [ ] Follow-up: display optional manual payment details in the Business Admin popup and reminder history
+- [ ] Follow-up: verify automatic reminders still use existing overdue invoice detection independently
 
 ## Acceptance
 - Superadmin can send a manual popup reminder to an eligible business, including one with no assigned contract, when there is a legitimate outstanding payment or documented payment obligation.
