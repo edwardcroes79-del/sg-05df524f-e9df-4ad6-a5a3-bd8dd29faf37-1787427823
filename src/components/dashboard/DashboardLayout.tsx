@@ -183,6 +183,26 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setSecurityUnreadCount(summary.unreadCount);
   };
 
+  const applySnapshot = (snapshot: DashboardLayoutSnapshot) => {
+    setIsSuperAdmin(snapshot.isSuperAdmin);
+    setBusiness(snapshot.business);
+    setHasNoBusiness(false);
+    setIsExpiredContract(snapshot.isExpiredContract);
+    setSecurityAlertsVisible(snapshot.securityAlertsVisible);
+    setSecurityUnreadCount(snapshot.securityUnreadCount);
+    setQuickStampQrEnabled(snapshot.quickStampQrEnabled);
+    setAdvancedAnalyticsEnabled(snapshot.advancedAnalyticsEnabled);
+    setLocationsManagementEnabled(snapshot.locationsManagementEnabled);
+    setCorporateBrandingEnabled(snapshot.corporateBrandingEnabled);
+    setCorporateBranding(snapshot.corporateBranding);
+    setDashboardLocations(snapshot.dashboardLocations);
+    setActiveLocationId(snapshot.activeLocationId);
+    setIsTrial(snapshot.isTrial);
+    setIsExpiredTrial(snapshot.isExpiredTrial);
+    setTrialDaysLeft(snapshot.trialDaysLeft);
+    setLoading(false);
+  };
+
   const applyOverdueReminderInvoices = (invoices: BusinessOverdueReminderInvoice[]) => {
     setOverdueReminderInvoices(invoices);
     setOverdueReminderOpen(invoices.length > 0);
