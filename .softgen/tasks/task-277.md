@@ -1,6 +1,6 @@
 ---
 title: Manual overdue payment popup reminders
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [billing, superadmin, reminders]
