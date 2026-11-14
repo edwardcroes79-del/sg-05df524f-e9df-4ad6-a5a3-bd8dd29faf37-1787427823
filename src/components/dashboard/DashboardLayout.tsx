@@ -54,6 +54,17 @@ type DashboardLocation = {
   status: string;
 };
 
+type BusinessOverdueReminderInvoice = {
+  invoiceId: string;
+  businessId: string;
+  businessName: string;
+  invoiceNumber: string;
+  dueDate: string;
+  outstandingAmount: number;
+  currency: string;
+  status: string;
+};
+
 function isContractExpiredForDashboard(businessRecord: any) {
   if (!businessRecord?.contract_end_date) return false;
 
@@ -86,6 +97,15 @@ type DashboardLayoutSnapshot = {
 
 const DASHBOARD_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
 let dashboardLayoutSnapshot: DashboardLayoutSnapshot | null = null;
+
+type BusinessOverdueReminderSnapshot = {
+  userId: string;
+  businessId: string;
+  savedAt: number;
+  invoices: BusinessOverdueReminderInvoice[];
+};
+
+let businessOverdueReminderSnapshot: BusinessOverdueReminderSnapshot | null = null;
 
 async function loadSecurityAlertsSummary(businessId: string, accessToken: string) {
   try {
@@ -132,6 +152,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isExpiredTrial, setIsExpiredTrial] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState(0);
+  const [overdueReminderInvoices, setOverdueReminderInvoices] = useState<BusinessOverdueReminderInvoice[]>([]);
+  const [overdueReminderOpen, setOverdueReminderOpen] = useState(false);
+  const [dismissingOverdueReminder, setDismissingOverdueReminder] = useState(false);
 
   // What's New states
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
@@ -160,168 +183,114 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setSecurityUnreadCount(summary.unreadCount);
   };
 
-  useEffect(() => {
-    if (!business?.id || !securityAlertsVisible) return;
+  const applyOverdueReminderInvoices = (invoices: BusinessOverdueReminderInvoice[]) => {
+    setOverdueReminderInvoices(invoices);
+    setOverdueReminderOpen(invoices.length > 0);
+  };
 
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
-    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
-    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+  const fetchBusinessOverdueReminder = async (businessId: string, userId: string, accessToken: string) => {
+    const cachedSnapshot = businessOverdueReminderSnapshot;
+    const hasFreshSnapshot = Boolean(
+      cachedSnapshot &&
+      cachedSnapshot.userId === userId &&
+      cachedSnapshot.businessId === businessId &&
+      Date.now() - cachedSnapshot.savedAt < DASHBOARD_SNAPSHOT_MAX_AGE_MS
+    );
 
-    const refreshSummary = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await fetchSecurityAlertsSummary(business.id, session.access_token);
-    };
+    if (hasFreshSnapshot && cachedSnapshot) {
+      applyOverdueReminderInvoices(cachedSnapshot.invoices);
+      return;
+    }
 
-    const scheduleSummaryRefresh = (delayMs = 750) => {
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
-
-      refreshTimeout = setTimeout(() => {
-        void refreshSummary();
-      }, delayMs);
-    };
-
-    const channel = supabase
-      .channel(`security_alert_badge_${business.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "anti_fraud_security_alerts",
-          filter: `business_id=eq.${business.id}`,
+    try {
+      const response = await fetch("/api/business/overdue-reminder", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
         },
-        () => {
-          scheduleSummaryRefresh();
-        }
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          scheduleSummaryRefresh(0);
-          return;
-        }
-
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          if (reconnectTimeout) {
-            clearTimeout(reconnectTimeout);
-          }
-
-          reconnectTimeout = setTimeout(() => {
-            scheduleSummaryRefresh(0);
-          }, 1000);
-        }
       });
 
-    pollInterval = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      void refreshSummary();
-    }, 60000);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Overdue reminder check failed.");
+      }
 
-    const handleVisibilityOrFocus = () => {
-      if (document.visibilityState === "visible") {
-        scheduleSummaryRefresh(0);
-      }
-    };
+      const invoices = Array.isArray(result.invoices)
+        ? result.invoices.filter((invoice: BusinessOverdueReminderInvoice) => invoice.businessId === businessId)
+        : [];
 
-    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
-    window.addEventListener("focus", handleVisibilityOrFocus);
+      businessOverdueReminderSnapshot = {
+        userId,
+        businessId,
+        savedAt: Date.now(),
+        invoices,
+      };
 
-    return () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
+      applyOverdueReminderInvoices(invoices);
+    } catch (reminderError) {
+      console.error("Business overdue reminder check failed:", reminderError);
+      applyOverdueReminderInvoices([]);
+    }
+  };
+
+  const handleDismissOverdueReminder = async () => {
+    if (!business?.id || overdueReminderInvoices.length === 0) {
+      setOverdueReminderOpen(false);
+      return;
+    }
+
+    try {
+      setDismissingOverdueReminder(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/business/overdue-reminder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          businessId: business.id,
+          invoiceIds: overdueReminderInvoices.map((invoice) => invoice.invoiceId),
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Could not dismiss overdue invoice reminder.");
       }
-      if (reconnectTimeout) {
-        clearTimeout(reconnectTimeout);
-      }
-      if (refreshTimeout) {
-        clearTimeout(refreshTimeout);
-      }
-      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
-      window.removeEventListener("focus", handleVisibilityOrFocus);
-      supabase.removeChannel(channel);
-    };
-  }, [business?.id, securityAlertsVisible]);
+
+      businessOverdueReminderSnapshot = {
+        userId: session.user.id,
+        businessId: business.id,
+        savedAt: Date.now(),
+        invoices: [],
+      };
+
+      setOverdueReminderInvoices([]);
+      setOverdueReminderOpen(false);
+    } catch (dismissError: any) {
+      toast({
+        title: "Reminder dismissal failed",
+        description: dismissError.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDismissingOverdueReminder(false);
+    }
+  };
 
   useEffect(() => {
-    if (!business?.id || !business?.owner_id || !currentUserId) return;
-    if (business.owner_id !== currentUserId) return;
+    if (!business?.id || !currentUserId) return;
 
-    const channel = supabase
-      .channel(`owner_stamp_notifications_${business.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "stamp_transactions",
-          filter: `business_id=eq.${business.id}`,
-        },
-        (payload) => {
-          const transaction = payload.new as {
-            staff_user_id?: string | null;
-            customer_id?: string | null;
-          };
-
-          if (!transaction.staff_user_id || transaction.staff_user_id === currentUserId) {
-            return;
-          }
-
-          void (async () => {
-            const [{ data: staffProfile }, { data: customer }] = await Promise.all([
-              supabase
-                .from("profiles")
-                .select("full_name, email")
-                .eq("id", transaction.staff_user_id)
-                .maybeSingle(),
-              transaction.customer_id
-                ? supabase
-                    .from("customers")
-                    .select("name")
-                    .eq("id", transaction.customer_id)
-                    .maybeSingle()
-                : Promise.resolve({ data: null }),
-            ]);
-
-            const staffName = staffProfile?.full_name || staffProfile?.email || t("dashboard.notifications.staffFallback");
-            const customerName = customer?.name || "";
-
-            toast({
-              title: t("dashboard.notifications.stampIssuedTitle"),
-              description: customerName
-                ? t("dashboard.notifications.stampIssuedDescriptionWithCustomer", { staffName, customerName })
-                : t("dashboard.notifications.stampIssuedDescription", { staffName }),
-            });
-          })();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [business?.id, business?.owner_id, currentUserId, toast]);
-
-  const applySnapshot = (snapshot: DashboardLayoutSnapshot) => {
-    setIsSuperAdmin(snapshot.isSuperAdmin);
-    setBusiness(snapshot.business);
-    setHasNoBusiness(false);
-    setIsExpiredContract(snapshot.isExpiredContract);
-    setSecurityAlertsVisible(snapshot.securityAlertsVisible);
-    setSecurityUnreadCount(snapshot.securityUnreadCount);
-    setQuickStampQrEnabled(snapshot.quickStampQrEnabled);
-    setAdvancedAnalyticsEnabled(snapshot.advancedAnalyticsEnabled);
-    setLocationsManagementEnabled(snapshot.locationsManagementEnabled);
-    setCorporateBrandingEnabled(snapshot.corporateBrandingEnabled);
-    setCorporateBranding(snapshot.corporateBranding);
-    setDashboardLocations(snapshot.dashboardLocations);
-    setActiveLocationId(snapshot.activeLocationId);
-    setIsTrial(snapshot.isTrial);
-    setIsExpiredTrial(snapshot.isExpiredTrial);
-    setTrialDaysLeft(snapshot.trialDaysLeft);
-    setLoading(false);
-  };
+    void (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await fetchBusinessOverdueReminder(business.id, currentUserId, session.access_token);
+    })();
+  }, [business?.id, currentUserId]);
 
   const checkUserAndBusiness = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -1320,6 +1289,51 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </SheetContent>
         </Sheet>
+
+        <Dialog
+          open={overdueReminderOpen && overdueReminderInvoices.length > 0}
+          onOpenChange={(open) => {
+            if (!open && !dismissingOverdueReminder) {
+              void handleDismissOverdueReminder();
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Outstanding Invoice Reminder</DialogTitle>
+              <DialogDescription>
+                Your subscription invoice is overdue. Please contact Royalty Stamp administration to settle your outstanding invoice.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {overdueReminderInvoices.map((invoice) => (
+                <div key={invoice.invoiceId} className="space-y-2 rounded-xl border bg-muted/30 p-4 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Invoice number</span>
+                    <span className="font-mono text-right">{invoice.invoiceNumber}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Due date</span>
+                    <span className="font-semibold text-right">{invoice.dueDate || "-"}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Outstanding amount</span>
+                    <span className="font-semibold text-right">{invoice.currency || "AWG"} {Number(invoice.outstandingAmount || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className="rounded-full bg-destructive px-2 py-0.5 text-xs font-semibold uppercase text-destructive-foreground">Overdue</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button type="button" onClick={handleDismissOverdueReminder} disabled={dismissingOverdueReminder}>
+                {dismissingOverdueReminder ? "Closing..." : "Close"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Coming Soon Modal */}
         <Dialog open={comingSoonModalOpen} onOpenChange={setComingSoonModalOpen}>

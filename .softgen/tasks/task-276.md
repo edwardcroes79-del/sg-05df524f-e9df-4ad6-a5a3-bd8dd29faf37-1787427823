@@ -19,8 +19,9 @@ Implement an Overdue Reminders subtab inside the existing Superadmin Payment Rev
 - [x] Add secure Superadmin API endpoints for overdue reminder summary, business/invoice list, global setting updates, and per-business reminder toggles
 - [x] Add secure Business Admin API endpoints for checking overdue reminder eligibility and dismissing the current Aruba-local day
 - [x] Build the Superadmin Payment Review → Overdue Reminders subtab with summary cards, controls, preview, and overdue invoice table
-- [ ] Add the Business Admin overdue invoice popup with Close-only dismissal and no payment functionality
-- [ ] Validate permissions, invoice status filtering, daily dismissal behavior, and existing Payment Review behavior
+- [x] Add the Business Admin popup in the dashboard shell with invoice number, due date, outstanding amount, overdue status, and a single Close action
+- [x] Store dismissal server-side per business, invoice, user, and Aruba-local calendar date; suppress repeated popups for the same day across devices
+- [ ] Verify APIs against live schema and run TypeScript/lint/build checks
 - [ ] Run TypeScript/lint checks or targeted checks if full-project lint is killed by sandbox memory
 
 ## Acceptance
