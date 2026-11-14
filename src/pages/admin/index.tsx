@@ -47,6 +47,30 @@ type UnconfirmedAuthUser = {
   display_name: string | null;
 };
 
+type OverdueReminderSummary = {
+  totalOverdueBusinesses: number;
+  totalOverdueInvoices: number;
+  remindersDismissedToday: number;
+  businessesWithRemindersEnabled: number;
+  globalEnabled: boolean;
+  today: string;
+};
+
+type OverdueReminderInvoice = {
+  invoiceId: string;
+  businessId: string;
+  businessName: string;
+  businessAdmin: string;
+  invoiceNumber: string;
+  dueDate: string;
+  outstandingAmount: number;
+  currency: string;
+  status: string;
+  reminderEnabled: boolean;
+  dismissedToday: boolean;
+  lastDismissedOn: string | null;
+};
+
 function notificationKey(sourceType: string, sourceId: string) {
   return `${sourceType}:${sourceId}`;
 }
@@ -489,6 +513,11 @@ export default function AdminDashboard() {
   const [reviewingPayment, setReviewingPayment] = useState<any | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [overdueReminderSummary, setOverdueReminderSummary] = useState<OverdueReminderSummary | null>(null);
+  const [overdueReminderInvoices, setOverdueReminderInvoices] = useState<OverdueReminderInvoice[]>([]);
+  const [loadingOverdueReminders, setLoadingOverdueReminders] = useState(false);
+  const [updatingOverdueReminder, setUpdatingOverdueReminder] = useState<string | null>(null);
+  const [previewOverdueInvoice, setPreviewOverdueInvoice] = useState<OverdueReminderInvoice | null>(null);
 
   // Customer deletion states
   const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
@@ -780,6 +809,75 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchOverdueReminders = async (accessTokenOverride?: string) => {
+    try {
+      setLoadingOverdueReminders(true);
+      const accessToken = accessTokenOverride || (await supabase.auth.getSession()).data.session?.access_token;
+      if (!accessToken) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/overdue-reminders", {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept": "application/json",
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to load overdue reminders.");
+      }
+
+      setOverdueReminderSummary(result.summary || null);
+      setOverdueReminderInvoices(result.invoices || []);
+    } catch (err) {
+      console.error("Error loading overdue reminders:", err);
+      setOverdueReminderSummary(null);
+      setOverdueReminderInvoices([]);
+    } finally {
+      setLoadingOverdueReminders(false);
+    }
+  };
+
+  const handleUpdateOverdueReminderSetting = async (payload: { action: "global"; enabled: boolean } | { action: "business"; businessId: string; enabled: boolean }) => {
+    const updateKey = payload.action === "global" ? "global" : payload.businessId;
+
+    try {
+      setUpdatingOverdueReminder(updateKey);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/overdue-reminders", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Overdue reminder setting update failed.");
+      }
+
+      setOverdueReminderSummary(result.summary || null);
+      setOverdueReminderInvoices(result.invoices || []);
+      toast({
+        title: "Overdue reminders updated",
+        description: payload.action === "global" ? "Global reminder availability has been saved." : "The business reminder setting has been saved.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Reminder update failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUpdatingOverdueReminder(null);
+    }
+  };
+
   const loadBackupReports = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
@@ -834,6 +932,7 @@ export default function AdminDashboard() {
 
       if (accessToken) {
         void loadBackupList(accessToken);
+        void fetchOverdueReminders(accessToken);
       }
 
       const apiListOrEmpty = (path: string, key: string, fallbackError: string) =>
@@ -3749,62 +3848,188 @@ export default function AdminDashboard() {
               </Card>
             )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("admin.payments.title")}</CardTitle>
-                <CardDescription>Review real subscription and add-on payment records from Supabase.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto overscroll-contain">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Business</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Provider</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {payments.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-semibold">{payment.businesses?.business_name || payment.metadata?.business_name || "Unknown business"}</TableCell>
-                          <TableCell>{payment.metadata?.change_type || payment.metadata?.kind || payment.payment_type || "-"}</TableCell>
-                          <TableCell>{payment.provider || "-"}</TableCell>
-                          <TableCell>AWG {Number(payment.amount || 0).toFixed(2)}</TableCell>
-                          <TableCell>
-                            <Badge variant={payment.status === "approved" ? "default" : payment.status === "rejected" ? "destructive" : "secondary"}>
-                              {String(payment.status || "pending").toUpperCase()}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>{new Date(payment.created_at).toLocaleString(locale)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              {payment.payment_proof_url && (
-                                <Button type="button" variant="outline" size="sm" onClick={() => handleOpenAdminPaymentProof(payment)}>
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              )}
-                              <Button type="button" size="sm" onClick={() => { setReviewingPayment(payment); setAdminNotes(payment.admin_notes || ""); }}>
-                                Review
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {payments.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No payment records available yet.</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+            <Tabs defaultValue="payment-review" className="space-y-6">
+              <TabsList className="bg-muted p-1 rounded-lg flex-wrap h-auto">
+                <TabsTrigger value="payment-review">Payment Review</TabsTrigger>
+                <TabsTrigger value="overdue-reminders">Overdue Reminders</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="payment-review" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t("admin.payments.title")}</CardTitle>
+                    <CardDescription>Review real subscription and add-on payment records from Supabase.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto overscroll-contain">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Business</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Provider</TableHead>
+                            <TableHead>Amount</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {payments.map((payment) => (
+                            <TableRow key={payment.id}>
+                              <TableCell className="font-semibold">{payment.businesses?.business_name || payment.metadata?.business_name || "Unknown business"}</TableCell>
+                              <TableCell>{payment.metadata?.change_type || payment.metadata?.kind || payment.payment_type || "-"}</TableCell>
+                              <TableCell>{payment.provider || "-"}</TableCell>
+                              <TableCell>AWG {Number(payment.amount || 0).toFixed(2)}</TableCell>
+                              <TableCell>
+                                <Badge variant={payment.status === "approved" ? "default" : payment.status === "rejected" ? "destructive" : "secondary"}>
+                                  {String(payment.status || "pending").toUpperCase()}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{new Date(payment.created_at).toLocaleString(locale)}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  {payment.payment_proof_url && (
+                                    <Button type="button" variant="outline" size="sm" onClick={() => handleOpenAdminPaymentProof(payment)}>
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                  <Button type="button" size="sm" onClick={() => { setReviewingPayment(payment); setAdminNotes(payment.admin_notes || ""); }}>
+                                    Review
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {payments.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No payment records available yet.</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="overdue-reminders" className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Overdue businesses</CardTitle>
+                    </CardHeader>
+                    <CardContent><div className="text-3xl font-bold">{overdueReminderSummary?.totalOverdueBusinesses || 0}</div></CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Overdue invoices</CardTitle>
+                    </CardHeader>
+                    <CardContent><div className="text-3xl font-bold">{overdueReminderSummary?.totalOverdueInvoices || 0}</div></CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Dismissed today</CardTitle>
+                    </CardHeader>
+                    <CardContent><div className="text-3xl font-bold">{overdueReminderSummary?.remindersDismissedToday || 0}</div></CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Reminders enabled</CardTitle>
+                    </CardHeader>
+                    <CardContent><div className="text-3xl font-bold">{overdueReminderSummary?.businessesWithRemindersEnabled || 0}</div></CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <CardTitle>Overdue Reminders</CardTitle>
+                      <CardDescription>
+                        Reminder-only controls for overdue subscription invoices. Today is {overdueReminderSummary?.today || "loading"} in Aruba business-local time.
+                      </CardDescription>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="outline" onClick={() => fetchOverdueReminders()} disabled={loadingOverdueReminders}>
+                        {loadingOverdueReminders ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+                        Refresh
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={overdueReminderSummary?.globalEnabled === false ? "outline" : "default"}
+                        onClick={() => handleUpdateOverdueReminderSetting({ action: "global", enabled: overdueReminderSummary?.globalEnabled === false })}
+                        disabled={updatingOverdueReminder === "global"}
+                      >
+                        {updatingOverdueReminder === "global" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+                        {overdueReminderSummary?.globalEnabled === false ? "Enable globally" : "Disable globally"}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto overscroll-contain">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Business</TableHead>
+                            <TableHead>Administrator</TableHead>
+                            <TableHead>Invoice</TableHead>
+                            <TableHead>Due date</TableHead>
+                            <TableHead>Outstanding</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Reminder</TableHead>
+                            <TableHead>Last dismissed</TableHead>
+                            <TableHead className="text-right">Controls</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {overdueReminderInvoices.map((invoice) => (
+                            <TableRow key={invoice.invoiceId}>
+                              <TableCell className="font-semibold">{invoice.businessName}</TableCell>
+                              <TableCell>{invoice.businessAdmin}</TableCell>
+                              <TableCell className="font-mono text-xs">{invoice.invoiceNumber}</TableCell>
+                              <TableCell>{invoice.dueDate || "-"}</TableCell>
+                              <TableCell>{invoice.currency || "AWG"} {Number(invoice.outstandingAmount || 0).toFixed(2)}</TableCell>
+                              <TableCell><Badge variant="destructive">{String(invoice.status || "overdue").toUpperCase()}</Badge></TableCell>
+                              <TableCell>
+                                <div className="flex flex-col gap-1">
+                                  <Badge variant={invoice.reminderEnabled ? "default" : "secondary"}>{invoice.reminderEnabled ? "Enabled" : "Disabled"}</Badge>
+                                  {invoice.dismissedToday && <span className="text-xs text-muted-foreground">Dismissed today</span>}
+                                </div>
+                              </TableCell>
+                              <TableCell>{invoice.lastDismissedOn || "-"}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex flex-wrap justify-end gap-2">
+                                  <Button type="button" size="sm" variant="outline" onClick={() => setPreviewOverdueInvoice(invoice)}>
+                                    Preview popup
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={invoice.reminderEnabled ? "outline" : "default"}
+                                    onClick={() => handleUpdateOverdueReminderSetting({ action: "business", businessId: invoice.businessId, enabled: !invoice.reminderEnabled })}
+                                    disabled={updatingOverdueReminder === invoice.businessId || overdueReminderSummary?.globalEnabled === false}
+                                  >
+                                    {updatingOverdueReminder === invoice.businessId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                    {invoice.reminderEnabled ? "Disable" : "Enable"}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {overdueReminderInvoices.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={9} className="py-6 text-center text-muted-foreground">
+                                No genuinely overdue invoices found.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="plans" className="min-h-0 space-y-6 pb-8">
@@ -5550,6 +5775,29 @@ export default function AdminDashboard() {
                   </>
                 )}
               </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {previewOverdueInvoice && (
+        <Dialog open={!!previewOverdueInvoice} onOpenChange={(open) => !open && setPreviewOverdueInvoice(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Outstanding Invoice Reminder</DialogTitle>
+              <DialogDescription>
+                Your subscription invoice is overdue. Please contact Royalty Stamp administration to settle your outstanding invoice.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 rounded-xl border bg-muted/30 p-4 text-sm">
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business</span><span className="font-semibold text-right">{previewOverdueInvoice.businessName}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Invoice number</span><span className="font-mono text-right">{previewOverdueInvoice.invoiceNumber}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Due date</span><span className="font-semibold text-right">{previewOverdueInvoice.dueDate || "-"}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Outstanding amount</span><span className="font-semibold text-right">{previewOverdueInvoice.currency || "AWG"} {Number(previewOverdueInvoice.outstandingAmount || 0).toFixed(2)}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Status</span><Badge variant="destructive">Overdue</Badge></div>
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={() => setPreviewOverdueInvoice(null)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
