@@ -102,6 +102,10 @@ type ManualReminderHistory = {
   invoiceNumber: string | null;
   outstandingAmount: number | null;
   currency: string | null;
+  amountDue: number | null;
+  billingPeriod: string | null;
+  paymentDueDate: string | null;
+  referenceNote: string | null;
 };
 
 const defaultManualReminderMessage = `Dear Business Administrator,
@@ -566,6 +570,10 @@ export default function AdminDashboard() {
   const [manualReminderMessage, setManualReminderMessage] = useState(defaultManualReminderMessage);
   const [sendingManualReminder, setSendingManualReminder] = useState(false);
   const [previewManualReminderOpen, setPreviewManualReminderOpen] = useState(false);
+  const [manualReminderAmountDue, setManualReminderAmountDue] = useState("");
+  const [manualReminderBillingPeriod, setManualReminderBillingPeriod] = useState("");
+  const [manualReminderDueDate, setManualReminderDueDate] = useState("");
+  const [manualReminderReferenceNote, setManualReminderReferenceNote] = useState("");
 
   // Customer deletion states
   const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
@@ -3425,6 +3433,12 @@ export default function AdminDashboard() {
           action: "send_manual",
           businessId: selectedManualReminderBusiness.businessId,
           message: manualReminderMessage,
+          manualPaymentDetails: {
+            amountDue: manualReminderAmountDue.trim() ? Number(manualReminderAmountDue) : null,
+            billingPeriod: manualReminderBillingPeriod,
+            paymentDueDate: manualReminderDueDate,
+            referenceNote: manualReminderReferenceNote,
+          },
         }),
       });
 
@@ -4214,7 +4228,7 @@ export default function AdminDashboard() {
                                   <TableCell>
                                     <div className="flex flex-col gap-1">
                                       <Badge variant={business.eligible ? "default" : "secondary"}>{business.invoiceStatus}</Badge>
-                                      {!business.eligible && <span className="max-w-56 text-xs text-muted-foreground">{business.reason}</span>}
+                                      <span className="max-w-56 text-xs text-muted-foreground">{business.reason}</span>
                                     </div>
                                   </TableCell>
                                 </TableRow>
@@ -4246,6 +4260,48 @@ export default function AdminDashboard() {
                           ) : (
                             <p className="mt-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Select a business from the list to compose a manual reminder.</p>
                           )}
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="manual-reminder-amount">Amount due (AWG, optional)</Label>
+                            <Input
+                              id="manual-reminder-amount"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={manualReminderAmountDue}
+                              onChange={(event) => setManualReminderAmountDue(event.target.value)}
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="manual-reminder-period">Billing month / period (optional)</Label>
+                            <Input
+                              id="manual-reminder-period"
+                              value={manualReminderBillingPeriod}
+                              onChange={(event) => setManualReminderBillingPeriod(event.target.value)}
+                              placeholder="November 2026"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="manual-reminder-due-date">Payment due date (optional)</Label>
+                            <Input
+                              id="manual-reminder-due-date"
+                              type="date"
+                              value={manualReminderDueDate}
+                              onChange={(event) => setManualReminderDueDate(event.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="manual-reminder-reference">Reference / note (optional)</Label>
+                            <Input
+                              id="manual-reminder-reference"
+                              value={manualReminderReferenceNote}
+                              onChange={(event) => setManualReminderReferenceNote(event.target.value)}
+                              placeholder="Monthly manual payment"
+                            />
+                          </div>
                         </div>
 
                         <div className="space-y-2">
@@ -4297,6 +4353,7 @@ export default function AdminDashboard() {
                             <TableHead>Type</TableHead>
                             <TableHead>Message</TableHead>
                             <TableHead>Sent</TableHead>
+                            <TableHead>Payment details</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Dismissed</TableHead>
                             <TableHead>Sent by</TableHead>
@@ -4312,6 +4369,15 @@ export default function AdminDashboard() {
                                 <p className="line-clamp-3 whitespace-pre-line text-sm text-muted-foreground">{reminder.message}</p>
                               </TableCell>
                               <TableCell>{new Date(reminder.sentAt).toLocaleString(locale)}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                <div className="space-y-1">
+                                  {reminder.amountDue !== null && <div>{reminder.currency || "AWG"} {Number(reminder.amountDue).toFixed(2)}</div>}
+                                  {reminder.billingPeriod && <div>{reminder.billingPeriod}</div>}
+                                  {reminder.paymentDueDate && <div>Due {reminder.paymentDueDate}</div>}
+                                  {reminder.referenceNote && <div>{reminder.referenceNote}</div>}
+                                  {reminder.amountDue === null && !reminder.billingPeriod && !reminder.paymentDueDate && !reminder.referenceNote && <span>-</span>}
+                                </div>
+                              </TableCell>
                               <TableCell><Badge variant={reminder.deliveryStatus === "Dismissed" ? "default" : reminder.deliveryStatus === "Displayed" ? "secondary" : "outline"}>{reminder.deliveryStatus}</Badge></TableCell>
                               <TableCell>{reminder.dismissedAt ? new Date(reminder.dismissedAt).toLocaleString(locale) : "-"}</TableCell>
                               <TableCell>{reminder.sentBy}</TableCell>
@@ -4319,7 +4385,7 @@ export default function AdminDashboard() {
                           ))}
                           {manualReminderHistory.length === 0 && (
                             <TableRow>
-                              <TableCell colSpan={8} className="py-6 text-center text-muted-foreground">No manual reminders have been sent yet.</TableCell>
+                              <TableCell colSpan={9} className="py-6 text-center text-muted-foreground">No manual reminders have been sent yet.</TableCell>
                             </TableRow>
                           )}
                         </TableBody>
@@ -6118,8 +6184,10 @@ export default function AdminDashboard() {
               <div className="space-y-2 rounded-xl border bg-background p-4 text-sm">
                 <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business</span><span className="font-semibold text-right">{selectedManualReminderBusiness.businessName}</span></div>
                 <div className="flex justify-between gap-4"><span className="text-muted-foreground">Invoice</span><span className="font-mono text-right">{selectedManualReminderBusiness.latestInvoiceNumber || "-"}</span></div>
-                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Due date</span><span className="font-semibold text-right">{selectedManualReminderBusiness.latestDueDate || "-"}</span></div>
-                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Outstanding</span><span className="font-semibold text-right">{selectedManualReminderBusiness.currency} {Number(selectedManualReminderBusiness.outstandingBalance || 0).toFixed(2)}</span></div>
+                {manualReminderBillingPeriod.trim() && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Billing period</span><span className="font-semibold text-right">{manualReminderBillingPeriod}</span></div>}
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Due date</span><span className="font-semibold text-right">{manualReminderDueDate || selectedManualReminderBusiness.latestDueDate || "-"}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Outstanding</span><span className="font-semibold text-right">{selectedManualReminderBusiness.currency} {Number(manualReminderAmountDue.trim() ? Number(manualReminderAmountDue) : selectedManualReminderBusiness.outstandingBalance || 0).toFixed(2)}</span></div>
+                {manualReminderReferenceNote.trim() && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reference</span><span className="font-semibold text-right">{manualReminderReferenceNote}</span></div>}
                 <div className="flex justify-between gap-4"><span className="text-muted-foreground">Sent date</span><span className="font-semibold text-right">{new Date().toLocaleString(locale)}</span></div>
               </div>
             )}

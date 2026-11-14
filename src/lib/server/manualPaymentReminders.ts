@@ -43,6 +43,17 @@ export type ManualReminderHistoryRecord = {
   invoiceNumber: string | null;
   outstandingAmount: number | null;
   currency: string | null;
+  amountDue: number | null;
+  billingPeriod: string | null;
+  paymentDueDate: string | null;
+  referenceNote: string | null;
+};
+
+export type ManualPaymentReminderDetails = {
+  amountDue?: number | null;
+  billingPeriod?: string | null;
+  paymentDueDate?: string | null;
+  referenceNote?: string | null;
 };
 
 function metadataObject(value: unknown): Record<string, unknown> {
@@ -77,6 +88,26 @@ function getPaymentContext(payments: any[]): ManualReminderPaymentContext {
     outstandingBalance,
     currency: latestPayment?.currency || "AWG",
     dueDate: metadataString(metadata, ["due_date", "invoice_due_date", "payment_due_date", "dueDate", "invoiceDueDate", "paymentDueDate"]),
+  };
+}
+
+function sanitizeManualPaymentDetails(details: ManualPaymentReminderDetails = {}) {
+  const amountDue = details.amountDue === null || details.amountDue === undefined || details.amountDue === ""
+    ? null
+    : Number(details.amountDue);
+  const billingPeriod = typeof details.billingPeriod === "string" && details.billingPeriod.trim() ? details.billingPeriod.trim().slice(0, 120) : null;
+  const paymentDueDate = typeof details.paymentDueDate === "string" && details.paymentDueDate.trim() ? details.paymentDueDate.trim().slice(0, 40) : null;
+  const referenceNote = typeof details.referenceNote === "string" && details.referenceNote.trim() ? details.referenceNote.trim().slice(0, 500) : null;
+
+  if (amountDue !== null && (!Number.isFinite(amountDue) || amountDue < 0)) {
+    throw new Error("Manual amount due must be a valid non-negative AWG amount.");
+  }
+
+  return {
+    amountDue,
+    billingPeriod,
+    paymentDueDate,
+    referenceNote,
   };
 }
 
@@ -141,7 +172,7 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
   const businesses: ManualReminderBusinessOption[] = (businessesResult.data || []).map((business: any) => {
     const ownerProfile = business.owner_id ? profileById.get(String(business.owner_id)) : null;
     const paymentContext = getPaymentContext(paymentsByBusiness.get(String(business.id)) || []);
-    const eligible = isDocumentedOutstandingBusiness(business, paymentContext);
+    const hasAdministrator = Boolean(business.owner_id);
 
     return {
       businessId: String(business.id),
@@ -153,8 +184,10 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
       invoiceStatus: paymentContext.invoiceStatus,
       outstandingBalance: paymentContext.outstandingBalance,
       currency: paymentContext.currency,
-      eligible,
-      reason: eligible ? "Outstanding payment record or payment-due subscription status found." : "No open subscription payment or payment-due subscription status found.",
+      eligible: hasAdministrator,
+      reason: hasAdministrator
+        ? "Manual reminders can be sent to this business. Invoice and contract records are optional for manual reminders."
+        : "Selected business has no administrator user to receive this reminder.",
       latestInvoiceId: paymentContext.invoiceId,
       latestInvoiceNumber: paymentContext.invoiceNumber,
       latestDueDate: paymentContext.dueDate,
@@ -180,13 +213,23 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
       invoiceNumber: typeof metadata.invoice_number === "string" ? metadata.invoice_number : null,
       outstandingAmount: typeof metadata.outstanding_amount === "number" ? metadata.outstanding_amount : null,
       currency: typeof metadata.currency === "string" ? metadata.currency : null,
+      amountDue: typeof metadata.manual_amount_due === "number" ? metadata.manual_amount_due : null,
+      billingPeriod: typeof metadata.billing_period === "string" ? metadata.billing_period : null,
+      paymentDueDate: typeof metadata.manual_due_date === "string" ? metadata.manual_due_date : null,
+      referenceNote: typeof metadata.reference_note === "string" ? metadata.reference_note : null,
     };
   });
 
   return { businesses, history };
 }
 
-export async function createManualPaymentReminder(admin: SupabaseClient, adminUserId: string, businessId: string, message: string) {
+export async function createManualPaymentReminder(
+  admin: SupabaseClient,
+  adminUserId: string,
+  businessId: string,
+  message: string,
+  details: ManualPaymentReminderDetails = {}
+) {
   const { businesses } = await getManualReminderAdminData(admin);
   const selectedBusiness = businesses.find((business) => business.businessId === businessId);
 
@@ -207,6 +250,8 @@ export async function createManualPaymentReminder(admin: SupabaseClient, adminUs
     throw new Error("Reminder message must be between 20 and 2,000 characters.");
   }
 
+  const manualDetails = sanitizeManualPaymentDetails(details);
+
   const { data, error } = await admin
     .from("manual_payment_reminders")
     .insert({
@@ -225,6 +270,11 @@ export async function createManualPaymentReminder(admin: SupabaseClient, adminUs
         currency: selectedBusiness.currency,
         contract_status: selectedBusiness.contractStatus,
         subscription_plan: selectedBusiness.subscriptionPlan,
+        manual_amount_due: manualDetails.amountDue,
+        billing_period: manualDetails.billingPeriod,
+        manual_due_date: manualDetails.paymentDueDate,
+        reference_note: manualDetails.referenceNote,
+        source: "manual_superadmin_entry",
       },
     })
     .select("id")
@@ -242,6 +292,10 @@ export async function createManualPaymentReminder(admin: SupabaseClient, adminUs
       invoice_id: selectedBusiness.latestInvoiceId,
       invoice_number: selectedBusiness.latestInvoiceNumber,
       outstanding_amount: selectedBusiness.outstandingBalance,
+      manual_amount_due: manualDetails.amountDue,
+      billing_period: manualDetails.billingPeriod,
+      manual_due_date: manualDetails.paymentDueDate,
+      reference_note: manualDetails.referenceNote,
       currency: selectedBusiness.currency,
     },
   });
@@ -283,9 +337,11 @@ export async function getPendingManualRemindersForBusinesses(admin: SupabaseClie
       sentAt: reminder.sent_at,
       invoiceId: reminder.subscription_payment_id || null,
       invoiceNumber: typeof metadata.invoice_number === "string" ? metadata.invoice_number : null,
-      dueDate: typeof metadata.due_date === "string" ? metadata.due_date : null,
-      outstandingAmount: typeof metadata.outstanding_amount === "number" ? metadata.outstanding_amount : null,
+      dueDate: typeof metadata.manual_due_date === "string" ? metadata.manual_due_date : typeof metadata.due_date === "string" ? metadata.due_date : null,
+      outstandingAmount: typeof metadata.manual_amount_due === "number" ? metadata.manual_amount_due : typeof metadata.outstanding_amount === "number" ? metadata.outstanding_amount : null,
       currency: typeof metadata.currency === "string" ? metadata.currency : "AWG",
+      billingPeriod: typeof metadata.billing_period === "string" ? metadata.billing_period : null,
+      referenceNote: typeof metadata.reference_note === "string" ? metadata.reference_note : null,
       status: "Payment reminder",
     };
   });

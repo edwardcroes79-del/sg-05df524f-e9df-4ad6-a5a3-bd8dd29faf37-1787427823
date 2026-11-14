@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     if (req.method === "POST") {
-      const { action, businessId, message } = req.body || {};
+      const { action, businessId, message, manualPaymentDetails } = req.body || {};
 
       if (action !== "send_manual") {
         return res.status(400).json({ error: "Unsupported overdue reminder action." });
@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return res.status(400).json({ error: "A reminder message is required." });
       }
 
-      const manualReminderId = await createManualPaymentReminder(admin, adminUserId, businessId, message);
+      const manualReminderId = await createManualPaymentReminder(admin, adminUserId, businessId, message, manualPaymentDetails || {});
       const [automaticData, manualData] = await Promise.all([
         getOverdueReminderData(admin),
         getManualReminderAdminData(admin),

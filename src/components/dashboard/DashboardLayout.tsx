@@ -76,6 +76,8 @@ type ManualPaymentReminder = {
   dueDate: string | null;
   outstandingAmount: number | null;
   currency: string;
+  billingPeriod?: string | null;
+  referenceNote?: string | null;
   status: string;
 };
 
@@ -1468,10 +1470,22 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         <span className="font-semibold text-right">{reminder.dueDate}</span>
                       </div>
                     )}
+                    {reminder.billingPeriod && (
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Billing period</span>
+                        <span className="font-semibold text-right">{reminder.billingPeriod}</span>
+                      </div>
+                    )}
                     {reminder.outstandingAmount !== null && (
                       <div className="flex justify-between gap-4">
                         <span className="text-muted-foreground">Outstanding amount</span>
                         <span className="font-semibold text-right">{reminder.currency || "AWG"} {Number(reminder.outstandingAmount || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {reminder.referenceNote && (
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Reference</span>
+                        <span className="font-semibold text-right">{reminder.referenceNote}</span>
                       </div>
                     )}
                   </div>
