@@ -295,7 +295,7 @@ export async function getPendingManualRemindersForBusinesses(admin: SupabaseClie
 export async function dismissManualReminder(admin: SupabaseClient, userId: string, businessIds: string[], reminderId: string) {
   const { data: reminder, error: readError } = await admin
     .from("manual_payment_reminders")
-    .select("id, business_id, recipient_user_id, dismissed_at")
+    .select("id, business_id, recipient_user_id, displayed_at, dismissed_at")
     .eq("id", reminderId)
     .maybeSingle();
 

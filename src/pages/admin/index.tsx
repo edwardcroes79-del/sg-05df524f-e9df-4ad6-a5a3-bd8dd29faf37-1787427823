@@ -4161,6 +4161,172 @@ export default function AdminDashboard() {
                     </div>
                   </CardContent>
                 </Card>
+
+                <Card className="border-primary/20">
+                  <CardHeader>
+                    <CardTitle>Send Manual Payment Reminder</CardTitle>
+                    <CardDescription>
+                      Send a one-time popup reminder to a selected business administrator. This does not change invoices, contracts, payment status, or automatic daily reminders.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="manual-reminder-search">Search businesses</Label>
+                          <Input
+                            id="manual-reminder-search"
+                            value={manualReminderSearch}
+                            onChange={(event) => setManualReminderSearch(event.target.value)}
+                            placeholder="Search by business, admin, plan, contract, invoice"
+                          />
+                        </div>
+                        <div className="max-h-96 overflow-auto rounded-xl border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Business</TableHead>
+                                <TableHead>Administrator</TableHead>
+                                <TableHead>Contract</TableHead>
+                                <TableHead>Plan</TableHead>
+                                <TableHead>Invoice</TableHead>
+                                <TableHead>Outstanding</TableHead>
+                                <TableHead>Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {filteredManualReminderBusinesses.map((business) => (
+                                <TableRow
+                                  key={business.businessId}
+                                  className={selectedManualReminderBusinessId === business.businessId ? "bg-primary/5" : ""}
+                                  onClick={() => setSelectedManualReminderBusinessId(business.businessId)}
+                                >
+                                  <TableCell>
+                                    <button type="button" className="text-left font-semibold text-foreground hover:text-primary" onClick={() => setSelectedManualReminderBusinessId(business.businessId)}>
+                                      {business.businessName}
+                                    </button>
+                                  </TableCell>
+                                  <TableCell>{business.businessAdmin}</TableCell>
+                                  <TableCell><Badge variant="outline">{business.contractStatus}</Badge></TableCell>
+                                  <TableCell>{business.subscriptionPlan}</TableCell>
+                                  <TableCell className="font-mono text-xs">{business.latestInvoiceNumber || "-"}</TableCell>
+                                  <TableCell>{business.currency || "AWG"} {Number(business.outstandingBalance || 0).toFixed(2)}</TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col gap-1">
+                                      <Badge variant={business.eligible ? "default" : "secondary"}>{business.invoiceStatus}</Badge>
+                                      {!business.eligible && <span className="max-w-56 text-xs text-muted-foreground">{business.reason}</span>}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {filteredManualReminderBusinesses.length === 0 && (
+                                <TableRow>
+                                  <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">No businesses match this search.</TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">Selected business</p>
+                          {selectedManualReminderBusiness ? (
+                            <div className="mt-2 space-y-2 text-sm">
+                              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business</span><span className="font-semibold text-right">{selectedManualReminderBusiness.businessName}</span></div>
+                              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Administrator</span><span className="text-right">{selectedManualReminderBusiness.businessAdmin}</span></div>
+                              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Contract status</span><Badge variant="outline">{selectedManualReminderBusiness.contractStatus}</Badge></div>
+                              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Invoice status</span><span className="font-semibold text-right">{selectedManualReminderBusiness.invoiceStatus}</span></div>
+                              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Outstanding</span><span className="font-semibold text-right">{selectedManualReminderBusiness.currency} {Number(selectedManualReminderBusiness.outstandingBalance || 0).toFixed(2)}</span></div>
+                              <p className={`rounded-lg border p-3 text-xs ${selectedManualReminderBusiness.eligible ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
+                                {selectedManualReminderBusiness.reason}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="mt-2 rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Select a business from the list to compose a manual reminder.</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="manual-reminder-message">Custom reminder message</Label>
+                          <textarea
+                            id="manual-reminder-message"
+                            className="min-h-56 w-full rounded-md border border-input bg-background p-3 text-sm text-foreground"
+                            value={manualReminderMessage}
+                            onChange={(event) => setManualReminderMessage(event.target.value)}
+                          />
+                          <p className="text-xs text-muted-foreground">20–2,000 characters. No payment links or payment processing are added.</p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setPreviewManualReminderOpen(true)}
+                            disabled={!selectedManualReminderBusiness}
+                          >
+                            Preview popup
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={handleSendManualReminder}
+                            disabled={!selectedManualReminderBusiness?.eligible || sendingManualReminder}
+                          >
+                            {sendingManualReminder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+                            Send reminder
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Reminder History</CardTitle>
+                    <CardDescription>Manual reminder delivery history is tracked separately from automatic overdue reminders.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto overscroll-contain">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Business</TableHead>
+                            <TableHead>Recipient</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Message</TableHead>
+                            <TableHead>Sent</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Dismissed</TableHead>
+                            <TableHead>Sent by</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {manualReminderHistory.map((reminder) => (
+                            <TableRow key={reminder.id}>
+                              <TableCell className="font-semibold">{reminder.businessName}</TableCell>
+                              <TableCell>{reminder.recipientAdministrator}</TableCell>
+                              <TableCell><Badge variant="secondary">{reminder.reminderType}</Badge></TableCell>
+                              <TableCell className="max-w-sm">
+                                <p className="line-clamp-3 whitespace-pre-line text-sm text-muted-foreground">{reminder.message}</p>
+                              </TableCell>
+                              <TableCell>{new Date(reminder.sentAt).toLocaleString(locale)}</TableCell>
+                              <TableCell><Badge variant={reminder.deliveryStatus === "Dismissed" ? "default" : reminder.deliveryStatus === "Displayed" ? "secondary" : "outline"}>{reminder.deliveryStatus}</Badge></TableCell>
+                              <TableCell>{reminder.dismissedAt ? new Date(reminder.dismissedAt).toLocaleString(locale) : "-"}</TableCell>
+                              <TableCell>{reminder.sentBy}</TableCell>
+                            </TableRow>
+                          ))}
+                          {manualReminderHistory.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={8} className="py-6 text-center text-muted-foreground">No manual reminders have been sent yet.</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </Tabs>
           </TabsContent>
@@ -5935,6 +6101,38 @@ export default function AdminDashboard() {
           </DialogContent>
         </Dialog>
       )}
+
+      <Dialog open={previewManualReminderOpen} onOpenChange={setPreviewManualReminderOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Payment Reminder</DialogTitle>
+            <DialogDescription>
+              Preview of the manual popup the selected business administrator will see.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="whitespace-pre-line rounded-xl border bg-muted/30 p-4 text-sm text-foreground">
+              {manualReminderMessage}
+            </div>
+            {selectedManualReminderBusiness && (
+              <div className="space-y-2 rounded-xl border bg-background p-4 text-sm">
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business</span><span className="font-semibold text-right">{selectedManualReminderBusiness.businessName}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Invoice</span><span className="font-mono text-right">{selectedManualReminderBusiness.latestInvoiceNumber || "-"}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Due date</span><span className="font-semibold text-right">{selectedManualReminderBusiness.latestDueDate || "-"}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Outstanding</span><span className="font-semibold text-right">{selectedManualReminderBusiness.currency} {Number(selectedManualReminderBusiness.outstandingBalance || 0).toFixed(2)}</span></div>
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Sent date</span><span className="font-semibold text-right">{new Date().toLocaleString(locale)}</span></div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPreviewManualReminderOpen(false)}>Close</Button>
+            <Button type="button" onClick={handleSendManualReminder} disabled={!selectedManualReminderBusiness?.eligible || sendingManualReminder}>
+              {sendingManualReminder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
+              Send reminder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Business Delete Confirmation Dialog */}
       {businessToDelete && (

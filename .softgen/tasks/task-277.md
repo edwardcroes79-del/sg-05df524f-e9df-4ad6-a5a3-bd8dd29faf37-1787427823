@@ -15,14 +15,12 @@ Strict protections: do not modify customer registration/synchronization, invoice
 
 ## Checklist
 - [ ] Inspect existing automatic overdue reminder schema, APIs, Superadmin UI, and Business Admin popup integration
-- [ ] Add minimal database support for manual reminder records, display timestamps, dismissals, and secure RLS
-- [ ] Extend Superadmin overdue reminders API to list eligible businesses, send manual reminders, and return manual/automatic history
-- [ ] Extend Business Admin reminder API to deliver pending manual reminders only to authorized business users
-- [ ] Add Send Manual Payment Reminder UI inside Payment Review → Overdue Reminders with business search, invoice context, editable default message, preview, and send action
-- [ ] Add reminder history UI showing business, recipient, message, sent date, delivery/dismissal status, reminder type, and sender
-- [ ] Add Business Admin manual reminder popup with title, custom message, optional invoice details, sent date, and Close action
-- [ ] Verify manual dismissal does not affect automatic daily overdue reminder dismissal
-- [ ] Run TypeScript/lint/error checks and document test results
+- [x] Add database storage for manual payment reminder records, recipient, custom message, sent/display/dismiss timestamps, invoice/payment metadata, and secure RLS
+- [x] Add Superadmin API support for searchable business reminder options, legitimate outstanding-payment validation, send action, and history
+- [x] Add Business Admin API support for fetching and dismissing pending manual reminders without touching automatic reminders
+- [x] Add Superadmin UI section "Send Manual Payment Reminder" inside Payment Review → Overdue Reminders with business selection, status details, custom message, preview, send action, and history
+- [x] Add Business Admin popup titled "Payment Reminder" with custom message, optional invoice details, sent date, and Close only
+- [ ] Validate TypeScript/lint/build checks and run non-destructive database/API verification
 
 ## Acceptance
 - Superadmin can send a manual popup reminder to an eligible business, including one with no assigned contract, when there is a legitimate outstanding payment or documented payment obligation.

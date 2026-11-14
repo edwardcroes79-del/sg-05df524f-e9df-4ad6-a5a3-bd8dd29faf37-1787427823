@@ -65,6 +65,20 @@ type BusinessOverdueReminderInvoice = {
   status: string;
 };
 
+type ManualPaymentReminder = {
+  id: string;
+  businessId: string;
+  businessName: string;
+  message: string;
+  sentAt: string;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+  dueDate: string | null;
+  outstandingAmount: number | null;
+  currency: string;
+  status: string;
+};
+
 function isContractExpiredForDashboard(businessRecord: any) {
   if (!businessRecord?.contract_end_date) return false;
 
@@ -103,6 +117,7 @@ type BusinessOverdueReminderSnapshot = {
   businessId: string;
   savedAt: number;
   invoices: BusinessOverdueReminderInvoice[];
+  manualReminders: ManualPaymentReminder[];
 };
 
 let businessOverdueReminderSnapshot: BusinessOverdueReminderSnapshot | null = null;
@@ -155,6 +170,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [overdueReminderInvoices, setOverdueReminderInvoices] = useState<BusinessOverdueReminderInvoice[]>([]);
   const [overdueReminderOpen, setOverdueReminderOpen] = useState(false);
   const [dismissingOverdueReminder, setDismissingOverdueReminder] = useState(false);
+  const [manualPaymentReminders, setManualPaymentReminders] = useState<ManualPaymentReminder[]>([]);
+  const [manualPaymentReminderOpen, setManualPaymentReminderOpen] = useState(false);
+  const [dismissingManualReminderId, setDismissingManualReminderId] = useState<string | null>(null);
 
   // What's New states
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
@@ -208,6 +226,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setOverdueReminderOpen(invoices.length > 0);
   };
 
+  const applyManualPaymentReminders = (reminders: ManualPaymentReminder[]) => {
+    setManualPaymentReminders(reminders);
+    setManualPaymentReminderOpen(reminders.length > 0);
+  };
+
   const fetchBusinessOverdueReminder = async (businessId: string, userId: string, accessToken: string) => {
     const cachedSnapshot = businessOverdueReminderSnapshot;
     const hasFreshSnapshot = Boolean(
@@ -219,6 +242,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
     if (hasFreshSnapshot && cachedSnapshot) {
       applyOverdueReminderInvoices(cachedSnapshot.invoices);
+      applyManualPaymentReminders(cachedSnapshot.manualReminders);
       return;
     }
 
@@ -239,17 +263,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         ? result.invoices.filter((invoice: BusinessOverdueReminderInvoice) => invoice.businessId === businessId)
         : [];
 
+      const manualReminders = Array.isArray(result.manualReminders)
+        ? result.manualReminders.filter((reminder: ManualPaymentReminder) => reminder.businessId === businessId)
+        : [];
+
       businessOverdueReminderSnapshot = {
         userId,
         businessId,
         savedAt: Date.now(),
         invoices,
+        manualReminders,
       };
 
       applyOverdueReminderInvoices(invoices);
+      applyManualPaymentReminders(manualReminders);
     } catch (reminderError) {
       console.error("Business overdue reminder check failed:", reminderError);
       applyOverdueReminderInvoices([]);
+      applyManualPaymentReminders([]);
     }
   };
 
@@ -287,6 +318,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         businessId: business.id,
         savedAt: Date.now(),
         invoices: [],
+        manualReminders: manualPaymentReminders,
       };
 
       setOverdueReminderInvoices([]);
@@ -299,6 +331,49 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       });
     } finally {
       setDismissingOverdueReminder(false);
+    }
+  };
+
+  const handleDismissManualPaymentReminder = async (reminderId: string) => {
+    try {
+      setDismissingManualReminderId(reminderId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Not authenticated");
+
+      const response = await fetch("/api/business/overdue-reminder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ manualReminderId: reminderId }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Could not dismiss manual payment reminder.");
+      }
+
+      const nextReminders = manualPaymentReminders.filter((reminder) => reminder.id !== reminderId);
+      businessOverdueReminderSnapshot = business?.id ? {
+        userId: session.user.id,
+        businessId: business.id,
+        savedAt: Date.now(),
+        invoices: overdueReminderInvoices,
+        manualReminders: nextReminders,
+      } : null;
+
+      setManualPaymentReminders(nextReminders);
+      setManualPaymentReminderOpen(nextReminders.length > 0);
+    } catch (dismissError: any) {
+      toast({
+        title: "Manual reminder dismissal failed",
+        description: dismissError.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDismissingManualReminderId(null);
     }
   };
 
@@ -1351,6 +1426,66 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Button type="button" onClick={handleDismissOverdueReminder} disabled={dismissingOverdueReminder}>
                 {dismissingOverdueReminder ? "Closing..." : "Close"}
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={manualPaymentReminderOpen && manualPaymentReminders.length > 0}
+          onOpenChange={(open) => {
+            if (!open && !dismissingManualReminderId && manualPaymentReminders[0]) {
+              void handleDismissManualPaymentReminder(manualPaymentReminders[0].id);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Payment Reminder</DialogTitle>
+              <DialogDescription>
+                A manual payment reminder from Royalty Stamp administration.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              {manualPaymentReminders.slice(0, 1).map((reminder) => (
+                <div key={reminder.id} className="space-y-4">
+                  <div className="whitespace-pre-line rounded-xl border bg-muted/30 p-4 text-sm text-foreground">
+                    {reminder.message}
+                  </div>
+                  <div className="space-y-2 rounded-xl border bg-background p-4 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground">Sent date</span>
+                      <span className="font-semibold text-right">{new Date(reminder.sentAt).toLocaleString()}</span>
+                    </div>
+                    {reminder.invoiceNumber && (
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Invoice number</span>
+                        <span className="font-mono text-right">{reminder.invoiceNumber}</span>
+                      </div>
+                    )}
+                    {reminder.dueDate && (
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Due date</span>
+                        <span className="font-semibold text-right">{reminder.dueDate}</span>
+                      </div>
+                    )}
+                    {reminder.outstandingAmount !== null && (
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground">Outstanding amount</span>
+                        <span className="font-semibold text-right">{reminder.currency || "AWG"} {Number(reminder.outstandingAmount || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="button"
+                      onClick={() => handleDismissManualPaymentReminder(reminder.id)}
+                      disabled={dismissingManualReminderId === reminder.id}
+                    >
+                      {dismissingManualReminderId === reminder.id ? "Closing..." : "Close"}
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </DialogContent>
         </Dialog>
