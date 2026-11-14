@@ -1263,6 +1263,98 @@ export type Database = {
           },
         ]
       }
+      overdue_reminder_business_settings: {
+        Row: {
+          business_id: string
+          enabled: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_id: string
+          enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_id?: string
+          enabled?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overdue_reminder_business_settings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: true
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      overdue_reminder_dismissals: {
+        Row: {
+          business_id: string
+          dismissed_at: string
+          dismissed_by: string
+          dismissed_on: string
+          id: string
+          invoice_id: string
+        }
+        Insert: {
+          business_id: string
+          dismissed_at?: string
+          dismissed_by: string
+          dismissed_on: string
+          id?: string
+          invoice_id: string
+        }
+        Update: {
+          business_id?: string
+          dismissed_at?: string
+          dismissed_by?: string
+          dismissed_on?: string
+          id?: string
+          invoice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overdue_reminder_dismissals_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "overdue_reminder_dismissals_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      overdue_reminder_settings: {
+        Row: {
+          enabled: boolean
+          id: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          enabled?: boolean
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          enabled?: boolean
+          id?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       payment_transactions: {
         Row: {
           amount: number
