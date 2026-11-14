@@ -71,6 +71,47 @@ type OverdueReminderInvoice = {
   lastDismissedOn: string | null;
 };
 
+type ManualReminderBusiness = {
+  businessId: string;
+  businessName: string;
+  businessAdmin: string;
+  recipientUserId: string | null;
+  contractStatus: string;
+  subscriptionPlan: string;
+  invoiceStatus: string;
+  outstandingBalance: number;
+  currency: string;
+  eligible: boolean;
+  reason: string;
+  latestInvoiceId: string | null;
+  latestInvoiceNumber: string | null;
+  latestDueDate: string | null;
+};
+
+type ManualReminderHistory = {
+  id: string;
+  reminderType: "Manual";
+  businessName: string;
+  recipientAdministrator: string;
+  message: string;
+  sentAt: string;
+  displayedAt: string | null;
+  dismissedAt: string | null;
+  deliveryStatus: "Dismissed" | "Displayed" | "Sent";
+  sentBy: string;
+  invoiceNumber: string | null;
+  outstandingAmount: number | null;
+  currency: string | null;
+};
+
+const defaultManualReminderMessage = `Dear Business Administrator,
+
+Our records indicate that your subscription payment is still outstanding. Please contact Royalty Stamp administration to arrange settlement of your overdue payment.
+
+Thank you for your cooperation.
+
+Royalty Stamp Administration`;
+
 function notificationKey(sourceType: string, sourceId: string) {
   return `${sourceType}:${sourceId}`;
 }
@@ -518,6 +559,13 @@ export default function AdminDashboard() {
   const [loadingOverdueReminders, setLoadingOverdueReminders] = useState(false);
   const [updatingOverdueReminder, setUpdatingOverdueReminder] = useState<string | null>(null);
   const [previewOverdueInvoice, setPreviewOverdueInvoice] = useState<OverdueReminderInvoice | null>(null);
+  const [manualReminderBusinesses, setManualReminderBusinesses] = useState<ManualReminderBusiness[]>([]);
+  const [manualReminderHistory, setManualReminderHistory] = useState<ManualReminderHistory[]>([]);
+  const [manualReminderSearch, setManualReminderSearch] = useState("");
+  const [selectedManualReminderBusinessId, setSelectedManualReminderBusinessId] = useState("");
+  const [manualReminderMessage, setManualReminderMessage] = useState(defaultManualReminderMessage);
+  const [sendingManualReminder, setSendingManualReminder] = useState(false);
+  const [previewManualReminderOpen, setPreviewManualReminderOpen] = useState(false);
 
   // Customer deletion states
   const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
@@ -829,10 +877,14 @@ export default function AdminDashboard() {
 
       setOverdueReminderSummary(result.summary || null);
       setOverdueReminderInvoices(result.invoices || []);
+      setManualReminderBusinesses(result.manualBusinesses || []);
+      setManualReminderHistory(result.manualHistory || []);
     } catch (err) {
       console.error("Error loading overdue reminders:", err);
       setOverdueReminderSummary(null);
       setOverdueReminderInvoices([]);
+      setManualReminderBusinesses([]);
+      setManualReminderHistory([]);
     } finally {
       setLoadingOverdueReminders(false);
     }
@@ -863,6 +915,8 @@ export default function AdminDashboard() {
 
       setOverdueReminderSummary(result.summary || null);
       setOverdueReminderInvoices(result.invoices || []);
+      setManualReminderBusinesses(result.manualBusinesses || []);
+      setManualReminderHistory(result.manualHistory || []);
       toast({
         title: "Overdue reminders updated",
         description: payload.action === "global" ? "Global reminder availability has been saved." : "The business reminder setting has been saved.",
@@ -3317,6 +3371,85 @@ export default function AdminDashboard() {
       toast({ title: "Dry run failed", description: err.message, variant: "destructive" });
     } finally {
       setRestoringBackup(null);
+    }
+  };
+
+  const selectedManualReminderBusiness = manualReminderBusinesses.find((business) => business.businessId === selectedManualReminderBusinessId) || null;
+
+  const filteredManualReminderBusinesses = manualReminderBusinesses.filter((business) => {
+    const search = manualReminderSearch.trim().toLowerCase();
+    if (!search) return true;
+
+    return [
+      business.businessName,
+      business.businessAdmin,
+      business.contractStatus,
+      business.subscriptionPlan,
+      business.invoiceStatus,
+      business.latestInvoiceNumber || "",
+    ].some((value) => String(value || "").toLowerCase().includes(search));
+  });
+
+  const handleSendManualReminder = async () => {
+    if (!selectedManualReminderBusiness) {
+      toast({
+        title: "Select a business",
+        description: "Choose a business before sending a manual reminder.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!selectedManualReminderBusiness.eligible) {
+      toast({
+        title: "Reminder blocked",
+        description: selectedManualReminderBusiness.reason,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSendingManualReminder(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/overdue-reminders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          action: "send_manual",
+          businessId: selectedManualReminderBusiness.businessId,
+          message: manualReminderMessage,
+        }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Manual payment reminder could not be sent.");
+      }
+
+      setOverdueReminderSummary(result.summary || null);
+      setOverdueReminderInvoices(result.invoices || []);
+      setManualReminderBusinesses(result.manualBusinesses || []);
+      setManualReminderHistory(result.manualHistory || []);
+      setPreviewManualReminderOpen(false);
+      toast({
+        title: "Manual reminder sent",
+        description: `${selectedManualReminderBusiness.businessName} will see the reminder the next time an administrator opens Royalty Stamp.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Manual reminder failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSendingManualReminder(false);
     }
   };
 

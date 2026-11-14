@@ -2,11 +2,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/server/adminAuth";
 import { getArubaLocalDate, getBusinessAdminBusinessIds, getOverdueReminderData } from "@/lib/server/overdueReminders";
+import { dismissManualReminder, getPendingManualRemindersForBusinesses } from "@/lib/server/manualPaymentReminders";
 
 type ApiResponse = {
   success?: boolean;
   summary?: unknown;
   invoices?: unknown[];
+  manualReminders?: unknown[];
   error?: string;
 };
 
@@ -45,15 +47,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const visibleInvoices = data.invoices.filter((invoice) => invoice.reminderEnabled && !invoice.dismissedToday);
 
     if (req.method === "GET") {
+      const manualReminders = await getPendingManualRemindersForBusinesses(admin, user.id, businessIds);
+
       return res.status(200).json({
         success: true,
         summary: { ...data.summary, totalOverdueInvoices: visibleInvoices.length },
         invoices: visibleInvoices,
+        manualReminders,
       });
     }
 
     if (req.method === "POST") {
-      const { businessId, invoiceIds } = req.body || {};
+      const { businessId, invoiceIds, manualReminderId } = req.body || {};
+
+      if (typeof manualReminderId === "string" && manualReminderId) {
+        await dismissManualReminder(admin, user.id, businessIds, manualReminderId);
+        return res.status(200).json({ success: true });
+      }
 
       if (typeof businessId !== "string" || !businessIds.includes(businessId)) {
         return res.status(403).json({ error: "You are not authorized to dismiss reminders for this business." });

@@ -1,11 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createServiceClient, requireSuperAdmin } from "@/lib/server/adminAuth";
 import { getOverdueReminderData } from "@/lib/server/overdueReminders";
+import { createManualPaymentReminder, getManualReminderAdminData } from "@/lib/server/manualPaymentReminders";
 
 type ApiResponse = {
   success?: boolean;
   summary?: unknown;
   invoices?: unknown[];
+  manualBusinesses?: unknown[];
+  manualHistory?: unknown[];
+  manualReminderId?: string;
   error?: string;
 };
 
@@ -15,8 +19,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const admin = createServiceClient();
 
     if (req.method === "GET") {
-      const data = await getOverdueReminderData(admin);
-      return res.status(200).json({ success: true, ...data });
+      const [automaticData, manualData] = await Promise.all([
+        getOverdueReminderData(admin),
+        getManualReminderAdminData(admin),
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        ...automaticData,
+        manualBusinesses: manualData.businesses,
+        manualHistory: manualData.history,
+      });
+    }
+
+    if (req.method === "POST") {
+      const { action, businessId, message } = req.body || {};
+
+      if (action !== "send_manual") {
+        return res.status(400).json({ error: "Unsupported overdue reminder action." });
+      }
+
+      if (typeof businessId !== "string" || !businessId) {
+        return res.status(400).json({ error: "A valid business ID is required." });
+      }
+
+      if (typeof message !== "string") {
+        return res.status(400).json({ error: "A reminder message is required." });
+      }
+
+      const manualReminderId = await createManualPaymentReminder(admin, adminUserId, businessId, message);
+      const [automaticData, manualData] = await Promise.all([
+        getOverdueReminderData(admin),
+        getManualReminderAdminData(admin),
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        ...automaticData,
+        manualBusinesses: manualData.businesses,
+        manualHistory: manualData.history,
+        manualReminderId,
+      });
     }
 
     if (req.method === "PATCH") {
@@ -43,7 +86,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         });
 
         const data = await getOverdueReminderData(admin);
-        return res.status(200).json({ success: true, ...data });
+        const manualData = await getManualReminderAdminData(admin);
+        return res.status(200).json({
+          success: true,
+          ...data,
+          manualBusinesses: manualData.businesses,
+          manualHistory: manualData.history,
+        });
       }
 
       if (action === "business") {
@@ -71,17 +120,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         });
 
         const data = await getOverdueReminderData(admin);
-        return res.status(200).json({ success: true, ...data });
+        const manualData = await getManualReminderAdminData(admin);
+        return res.status(200).json({
+          success: true,
+          ...data,
+          manualBusinesses: manualData.businesses,
+          manualHistory: manualData.history,
+        });
       }
 
       return res.status(400).json({ error: "Unsupported overdue reminder update action." });
     }
 
-    res.setHeader("Allow", "GET, PATCH");
+    res.setHeader("Allow", "GET, POST, PATCH");
     return res.status(405).json({ error: "Method not allowed" });
   } catch (error: any) {
     const message = error?.message || "Overdue reminder request failed.";
-    const status = message.includes("authenticated") ? 401 : message.includes("Super Admin") ? 403 : 500;
+    const status = message.includes("authenticated") ? 401 : message.includes("Super Admin") ? 403 : message.includes("required") || message.includes("not found") || message.includes("No open") || message.includes("administrator user") || message.includes("between 20") ? 400 : 500;
     return res.status(status).json({ error: message });
   }
 }
