@@ -118,8 +118,7 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
         displayed_at,
         dismissed_at,
         metadata,
-        businesses ( business_name ),
-        profiles!manual_payment_reminders_sent_by_fkey ( email, full_name )
+        businesses ( business_name )
       `)
       .order("sent_at", { ascending: false })
       .limit(100),
@@ -164,7 +163,7 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
 
   const history: ManualReminderHistoryRecord[] = (historyResult.data || []).map((reminder: any) => {
     const business = Array.isArray(reminder.businesses) ? reminder.businesses[0] : reminder.businesses;
-    const sender = Array.isArray(reminder.profiles) ? reminder.profiles[0] : reminder.profiles;
+    const sender = reminder.sent_by ? profileById.get(String(reminder.sent_by)) : null;
     const metadata = metadataObject(reminder.metadata);
 
     return {
