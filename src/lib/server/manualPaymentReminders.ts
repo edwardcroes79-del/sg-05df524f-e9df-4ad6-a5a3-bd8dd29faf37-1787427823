@@ -50,7 +50,7 @@ export type ManualReminderHistoryRecord = {
 };
 
 export type ManualPaymentReminderDetails = {
-  amountDue?: number | null;
+  amountDue?: number | string | null;
   billingPeriod?: string | null;
   paymentDueDate?: string | null;
   referenceNote?: string | null;
