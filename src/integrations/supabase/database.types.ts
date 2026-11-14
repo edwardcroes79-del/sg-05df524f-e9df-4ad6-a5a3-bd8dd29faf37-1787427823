@@ -1263,6 +1263,60 @@ export type Database = {
           },
         ]
       }
+      manual_payment_reminders: {
+        Row: {
+          business_id: string
+          dismissed_at: string | null
+          displayed_at: string | null
+          id: string
+          message: string
+          metadata: Json
+          recipient_user_id: string | null
+          sent_at: string
+          sent_by: string
+          subscription_payment_id: string | null
+        }
+        Insert: {
+          business_id: string
+          dismissed_at?: string | null
+          displayed_at?: string | null
+          id?: string
+          message: string
+          metadata?: Json
+          recipient_user_id?: string | null
+          sent_at?: string
+          sent_by: string
+          subscription_payment_id?: string | null
+        }
+        Update: {
+          business_id?: string
+          dismissed_at?: string | null
+          displayed_at?: string | null
+          id?: string
+          message?: string
+          metadata?: Json
+          recipient_user_id?: string | null
+          sent_at?: string
+          sent_by?: string
+          subscription_payment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_payment_reminders_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_payment_reminders_subscription_payment_id_fkey"
+            columns: ["subscription_payment_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       overdue_reminder_business_settings: {
         Row: {
           business_id: string
