@@ -28,6 +28,11 @@ type LoyaltyProgramOption = {
   reward_title: string;
 };
 
+type BusinessLocationOption = {
+  id: string;
+  status?: string | null;
+};
+
 function getSecondsRemaining(expiresAt: string | null) {
   if (!expiresAt) return 0;
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 1000));
@@ -40,6 +45,50 @@ function formatCountdown(totalSeconds: number) {
   return `${minutes}:${seconds}`;
 }
 
+async function resolveAuthorizedLocationId(businessId: string) {
+  if (typeof window === "undefined") {
+    return { locationId: "", accessibleIds: [] as string[] };
+  }
+
+  const storedLocationId = window.localStorage.getItem(`active_location_${businessId}`) || "";
+  const normalizedStoredLocationId = storedLocationId === "all" ? "" : storedLocationId;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { locationId: "", accessibleIds: [] as string[] };
+    }
+
+    const response = await fetch(`/api/business/locations?business_id=${encodeURIComponent(businessId)}`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        Accept: "application/json",
+      },
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success || !Array.isArray(result.locations)) {
+      return { locationId: "", accessibleIds: [] as string[] };
+    }
+
+    const accessibleIds = result.locations
+      .filter((location: BusinessLocationOption) => location?.id && location.status !== "inactive")
+      .map((location: BusinessLocationOption) => String(location.id));
+
+    if (!normalizedStoredLocationId) {
+      return { locationId: accessibleIds.length === 1 ? accessibleIds[0] : "", accessibleIds };
+    }
+
+    if (accessibleIds.includes(normalizedStoredLocationId)) {
+      return { locationId: normalizedStoredLocationId, accessibleIds };
+    }
+
+    return { locationId: accessibleIds.length === 1 ? accessibleIds[0] : "", accessibleIds };
+  } catch {
+    return { locationId: "", accessibleIds: [] as string[] };
+  }
+}
+
 export default function QuickStampQrPage() {
   const { toast } = useToast();
   const { t } = useI18n();
@@ -48,6 +97,7 @@ export default function QuickStampQrPage() {
   const [programs, setPrograms] = useState<LoyaltyProgramOption[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState("");
   const [activeLocationId, setActiveLocationId] = useState("");
+  const [accessibleLocationIds, setAccessibleLocationIds] = useState<string[]>([]);
   const [tokenData, setTokenData] = useState<QuickStampToken | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -67,7 +117,7 @@ export default function QuickStampQrPage() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=520x520&margin=14&data=${encodeURIComponent(qrUrl)}`;
   }, [qrUrl]);
 
-  const refreshToken = useCallback(async (resolvedBusinessId: string, programId: string) => {
+  const refreshToken = useCallback(async (resolvedBusinessId: string, programId: string, locationIdOverride?: string) => {
     if (!programId) {
       setTokenData(null);
       setSecondsRemaining(0);
@@ -89,8 +139,8 @@ export default function QuickStampQrPage() {
         p_loyalty_program_id: programId,
       };
 
-      if (activeLocationId) {
-        tokenParams.p_location_id = activeLocationId;
+      if (locationIdOverride !== undefined ? locationIdOverride : activeLocationId) {
+        tokenParams.p_location_id = locationIdOverride !== undefined ? locationIdOverride : activeLocationId;
       }
 
       const { data, error } = await (supabase as any).rpc("generate_quick_stamp_qr_token", tokenParams);
@@ -161,10 +211,11 @@ export default function QuickStampQrPage() {
       setBusinessId(resolvedBusiness.id);
       setBusinessName(resolvedBusiness.business_name || "Royalty Stamp");
 
-      if (typeof window !== "undefined") {
-        const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusiness.id}`) || "";
-        setActiveLocationId(storedLocationId === "all" ? "" : storedLocationId);
-      }
+      const authorizedLocation = await resolveAuthorizedLocationId(resolvedBusiness.id);
+      if (!mounted) return;
+
+      setActiveLocationId(authorizedLocation.locationId);
+      setAccessibleLocationIds(authorizedLocation.accessibleIds);
 
       setPrograms(activePrograms);
 
@@ -175,7 +226,7 @@ export default function QuickStampQrPage() {
       }
 
       setSelectedProgramId(firstProgram.id);
-      await refreshToken(resolvedBusiness.id, firstProgram.id);
+      await refreshToken(resolvedBusiness.id, firstProgram.id, authorizedLocation.locationId);
     };
 
     void loadBusiness();
@@ -191,7 +242,13 @@ export default function QuickStampQrPage() {
 
       if (!detail?.businessId || detail.businessId !== businessId) return;
 
-      setActiveLocationId(detail.locationId === "all" ? "" : detail.locationId || "");
+      const nextLocationId = detail.locationId === "all" ? "" : detail.locationId || "";
+      if (nextLocationId && accessibleLocationIds.length > 0 && !accessibleLocationIds.includes(nextLocationId)) {
+        setActiveLocationId(accessibleLocationIds.length === 1 ? accessibleLocationIds[0] : "");
+        return;
+      }
+
+      setActiveLocationId(nextLocationId);
     };
 
     window.addEventListener("royalty-active-location-change", handleActiveLocationChange);
@@ -199,7 +256,7 @@ export default function QuickStampQrPage() {
     return () => {
       window.removeEventListener("royalty-active-location-change", handleActiveLocationChange);
     };
-  }, [businessId]);
+  }, [businessId, accessibleLocationIds]);
 
   useEffect(() => {
     if (!businessId || !selectedProgramId) return;
