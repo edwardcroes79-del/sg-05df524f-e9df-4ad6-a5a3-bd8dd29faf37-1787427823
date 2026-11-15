@@ -22,6 +22,55 @@ interface RegisteredCustomer {
   phone: string | null;
 }
 
+type BusinessLocationOption = {
+  id: string;
+  status?: string | null;
+};
+
+async function resolveAuthorizedLocationId(businessId: string) {
+  if (typeof window === "undefined") {
+    return { locationId: "", accessibleIds: [] as string[] };
+  }
+
+  const storedLocationId = window.localStorage.getItem(`active_location_${businessId}`) || "";
+  const normalizedStoredLocationId = storedLocationId === "all" ? "" : storedLocationId;
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { locationId: "", accessibleIds: [] as string[] };
+    }
+
+    const response = await fetch(`/api/business/locations?business_id=${encodeURIComponent(businessId)}`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        Accept: "application/json",
+      },
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.success || !Array.isArray(result.locations)) {
+      return { locationId: "", accessibleIds: [] as string[] };
+    }
+
+    const accessibleIds = result.locations
+      .filter((location: BusinessLocationOption) => location?.id && location.status !== "inactive")
+      .map((location: BusinessLocationOption) => String(location.id));
+
+    if (!normalizedStoredLocationId) {
+      return { locationId: accessibleIds.length === 1 ? accessibleIds[0] : "", accessibleIds };
+    }
+
+    if (accessibleIds.includes(normalizedStoredLocationId)) {
+      return { locationId: normalizedStoredLocationId, accessibleIds };
+    }
+
+    return { locationId: accessibleIds.length === 1 ? accessibleIds[0] : "", accessibleIds };
+  } catch {
+    return { locationId: "", accessibleIds: [] as string[] };
+  }
+}
+
 export default function ScanQR() {
   const router = useRouter();
   const { toast } = useToast();
@@ -34,6 +83,7 @@ export default function ScanQR() {
   const [canSearchSendStamp, setCanSearchSendStamp] = useState(false);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
   const [activeLocationId, setActiveLocationId] = useState<string>("");
+  const [accessibleLocationIds, setAccessibleLocationIds] = useState<string[]>([]);
   
   // Scanner state - Defaulting to manual so search is immediately visible
   const [scanMode, setScanMode] = useState<"camera" | "manual">("manual");
@@ -288,8 +338,9 @@ export default function ScanQR() {
         setBusiness({ id: resolvedBusinessId });
 
         if (typeof window !== "undefined") {
-          const storedLocationId = window.localStorage.getItem(`active_location_${resolvedBusinessId}`) || "";
-          setActiveLocationId(storedLocationId === "all" ? "" : storedLocationId);
+          const authorizedLocation = await resolveAuthorizedLocationId(resolvedBusinessId);
+          setActiveLocationId(authorizedLocation.locationId);
+          setAccessibleLocationIds(authorizedLocation.accessibleIds);
         }
         
         const { data: progs, error: progsError } = await supabase
@@ -365,7 +416,13 @@ export default function ScanQR() {
 
       if (!detail?.businessId || detail.businessId !== business?.id) return;
 
-      setActiveLocationId(detail.locationId === "all" ? "" : detail.locationId || "");
+      const nextLocationId = detail.locationId === "all" ? "" : detail.locationId || "";
+      if (nextLocationId && accessibleLocationIds.length > 0 && !accessibleLocationIds.includes(nextLocationId)) {
+        setActiveLocationId(accessibleLocationIds.length === 1 ? accessibleLocationIds[0] : "");
+        return;
+      }
+
+      setActiveLocationId(nextLocationId);
     };
 
     window.addEventListener("royalty-active-location-change", handleActiveLocationChange);
@@ -373,7 +430,7 @@ export default function ScanQR() {
     return () => {
       window.removeEventListener("royalty-active-location-change", handleActiveLocationChange);
     };
-  }, [business?.id]);
+  }, [business?.id, accessibleLocationIds]);
 
   // Always keep the ref updated with the latest function closure
   useEffect(() => {
