@@ -1,6 +1,6 @@
 ---
 title: Staff stamp authorization repair
-status: done
+status: in_progress
 priority: urgent
 type: bug
 tags: [stamps, staff, authorization, quick-stamp]
@@ -20,6 +20,9 @@ Investigated and fixed Staff authorization failures in both normal Issue Stamp a
 - [x] Identify whether both failures share the same underlying location/staff authorization cause
 - [x] Apply the smallest secure fix without changing the shared stamp transaction engine or weakening business/location isolation
 - [x] Validate Business Admin remains authorized, authorized Staff succeeds in both flows, and unauthorized Staff remains blocked
+- [ ] Regression: replace Staff QR/stamp location resolution that calls `/api/business/locations` when that endpoint returns 403 for corporate-location-disabled businesses or staff sessions
+- [ ] Regression: prevent non-owner/admin Staff sessions from triggering the dashboard security-alert summary request that returns 403
+- [ ] Regression: validate `/dashboard/scan` no longer emits the reported 403 network errors and both stamp flows still use server-side authorization
 
 ## Acceptance
 - Authorized Staff can issue normal stamps for allowed business/location/program combinations.
