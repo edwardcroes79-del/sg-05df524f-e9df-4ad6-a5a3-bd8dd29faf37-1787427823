@@ -1,6 +1,6 @@
 ---
 title: Staff stamp authorization repair
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [stamps, staff, authorization, quick-stamp]
@@ -10,7 +10,7 @@ position: 279
 ---
 
 ## Notes
-Investigate and fix Staff authorization failures in both normal Issue Stamp and Quick Issue Stamp. Business Admin works, but Staff receives "Not authorized for this location" in normal stamp issuance and Quick Issue Stamp QR generation. The fix must preserve the existing stamp transaction engine, customer confirmation, membership validation, duplicate-scan protection, rate limits, reward creation, stamp history, loyalty records, QR token security, and server-side validation. Do not bypass location authorization or grant unrestricted staff access. Do not modify unrelated customer registration, billing, reminders, contracts, Superadmin, or loyalty transaction history.
+Investigated and fixed Staff authorization failures in both normal Issue Stamp and Quick Issue Stamp. Business Admin worked, but Staff received "Not authorized for this location" because both pages could pass a browser-stored `active_location_<businessId>` directly into the secure stamp/QR RPC. That stored location can be valid for a Business Admin but outside an authorized Staff member's assigned location scope. The fix preserves the existing stamp transaction engine, customer confirmation, membership validation, duplicate-scan protection, rate limits, reward creation, stamp history, loyalty records, QR token security, and server-side validation. No location authorization was bypassed; both flows now resolve a currently accessible business location before calling the existing secure server/RPC checks.
 
 ## Checklist
 - [x] Inspect normal Issue Stamp page/API/RPC path and locate where "Not authorized for this location" is returned
@@ -19,7 +19,7 @@ Investigate and fix Staff authorization failures in both normal Issue Stamp and 
 - [x] Inspect live database functions, policies, and staff/location tables involved in stamp authorization
 - [x] Identify whether both failures share the same underlying location/staff authorization cause
 - [x] Apply the smallest secure fix without changing the shared stamp transaction engine or weakening business/location isolation
-- [ ] Validate Business Admin remains authorized, authorized Staff succeeds in both flows, and unauthorized Staff remains blocked
+- [x] Validate Business Admin remains authorized, authorized Staff succeeds in both flows, and unauthorized Staff remains blocked
 
 ## Acceptance
 - Authorized Staff can issue normal stamps for allowed business/location/program combinations.
