@@ -59,27 +59,42 @@ async function resolveAuthorizedLocationId(businessId: string) {
       return { locationId: "", accessibleIds: [] as string[] };
     }
 
-    const response = await fetch(`/api/business/locations?business_id=${encodeURIComponent(businessId)}`, {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        Accept: "application/json",
-      },
-    });
+    const { data: ownedBusiness } = await supabase
+      .from("businesses")
+      .select("id")
+      .eq("id", businessId)
+      .eq("owner_id", session.user.id)
+      .maybeSingle();
 
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok || !result.success || !Array.isArray(result.locations)) {
+    if (ownedBusiness) {
+      return { locationId: normalizedStoredLocationId, accessibleIds: normalizedStoredLocationId ? [normalizedStoredLocationId] : [] };
+    }
+
+    const { data: membership } = await supabase
+      .from("business_users")
+      .select("id")
+      .eq("business_id", businessId)
+      .eq("user_id", session.user.id)
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    if (!membership?.id) {
       return { locationId: "", accessibleIds: [] as string[] };
     }
 
-    const accessibleIds = result.locations
-      .filter((location: BusinessLocationOption) => location?.id && location.status !== "inactive")
-      .map((location: BusinessLocationOption) => String(location.id));
+    const { data: assignments } = await supabase
+      .from("business_user_locations")
+      .select("location_id, status")
+      .eq("business_user_id", membership.id)
+      .eq("business_id", businessId)
+      .eq("status", "active");
 
-    if (!normalizedStoredLocationId) {
-      return { locationId: accessibleIds.length === 1 ? accessibleIds[0] : "", accessibleIds };
-    }
+    const accessibleIds = (assignments || [])
+      .filter((assignment: { location_id?: string | null; status?: string | null }) => assignment?.location_id && assignment.status !== "inactive")
+      .map((assignment: { location_id?: string | null }) => String(assignment.location_id));
 
-    if (accessibleIds.includes(normalizedStoredLocationId)) {
+    if (normalizedStoredLocationId && accessibleIds.includes(normalizedStoredLocationId)) {
       return { locationId: normalizedStoredLocationId, accessibleIds };
     }
 

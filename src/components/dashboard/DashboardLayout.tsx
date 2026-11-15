@@ -487,6 +487,32 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         }
       });
 
+      const securityAlertsAccessPromise = Promise.all([
+        supabase
+          .from("businesses")
+          .select("owner_id")
+          .eq("id", resolvedBusiness.id)
+          .maybeSingle(),
+        supabase
+          .from("business_users")
+          .select("role, status")
+          .eq("business_id", resolvedBusiness.id)
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
+          .in("role", ["owner", "admin", "corporate_admin"])
+          .maybeSingle(),
+      ]).then(([businessOwnerResult, managerRoleResult]) => {
+        if (businessOwnerResult.error || managerRoleResult.error) {
+          return false;
+        }
+
+        return Boolean(
+          isSuperAdminUser ||
+          businessOwnerResult.data?.owner_id === session.user.id ||
+          managerRoleResult.data
+        );
+      });
+
       const locationsPromise = entitlementsPromise.then(async (entries) => {
         const entitlements = Object.fromEntries(entries) as Record<typeof entitlementKeys[number], boolean>;
         
@@ -513,14 +539,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       });
 
       const [
-        securitySummary,
+        canLoadSecurityAlerts,
         quickStampResult,
         entitlementEntries,
         brandingValue,
         locationBody,
         planResult,
       ] = await Promise.all([
-        loadSecurityAlertsSummary(resolvedBusiness.id, session.access_token),
+        securityAlertsAccessPromise,
         (supabase as any).rpc("business_has_active_quick_stamp_qr", {
           p_business_id: resolvedBusiness.id,
         }),
@@ -533,6 +559,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           .eq("id", resolvedBusiness.subscription_plan || "starter")
           .maybeSingle(),
       ]);
+
+      const securitySummary = canLoadSecurityAlerts
+        ? await loadSecurityAlertsSummary(resolvedBusiness.id, session.access_token)
+        : { visible: false, unreadCount: 0 };
 
       if (quickStampResult.error) {
         console.error("Quick Issue Stamp access error:", quickStampResult.error);
