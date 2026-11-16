@@ -18,6 +18,40 @@ import { fetchCorporateBranding } from "@/contexts/CorporateBrandingContext";
 import { CorporateBrandingSettingsPanel } from "@/components/dashboard/CorporateBrandingSettingsPanel";
 import { Switch } from "@/components/ui/switch";
 
+async function canAccessCorporateBranding(subscriptionPlan: string | null) {
+  if (!subscriptionPlan) {
+    return false;
+  }
+
+  const { data: plan, error: planError } = await supabase
+    .from("subscription_plans")
+    .select("id, status, is_active")
+    .eq("id", subscriptionPlan)
+    .maybeSingle();
+
+  if (planError) {
+    throw planError;
+  }
+
+  if (!plan || plan.status !== "active" || plan.is_active !== true) {
+    return false;
+  }
+
+  const { data: entitlement, error: entitlementError } = await supabase
+    .from("plan_entitlements")
+    .select("boolean_value")
+    .eq("plan_id", subscriptionPlan)
+    .eq("key", "corporate_branding")
+    .eq("value_type", "boolean")
+    .maybeSingle();
+
+  if (entitlementError) {
+    throw entitlementError;
+  }
+
+  return entitlement?.boolean_value === true;
+}
+
 type SetupAssistanceStatus = "pending" | "accepted" | "declined" | "completed";
 
 type SetupAssistanceRequest = {
@@ -131,8 +165,14 @@ export default function SettingsPage() {
     });
 
     try {
-      const brandingResult = await fetchCorporateBranding(data.id, session.access_token);
-      setCorporateBrandingAvailable(brandingResult.status === "available" && brandingResult.can_manage);
+      const brandingEligible = await canAccessCorporateBranding(data.subscription_plan || null);
+
+      if (brandingEligible) {
+        const brandingResult = await fetchCorporateBranding(data.id, session.access_token);
+        setCorporateBrandingAvailable(brandingResult.status === "available" && brandingResult.can_manage);
+      } else {
+        setCorporateBrandingAvailable(false);
+      }
     } catch (brandingError) {
       console.error("Corporate branding settings access error:", brandingError);
       setCorporateBrandingAvailable(false);
