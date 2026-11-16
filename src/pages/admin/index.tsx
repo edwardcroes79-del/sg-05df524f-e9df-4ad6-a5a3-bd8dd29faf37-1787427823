@@ -112,19 +112,26 @@ type SetupRequestRecord = {
   id: string;
   businessId: string;
   businessName: string;
-  status: "pending" | "accepted" | "declined" | "completed";
+  status: "pending" | "accepted" | "ready_for_review" | "declined" | "completed";
   requestedAt: string;
   reviewedAt: string | null;
   requestedBy: string;
   reviewedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  activeSession: { sessionId: string; expiresAt: string } | null;
 };
 
 function getSetupRequestBadgeVariant(status: SetupRequestRecord["status"]) {
   if (status === "accepted" || status === "completed") return "default";
   if (status === "declined") return "destructive";
+  if (status === "ready_for_review") return "outline";
   return "secondary";
+}
+
+function formatSetupRequestStatus(status: SetupRequestRecord["status"]) {
+  if (status === "ready_for_review") return "Ready for Review";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 const defaultManualReminderMessage = `Dear Business Administrator,
@@ -597,6 +604,8 @@ export default function AdminDashboard() {
   const [loadingSetupRequests, setLoadingSetupRequests] = useState(false);
   const [reviewingSetupRequestId, setReviewingSetupRequestId] = useState<string | null>(null);
   const [selectedSetupRequest, setSelectedSetupRequest] = useState<SetupRequestRecord | null>(null);
+  const [openingSetupRequestId, setOpeningSetupRequestId] = useState<string | null>(null);
+  const [revokingSetupSessionId, setRevokingSetupSessionId] = useState<string | null>(null);
 
   // Customer deletion states
   const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
@@ -987,6 +996,64 @@ export default function AdminDashboard() {
       });
     } finally {
       setReviewingSetupRequestId(null);
+    }
+  };
+
+  const handleOpenBusinessSetup = async (requestId: string) => {
+    try {
+      setOpeningSetupRequestId(requestId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/setup-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({ requestId }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success || !result.session?.sessionId) {
+        throw new Error(result.error || "Business setup could not be opened.");
+      }
+
+      router.push(`/admin/setup/${result.session.sessionId}`);
+    } catch (err: any) {
+      toast({ title: "Business setup unavailable", description: err.message, variant: "destructive" });
+      setOpeningSetupRequestId(null);
+    }
+  };
+
+  const handleRevokeSetupSession = async (sessionId: string) => {
+    try {
+      setRevokingSetupSessionId(sessionId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/setup-session", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Setup session could not be revoked.");
+      }
+
+      toast({ title: "Setup session revoked", description: "The remote setup session can no longer perform setup actions." });
+      await fetchSetupRequests(session.access_token);
+    } catch (err: any) {
+      toast({ title: "Revoke failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRevokingSetupSessionId(null);
     }
   };
 
@@ -4497,7 +4564,7 @@ export default function AdminDashboard() {
                 <div>
                   <CardTitle>Setup Requests</CardTitle>
                   <CardDescription>
-                    Review business setup assistance requests from the existing Superadmin dashboard. Accepting or declining only changes request status in Phase 1.
+                    Review business setup assistance requests. Accepted requests can be configured remotely through a 45-minute setup session; changes stay as drafts until the business approves them.
                   </CardDescription>
                 </div>
                 <Button type="button" variant="outline" onClick={() => fetchSetupRequests()} disabled={loadingSetupRequests}>
@@ -4526,8 +4593,13 @@ export default function AdminDashboard() {
                           <TableCell>{new Date(request.requestedAt).toLocaleString(locale)}</TableCell>
                           <TableCell>
                             <Badge variant={getSetupRequestBadgeVariant(request.status)}>
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                              {formatSetupRequestStatus(request.status)}
                             </Badge>
+                            {request.activeSession && (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Session active until {new Date(request.activeSession.expiresAt).toLocaleTimeString(locale)}
+                              </p>
+                            )}
                           </TableCell>
                           <TableCell>
                             {request.reviewedAt ? (
@@ -4544,6 +4616,29 @@ export default function AdminDashboard() {
                               <Button type="button" variant="outline" size="sm" onClick={() => setSelectedSetupRequest(request)}>
                                 View
                               </Button>
+                              {request.status === "accepted" && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleOpenBusinessSetup(request.id)}
+                                  disabled={openingSetupRequestId === request.id}
+                                >
+                                  {openingSetupRequestId === request.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit2 className="mr-2 h-4 w-4" />}
+                                  Open Business Setup
+                                </Button>
+                              )}
+                              {request.activeSession && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleRevokeSetupSession(request.activeSession!.sessionId)}
+                                  disabled={revokingSetupSessionId === request.activeSession.sessionId}
+                                >
+                                  {revokingSetupSessionId === request.activeSession.sessionId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Ban className="mr-2 h-4 w-4" />}
+                                  Revoke session
+                                </Button>
+                              )}
                               {request.status === "pending" && (
                                 <>
                                   <Button
@@ -6403,7 +6498,7 @@ export default function AdminDashboard() {
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business</span><span className="font-semibold text-right">{selectedSetupRequest.businessName}</span></div>
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Requested by</span><span className="text-right">{selectedSetupRequest.requestedBy}</span></div>
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Requested at</span><span className="text-right">{new Date(selectedSetupRequest.requestedAt).toLocaleString(locale)}</span></div>
-              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Status</span><Badge variant={getSetupRequestBadgeVariant(selectedSetupRequest.status)}>{selectedSetupRequest.status.charAt(0).toUpperCase() + selectedSetupRequest.status.slice(1)}</Badge></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Status</span><Badge variant={getSetupRequestBadgeVariant(selectedSetupRequest.status)}>{formatSetupRequestStatus(selectedSetupRequest.status)}</Badge></div>
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reviewed by</span><span className="text-right">{selectedSetupRequest.reviewedBy || "-"}</span></div>
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reviewed at</span><span className="text-right">{selectedSetupRequest.reviewedAt ? new Date(selectedSetupRequest.reviewedAt).toLocaleString(locale) : "-"}</span></div>
             </div>
