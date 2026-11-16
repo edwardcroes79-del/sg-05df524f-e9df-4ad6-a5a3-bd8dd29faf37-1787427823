@@ -679,6 +679,18 @@ export default function SettingsPage() {
             <CardDescription>
               Need help setting up your digital loyalty card? Request assistance from Royalty Stamp and our team will help prepare your loyalty program.
             </CardDescription>
+            <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-foreground">Special introductory offer:</span>
+                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                  FREE!
+                </Badge>
+              </div>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <p>Setup Assistance is currently free. In the future, a one-time fee of AWG 25 per setup request will apply.</p>
+                <p>There are no monthly charges for this service.</p>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-5 pt-6">
             {setupReview?.status === "ready_for_review" && (
