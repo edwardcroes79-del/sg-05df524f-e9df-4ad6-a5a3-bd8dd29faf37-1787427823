@@ -1,3 +1,4 @@
+import type { NextApiResponse } from "next";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const SETUP_SESSION_MINUTES = 45;
@@ -56,6 +57,23 @@ export function assertUuid(value: unknown, label: string): string {
     throw new SetupAccessError(`A valid ${label} is required.`, 400);
   }
   return value;
+}
+
+export function sendSetupError(res: NextApiResponse, error: unknown, fallback: string) {
+  if (error instanceof SetupAccessError) {
+    return res.status(error.status).json({ error: error.message });
+  }
+
+  const message = error instanceof Error ? error.message : "";
+  if (message === "Missing authorization header" || message === "Not authenticated") {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+  if (message === "Super Admin access required") {
+    return res.status(403).json({ error: message });
+  }
+
+  console.error(fallback, error);
+  return res.status(500).json({ error: fallback });
 }
 
 export async function writeSetupAudit(
