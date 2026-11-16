@@ -1,6 +1,6 @@
 ---
 title: Remote business setup workspace
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [setup-assistance, superadmin, card-design, loyalty]
@@ -23,7 +23,11 @@ Must reuse the existing Card Design & Template Customizer and loyalty configurat
 - [x] Add server APIs to start, validate, revoke setup sessions; load/save pending branding, card design, and loyalty drafts; and mark setup Ready for Review — each operation re-validating the session server-side and writing an audit entry
 - [x] Add "Open Business Setup" action for Accepted requests in Superadmin Setup Requests, plus revoke-session control
 - [x] Build the restricted setup workspace page reusing the existing card customizer and loyalty configuration components, with session countdown and "Mark Setup Ready for Review"
-- [ ] Verify Accepted-only access, business binding, expiry and revocation rejection, drafts not touching live settings, audit records, Phase 1 continuity, and that stamp flows were not modified
+- [x] Verify Accepted-only access, business binding, expiry and revocation rejection, drafts not touching live settings, audit records, Phase 1 continuity, and that stamp flows were not modified
+
+## Verification log
+- Verified: type/lint check clean; status constraint, active-request unique index, 45-minute expiry constraint, FKs, RLS enabled with Superadmin read-only policies on setup_sessions/setup_drafts; audit_logs records setup_session.started.
+- Pending manual click-through by user: Pending/Declined blocked, expired/revoked session rejection, business admin blocked from workspace, draft save leaves live program/branding unchanged, Ready for Review transition, Phase 1 and stamp flow regression.
 
 ## Acceptance
 - Superadmin can open a time-limited setup workspace only for Accepted requests and only for that business.
