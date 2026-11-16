@@ -11,8 +11,15 @@ position: 283
 ## Notes
 Clean up only the existing What's New announcements system and replace all current entries with a single new announcement about Setup Assistance. Preserve the announcement system itself and avoid touching unrelated notifications, customer notifications, audit logs, or any loyalty/stamping flows. Inspect the actual implementation and database structure before deleting data. Reuse the current What's New layout, styling, badge system, and any existing CTA/link mechanism.
 
+Inspection findings:
+- The live database schema does not have a dedicated What's New announcements table.
+- The only matching table is `super_admin_notification_reads`, which is unrelated to business-facing What's New content and only stores Superadmin read state.
+- Search results show the current What's New content is hardcoded in `src/components/dashboard/DashboardLayout.tsx`, with announcement blocks around lines 1075-1280.
+- Current visible announcements found in code: Anti-Fraud Protection, Security Alerts, Stamp Correction, New Languages, Quick Issue Stamp, Available Add-ons, and Reward Expiration.
+- Translation strings for the What's New system are routed through `src/lib/i18n.ts`, so the replacement announcement must follow the same translation-key pattern.
+
 ## Checklist
-- [ ] Inspect the What's New UI, announcement data source, and live database schema used by the announcements system
+- [x] Inspect the What's New UI, announcement data source, and live database schema used by the announcements system
 - [ ] Remove only the existing What's New announcement entries and count how many were removed
 - [ ] Add the new "Introducing Setup Assistance!" announcement with New category, provided description, highlights, and CTA
 - [ ] Link the CTA to the existing Business Settings page if the current system supports clickable actions
