@@ -1931,6 +1931,121 @@ export type Database = {
           },
         ]
       }
+      setup_drafts: {
+        Row: {
+          branding: Json
+          business_id: string
+          created_at: string
+          id: string
+          program: Json
+          setup_request_id: string
+          target_program_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          branding?: Json
+          business_id: string
+          created_at?: string
+          id?: string
+          program?: Json
+          setup_request_id: string
+          target_program_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          branding?: Json
+          business_id?: string
+          created_at?: string
+          id?: string
+          program?: Json
+          setup_request_id?: string
+          target_program_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "setup_drafts_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setup_drafts_setup_request_id_fkey"
+            columns: ["setup_request_id"]
+            isOneToOne: true
+            referencedRelation: "setup_assistance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setup_drafts_target_program_id_fkey"
+            columns: ["target_program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      setup_sessions: {
+        Row: {
+          business_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          last_used_at: string | null
+          revoke_reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          setup_request_id: string
+          started_at: string
+          superadmin_user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          setup_request_id: string
+          started_at?: string
+          superadmin_user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          last_used_at?: string | null
+          revoke_reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          setup_request_id?: string
+          started_at?: string
+          superadmin_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "setup_sessions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setup_sessions_setup_request_id_fkey"
+            columns: ["setup_request_id"]
+            isOneToOne: false
+            referencedRelation: "setup_assistance_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stamp_transactions: {
         Row: {
           business_id: string | null
