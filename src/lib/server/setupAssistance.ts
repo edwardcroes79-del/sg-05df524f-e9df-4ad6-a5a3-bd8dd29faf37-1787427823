@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { listActiveSetupSessions } from "@/lib/server/setupSessions";
 
-export type SetupAssistanceStatus = "pending" | "accepted" | "declined" | "completed";
+export type SetupAssistanceStatus = "pending" | "accepted" | "ready_for_review" | "declined" | "completed";
+
+const ACTIVE_SETUP_STATUSES: SetupAssistanceStatus[] = ["pending", "accepted", "ready_for_review"];
 
 type ManagedBusiness = {
   businessId: string;
@@ -109,7 +112,7 @@ export async function listBusinessSetupAssistanceRequests(admin: SupabaseClient,
   }));
 
   const latestRequest = requests[0] || null;
-  const hasActiveRequest = requests.some((request) => request.status === "pending" || request.status === "accepted");
+  const hasActiveRequest = requests.some((request) => ACTIVE_SETUP_STATUSES.includes(request.status));
 
   return {
     businessId: business.businessId,
@@ -127,7 +130,7 @@ export async function createSetupAssistanceRequest(admin: SupabaseClient, userId
     .from("setup_assistance_requests")
     .select("id, status")
     .eq("business_id", business.businessId)
-    .in("status", ["pending", "accepted"])
+    .in("status", ACTIVE_SETUP_STATUSES)
     .limit(1)
     .maybeSingle();
 
@@ -180,10 +183,17 @@ export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
   if (error) throw error;
 
   const userIds = Array.from(new Set((data || []).flatMap((request) => [request.requested_by, request.reviewed_by].filter(Boolean))));
-  const userLabels = await loadUserLabels(admin, userIds.map((id) => String(id)));
+  const [userLabels, activeSessions] = await Promise.all([
+    loadUserLabels(admin, userIds.map((id) => String(id))),
+    listActiveSetupSessions(
+      admin,
+      (data || []).filter((request) => request.status === "accepted").map((request) => String(request.id))
+    ),
+  ]);
 
   return (data || []).map((request) => {
     const business = Array.isArray(request.businesses) ? request.businesses[0] : request.businesses;
+    const activeSession = activeSessions.get(String(request.id)) || null;
     return {
       id: request.id,
       businessId: request.business_id,
@@ -195,6 +205,9 @@ export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
       reviewedBy: request.reviewed_by ? userLabels.get(String(request.reviewed_by)) || "Unknown user" : null,
       createdAt: request.created_at,
       updatedAt: request.updated_at,
+      activeSession: activeSession
+        ? { sessionId: activeSession.sessionId, expiresAt: activeSession.expiresAt }
+        : null,
     };
   });
 }
