@@ -14,6 +14,8 @@ Phase 3 of Setup Assistance. A Business Admin reviews the Phase 2 draft (stored 
 
 Inspection findings: no generic notifications table exists. The Superadmin bell (src/pages/admin/index.tsx ~1374-1520) derives items from source tables and stores per-admin read state in super_admin_notification_reads keyed by (source_type, source_id). Business-side in-app notices only exist as manual_payment_reminders (payment-specific). Decision: derive setup notifications from setup_assistance_requests status/timestamps; Superadmin bell gets a "setup_request" source with source_id = request:status:updated_at so each event is notified once and a revised draft re-notifies. Activation only updates display/config columns on loyalty_programs and businesses; customer_loyalty_cards, stamp_transactions, rewards are never written.
 
+Business review API (/api/business/setup-review): GET → { success, business: {id,name,logo,primary_color,secondary_color}, request: {id,status,readyForReviewAt,reviewRound,changeRequestFeedback,changesRequestedAt,approvedAt,activatedProgramId} | null, draft: {targetProgramId,targetProgram:{id,name,stamp_target,reward_title,template_id}|null,branding,program,updatedAt} | null (only when status is ready_for_review) }. POST {action:"approve",requestId,draftUpdatedAt} → same shape + alreadyCompleted. POST {action:"request_changes",requestId,feedback} → same shape. Errors return { error } with 400/401/403/409/422.
+
 ## Checklist
 - [x] Inspect Phase 2 draft storage, how live program/branding fields are written, existing notification tables, and whether customer progress depends on program fields (stamp target, rewards)
 - [x] Post a brief activation-safety plan based on the actual schema
