@@ -1420,7 +1420,7 @@ export default function AdminDashboard() {
       };
     });
 
-  const setupRequestNotifications: SuperAdminNotification[] = setupRequests.flatMap((request) => {
+  const setupRequestNotifications: SuperAdminNotification[] = setupRequests.flatMap<SuperAdminNotification>((request) => {
     if (request.status === "changes_requested" && request.changesRequestedAt) {
       return [{
         id: notificationKey("setup_request", `${request.id}:changes_requested:${request.changesRequestedAt}`),
