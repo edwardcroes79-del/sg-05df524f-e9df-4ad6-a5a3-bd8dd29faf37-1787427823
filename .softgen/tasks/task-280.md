@@ -17,5 +17,5 @@ position: 280
 - [x] Add Business Settings UI section "Setup Assistance" with description, confirmation dialog, request button, success feedback, and current/latest status display
 - [x] Add Superadmin dashboard section "Setup Requests" with request table, history visibility, and accept/decline actions
 - [x] Validate permissions, duplicate-active-request prevention, and non-regression for existing stamp flows
-- [ ] Fix Setup Requests "Requested by" to show the actual submitting user instead of "Unknown user"
+- [x] Fix Setup Requests "Requested by" to show the actual submitting user instead of "Unknown user"
 - [ ] Verify new and existing setup assistance requests resolve requester display name from full name or email

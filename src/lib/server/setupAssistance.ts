@@ -12,6 +12,43 @@ function profileLabel(profile: any) {
   return profile.full_name || profile.email || "Unknown user";
 }
 
+async function loadUserLabels(admin: SupabaseClient, userIds: string[]) {
+  if (userIds.length === 0) {
+    return new Map<string, string>();
+  }
+
+  const { data: profiles, error: profilesError } = await admin
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", userIds);
+
+  if (profilesError) throw profilesError;
+
+  const labels = new Map<string, string>();
+  const unresolvedUserIds: string[] = [];
+
+  for (const userId of userIds) {
+    const profile = (profiles || []).find((entry) => String(entry.id) === String(userId));
+    const label = profileLabel(profile);
+
+    if (label !== "Unknown user") {
+      labels.set(String(userId), label);
+    } else {
+      unresolvedUserIds.push(String(userId));
+    }
+  }
+
+  for (const userId of unresolvedUserIds) {
+    const authResult = await admin.auth.admin.getUserById(userId);
+    const authEmail = authResult.data.user?.email || null;
+    if (authEmail) {
+      labels.set(String(userId), authEmail);
+    }
+  }
+
+  return labels;
+}
+
 async function resolveManagedBusiness(admin: SupabaseClient, userId: string): Promise<ManagedBusiness> {
   const { data: ownedBusiness, error: ownedBusinessError } = await admin
     .from("businesses")
@@ -143,13 +180,7 @@ export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
   if (error) throw error;
 
   const userIds = Array.from(new Set((data || []).flatMap((request) => [request.requested_by, request.reviewed_by].filter(Boolean))));
-  const { data: profiles, error: profilesError } = userIds.length > 0
-    ? await admin.from("profiles").select("id, full_name, email").in("id", userIds)
-    : { data: [], error: null };
-
-  if (profilesError) throw profilesError;
-
-  const profileById = new Map((profiles || []).map((profile) => [String(profile.id), profile]));
+  const userLabels = await loadUserLabels(admin, userIds.map((id) => String(id)));
 
   return (data || []).map((request) => {
     const business = Array.isArray(request.businesses) ? request.businesses[0] : request.businesses;
@@ -160,8 +191,8 @@ export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
       status: request.status,
       requestedAt: request.requested_at,
       reviewedAt: request.reviewed_at,
-      requestedBy: profileLabel(profileById.get(String(request.requested_by))),
-      reviewedBy: request.reviewed_by ? profileLabel(profileById.get(String(request.reviewed_by))) : null,
+      requestedBy: userLabels.get(String(request.requested_by)) || "Unknown user",
+      reviewedBy: request.reviewed_by ? userLabels.get(String(request.reviewed_by)) || "Unknown user" : null,
       createdAt: request.created_at,
       updatedAt: request.updated_at,
     };
