@@ -108,6 +108,25 @@ type ManualReminderHistory = {
   referenceNote: string | null;
 };
 
+type SetupRequestRecord = {
+  id: string;
+  businessId: string;
+  businessName: string;
+  status: "pending" | "accepted" | "declined" | "completed";
+  requestedAt: string;
+  reviewedAt: string | null;
+  requestedBy: string;
+  reviewedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function getSetupRequestBadgeVariant(status: SetupRequestRecord["status"]) {
+  if (status === "accepted" || status === "completed") return "default";
+  if (status === "declined") return "destructive";
+  return "secondary";
+}
+
 const defaultManualReminderMessage = `Dear Business Administrator,
 
 Our records indicate that your subscription payment is still outstanding. Please contact Royalty Stamp administration to arrange settlement of your overdue payment.
@@ -574,6 +593,10 @@ export default function AdminDashboard() {
   const [manualReminderBillingPeriod, setManualReminderBillingPeriod] = useState("");
   const [manualReminderDueDate, setManualReminderDueDate] = useState("");
   const [manualReminderReferenceNote, setManualReminderReferenceNote] = useState("");
+  const [setupRequests, setSetupRequests] = useState<SetupRequestRecord[]>([]);
+  const [loadingSetupRequests, setLoadingSetupRequests] = useState(false);
+  const [reviewingSetupRequestId, setReviewingSetupRequestId] = useState<string | null>(null);
+  const [selectedSetupRequest, setSelectedSetupRequest] = useState<SetupRequestRecord | null>(null);
 
   // Customer deletion states
   const [customerToDelete, setCustomerToDelete] = useState<any | null>(null);
@@ -898,6 +921,75 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchSetupRequests = async (accessTokenOverride?: string) => {
+    try {
+      setLoadingSetupRequests(true);
+      const accessToken = accessTokenOverride || (await supabase.auth.getSession()).data.session?.access_token;
+      if (!accessToken) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/setup-requests", {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Accept": "application/json",
+        },
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to load setup requests.");
+      }
+
+      setSetupRequests(result.requests || []);
+    } catch (err) {
+      console.error("Error loading setup requests:", err);
+      setSetupRequests([]);
+    } finally {
+      setLoadingSetupRequests(false);
+    }
+  };
+
+  const handleReviewSetupRequest = async (requestId: string, status: "accepted" | "declined") => {
+    try {
+      setReviewingSetupRequestId(requestId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error(t("admin.common.notAuthenticated"));
+
+      const response = await fetch("/api/admin/setup-requests", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.access_token}`,
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({ requestId, status }),
+      });
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Setup request review failed.");
+      }
+
+      setSetupRequests(result.requests || []);
+      if (selectedSetupRequest?.id === requestId) {
+        const refreshed = (result.requests || []).find((request: SetupRequestRecord) => request.id === requestId) || null;
+        setSelectedSetupRequest(refreshed);
+      }
+
+      toast({
+        title: status === "accepted" ? "Setup request accepted" : "Setup request declined",
+        description: "The request status has been updated successfully.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Setup request update failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setReviewingSetupRequestId(null);
+    }
+  };
+
   const handleUpdateOverdueReminderSetting = async (payload: { action: "global"; enabled: boolean } | { action: "business"; businessId: string; enabled: boolean }) => {
     const updateKey = payload.action === "global" ? "global" : payload.businessId;
 
@@ -995,6 +1087,7 @@ export default function AdminDashboard() {
       if (accessToken) {
         void loadBackupList(accessToken);
         void fetchOverdueReminders(accessToken);
+        void fetchSetupRequests(accessToken);
       }
 
       const apiListOrEmpty = (path: string, key: string, fallbackError: string) =>
@@ -3624,6 +3717,7 @@ export default function AdminDashboard() {
             <TabsList className="bg-muted p-1 rounded-lg flex-wrap h-auto shrink-0 overflow-x-auto">
               <TabsTrigger value="merchants">{t("admin.tabs.merchants")}</TabsTrigger>
               <TabsTrigger value="payments">{t("admin.tabs.payments")}</TabsTrigger>
+              <TabsTrigger value="setup_requests">Setup Requests</TabsTrigger>
               <TabsTrigger value="plans">{t("admin.tabs.plans")}</TabsTrigger>
               <TabsTrigger value="addons">{t("admin.tabs.addons")}</TabsTrigger>
               <TabsTrigger value="customers">{t("admin.tabs.customers")}</TabsTrigger>
@@ -4395,6 +4489,100 @@ export default function AdminDashboard() {
                 </Card>
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="setup_requests" className="min-h-0 space-y-6 pb-8">
+            <Card>
+              <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle>Setup Requests</CardTitle>
+                  <CardDescription>
+                    Review business setup assistance requests from the existing Superadmin dashboard. Accepting or declining only changes request status in Phase 1.
+                  </CardDescription>
+                </div>
+                <Button type="button" variant="outline" onClick={() => fetchSetupRequests()} disabled={loadingSetupRequests}>
+                  {loadingSetupRequests ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
+                  Refresh
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto overscroll-contain">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Business</TableHead>
+                        <TableHead>Requested by</TableHead>
+                        <TableHead>Request date</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Reviewed</TableHead>
+                        <TableHead className="text-right">Available action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {setupRequests.map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell className="font-semibold">{request.businessName}</TableCell>
+                          <TableCell>{request.requestedBy}</TableCell>
+                          <TableCell>{new Date(request.requestedAt).toLocaleString(locale)}</TableCell>
+                          <TableCell>
+                            <Badge variant={getSetupRequestBadgeVariant(request.status)}>
+                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {request.reviewedAt ? (
+                              <div className="text-sm">
+                                <p>{new Date(request.reviewedAt).toLocaleString(locale)}</p>
+                                <p className="text-xs text-muted-foreground">{request.reviewedBy || "Superadmin"}</p>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">Pending review</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <Button type="button" variant="outline" size="sm" onClick={() => setSelectedSetupRequest(request)}>
+                                View
+                              </Button>
+                              {request.status === "pending" && (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => handleReviewSetupRequest(request.id, "accepted")}
+                                    disabled={reviewingSetupRequestId === request.id}
+                                  >
+                                    {reviewingSetupRequestId === request.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                                    Accept
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleReviewSetupRequest(request.id, "declined")}
+                                    disabled={reviewingSetupRequestId === request.id}
+                                  >
+                                    {reviewingSetupRequestId === request.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                                    Decline
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {setupRequests.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-6 text-center text-muted-foreground">
+                            No setup assistance requests have been submitted yet.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="plans" className="min-h-0 space-y-6 pb-8">
@@ -6198,6 +6386,51 @@ export default function AdminDashboard() {
               {sendingManualReminder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
               Send reminder
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedSetupRequest} onOpenChange={(open) => !open && setSelectedSetupRequest(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Setup Assistance Request</DialogTitle>
+            <DialogDescription>
+              View the selected request and update it only while it is still pending.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedSetupRequest && (
+            <div className="space-y-3 rounded-xl border bg-muted/20 p-4 text-sm">
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business</span><span className="font-semibold text-right">{selectedSetupRequest.businessName}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Requested by</span><span className="text-right">{selectedSetupRequest.requestedBy}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Requested at</span><span className="text-right">{new Date(selectedSetupRequest.requestedAt).toLocaleString(locale)}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Status</span><Badge variant={getSetupRequestBadgeVariant(selectedSetupRequest.status)}>{selectedSetupRequest.status.charAt(0).toUpperCase() + selectedSetupRequest.status.slice(1)}</Badge></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reviewed by</span><span className="text-right">{selectedSetupRequest.reviewedBy || "-"}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reviewed at</span><span className="text-right">{selectedSetupRequest.reviewedAt ? new Date(selectedSetupRequest.reviewedAt).toLocaleString(locale) : "-"}</span></div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSelectedSetupRequest(null)}>Close</Button>
+            {selectedSetupRequest?.status === "pending" && (
+              <>
+                <Button
+                  type="button"
+                  onClick={() => handleReviewSetupRequest(selectedSetupRequest.id, "accepted")}
+                  disabled={reviewingSetupRequestId === selectedSetupRequest.id}
+                >
+                  {reviewingSetupRequestId === selectedSetupRequest.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                  Accept
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => handleReviewSetupRequest(selectedSetupRequest.id, "declined")}
+                  disabled={reviewingSetupRequestId === selectedSetupRequest.id}
+                >
+                  {reviewingSetupRequestId === selectedSetupRequest.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+                  Decline
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -9,12 +9,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, ShieldCheck, ShieldAlert, Key } from "lucide-react";
 import { useI18n } from "@/contexts/I18nProvider";
 import { fetchCorporateBranding } from "@/contexts/CorporateBrandingContext";
 import { CorporateBrandingSettingsPanel } from "@/components/dashboard/CorporateBrandingSettingsPanel";
 import { Switch } from "@/components/ui/switch";
+
+type SetupAssistanceStatus = "pending" | "accepted" | "declined" | "completed";
+
+type SetupAssistanceRequest = {
+  id: string;
+  status: SetupAssistanceStatus;
+  requestedAt: string;
+  reviewedAt: string | null;
+};
+
+function getSetupAssistanceBadgeVariant(status: SetupAssistanceStatus) {
+  if (status === "accepted" || status === "completed") return "default";
+  if (status === "declined") return "destructive";
+  return "secondary";
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -27,6 +44,22 @@ export default function SettingsPage() {
   const [corporateBrandingAvailable, setCorporateBrandingAvailable] = useState(false);
   const [antiFraudLoading, setAntiFraudLoading] = useState(false);
   const [antiFraudSaving, setAntiFraudSaving] = useState(false);
+  const [setupAssistanceDialogOpen, setSetupAssistanceDialogOpen] = useState(false);
+  const [loadingSetupAssistance, setLoadingSetupAssistance] = useState(false);
+  const [submittingSetupAssistance, setSubmittingSetupAssistance] = useState(false);
+  const [setupAssistance, setSetupAssistance] = useState<{
+    businessId: string;
+    businessName: string;
+    latestRequest: SetupAssistanceRequest | null;
+    requests: SetupAssistanceRequest[];
+    hasActiveRequest: boolean;
+  }>({
+    businessId: "",
+    businessName: "",
+    latestRequest: null,
+    requests: [],
+    hasActiveRequest: false,
+  });
   const [antiFraudSettings, setAntiFraudSettings] = useState({
     enabled: false,
     cooldownMinutes: 10
@@ -105,9 +138,46 @@ export default function SettingsPage() {
       setCorporateBrandingAvailable(false);
     }
 
-    await fetchAntiFraudSettings(data.id, session.access_token);
-    await fetchMfaFactors();
+    await Promise.all([
+      fetchAntiFraudSettings(data.id, session.access_token),
+      fetchSetupAssistance(session.access_token),
+      fetchMfaFactors(),
+    ]);
     setLoading(false);
+  };
+
+  const fetchSetupAssistance = async (accessToken: string) => {
+    setLoadingSetupAssistance(true);
+
+    try {
+      const response = await fetch("/api/business/setup-assistance", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to load setup assistance requests");
+      }
+
+      setSetupAssistance({
+        businessId: payload.businessId || "",
+        businessName: payload.businessName || "",
+        latestRequest: payload.latestRequest || null,
+        requests: payload.requests || [],
+        hasActiveRequest: payload.hasActiveRequest === true,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Setup assistance unavailable",
+        description: err.message || "Unable to load setup assistance requests.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingSetupAssistance(false);
+    }
   };
 
   const fetchAntiFraudSettings = async (businessId: string, accessToken?: string) => {
@@ -345,6 +415,58 @@ export default function SettingsPage() {
     }
   };
 
+  const handleRequestSetupAssistance = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      router.push("/auth/login");
+      return;
+    }
+
+    try {
+      setSubmittingSetupAssistance(true);
+
+      const response = await fetch("/api/business/setup-assistance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+          Accept: "application/json",
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to submit setup assistance request");
+      }
+
+      setSetupAssistance({
+        businessId: payload.businessId || "",
+        businessName: payload.businessName || "",
+        latestRequest: payload.latestRequest || null,
+        requests: payload.requests || [],
+        hasActiveRequest: payload.hasActiveRequest === true,
+      });
+      setSetupAssistanceDialogOpen(false);
+
+      toast({
+        title: "Setup assistance requested",
+        description: "Royalty Stamp administration has received your setup assistance request.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Setup assistance failed",
+        description: err.message || "Unable to submit setup assistance request.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmittingSetupAssistance(false);
+    }
+  };
+
+  const latestSetupAssistanceRequest = setupAssistance.latestRequest;
+  const canSubmitSetupAssistanceRequest = !setupAssistance.hasActiveRequest;
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -484,6 +606,99 @@ export default function SettingsPage() {
             </CardFooter>
           </Card>
         </form>
+
+        <Card className="border-border shadow-sm">
+          <CardHeader className="bg-muted/10 border-b">
+            <CardTitle>Setup Assistance</CardTitle>
+            <CardDescription>
+              Need help setting up your digital loyalty card? Request assistance from Royalty Stamp and our team will help prepare your loyalty program.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-6">
+            {loadingSetupAssistance ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading setup assistance status...
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+                  <div className="space-y-3">
+                    <div className="rounded-xl border bg-muted/20 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-foreground">Current request status</p>
+                        {latestSetupAssistanceRequest ? (
+                          <Badge variant={getSetupAssistanceBadgeVariant(latestSetupAssistanceRequest.status)}>
+                            {latestSetupAssistanceRequest.status.charAt(0).toUpperCase() + latestSetupAssistanceRequest.status.slice(1)}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">No requests yet</Badge>
+                        )}
+                      </div>
+                      {latestSetupAssistanceRequest ? (
+                        <div className="mt-3 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                          <div>
+                            <p className="text-xs uppercase tracking-wide">Submitted</p>
+                            <p className="font-medium text-foreground">{new Date(latestSetupAssistanceRequest.requestedAt).toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-wide">Latest review</p>
+                            <p className="font-medium text-foreground">
+                              {latestSetupAssistanceRequest.reviewedAt ? new Date(latestSetupAssistanceRequest.reviewedAt).toLocaleString() : "Waiting for review"}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          No setup assistance request has been submitted for this business yet.
+                        </p>
+                      )}
+                    </div>
+
+                    {setupAssistance.requests.length > 0 && (
+                      <div className="rounded-xl border bg-background p-4">
+                        <p className="mb-3 font-semibold text-foreground">Request history</p>
+                        <div className="space-y-2">
+                          {setupAssistance.requests.slice(0, 4).map((request) => (
+                            <div key={request.id} className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-foreground">
+                                  {new Date(request.requestedAt).toLocaleString()}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {request.reviewedAt ? `Reviewed ${new Date(request.reviewedAt).toLocaleString()}` : "Awaiting review"}
+                                </p>
+                              </div>
+                              <Badge variant={getSetupAssistanceBadgeVariant(request.status)}>
+                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                              </Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {!canSubmitSetupAssistanceRequest && (
+                      <p className="text-xs text-muted-foreground">
+                        A new request can only be submitted after the current request is declined or completed.
+                      </p>
+                    )}
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={() => setSetupAssistanceDialogOpen(true)}
+                    disabled={submittingSetupAssistance || loadingSetupAssistance || !canSubmitSetupAssistanceRequest}
+                    className="min-w-[220px]"
+                  >
+                    {submittingSetupAssistance ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Request Setup Assistance
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {showCorporateBrandingEntry && business && (
           <CorporateBrandingSettingsPanel business={business} />
@@ -672,6 +887,29 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={setupAssistanceDialogOpen} onOpenChange={setSetupAssistanceDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Setup Assistance</DialogTitle>
+            <DialogDescription>
+              Royalty Stamp administration will receive this request and can review it from the Superadmin dashboard. This request is linked only to your authenticated business.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+            Submit a setup assistance request for <span className="font-semibold text-foreground">{setupAssistance.businessName || business?.business_name || "your business"}</span>?
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSetupAssistanceDialogOpen(false)} disabled={submittingSetupAssistance}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleRequestSetupAssistance} disabled={submittingSetupAssistance || !canSubmitSetupAssistanceRequest}>
+              {submittingSetupAssistance ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Confirm Request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
