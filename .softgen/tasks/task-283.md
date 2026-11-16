@@ -20,12 +20,20 @@ Inspection findings:
 
 ## Checklist
 - [x] Inspect the What's New UI, announcement data source, and live database schema used by the announcements system
-- [ ] Remove only the existing What's New announcement entries and count how many were removed
-- [ ] Add the new "Introducing Setup Assistance!" announcement with New category, provided description, highlights, and CTA
-- [ ] Link the CTA to the existing Business Settings page if the current system supports clickable actions
+- [x] Remove only the existing What's New announcement entries and count how many were removed
+- [x] Add the new "Introducing Setup Assistance!" announcement with New category, provided description, highlights, and CTA
+- [x] Link the CTA to the existing Business Settings page if the current system supports clickable actions
 - [ ] Validate that only the new Setup Assistance announcement remains and the What's New section still loads correctly
 
 ## Acceptance
 Only one What's New announcement is displayed, and it is the new Setup Assistance entry.
 The New badge displays correctly and the CTA points to the Business Settings page when the current system supports links.
 Unrelated notifications, customer notices, audit logs, and business data remain untouched.
+
+## Notes
+Cleanup implementation:
+- Removed 12 existing hardcoded What's New announcement cards from `src/components/dashboard/DashboardLayout.tsx`.
+- Replaced them with one Setup Assistance announcement using the existing sheet layout, New badge styling, and button component.
+- The CTA now links to `/dashboard/settings`, where Setup Assistance already exists.
+- No database rows were deleted because the announcement system is hardcoded UI content, not a database-backed table.
+- Unrelated notifications, customer notices, audit logs, and business data were not touched.

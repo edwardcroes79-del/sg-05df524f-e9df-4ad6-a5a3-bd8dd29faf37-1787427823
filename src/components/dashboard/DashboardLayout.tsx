@@ -123,6 +123,7 @@ type BusinessOverdueReminderSnapshot = {
 };
 
 let businessOverdueReminderSnapshot: BusinessOverdueReminderSnapshot | null = null;
+const WHATS_NEW_READ_KEY = "whatsNewRead_v2";
 
 async function loadSecurityAlertsSummary(businessId: string, accessToken: string) {
   try {
@@ -176,14 +177,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [manualPaymentReminderOpen, setManualPaymentReminderOpen] = useState(false);
   const [dismissingManualReminderId, setDismissingManualReminderId] = useState<string | null>(null);
 
-  // What's New states
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
-  const [comingSoonModalOpen, setComingSoonModalOpen] = useState(false);
   const [hasReadWhatsNew, setHasReadWhatsNew] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const read = localStorage.getItem("whatsNewRead_v1");
+      const read = localStorage.getItem(WHATS_NEW_READ_KEY);
       if (read) setHasReadWhatsNew(true);
     }
     checkUserAndBusiness();
@@ -193,7 +192,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setIsWhatsNewOpen(true);
     setHasReadWhatsNew(true);
     if (typeof window !== "undefined") {
-      localStorage.setItem("whatsNewRead_v1", "true");
+      localStorage.setItem(WHATS_NEW_READ_KEY, "true");
     }
   };
   
@@ -1003,7 +1002,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <button onClick={handleOpenWhatsNew} className="relative">
                 <Bell className={`h-5 w-5 text-foreground ${!hasReadWhatsNew ? 'animate-bell-shake' : ''}`} />
                 {!hasReadWhatsNew && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">1</span>
                 )}
               </button>
               <button onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
@@ -1026,7 +1025,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <Bell className={`h-4 w-4 ${!hasReadWhatsNew ? 'animate-bell-shake text-primary' : ''}`} />
                 <span className="text-sm font-medium">{t("dashboard.whatsNew")}</span>
                 {!hasReadWhatsNew && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">3</span>
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">1</span>
                 )}
               </Button>
               <LanguageSelector compact />
@@ -1072,344 +1071,47 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="space-y-8">
               <div>
                 <div className="space-y-4">
-                  {/* Anti-Fraud Protection Announcement (NEW) */}
-                  <div 
-                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                  >
+                  <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">🛡️</span>
-                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.antiFraud.title" as TranslationKey)}</h4>
+                        <span className="text-xl">🛠️</span>
+                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.setupAssistance.title" as TranslationKey)}</h4>
                       </div>
                       <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
                         {t("common.new")}
                       </span>
                     </div>
-                    
+
                     <div className="space-y-3">
                       <p className="text-sm font-semibold text-foreground">
-                        {t("dashboard.whatsNew.antiFraud.description" as TranslationKey)}
+                        {t("dashboard.whatsNew.setupAssistance.description" as TranslationKey)}
                       </p>
-                      
+
                       <div className="pt-2 space-y-2">
                         <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">⚙️</span>
-                          <span><strong>{t("dashboard.whatsNew.antiFraud.configurableTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.antiFraud.configurableDescription" as TranslationKey)}</span>
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{t("dashboard.whatsNew.setupAssistance.highlightRequest" as TranslationKey)}</span>
                         </div>
                         <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">🔒</span>
-                          <span><strong>{t("dashboard.whatsNew.antiFraud.enforcementTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.antiFraud.enforcementDescription" as TranslationKey)}</span>
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{t("dashboard.whatsNew.setupAssistance.highlightConfigure" as TranslationKey)}</span>
                         </div>
                         <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">⏱️</span>
-                          <span><strong>{t("dashboard.whatsNew.antiFraud.cooldownTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.antiFraud.cooldownDescription" as TranslationKey)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Security Alerts Announcement (NEW) */}
-                  <div 
-                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">🚨</span>
-                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.securityAlerts.title" as TranslationKey)}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.new")}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        {t("dashboard.whatsNew.securityAlerts.description" as TranslationKey)}
-                      </p>
-                      
-                      <div className="pt-2 space-y-2">
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">👀</span>
-                          <span><strong>{t("dashboard.whatsNew.securityAlerts.monitoringTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.securityAlerts.monitoringDescription" as TranslationKey)}</span>
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{t("dashboard.whatsNew.setupAssistance.highlightBranding" as TranslationKey)}</span>
                         </div>
                         <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">🔐</span>
-                          <span><strong>{t("dashboard.whatsNew.securityAlerts.accessTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.securityAlerts.accessDescription" as TranslationKey)}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">🛡️</span>
-                          <span><strong>{t("dashboard.whatsNew.securityAlerts.isolationTitle" as TranslationKey)}</strong> - {t("dashboard.whatsNew.securityAlerts.isolationDescription" as TranslationKey)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Stamp Correction Announcement (COMING SOON) */}
-                  <div 
-                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
-                    onClick={() => setComingSoonModalOpen(true)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">↩️</span>
-                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.stampCorrection.title" as TranslationKey)}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.comingSoon")}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("dashboard.whatsNew.stampCorrection.description" as TranslationKey)}
-                    </p>
-                  </div>
-
-                  {/* New Languages Announcement (NEW) */}
-                  <div 
-                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">🌎</span>
-                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.languages.title" as TranslationKey)}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.new")}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        {t("dashboard.whatsNew.languages.description" as TranslationKey)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Quick Issue Stamp Announcement (NEW) */}
-                  <div 
-                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">⚡</span>
-                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.quickIssue.title")}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.new")}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        {t("dashboard.whatsNew.quickIssue.description")}
-                      </p>
-                      
-                      <div className="pt-2 space-y-2">
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">📱</span>
-                          <span><strong>{t("dashboard.whatsNew.quickIssue.displayQrTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.displayQrDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">📷</span>
-                          <span><strong>{t("dashboard.whatsNew.quickIssue.customerScansTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.customerScansDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">⏱️</span>
-                          <span><strong>{t("dashboard.whatsNew.quickIssue.securityTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.securityDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">🧩</span>
-                          <span><strong>{t("dashboard.whatsNew.quickIssue.addonTitle")}</strong> - {t("dashboard.whatsNew.quickIssue.addonDescription")}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Available Add-ons Announcement (NEW) */}
-                  <div 
-                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">🧩</span>
-                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.addons.title")}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.new")}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        {t("dashboard.whatsNew.addons.description")}
-                      </p>
-                      <p className="text-sm text-muted-foreground italic">
-                        {t("dashboard.whatsNew.addons.quote")}
-                      </p>
-                      
-                      <div className="pt-2 space-y-2">
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">➕</span>
-                          <span><strong>{t("dashboard.whatsNew.addons.moreCustomersTitle")}</strong> - {t("dashboard.whatsNew.addons.moreCustomersDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">💳</span>
-                          <span><strong>{t("dashboard.whatsNew.addons.keepPlanTitle")}</strong> - {t("dashboard.whatsNew.addons.keepPlanDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">📈</span>
-                          <span><strong>{t("dashboard.whatsNew.addons.flexibleGrowthTitle")}</strong> - {t("dashboard.whatsNew.addons.flexibleGrowthDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">⚡</span>
-                          <span><strong>{t("dashboard.whatsNew.addons.simpleApprovalTitle")}</strong> - {t("dashboard.whatsNew.addons.simpleApprovalDescription")}</span>
+                          <span className="text-primary mt-0.5">•</span>
+                          <span>{t("dashboard.whatsNew.setupAssistance.highlightApprove" as TranslationKey)}</span>
                         </div>
                       </div>
 
-                      <div className="pt-2 mt-2 border-t border-primary/10">
-                        <p className="text-xs font-semibold text-foreground mb-2">{t("dashboard.whatsNew.addons.availableOptions")}</p>
-                        <div className="flex flex-wrap gap-2">
-                          <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option100")}</span>
-                          <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option250")}</span>
-                          <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option500")}</span>
-                          <span className="text-[10px] font-medium bg-background border rounded px-2 py-1">{t("dashboard.whatsNew.addons.option1000")}</span>
-                        </div>
+                      <div className="pt-3">
+                        <Button asChild size="sm">
+                          <Link href="/dashboard/settings">{t("dashboard.whatsNew.setupAssistance.cta" as TranslationKey)}</Link>
+                        </Button>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Reward Expiration Announcement (NEW) */}
-                  <div 
-                    className="p-4 rounded-xl border border-primary/20 bg-primary/5 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">🎁</span>
-                        <h4 className="font-semibold text-foreground">{t("dashboard.whatsNew.rewardExpiration.title")}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.new")}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-foreground">
-                        {t("dashboard.whatsNew.rewardExpiration.description")}
-                      </p>
-                      <p className="text-sm text-muted-foreground italic">
-                        {t("dashboard.whatsNew.rewardExpiration.quote")}
-                      </p>
-                      
-                      <div className="pt-2 space-y-2">
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">⏰</span>
-                          <span><strong>{t("dashboard.whatsNew.rewardExpiration.setTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.setDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">🎁</span>
-                          <span><strong>{t("dashboard.whatsNew.rewardExpiration.flexibleTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.flexibleDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">🔒</span>
-                          <span><strong>{t("dashboard.whatsNew.rewardExpiration.protectionTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.protectionDescription")}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <span className="text-primary mt-0.5">📅</span>
-                          <span><strong>{t("dashboard.whatsNew.rewardExpiration.clearDatesTitle")}</strong> - {t("dashboard.whatsNew.rewardExpiration.clearDatesDescription")}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Feature 1 */}
-                  <div 
-                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
-                    onClick={() => setComingSoonModalOpen(true)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">🆕</span>
-                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.birthday.title")}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.comingSoon")}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("dashboard.whatsNew.birthday.description")}
-                    </p>
-                  </div>
-
-                  {/* Feature 2 */}
-                  <div 
-                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all cursor-pointer group"
-                    onClick={() => setComingSoonModalOpen(true)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">🎁</span>
-                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.bonusStamps.title")}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-muted text-muted-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.comingSoon")}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("dashboard.whatsNew.bonusStamps.description")}
-                    </p>
-                  </div>
-
-                  {/* Feature 3 */}
-                  <div 
-                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">🔊</span>
-                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.stampSounds.title")}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.new")}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("dashboard.whatsNew.stampSounds.description")}
-                    </p>
-                  </div>
-
-                  {/* Feature 4 */}
-                  <div 
-                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">🎨</span>
-                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.customBanner.title")}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.new")}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("dashboard.whatsNew.customBanner.description")}
-                    </p>
-                  </div>
-
-                  {/* Feature 5 */}
-                  <div 
-                    className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-sm transition-all group"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">📷</span>
-                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors">{t("dashboard.whatsNew.rewardScan.title")}</h4>
-                      </div>
-                      <span className="text-[10px] font-bold bg-primary text-primary-foreground px-2 py-1 rounded-full uppercase">
-                        {t("common.new")}
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("dashboard.whatsNew.rewardScan.description")}
-                    </p>
                   </div>
                 </div>
               </div>
