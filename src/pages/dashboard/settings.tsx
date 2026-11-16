@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save, ShieldCheck, ShieldAlert, Key } from "lucide-react";
 import { useI18n } from "@/contexts/I18nProvider";
@@ -52,7 +53,7 @@ async function canAccessCorporateBranding(subscriptionPlan: string | null) {
   return entitlement?.boolean_value === true;
 }
 
-type SetupAssistanceStatus = "pending" | "accepted" | "ready_for_review" | "declined" | "completed";
+type SetupAssistanceStatus = "pending" | "accepted" | "ready_for_review" | "changes_requested" | "declined" | "completed";
 
 type SetupAssistanceRequest = {
   id: string;
@@ -61,15 +62,24 @@ type SetupAssistanceRequest = {
   reviewedAt: string | null;
 };
 
+type SetupReviewState = {
+  id: string;
+  status: SetupAssistanceStatus;
+  reviewRound: number;
+  changeRequestFeedback: string | null;
+  approvedAt: string | null;
+} | null;
+
 function getSetupAssistanceBadgeVariant(status: SetupAssistanceStatus) {
   if (status === "accepted" || status === "completed") return "default";
   if (status === "declined") return "destructive";
-  if (status === "ready_for_review") return "outline";
+  if (status === "ready_for_review" || status === "changes_requested") return "outline";
   return "secondary";
 }
 
 function formatSetupAssistanceStatus(status: SetupAssistanceStatus) {
   if (status === "ready_for_review") return "Ready for Review";
+  if (status === "changes_requested") return "Changes Requested";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
@@ -100,6 +110,7 @@ export default function SettingsPage() {
     requests: [],
     hasActiveRequest: false,
   });
+  const [setupReview, setSetupReview] = useState<SetupReviewState>(null);
   const [antiFraudSettings, setAntiFraudSettings] = useState({
     enabled: false,
     cooldownMinutes: 10
@@ -215,6 +226,15 @@ export default function SettingsPage() {
         requests: payload.requests || [],
         hasActiveRequest: payload.hasActiveRequest === true,
       });
+
+      const reviewResponse = await fetch("/api/business/setup-review", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+      const reviewPayload = await reviewResponse.json().catch(() => ({}));
+      setSetupReview(reviewResponse.ok && reviewPayload.success ? reviewPayload.request || null : null);
     } catch (err: any) {
       toast({
         title: "Setup assistance unavailable",
@@ -661,6 +681,29 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5 pt-6">
+            {setupReview?.status === "ready_for_review" && (
+              <Alert className="border-primary/30 bg-primary/5">
+                <AlertTitle>{setupReview.reviewRound > 1 ? "Revised setup ready for review" : "Setup ready for review"}</AlertTitle>
+                <AlertDescription className="space-y-3">
+                  <p>Your Royalty Stamp loyalty card setup is ready for review. Please review your card and loyalty program before approving the setup.</p>
+                  <Button asChild size="sm"><Link href="/dashboard/setup-review">Review My Setup</Link></Button>
+                </AlertDescription>
+              </Alert>
+            )}
+            {setupReview?.status === "changes_requested" && (
+              <Alert>
+                <AlertTitle>Changes requested</AlertTitle>
+                <AlertDescription>
+                  Royalty Stamp has your feedback and will send a revised setup for review. Your live card has not changed.
+                </AlertDescription>
+              </Alert>
+            )}
+            {setupReview?.status === "completed" && setupReview.approvedAt && (
+              <Alert className="border-emerald-200 bg-emerald-50">
+                <AlertTitle>Setup activated</AlertTitle>
+                <AlertDescription>Your Royalty Stamp setup has been approved and activated. Your loyalty card is ready to use!</AlertDescription>
+              </Alert>
+            )}
             {loadingSetupAssistance ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />

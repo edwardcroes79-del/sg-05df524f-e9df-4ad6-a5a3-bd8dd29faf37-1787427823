@@ -31,8 +31,9 @@ type SuperAdminNotification = {
   description: string;
   createdAt: string;
   status: "pending" | "approved" | "rejected" | "cancelled" | "resolved";
-  destination: "payments" | "addons" | "merchants";
+  destination: "payments" | "addons" | "merchants" | "setup_requests";
   relatedRecord: any;
+  label?: string;
 };
 
 type UnconfirmedAuthUser = {
@@ -112,11 +113,19 @@ type SetupRequestRecord = {
   id: string;
   businessId: string;
   businessName: string;
-  status: "pending" | "accepted" | "ready_for_review" | "declined" | "completed";
+  status: "pending" | "accepted" | "ready_for_review" | "changes_requested" | "declined" | "completed";
   requestedAt: string;
   reviewedAt: string | null;
   requestedBy: string;
   reviewedBy: string | null;
+  readyForReviewAt: string | null;
+  reviewRound: number;
+  changeRequestFeedback: string | null;
+  changesRequestedAt: string | null;
+  changesRequestedBy: string | null;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  activatedProgramId: string | null;
   createdAt: string;
   updatedAt: string;
   activeSession: { sessionId: string; expiresAt: string } | null;
@@ -125,12 +134,13 @@ type SetupRequestRecord = {
 function getSetupRequestBadgeVariant(status: SetupRequestRecord["status"]) {
   if (status === "accepted" || status === "completed") return "default";
   if (status === "declined") return "destructive";
-  if (status === "ready_for_review") return "outline";
+  if (status === "ready_for_review" || status === "changes_requested") return "outline";
   return "secondary";
 }
 
 function formatSetupRequestStatus(status: SetupRequestRecord["status"]) {
   if (status === "ready_for_review") return "Ready for Review";
+  if (status === "changes_requested") return "Changes Requested";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
@@ -1410,8 +1420,43 @@ export default function AdminDashboard() {
       };
     });
 
+  const setupRequestNotifications: SuperAdminNotification[] = setupRequests.flatMap((request) => {
+    if (request.status === "changes_requested" && request.changesRequestedAt) {
+      return [{
+        id: notificationKey("setup_request", `${request.id}:changes_requested:${request.changesRequestedAt}`),
+        sourceType: "setup_request",
+        sourceId: `${request.id}:changes_requested:${request.changesRequestedAt}`,
+        type: "Setup changes requested",
+        businessName: request.businessName,
+        description: request.changeRequestFeedback ? `asked for changes: "${request.changeRequestFeedback}"` : "asked for changes to the proposed setup.",
+        createdAt: request.changesRequestedAt,
+        status: "pending" as const,
+        destination: "setup_requests" as const,
+        relatedRecord: request,
+        label: "Changes requested",
+      }];
+    }
+    if (request.status === "completed" && request.approvedAt) {
+      return [{
+        id: notificationKey("setup_request", `${request.id}:completed:${request.approvedAt}`),
+        sourceType: "setup_request",
+        sourceId: `${request.id}:completed:${request.approvedAt}`,
+        type: "Setup approved",
+        businessName: request.businessName,
+        description: `approved and activated the setup${request.approvedBy ? ` (${request.approvedBy})` : ""}.`,
+        createdAt: request.approvedAt,
+        status: "approved" as const,
+        destination: "setup_requests" as const,
+        relatedRecord: request,
+        label: "Approved",
+      }];
+    }
+    return [];
+  });
+
   const superAdminNotifications: SuperAdminNotification[] = [
     ...contractReminderNotifications,
+    ...setupRequestNotifications,
     ...businessAddonSubscriptions
       .filter((subscription) => subscription.status === "inactive" && subscription.payment_status === "pending")
       .map((subscription) => {
@@ -1470,9 +1515,10 @@ export default function AdminDashboard() {
     })),
   ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-  const unreadNotificationCount = superAdminNotifications.filter((notification) =>
-    notification.status === "pending" && !notificationReads[notification.id]
-  ).length;
+  const isNotificationUnread = (notification: SuperAdminNotification) =>
+    (notification.status === "pending" || notification.sourceType === "setup_request") && !notificationReads[notification.id];
+
+  const unreadNotificationCount = superAdminNotifications.filter(isNotificationUnread).length;
 
   const markNotificationsRead = async (notificationsToRead: SuperAdminNotification[]) => {
     if (notificationsToRead.length === 0) return;
@@ -1508,9 +1554,7 @@ export default function AdminDashboard() {
     setNotificationPanelOpen(nextOpen);
 
     if (nextOpen) {
-      await markNotificationsRead(superAdminNotifications.filter((notification) =>
-        notification.status === "pending" && !notificationReads[notification.id]
-      ));
+      await markNotificationsRead(superAdminNotifications.filter(isNotificationUnread));
     }
   };
 
@@ -3685,7 +3729,7 @@ export default function AdminDashboard() {
                         </div>
                       ) : (
                         superAdminNotifications.slice(0, 12).map((notification) => {
-                          const isUnread = notification.status === "pending" && !notificationReads[notification.id];
+                          const isUnread = isNotificationUnread(notification);
                           const statusIcon = notification.status === "pending" ? Clock : notification.status === "approved" ? CheckCircle : XCircle;
                           const StatusIcon = statusIcon;
 
@@ -3711,7 +3755,7 @@ export default function AdminDashboard() {
                               </div>
                               <div className="mt-3 flex items-center justify-between gap-2">
                                 <Badge variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"} className="text-[10px] uppercase">
-                                  {notification.sourceType === "contract_reminder" ? t("admin.notifications.actionRequired") : notification.status === "pending" ? t("admin.notifications.pendingReview") : notification.status}
+                                  {notification.label || (notification.sourceType === "contract_reminder" ? t("admin.notifications.actionRequired") : notification.status === "pending" ? t("admin.notifications.pendingReview") : notification.status)}
                                 </Badge>
                                 <Button
                                   type="button"
@@ -4600,6 +4644,16 @@ export default function AdminDashboard() {
                                 Session active until {new Date(request.activeSession.expiresAt).toLocaleTimeString(locale)}
                               </p>
                             )}
+                            {request.status === "changes_requested" && request.changeRequestFeedback && (
+                              <p className="mt-2 max-w-xs rounded-md border bg-muted/30 p-2 text-xs italic text-foreground">
+                                “{request.changeRequestFeedback}”
+                              </p>
+                            )}
+                            {request.status === "completed" && request.approvedAt && (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Approved {new Date(request.approvedAt).toLocaleString(locale)}{request.approvedBy ? ` by ${request.approvedBy}` : ""}
+                              </p>
+                            )}
                           </TableCell>
                           <TableCell>
                             {request.reviewedAt ? (
@@ -4616,7 +4670,7 @@ export default function AdminDashboard() {
                               <Button type="button" variant="outline" size="sm" onClick={() => setSelectedSetupRequest(request)}>
                                 View
                               </Button>
-                              {request.status === "accepted" && (
+                              {(request.status === "accepted" || request.status === "changes_requested") && (
                                 <Button
                                   type="button"
                                   size="sm"
@@ -4624,7 +4678,7 @@ export default function AdminDashboard() {
                                   disabled={openingSetupRequestId === request.id}
                                 >
                                   {openingSetupRequestId === request.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Edit2 className="mr-2 h-4 w-4" />}
-                                  Open Business Setup
+                                  {request.status === "changes_requested" ? "Reopen Business Setup" : "Open Business Setup"}
                                 </Button>
                               )}
                               {request.activeSession && (
@@ -6501,6 +6555,15 @@ export default function AdminDashboard() {
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Status</span><Badge variant={getSetupRequestBadgeVariant(selectedSetupRequest.status)}>{formatSetupRequestStatus(selectedSetupRequest.status)}</Badge></div>
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reviewed by</span><span className="text-right">{selectedSetupRequest.reviewedBy || "-"}</span></div>
               <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reviewed at</span><span className="text-right">{selectedSetupRequest.reviewedAt ? new Date(selectedSetupRequest.reviewedAt).toLocaleString(locale) : "-"}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Sent for review</span><span className="text-right">{selectedSetupRequest.readyForReviewAt ? `${new Date(selectedSetupRequest.readyForReviewAt).toLocaleString(locale)} (round ${selectedSetupRequest.reviewRound})` : "-"}</span></div>
+              {selectedSetupRequest.changeRequestFeedback && (
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">Business feedback{selectedSetupRequest.changesRequestedBy ? ` from ${selectedSetupRequest.changesRequestedBy}` : ""}</span>
+                  <p className="rounded-md border bg-background p-2 italic">“{selectedSetupRequest.changeRequestFeedback}”</p>
+                </div>
+              )}
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Approved by</span><span className="text-right">{selectedSetupRequest.approvedBy || "-"}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Approved at</span><span className="text-right">{selectedSetupRequest.approvedAt ? new Date(selectedSetupRequest.approvedAt).toLocaleString(locale) : "-"}</span></div>
             </div>
           )}
           <DialogFooter>

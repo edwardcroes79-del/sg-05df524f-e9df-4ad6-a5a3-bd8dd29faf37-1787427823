@@ -21,9 +21,9 @@ Business review API (/api/business/setup-review): GET → { success, business: {
 - [x] Post a brief activation-safety plan based on the actual schema
 - [x] Database: add changes_requested status, approval/feedback/activated-reference columns, and an atomic SECURITY DEFINER approval function that activates the exact draft and completes the request in one transaction
 - [x] Server APIs: business review (load own draft read-only), approve, request changes; Superadmin reopen of Changes Requested requests and resubmit to Ready for Review
-- [ ] Business UI: Ready for Review notification, read-only "Review My Setup" preview, Approve & Activate confirmation, Request Changes feedback dialog, success message
-- [ ] Superadmin UI: Changes Requested and Completed statuses, feedback display, reopen workspace, approval date/approver, read-only completed requests
-- [ ] Notifications for ready-for-review, revised draft, approval and change requests without duplicates
+- [x] Business UI: Ready for Review notification, read-only "Review My Setup" preview, Approve & Activate confirmation, Request Changes feedback dialog, success message
+- [x] Superadmin UI: Changes Requested and Completed statuses, feedback display, reopen workspace, approval date/approver, read-only completed requests
+- [x] Notifications for ready-for-review, revised draft, approval and change requests without duplicates
 - [ ] Verify cross-business isolation, duplicate-approval protection, customer data preservation, and no changes to stamp flows
 
 ## Acceptance
