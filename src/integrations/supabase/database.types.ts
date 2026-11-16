@@ -1889,39 +1889,83 @@ export type Database = {
       }
       setup_assistance_requests: {
         Row: {
+          activated_draft_id: string | null
+          activated_draft_updated_at: string | null
+          activated_program_id: string | null
+          approved_at: string | null
+          approved_by: string | null
           business_id: string
+          change_request_feedback: string | null
+          changes_requested_at: string | null
+          changes_requested_by: string | null
           created_at: string
           id: string
+          ready_for_review_at: string | null
           requested_at: string
           requested_by: string
+          review_round: number
           reviewed_at: string | null
           reviewed_by: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          activated_draft_id?: string | null
+          activated_draft_updated_at?: string | null
+          activated_program_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           business_id: string
+          change_request_feedback?: string | null
+          changes_requested_at?: string | null
+          changes_requested_by?: string | null
           created_at?: string
           id?: string
+          ready_for_review_at?: string | null
           requested_at?: string
           requested_by: string
+          review_round?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          activated_draft_id?: string | null
+          activated_draft_updated_at?: string | null
+          activated_program_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           business_id?: string
+          change_request_feedback?: string | null
+          changes_requested_at?: string | null
+          changes_requested_by?: string | null
           created_at?: string
           id?: string
+          ready_for_review_at?: string | null
           requested_at?: string
           requested_by?: string
+          review_round?: number
           reviewed_at?: string | null
           reviewed_by?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "setup_assistance_requests_activated_draft_id_fkey"
+            columns: ["activated_draft_id"]
+            isOneToOne: false
+            referencedRelation: "setup_drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setup_assistance_requests_activated_program_id_fkey"
+            columns: ["activated_program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "setup_assistance_requests_business_id_fkey"
             columns: ["business_id"]
@@ -2396,6 +2440,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_setup_request: {
+        Args: { p_expected_draft_updated_at: string; p_request_id: string }
+        Returns: Json
+      }
       business_has_active_quick_stamp_qr: {
         Args: { p_business_id: string }
         Returns: boolean
@@ -2645,6 +2693,10 @@ export type Database = {
             Returns: Json
           }
       refresh_expired_business_contracts: { Args: never; Returns: number }
+      request_setup_changes: {
+        Args: { p_feedback: string; p_request_id: string }
+        Returns: Json
+      }
       resolve_stamp_issue_location: {
         Args: {
           p_business_id: string
@@ -2716,6 +2768,10 @@ export type Database = {
           p_location_id: string
           p_user_id: string
         }
+        Returns: boolean
+      }
+      user_can_manage_setup_business: {
+        Args: { p_business_id: string }
         Returns: boolean
       }
       user_can_search_send_stamp: {

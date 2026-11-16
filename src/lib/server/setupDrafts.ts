@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 import { FREE_TEMPLATE_IDS, TEMPLATE_PRESET_IDS } from "@/lib/cardTemplatePresets";
-import { SetupAccessError, revokeSetupSession, writeSetupAudit, type SetupSessionContext } from "@/lib/server/setupSessions";
+import { EDITABLE_SETUP_STATUSES, SetupAccessError, revokeSetupSession, writeSetupAudit, type SetupSessionContext } from "@/lib/server/setupSessions";
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const ICON_NAME = /^[A-Za-z0-9]{1,40}$/;
@@ -257,22 +257,36 @@ export async function markSetupReadyForReview(admin: SupabaseClient, ctx: SetupS
   }
 
   const now = new Date().toISOString();
+  const { data: currentRequest, error: currentRequestError } = await admin
+    .from("setup_assistance_requests")
+    .select("status, review_round")
+    .eq("id", ctx.requestId)
+    .maybeSingle();
+
+  if (currentRequestError) throw currentRequestError;
+  if (!currentRequest || !EDITABLE_SETUP_STATUSES.includes(currentRequest.status)) {
+    throw new SetupAccessError("This setup request is no longer open for setup changes.", 409);
+  }
+
+  const reviewRound = Number(currentRequest.review_round || 0) + 1;
   const { data: updated, error: updateError } = await admin
     .from("setup_assistance_requests")
-    .update({ status: "ready_for_review", updated_at: now })
+    .update({ status: "ready_for_review", ready_for_review_at: now, review_round: reviewRound, updated_at: now })
     .eq("id", ctx.requestId)
-    .eq("status", "accepted")
+    .eq("status", currentRequest.status)
     .select("id");
 
   if (updateError) throw updateError;
   if (!updated || updated.length === 0) {
-    throw new SetupAccessError("This setup request is no longer Accepted.", 409);
+    throw new SetupAccessError("This setup request changed while it was being submitted. Please try again.", 409);
   }
 
   await writeSetupAudit(admin, superadminUserId, "setup_request.ready_for_review", ctx.requestId, {
     business_id: ctx.businessId,
     session_id: ctx.sessionId,
     target_program_id: draft.target_program_id,
+    previous_status: currentRequest.status,
+    review_round: reviewRound,
     marked_at: now,
   });
 

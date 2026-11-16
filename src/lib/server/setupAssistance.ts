@@ -1,9 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { listActiveSetupSessions } from "@/lib/server/setupSessions";
+import { EDITABLE_SETUP_STATUSES, listActiveSetupSessions } from "@/lib/server/setupSessions";
 
-export type SetupAssistanceStatus = "pending" | "accepted" | "ready_for_review" | "declined" | "completed";
+export type SetupAssistanceStatus = "pending" | "accepted" | "ready_for_review" | "changes_requested" | "declined" | "completed";
 
-const ACTIVE_SETUP_STATUSES: SetupAssistanceStatus[] = ["pending", "accepted", "ready_for_review"];
+const ACTIVE_SETUP_STATUSES: SetupAssistanceStatus[] = ["pending", "accepted", "ready_for_review", "changes_requested"];
 
 type ManagedBusiness = {
   businessId: string;
@@ -107,6 +107,10 @@ export async function listBusinessSetupAssistanceRequests(admin: SupabaseClient,
     requestedAt: request.requested_at,
     reviewedBy: request.reviewed_by,
     reviewedAt: request.reviewed_at,
+    readyForReviewAt: request.ready_for_review_at,
+    changeRequestFeedback: request.change_request_feedback,
+    changesRequestedAt: request.changes_requested_at,
+    approvedAt: request.approved_at,
     createdAt: request.created_at,
     updatedAt: request.updated_at,
   }));
@@ -177,17 +181,17 @@ export async function createSetupAssistanceRequest(admin: SupabaseClient, userId
 export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
   const { data, error } = await admin
     .from("setup_assistance_requests")
-    .select("id, business_id, requested_by, status, requested_at, reviewed_by, reviewed_at, created_at, updated_at, businesses ( business_name )")
+    .select("id, business_id, requested_by, status, requested_at, reviewed_by, reviewed_at, ready_for_review_at, review_round, change_request_feedback, changes_requested_at, changes_requested_by, approved_at, approved_by, activated_program_id, created_at, updated_at, businesses ( business_name )")
     .order("requested_at", { ascending: false });
 
   if (error) throw error;
 
-  const userIds = Array.from(new Set((data || []).flatMap((request) => [request.requested_by, request.reviewed_by].filter(Boolean))));
+  const userIds = Array.from(new Set((data || []).flatMap((request) => [request.requested_by, request.reviewed_by, request.approved_by, request.changes_requested_by].filter(Boolean))));
   const [userLabels, activeSessions] = await Promise.all([
     loadUserLabels(admin, userIds.map((id) => String(id))),
     listActiveSetupSessions(
       admin,
-      (data || []).filter((request) => request.status === "accepted").map((request) => String(request.id))
+      (data || []).filter((request) => EDITABLE_SETUP_STATUSES.includes(request.status)).map((request) => String(request.id))
     ),
   ]);
 
@@ -203,6 +207,14 @@ export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
       reviewedAt: request.reviewed_at,
       requestedBy: userLabels.get(String(request.requested_by)) || "Unknown user",
       reviewedBy: request.reviewed_by ? userLabels.get(String(request.reviewed_by)) || "Unknown user" : null,
+      readyForReviewAt: request.ready_for_review_at,
+      reviewRound: Number(request.review_round || 0),
+      changeRequestFeedback: request.change_request_feedback,
+      changesRequestedAt: request.changes_requested_at,
+      changesRequestedBy: request.changes_requested_by ? userLabels.get(String(request.changes_requested_by)) || "Unknown user" : null,
+      approvedAt: request.approved_at,
+      approvedBy: request.approved_by ? userLabels.get(String(request.approved_by)) || "Unknown user" : null,
+      activatedProgramId: request.activated_program_id,
       createdAt: request.created_at,
       updatedAt: request.updated_at,
       activeSession: activeSession

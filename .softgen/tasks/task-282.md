@@ -17,8 +17,8 @@ Inspection findings: no generic notifications table exists. The Superadmin bell 
 ## Checklist
 - [x] Inspect Phase 2 draft storage, how live program/branding fields are written, existing notification tables, and whether customer progress depends on program fields (stamp target, rewards)
 - [x] Post a brief activation-safety plan based on the actual schema
-- [ ] Database: add changes_requested status, approval/feedback/activated-reference columns, and an atomic SECURITY DEFINER approval function that activates the exact draft and completes the request in one transaction
-- [ ] Server APIs: business review (load own draft read-only), approve, request changes; Superadmin reopen of Changes Requested requests and resubmit to Ready for Review
+- [x] Database: add changes_requested status, approval/feedback/activated-reference columns, and an atomic SECURITY DEFINER approval function that activates the exact draft and completes the request in one transaction
+- [x] Server APIs: business review (load own draft read-only), approve, request changes; Superadmin reopen of Changes Requested requests and resubmit to Ready for Review
 - [ ] Business UI: Ready for Review notification, read-only "Review My Setup" preview, Approve & Activate confirmation, Request Changes feedback dialog, success message
 - [ ] Superadmin UI: Changes Requested and Completed statuses, feedback display, reopen workspace, approval date/approver, read-only completed requests
 - [ ] Notifications for ready-for-review, revised draft, approval and change requests without duplicates

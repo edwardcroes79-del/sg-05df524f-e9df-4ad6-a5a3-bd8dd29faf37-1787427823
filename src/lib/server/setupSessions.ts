@@ -5,6 +5,7 @@ export const SETUP_SESSION_MINUTES = 45;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SESSION_COLUMNS = "id, setup_request_id, business_id, superadmin_user_id, started_at, expires_at, revoked_at";
+export const EDITABLE_SETUP_STATUSES = ["accepted", "changes_requested"];
 
 export class SetupAccessError extends Error {
   status: number;
@@ -105,8 +106,8 @@ export async function startSetupSession(admin: SupabaseClient, superadminUserId:
 
   if (requestError) throw requestError;
   if (!request) throw new SetupAccessError("Setup request not found.", 404);
-  if (request.status !== "accepted") {
-    throw new SetupAccessError("Business setup can only be opened for Accepted setup requests.", 403);
+  if (!EDITABLE_SETUP_STATUSES.includes(request.status)) {
+    throw new SetupAccessError("Business setup can only be opened for Accepted or Changes Requested setup requests.", 403);
   }
 
   const nowIso = new Date().toISOString();
@@ -176,8 +177,8 @@ export async function requireSetupSession(
   if (!request || request.business_id !== session.business_id) {
     throw new SetupAccessError("Setup session is not bound to a valid setup request.", 403);
   }
-  if (request.status !== "accepted") {
-    throw new SetupAccessError("This setup request is no longer Accepted.", 403);
+  if (!EDITABLE_SETUP_STATUSES.includes(request.status)) {
+    throw new SetupAccessError("This setup request is no longer open for setup changes.", 403);
   }
 
   await admin.from("setup_sessions").update({ last_used_at: new Date().toISOString() }).eq("id", sessionId);
