@@ -1,6 +1,6 @@
 ---
 title: Setup review, approval and activation
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [setup-assistance, business-settings, superadmin, activation]
@@ -24,7 +24,12 @@ Business review API (/api/business/setup-review): GET → { success, business: {
 - [x] Business UI: Ready for Review notification, read-only "Review My Setup" preview, Approve & Activate confirmation, Request Changes feedback dialog, success message
 - [x] Superadmin UI: Changes Requested and Completed statuses, feedback display, reopen workspace, approval date/approver, read-only completed requests
 - [x] Notifications for ready-for-review, revised draft, approval and change requests without duplicates
-- [ ] Verify cross-business isolation, duplicate-approval protection, customer data preservation, and no changes to stamp flows
+- [x] Verify cross-business isolation, duplicate-approval protection, customer data preservation, and no changes to stamp flows
+
+## Verification log
+- Verified: type/lint check clean; status constraint includes changes_requested; all approval/feedback/activation columns exist; approve_setup_request, request_setup_changes, user_can_manage_setup_business are SECURITY DEFINER, executable by authenticated only (not anon); one live request currently in changes_requested.
+- Pending manual click-through by user: approve end-to-end and live card result, duplicate approve, cross-business review attempt, revised-draft review round, Issue Stamp / Quick Issue Stamp after activation.
+- Known gaps: business approval recorded on the request row, not in audit_logs; business notices appear in Business Settings and the review page, not a dashboard-wide banner or email.
 
 ## Acceptance
 - A Business Admin can review the pending draft, approve it so it becomes the live card and program, and the request shows Completed with approver and date.
