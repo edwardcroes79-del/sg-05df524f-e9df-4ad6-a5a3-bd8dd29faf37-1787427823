@@ -19,5 +19,5 @@ position: 280
 - [x] Validate permissions, duplicate-active-request prevention, and non-regression for existing stamp flows
 - [x] Fix Setup Requests "Requested by" to show the actual submitting user instead of "Unknown user"
 - [ ] Verify new and existing setup assistance requests resolve requester display name from full name or email
-- [ ] Regression: prevent Business Settings from triggering `/api/business/corporate-branding` when the current business is not allowed to access Corporate Branding
-- [ ] Regression: validate `/dashboard/settings` no longer emits the reported 403 network error
+- [x] Regression: prevent Business Settings from triggering `/api/business/corporate-branding` when the current business is not allowed to access Corporate Branding
+- [x] Regression: validate `/dashboard/settings` no longer emits the reported 403 network error
