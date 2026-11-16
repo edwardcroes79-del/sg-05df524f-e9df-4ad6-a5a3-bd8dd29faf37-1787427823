@@ -1236,26 +1236,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </DialogContent>
         </Dialog>
 
-        {/* Coming Soon Modal */}
-        <Dialog open={comingSoonModalOpen} onOpenChange={setComingSoonModalOpen}>
-          <DialogContent className="sm:max-w-md text-center p-6 z-[70]">
-            <DialogHeader>
-              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-                <span className="text-2xl">🚀</span>
-              </div>
-              <DialogTitle className="text-2xl font-heading text-center">{t("dashboard.comingSoonModal.title")}</DialogTitle>
-              <DialogDescription className="text-center text-base pt-2">
-                {t("dashboard.comingSoonModal.description")}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="mt-6 flex justify-center w-full">
-              <Button type="button" onClick={() => setComingSoonModalOpen(false)} className="w-full sm:w-auto px-8">
-                {t("common.gotIt")}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
         {/* Floating WhatsApp Support Button */}
         <WhatsAppSupportButton />
       </div>
