@@ -52,7 +52,7 @@ async function canAccessCorporateBranding(subscriptionPlan: string | null) {
   return entitlement?.boolean_value === true;
 }
 
-type SetupAssistanceStatus = "pending" | "accepted" | "declined" | "completed";
+type SetupAssistanceStatus = "pending" | "accepted" | "ready_for_review" | "declined" | "completed";
 
 type SetupAssistanceRequest = {
   id: string;
@@ -64,7 +64,13 @@ type SetupAssistanceRequest = {
 function getSetupAssistanceBadgeVariant(status: SetupAssistanceStatus) {
   if (status === "accepted" || status === "completed") return "default";
   if (status === "declined") return "destructive";
+  if (status === "ready_for_review") return "outline";
   return "secondary";
+}
+
+function formatSetupAssistanceStatus(status: SetupAssistanceStatus) {
+  if (status === "ready_for_review") return "Ready for Review";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 export default function SettingsPage() {
@@ -669,7 +675,7 @@ export default function SettingsPage() {
                         <p className="font-semibold text-foreground">Current request status</p>
                         {latestSetupAssistanceRequest ? (
                           <Badge variant={getSetupAssistanceBadgeVariant(latestSetupAssistanceRequest.status)}>
-                            {latestSetupAssistanceRequest.status.charAt(0).toUpperCase() + latestSetupAssistanceRequest.status.slice(1)}
+                            {formatSetupAssistanceStatus(latestSetupAssistanceRequest.status)}
                           </Badge>
                         ) : (
                           <Badge variant="outline">No requests yet</Badge>
@@ -710,7 +716,7 @@ export default function SettingsPage() {
                                 </p>
                               </div>
                               <Badge variant={getSetupAssistanceBadgeVariant(request.status)}>
-                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                                {formatSetupAssistanceStatus(request.status)}
                               </Badge>
                             </div>
                           ))}
