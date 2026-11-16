@@ -52,7 +52,7 @@ async function loadUserLabels(admin: SupabaseClient, userIds: string[]) {
   return labels;
 }
 
-async function resolveManagedBusiness(admin: SupabaseClient, userId: string): Promise<ManagedBusiness> {
+export async function resolveManagedBusiness(admin: SupabaseClient, userId: string): Promise<ManagedBusiness> {
   const { data: ownedBusiness, error: ownedBusinessError } = await admin
     .from("businesses")
     .select("id, business_name")
