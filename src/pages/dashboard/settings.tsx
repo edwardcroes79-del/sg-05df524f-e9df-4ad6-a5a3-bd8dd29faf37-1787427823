@@ -688,11 +688,11 @@ export default function SettingsPage() {
               </div>
               <div className="space-y-2 text-sm text-muted-foreground">
                 <p>
-                  Setup Assistance is currently free. Starting <span className="font-semibold text-foreground">1 January 2027</span>, a one-time fee of <span className="font-semibold text-foreground">AWG 25 per setup request</span> will apply.
+                  Setup Assistance is currently free. Starting <span className="font-semibold text-foreground">1 January 2027</span>, a one-time fee of <span className="font-semibold text-foreground">AWG 35 per setup request</span> will apply.
                 </p>
                 <p>There are no monthly charges for this service.</p>
                 <p>
-                  Requests submitted before <span className="font-semibold text-foreground">1 January 2027</span> will remain free, even if the setup is completed after that date. Requests submitted on or after <span className="font-semibold text-foreground">1 January 2027</span> will be subject to the one-time <span className="font-semibold text-foreground">AWG 25</span> fee.
+                  Requests submitted before <span className="font-semibold text-foreground">1 January 2027</span> will remain free, even if the setup is completed after that date. Requests submitted on or after <span className="font-semibold text-foreground">1 January 2027</span> will be subject to the one-time <span className="font-semibold text-foreground">AWG 35</span> fee.
                 </p>
               </div>
             </div>
