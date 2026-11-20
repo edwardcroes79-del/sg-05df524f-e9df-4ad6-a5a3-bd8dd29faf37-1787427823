@@ -119,6 +119,7 @@ type SetupRequestRecord = {
   requestedAt: string;
   reviewedAt: string | null;
   requestedBy: string;
+  requestedByEmail: string | null;
   reviewedBy: string | null;
   readyForReviewAt: string | null;
   reviewRound: number;
@@ -1430,6 +1431,22 @@ export default function AdminDashboard() {
     });
 
   const setupRequestNotifications: SuperAdminNotification[] = setupRequests.flatMap<SuperAdminNotification>((request) => {
+    if (request.status === "pending") {
+      return [{
+        id: notificationKey("setup_request", `${request.id}:pending:${request.requestedAt}`),
+        sourceType: "setup_request",
+        sourceId: `${request.id}:pending:${request.requestedAt}`,
+        type: "New setup request",
+        businessName: request.businessName,
+        description: `${request.requestedByEmail || request.requestedBy} submitted a setup assistance request.`,
+        createdAt: request.requestedAt,
+        status: "pending" as const,
+        destination: "setup_requests" as const,
+        relatedRecord: request,
+        label: "View Request",
+      }];
+    }
+
     if (request.status === "changes_requested" && request.changesRequestedAt) {
       return [{
         id: notificationKey("setup_request", `${request.id}:changes_requested:${request.changesRequestedAt}`),
@@ -1533,6 +1550,11 @@ export default function AdminDashboard() {
     (notification.status === "pending" || notification.sourceType === "setup_request") && !notificationReads[notification.id];
 
   const unreadNotificationCount = superAdminNotifications.filter(isNotificationUnread).length;
+  const unreadNewSetupRequestCount = superAdminNotifications.filter((notification) =>
+    notification.sourceType === "setup_request" &&
+    notification.sourceId.includes(":pending:") &&
+    isNotificationUnread(notification)
+  ).length;
 
   const markNotificationsRead = async (notificationsToRead: SuperAdminNotification[]) => {
     if (notificationsToRead.length === 0) return;
@@ -1584,6 +1606,10 @@ export default function AdminDashboard() {
 
     if (notification.destination === "addons") {
       setReviewingAddonRequestId(null);
+    }
+
+    if (notification.destination === "setup_requests") {
+      setSelectedSetupRequest(notification.relatedRecord);
     }
   };
 
@@ -3853,7 +3879,7 @@ export default function AdminDashboard() {
                                   variant={notification.status === "pending" ? "default" : "outline"}
                                   onClick={() => handleReviewNotification(notification)}
                                 >
-                                  {t("admin.notifications.review")}
+                                  {notification.sourceType === "setup_request" ? "View Request" : t("admin.notifications.review")}
                                 </Button>
                               </div>
                             </div>
@@ -3875,7 +3901,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* Global Statistics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{t("admin.stats.totalMerchants")}</CardTitle>
@@ -3910,6 +3936,15 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{globalStats.totalStamps}</div>
+              </CardContent>
+            </Card>
+            <Card className={unreadNewSetupRequestCount > 0 ? "border-primary/30 bg-primary/5" : ""}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">New Setup Requests</CardTitle>
+                <Bell className="h-4 w-4 text-primary" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">{unreadNewSetupRequestCount}</div>
               </CardContent>
             </Card>
           </div>

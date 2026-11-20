@@ -15,9 +15,9 @@ function profileLabel(profile: any) {
   return profile.full_name || profile.email || "Unknown user";
 }
 
-async function loadUserLabels(admin: SupabaseClient, userIds: string[]) {
+async function loadUserDirectory(admin: SupabaseClient, userIds: string[]) {
   if (userIds.length === 0) {
-    return new Map<string, string>();
+    return new Map<string, { label: string; email: string | null }>();
   }
 
   const { data: profiles, error: profilesError } = await admin
@@ -27,15 +27,19 @@ async function loadUserLabels(admin: SupabaseClient, userIds: string[]) {
 
   if (profilesError) throw profilesError;
 
-  const labels = new Map<string, string>();
+  const directory = new Map<string, { label: string; email: string | null }>();
   const unresolvedUserIds: string[] = [];
 
   for (const userId of userIds) {
     const profile = (profiles || []).find((entry) => String(entry.id) === String(userId));
     const label = profileLabel(profile);
+    const email = profile?.email || null;
 
-    if (label !== "Unknown user") {
-      labels.set(String(userId), label);
+    if (label !== "Unknown user" || email) {
+      directory.set(String(userId), {
+        label: label !== "Unknown user" ? label : email || "Unknown user",
+        email,
+      });
     } else {
       unresolvedUserIds.push(String(userId));
     }
@@ -44,12 +48,13 @@ async function loadUserLabels(admin: SupabaseClient, userIds: string[]) {
   for (const userId of unresolvedUserIds) {
     const authResult = await admin.auth.admin.getUserById(userId);
     const authEmail = authResult.data.user?.email || null;
-    if (authEmail) {
-      labels.set(String(userId), authEmail);
-    }
+    directory.set(String(userId), {
+      label: authEmail || "Unknown user",
+      email: authEmail,
+    });
   }
 
-  return labels;
+  return directory;
 }
 
 export async function resolveManagedBusiness(admin: SupabaseClient, userId: string): Promise<ManagedBusiness> {
@@ -187,8 +192,8 @@ export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
   if (error) throw error;
 
   const userIds = Array.from(new Set((data || []).flatMap((request) => [request.requested_by, request.reviewed_by, request.approved_by, request.changes_requested_by].filter(Boolean))));
-  const [userLabels, activeSessions] = await Promise.all([
-    loadUserLabels(admin, userIds.map((id) => String(id))),
+  const [userDirectory, activeSessions] = await Promise.all([
+    loadUserDirectory(admin, userIds.map((id) => String(id))),
     listActiveSetupSessions(
       admin,
       (data || []).filter((request) => EDITABLE_SETUP_STATUSES.includes(request.status)).map((request) => String(request.id))
@@ -198,6 +203,11 @@ export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
   return (data || []).map((request) => {
     const business = Array.isArray(request.businesses) ? request.businesses[0] : request.businesses;
     const activeSession = activeSessions.get(String(request.id)) || null;
+    const requestedByEntry = userDirectory.get(String(request.requested_by));
+    const reviewedByEntry = request.reviewed_by ? userDirectory.get(String(request.reviewed_by)) : null;
+    const changesRequestedByEntry = request.changes_requested_by ? userDirectory.get(String(request.changes_requested_by)) : null;
+    const approvedByEntry = request.approved_by ? userDirectory.get(String(request.approved_by)) : null;
+
     return {
       id: request.id,
       businessId: request.business_id,
@@ -205,15 +215,16 @@ export async function listAllSetupAssistanceRequests(admin: SupabaseClient) {
       status: request.status,
       requestedAt: request.requested_at,
       reviewedAt: request.reviewed_at,
-      requestedBy: userLabels.get(String(request.requested_by)) || "Unknown user",
-      reviewedBy: request.reviewed_by ? userLabels.get(String(request.reviewed_by)) || "Unknown user" : null,
+      requestedBy: requestedByEntry?.label || "Unknown user",
+      requestedByEmail: requestedByEntry?.email || null,
+      reviewedBy: reviewedByEntry?.label || null,
       readyForReviewAt: request.ready_for_review_at,
       reviewRound: Number(request.review_round || 0),
       changeRequestFeedback: request.change_request_feedback,
       changesRequestedAt: request.changes_requested_at,
-      changesRequestedBy: request.changes_requested_by ? userLabels.get(String(request.changes_requested_by)) || "Unknown user" : null,
+      changesRequestedBy: changesRequestedByEntry?.label || null,
       approvedAt: request.approved_at,
-      approvedBy: request.approved_by ? userLabels.get(String(request.approved_by)) || "Unknown user" : null,
+      approvedBy: approvedByEntry?.label || null,
       activatedProgramId: request.activated_program_id,
       createdAt: request.created_at,
       updatedAt: request.updated_at,
