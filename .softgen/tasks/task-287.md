@@ -1,6 +1,6 @@
 ---
 title: Seven-day business trial enforcement
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [trial, billing, dashboard, supabase]
@@ -17,8 +17,8 @@ The public Home page advertises a 7-day free trial, but authenticated Business D
 - [x] Locate registration, business approval, trial settings, and dashboard trial display code paths
 - [x] Centralize dashboard and registration logic around the configured trial duration
 - [x] Update hardcoded 14-day trial wording/countdowns to configured 7-day trial wording/countdowns
-- [ ] Recalculate active free-trial business trial_end values from original trial_start + configured duration
-- [ ] Verify existing active trial, new registration logic, and matching dashboard banner/card countdowns
+- [x] Recalculate active free-trial business trial_end values from original trial_start + configured duration
+- [x] Verify existing active trial, new registration logic, and matching dashboard banner/card countdowns
 
 ## Acceptance
 The Business Dashboard top trial banner and trial information card show the same remaining days and expiration date based on the database trial_end.
