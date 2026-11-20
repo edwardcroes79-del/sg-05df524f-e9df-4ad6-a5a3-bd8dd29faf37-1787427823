@@ -30,6 +30,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { buildMfaRedirect, getMfaRouteRequirement } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { WhatsAppSupportButton } from "@/components/WhatsAppSupportButton";
+import { AccountOnHoldBanner, AccountOnHoldPanel, useAccountRestoredNotice } from "@/components/dashboard/AccountOnHoldPanel";
 import { useI18n, type TranslationKey } from "@/contexts/I18nProvider";
 import {
   CorporateBrandingProvider,
@@ -720,6 +721,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const corporateBrandingStyle = getCorporateBrandingStyle(corporateBranding);
   const corporateLogoUrl = corporateBranding?.logo_url || "";
   const corporatePrimaryColor = corporateBranding?.primary_color || undefined;
+  const isOnHold = business?.status === "on_hold";
+  const isHoldAllowedPath = router.pathname.startsWith("/dashboard/billing") || router.pathname.startsWith("/dashboard/settings");
+
+  useAccountRestoredNotice(business?.id, Boolean(business?.id) && !isOnHold && business?.status === "active");
 
   if (loading) {
     return (
@@ -757,7 +762,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }
 
   // Handle Expired Contract Blocking
-  if (isExpiredContract) {
+  if (isExpiredContract && !isOnHold) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
         <div className="p-4 bg-destructive/10 rounded-full text-destructive">
@@ -775,7 +780,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }
 
   // Handle Expired Trial Blocking
-  if (isExpiredTrial && !router.pathname.includes("/dashboard/billing")) {
+  if (isExpiredTrial && !isOnHold && !router.pathname.includes("/dashboard/billing")) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
         <div className="p-4 bg-amber-500/10 rounded-full text-amber-500">
@@ -1054,7 +1059,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           )}
 
           <div className="flex-1 overflow-y-auto p-4 md:p-8">
-            {children}
+            {isOnHold && !isHoldAllowedPath ? (
+              <AccountOnHoldPanel businessId={business.id} />
+            ) : (
+              <>
+                {isOnHold && <AccountOnHoldBanner />}
+                {children}
+              </>
+            )}
           </div>
         </main>
 
