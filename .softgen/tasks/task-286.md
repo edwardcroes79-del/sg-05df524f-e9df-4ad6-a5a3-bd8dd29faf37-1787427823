@@ -25,6 +25,7 @@ Initial inspection findings (2026-11-20):
 - `src/pages/api/auth/register-business.ts` only generates the business signup confirmation email; it does not assign any trial dates itself, so the actual trial assignment path must be elsewhere.
 - `src/pages/onboarding.tsx` creates new businesses with `status: "pending"` and `subscription_plan: "starter"` but does not set `trial_start`, `trial_end`, or `subscription_status`.
 - `src/pages/api/admin/approve-business.ts` approves pending businesses by setting `status: "active"` and approval audit fields only; it explicitly preserves existing plan, trial, and subscription fields and does not create a trial.
+- `src/pages/index.tsx` now reads `website_settings.key = 'trial_period_settings'` for homepage trial promotion copy, defaults to a 7-day free trial when the setting is absent, and changes CTA copy/destination to pricing when trials are disabled. `check_for_errors` passed after this homepage-only update.
 
 ## Checklist
 - [ ] Inspect current trial registration flow, trial_end usage, subscription status logic, and Superadmin subscription settings UI
@@ -33,7 +34,7 @@ Initial inspection findings (2026-11-20):
 - [ ] Update new business registration flow to use the configured trial days only for new registrations
 - [ ] Ensure disabled trials prevent new free-trial assignment without altering paid subscription handling
 - [ ] Add Superadmin UI for Trial Period Settings in existing subscription settings
-- [ ] Update public homepage trial promotion text to match the centrally configured trial duration
+- [x] Update public homepage trial promotion text to match the centrally configured trial duration
 - [ ] Verify enabled and disabled trial scenarios and confirm existing businesses remain unchanged
 
 ## Acceptance
