@@ -11,11 +11,17 @@ position: 286
 ## Notes
 Add a central Superadmin-managed trial period setting to the existing subscription settings flow. The setting must allow enabling/disabling free trials, choosing 7/14/30 days, or entering a custom number of days. Only new business registrations should use the current setting. Existing businesses must remain unchanged. Paid subscriptions, payment approval, renewals, and Account On Hold must remain untouched.
 
-The setting must be stored in the database and validated server-side. Only authorized Superadmins may update it. When trials are disabled, new businesses must not receive a free trial and must instead choose a paid subscription path. If a business already has an active paid subscription, it must never be replaced by a trial.
+The setting must be stored in the database and validated server-side. Only authorized SuperAdmins may update it. When trials are disabled, new businesses must not receive a free trial and must instead choose a paid subscription path. If a business already has an active paid subscription, it must never be replaced by a trial.
+
+Initial inspection findings (2026-11-20):
+- `businesses` already stores `trial_start`, `trial_end`, `subscription_plan`, `subscription_status`, and `status`.
+- `subscription_plans` already stores `is_trial` and `trial_days`, but the new requirement is for one central platform setting that applies only to new registrations.
+- `website_settings` already exists with public read and SuperAdmin write access, making it the smallest central settings store for this feature.
+- `src/pages/api/auth/register-business.ts` only generates the business signup confirmation email; it does not assign any trial dates itself, so the actual trial assignment path must be elsewhere.
 
 ## Checklist
 - [ ] Inspect current trial registration flow, trial_end usage, subscription status logic, and Superadmin subscription settings UI
-- [ ] Inspect database tables and centralized settings storage used for subscription configuration
+- [x] Inspect database tables and centralized settings storage used for subscription configuration
 - [ ] Add centrally stored trial period settings with server-side validation and Superadmin-only update access
 - [ ] Update new business registration flow to use the configured trial days only for new registrations
 - [ ] Ensure disabled trials prevent new free-trial assignment without altering paid subscription handling
