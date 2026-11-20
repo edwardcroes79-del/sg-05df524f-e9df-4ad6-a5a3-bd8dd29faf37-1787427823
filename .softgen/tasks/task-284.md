@@ -1,6 +1,6 @@
 ---
 title: Manual and automatic account on hold
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [billing, superadmin, subscriptions, account-status]
@@ -36,3 +36,9 @@ User decisions:
 A Superadmin can place any business on hold with a reason, and the hold type, reason, note, actor and time are recorded.
 A business on hold can still log in, see payment instructions, upload proof and request restoration, but cannot lift the hold itself.
 Approving the restoration payment returns the account to Active without altering unrelated contract dates.
+
+## Verification log
+- Verified: TypeScript check clean; place_account_on_hold, approve_account_restoration and apply_automatic_account_holds exist with expected arguments; status-protection trigger active on businesses; subscription_payments has all columns used by restoration; automatic-hold dry run on 2026-11-20 matched no businesses.
+- Not verified: full lint (sandbox kills the process for memory, pre-existing).
+- Pending manual click-through: manual holds on 1-month, 6-month, 12-month and monthly businesses; proof upload while on hold; restoration approval returning Active; hold history in account_holds.
+- Known limits: restoring a contract-expired auto hold does not extend the contract (use existing renewal); stamp engine not gated server-side (dashboard gating only, per user decision); customer notice on join page only; restored notice is in-dashboard only, no email.
