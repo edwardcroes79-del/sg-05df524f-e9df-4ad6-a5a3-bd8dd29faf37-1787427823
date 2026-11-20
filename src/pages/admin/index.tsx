@@ -950,7 +950,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchSetupRequests = async (accessTokenOverride?: string) => {
+  const fetchSetupRequests = useCallback(async (accessTokenOverride?: string) => {
     try {
       setLoadingSetupRequests(true);
       const accessToken = accessTokenOverride || (await supabase.auth.getSession()).data.session?.access_token;
@@ -975,7 +975,26 @@ export default function AdminDashboard() {
     } finally {
       setLoadingSetupRequests(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    if (isAdmin !== true) return;
+
+    const channel = supabase
+      .channel("superadmin_setup_request_notifications")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "setup_assistance_requests" },
+        () => {
+          void fetchSetupRequests();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchSetupRequests, isAdmin]);
 
   const handleReviewSetupRequest = async (requestId: string, status: "accepted" | "declined") => {
     try {
