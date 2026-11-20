@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/contexts/I18nProvider";
 
@@ -41,6 +42,32 @@ interface ContractInfo {
   contract_end_date: string | null;
   renewal_date: string | null;
 }
+
+type SetupAssistanceStatus = "pending" | "accepted" | "ready_for_review" | "changes_requested" | "declined" | "completed";
+
+type SetupAssistanceRequest = {
+  id: string;
+  status: SetupAssistanceStatus;
+  requestedAt: string;
+  reviewedAt: string | null;
+  readyForReviewAt: string | null;
+  reviewRound: number;
+  changeRequestFeedback: string | null;
+  changesRequestedAt: string | null;
+  approvedAt: string | null;
+  updatedAt: string;
+};
+
+type SetupReviewState = {
+  id: string;
+  status: SetupAssistanceStatus;
+  readyForReviewAt: string | null;
+  reviewRound: number;
+  changeRequestFeedback: string | null;
+  changesRequestedAt: string | null;
+  approvedAt: string | null;
+  activatedProgramId: string | null;
+} | null;
 
 function formatContractDate(dateValue: string | null, fallback: string, locale: string) {
   if (!dateValue) return fallback;
@@ -115,6 +142,19 @@ function getContractStatusDisplay(contractInfo: ContractInfo | null, t: ReturnTy
   };
 }
 
+function getSetupAssistanceBadgeVariant(status: SetupAssistanceStatus) {
+  if (status === "accepted" || status === "completed") return "default";
+  if (status === "declined") return "destructive";
+  if (status === "ready_for_review" || status === "changes_requested") return "outline";
+  return "secondary";
+}
+
+function formatSetupAssistanceStatus(status: SetupAssistanceStatus) {
+  if (status === "ready_for_review") return "Ready for Review";
+  if (status === "changes_requested") return "Changes Requested";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 export default function DashboardOverview() {
   const router = useRouter();
   const { toast } = useToast();
@@ -131,6 +171,21 @@ export default function DashboardOverview() {
   });
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [contractInfo, setContractInfo] = useState<ContractInfo | null>(null);
+  const [setupAssistanceLoading, setSetupAssistanceLoading] = useState(true);
+  const [setupAssistance, setSetupAssistance] = useState<{
+    businessId: string;
+    businessName: string;
+    latestRequest: SetupAssistanceRequest | null;
+    requests: SetupAssistanceRequest[];
+    hasActiveRequest: boolean;
+  }>({
+    businessId: "",
+    businessName: "",
+    latestRequest: null,
+    requests: [],
+    hasActiveRequest: false,
+  });
+  const [setupReview, setSetupReview] = useState<SetupReviewState>(null);
 
   // Upgrade Success State
   const [upgradeSuccessPlan, setUpgradeSuccessPlan] = useState<string | null>(null);
@@ -188,6 +243,13 @@ export default function DashboardOverview() {
           scheduleLiveRefresh();
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "setup_assistance_requests", filter: `business_id=eq.${businessId}` },
+        () => {
+          void loadSetupAssistance(undefined, true);
+        }
+      )
       .subscribe();
 
     return () => {
@@ -197,6 +259,54 @@ export default function DashboardOverview() {
       supabase.removeChannel(channel);
     };
   }, [businessId]);
+
+  const loadSetupAssistance = async (accessToken?: string, silent = false) => {
+    try {
+      if (!silent) {
+        setSetupAssistanceLoading(true);
+      }
+
+      const sessionResult = await supabase.auth.getSession();
+      const resolvedAccessToken = accessToken || sessionResult.data.session?.access_token;
+      if (!resolvedAccessToken) return;
+
+      const response = await fetch("/api/business/setup-assistance", {
+        headers: {
+          Authorization: `Bearer ${resolvedAccessToken}`,
+          Accept: "application/json",
+        },
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || "Unable to load setup assistance requests");
+      }
+
+      setSetupAssistance({
+        businessId: payload.businessId || "",
+        businessName: payload.businessName || "",
+        latestRequest: payload.latestRequest || null,
+        requests: payload.requests || [],
+        hasActiveRequest: payload.hasActiveRequest === true,
+      });
+
+      const reviewResponse = await fetch("/api/business/setup-review", {
+        headers: {
+          Authorization: `Bearer ${resolvedAccessToken}`,
+          Accept: "application/json",
+        },
+      });
+
+      const reviewPayload = await reviewResponse.json().catch(() => ({}));
+      setSetupReview(reviewResponse.ok && reviewPayload.success ? reviewPayload.request || null : null);
+    } catch (error) {
+      console.error("Error loading setup assistance:", error);
+    } finally {
+      if (!silent) {
+        setSetupAssistanceLoading(false);
+      }
+    }
+  };
 
   const loadStatsAndActivity = async (resolvedBusinessId: string) => {
     try {
@@ -344,7 +454,10 @@ export default function DashboardOverview() {
       // Update cache
       localStorage.setItem(`last_known_plan_id_${resolvedBusinessId}`, subscriptionPlan || "starter");
 
-      await loadStatsAndActivity(resolvedBusinessId);
+      await Promise.all([
+        loadStatsAndActivity(resolvedBusinessId),
+        loadSetupAssistance(session.access_token),
+      ]);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -365,6 +478,10 @@ export default function DashboardOverview() {
   const contractDaysRemaining = getDaysRemaining(contractInfo?.contract_end_date || null);
   const isContractApproachingExpiration = contractState === "expiring" && contractDaysRemaining !== null && contractDaysRemaining <= 14 && contractDaysRemaining > 0;
   const contractDateFallback = t("dashboard.contract.notAssigned");
+  const activeSetupRequest = setupAssistance.requests.find((request) =>
+    ["pending", "accepted", "ready_for_review", "changes_requested"].includes(request.status)
+  ) || setupAssistance.latestRequest;
+  const historicalSetupRequests = setupAssistance.requests.filter((request) => request.id !== activeSetupRequest?.id).slice(0, 3);
 
   return (
     <DashboardLayout>
@@ -408,6 +525,139 @@ export default function DashboardOverview() {
             </Button>
           </div>
         )}
+
+        {setupReview?.status === "ready_for_review" && (
+          <Alert className="border-primary/30 bg-primary/5">
+            <AlertTitle>{setupReview.reviewRound > 1 ? "Revised setup ready for review" : "Setup ready for review"}</AlertTitle>
+            <AlertDescription className="space-y-3">
+              <p>Your Royalty Stamp loyalty card setup is ready. Please review and approve it before activation.</p>
+              <Button type="button" size="sm" onClick={() => router.push("/dashboard/setup-review")}>
+                Review My Setup
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {setupReview?.status === "completed" && setupReview.approvedAt && (
+          <Alert className="border-emerald-200 bg-emerald-50">
+            <AlertTitle>Setup activated</AlertTitle>
+            <AlertDescription>
+              Your loyalty card setup was approved and activated on {new Date(setupReview.approvedAt).toLocaleString(locale)}.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        <Card className="overflow-hidden border-border/70 shadow-sm">
+          <CardHeader className="border-b border-border/60 bg-muted/20">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Gift className="h-5 w-5 text-primary" />
+                  Setup Assistance
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Track your request, latest feedback, and review steps directly from your dashboard.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={setupReview?.status === "ready_for_review" ? "default" : "outline"}
+                onClick={() => router.push(setupReview?.status === "ready_for_review" ? "/dashboard/setup-review" : "/dashboard/settings")}
+              >
+                {setupReview?.status === "ready_for_review" ? "Review My Setup" : "View Setup Request"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 sm:p-6">
+            {setupAssistanceLoading ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-border/70 bg-card p-4">
+                  <Skeleton className="mb-3 h-4 w-28" />
+                  <Skeleton className="mb-2 h-6 w-36" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+                <div className="rounded-xl border border-border/70 bg-card p-4">
+                  <Skeleton className="mb-3 h-4 w-24" />
+                  <Skeleton className="mb-2 h-5 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              </div>
+            ) : activeSetupRequest ? (
+              <div className="space-y-5">
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+                  <div className="rounded-xl border border-border/70 bg-card p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-foreground">Active request</p>
+                      <Badge variant={getSetupAssistanceBadgeVariant(activeSetupRequest.status)}>
+                        {formatSetupAssistanceStatus(activeSetupRequest.status)}
+                      </Badge>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Request reference</p>
+                        <p className="font-mono text-sm text-foreground">{activeSetupRequest.id}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Submitted</p>
+                        <p className="font-medium text-foreground">{new Date(activeSetupRequest.requestedAt).toLocaleString(locale)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Last updated</p>
+                        <p className="font-medium text-foreground">{new Date(activeSetupRequest.updatedAt).toLocaleString(locale)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Review round</p>
+                        <p className="font-medium text-foreground">{Math.max(1, Number(activeSetupRequest.reviewRound || 1))}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-border/70 bg-card p-4">
+                    <p className="font-semibold text-foreground">Latest Superadmin feedback</p>
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      {activeSetupRequest.changeRequestFeedback || (
+                        activeSetupRequest.status === "accepted"
+                          ? "Your request has been accepted. Royalty Stamp is preparing your setup."
+                          : activeSetupRequest.status === "ready_for_review"
+                            ? "Your loyalty card setup is ready. Please review and approve it before activation."
+                            : activeSetupRequest.status === "pending"
+                              ? "Your setup assistance request was submitted successfully."
+                              : activeSetupRequest.status === "completed"
+                                ? "Your loyalty card setup has been approved and activated."
+                                : "No feedback has been added yet."
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {historicalSetupRequests.length > 0 && (
+                  <div className="rounded-xl border border-border/70 bg-background p-4">
+                    <p className="mb-3 font-semibold text-foreground">Previous requests</p>
+                    <div className="space-y-2">
+                      {historicalSetupRequests.map((request) => (
+                        <div key={request.id} className="flex flex-col gap-2 rounded-lg border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{new Date(request.requestedAt).toLocaleString(locale)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Updated {new Date(request.updatedAt).toLocaleString(locale)}
+                            </p>
+                          </div>
+                          <Badge variant={getSetupAssistanceBadgeVariant(request.status)}>
+                            {formatSetupAssistanceStatus(request.status)}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border bg-muted/20 p-6 text-sm text-muted-foreground">
+                No setup assistance request has been submitted for this business yet.
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="overflow-hidden border-border/70 shadow-sm">
           <CardHeader className="border-b border-border/60 bg-muted/20">

@@ -14,7 +14,7 @@ Wire Business Admin and Superadmin notifications into the existing setup assista
 - [x] Reuse existing setup request/status workflow for pending, accepted, ready-for-review, changes-requested, completed, and declined state transitions
 - [x] Send Business Admin status emails for ready-for-review and completed transitions without bypassing the existing secure activation RPC
 - [x] Notify Superadmin when a Business Admin requests changes and when a setup is approved/completed
-- [ ] Surface status alerts, review actions, and request history prominently on the Business Dashboard without requiring Settings navigation
+- [x] Surface status alerts, review actions, and request history prominently on the Business Dashboard without requiring Settings navigation
 - [ ] Verify duplicate prevention, persisted notification visibility, and failure-safe email logging for setup status changes
 ## Acceptance
 Status changes produce the correct persistent in-app notifications, realtime updates, and emails without duplicate records.
