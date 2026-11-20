@@ -290,6 +290,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await (supabase as any).rpc("refresh_expired_business_contracts");
 
+    const { data: automaticHoldCount, error: automaticHoldError } = await (supabase as any).rpc("apply_automatic_account_holds");
+    if (automaticHoldError) {
+      console.error("Automatic account hold check failed:", automaticHoldError);
+    }
+
     const today = getArubaDateString();
     const { data: businesses, error } = await supabase
       .from("businesses")
@@ -304,6 +309,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const summary = {
       today,
       checked: businesses?.length || 0,
+      automaticHolds: Number(automaticHoldCount || 0),
       sent: 0,
       skipped: 0,
       failed: 0,

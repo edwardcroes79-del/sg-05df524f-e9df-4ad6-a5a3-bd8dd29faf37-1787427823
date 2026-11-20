@@ -15,6 +15,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_holds: {
+        Row: {
+          business_id: string
+          created_at: string
+          due_date: string | null
+          hold_type: string
+          id: string
+          internal_note: string | null
+          new_renewal_date: string | null
+          placed_at: string
+          placed_by: string | null
+          previous_status: string | null
+          reason: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          restoration_payment_id: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          due_date?: string | null
+          hold_type: string
+          id?: string
+          internal_note?: string | null
+          new_renewal_date?: string | null
+          placed_at?: string
+          placed_by?: string | null
+          previous_status?: string | null
+          reason: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          restoration_payment_id?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          due_date?: string | null
+          hold_type?: string
+          id?: string
+          internal_note?: string | null
+          new_renewal_date?: string | null
+          placed_at?: string
+          placed_by?: string | null
+          previous_status?: string | null
+          reason?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          restoration_payment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_holds_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_holds_restoration_payment_id_fkey"
+            columns: ["restoration_payment_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       anti_fraud_blocked_attempts: {
         Row: {
           attempted_at: string
@@ -2440,6 +2509,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_automatic_account_holds: { Args: never; Returns: number }
       approve_setup_request: {
         Args: { p_expected_draft_updated_at: string; p_request_id: string }
         Returns: Json
@@ -2669,6 +2739,14 @@ export type Database = {
           read_at: string
           status: string
         }[]
+      }
+      place_account_on_hold: {
+        Args: {
+          p_business_id: string
+          p_internal_note?: string
+          p_reason: string
+        }
+        Returns: Json
       }
       quick_stamp_qr_issue_stamp: { Args: { p_token: string }; Returns: Json }
       redeem_reward: {
