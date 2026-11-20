@@ -174,7 +174,7 @@ function buildPlanPayload(body: PlanInput, currentId?: string) {
     max_customers: maxCustomers,
     max_staff: maxStaff,
     is_trial: Boolean(body.is_trial),
-    trial_days: Math.max(1, Math.trunc(toNumber(body.trial_days, 14))),
+    trial_days: Math.max(1, Math.trunc(toNumber(body.trial_days, 7))),
     includes_premium_templates: Boolean(body.includes_premium_templates),
     visibility,
     is_active: status === "active",

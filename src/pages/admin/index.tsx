@@ -459,7 +459,7 @@ export default function AdminDashboard() {
     max_customers: 300,
     max_staff: 1,
     is_trial: false,
-    trial_days: 14,
+    trial_days: 7,
     includes_premium_templates: false,
     visibility: "public",
     features: [] as string[],
@@ -1768,7 +1768,7 @@ export default function AdminDashboard() {
       if (selectedPlan?.is_trial) {
         const now = new Date();
         const end = new Date();
-        end.setDate(now.getDate() + (selectedPlan.trial_days || 14));
+        end.setDate(now.getDate() + (selectedPlan.trial_days || 7));
         updateData.trial_start = now.toISOString();
         updateData.trial_end = end.toISOString();
       }
@@ -1967,7 +1967,7 @@ export default function AdminDashboard() {
       max_customers: plan.max_customers,
       max_staff: plan.max_staff ?? 1,
       is_trial: plan.is_trial || false,
-      trial_days: plan.trial_days || 14,
+      trial_days: plan.trial_days || 7,
       includes_premium_templates: plan.includes_premium_templates || Boolean(entitlementState.premium_templates),
       visibility: plan.visibility === "private" ? "private" : "public",
       features: Array.isArray(plan.features) ? plan.features : [],
@@ -2001,7 +2001,7 @@ export default function AdminDashboard() {
       max_customers: Number(plan.max_customers || 300),
       max_staff: Number(plan.max_staff ?? 1),
       is_trial: Boolean(plan.is_trial),
-      trial_days: Number(plan.trial_days || 14),
+      trial_days: Number(plan.trial_days || 7),
       includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
       visibility: plan.visibility === "private" ? "private" : "public",
       features: Array.isArray(plan.features) ? plan.features : [],
@@ -2127,7 +2127,7 @@ export default function AdminDashboard() {
         max_customers: Number(plan.max_customers),
         max_staff: Number(plan.max_staff),
         is_trial: Boolean(plan.is_trial),
-        trial_days: Number(plan.trial_days || 14),
+        trial_days: Number(plan.trial_days || 7),
         includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
         visibility: plan.visibility === "private" ? "private" : "public",
         features: Array.isArray(plan.features) ? plan.features : [],
@@ -2156,7 +2156,7 @@ export default function AdminDashboard() {
           max_customers: Number(plan.max_customers || 300),
           max_staff: Number(plan.max_staff || 1),
           is_trial: Boolean(plan.is_trial),
-          trial_days: Number(plan.trial_days || 14),
+          trial_days: Number(plan.trial_days || 7),
           includes_premium_templates: Boolean(entitlementState.premium_templates ?? plan.includes_premium_templates),
           visibility: plan.visibility === "private" ? "private" : "public",
           features: Array.isArray(plan.features) ? plan.features : [],
