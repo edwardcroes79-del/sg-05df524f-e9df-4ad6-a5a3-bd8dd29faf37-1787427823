@@ -173,6 +173,17 @@ function addCalendarMonths(dateValue: string, months: number) {
   return formatDateForInput(new Date(Date.UTC(targetYear, normalizedMonthIndex, clampedDay)));
 }
 
+const CONTRACT_TERM_OPTIONS = [1, 6, 12] as const;
+type ContractTermMonths = typeof CONTRACT_TERM_OPTIONS[number];
+
+function getContractRenewalDate(contractEndDate: string, termMonths: number) {
+  if (termMonths === 1) {
+    const [year, month, day] = contractEndDate.split("-").map(Number);
+    return formatDateForInput(new Date(Date.UTC(year, month - 1, day - 7)));
+  }
+  return addCalendarMonths(contractEndDate, -1);
+}
+
 function getEffectiveContractStatus(contractStatus?: string | null, contractEndDate?: string | null, renewalDate?: string | null) {
   if (!contractEndDate) return null;
 
@@ -1862,7 +1873,7 @@ export default function AdminDashboard() {
     }
 
     const termMonths = Number(draft.term);
-    if (![6, 12].includes(termMonths)) {
+    if (!(CONTRACT_TERM_OPTIONS as readonly number[]).includes(termMonths)) {
       toast({
         title: t("admin.contract.invalidTerm"),
         description: t("admin.contract.invalidTermDescription"),
@@ -1872,7 +1883,7 @@ export default function AdminDashboard() {
     }
 
     const contractEndDate = addCalendarMonths(draft.startDate, termMonths);
-    const renewalDate = addCalendarMonths(contractEndDate, -1);
+    const renewalDate = getContractRenewalDate(contractEndDate, termMonths);
     const contractStatus = getEffectiveContractStatus("active", contractEndDate, renewalDate) || "active";
 
     try {
@@ -1917,7 +1928,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleRenewContract = async (biz: any, termMonths: 6 | 12) => {
+  const handleRenewContract = async (biz: any, termMonths: ContractTermMonths) => {
     if (!biz?.id) return;
 
     const today = formatDateForInput(new Date());
@@ -1925,7 +1936,7 @@ export default function AdminDashboard() {
     const renewFromExistingEnd = Boolean(previousEndDate && previousEndDate >= today);
     const baseDate = renewFromExistingEnd ? previousEndDate : today;
     const newEndDate = addCalendarMonths(baseDate, termMonths);
-    const nextRenewalDate = addCalendarMonths(newEndDate, -1);
+    const nextRenewalDate = getContractRenewalDate(newEndDate, termMonths);
     const newStartDate = renewFromExistingEnd ? (biz.contract_start_date || today) : today;
 
     try {
@@ -4114,6 +4125,7 @@ export default function AdminDashboard() {
           aria-label={`Assign contract term for ${biz.business_name}`}
         >
           <option value="">Assign term</option>
+          <option value="1">1 month</option>
           <option value="6">{t("admin.contract.months6")}</option>
           <option value="12">{t("admin.contract.months12")}</option>
         </select>
@@ -4140,34 +4152,35 @@ export default function AdminDashboard() {
           {t("admin.contract.saveContract")}
         </Button>
         {biz.contract_end_date && (
-          <div className="grid grid-cols-2 gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1 text-[11px]"
-              onClick={() => handleRenewContract(biz, 6)}
-              disabled={renewingContractId === `${biz.id}:6` || renewingContractId === `${biz.id}:12`}
-            >
-              {renewingContractId === `${biz.id}:6` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
-              {t("admin.contract.renew6")}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1 text-[11px]"
-              onClick={() => handleRenewContract(biz, 12)}
-              disabled={renewingContractId === `${biz.id}:6` || renewingContractId === `${biz.id}:12`}
-            >
-              {renewingContractId === `${biz.id}:12` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
-              {t("admin.contract.renew12")}
-            </Button>
+          <div className="grid grid-cols-3 gap-1">
+            {CONTRACT_TERM_OPTIONS.map((term) => {
+              const isBusy = renewingContractId?.startsWith(`${biz.id}:`) ?? false;
+              return (
+                <Button
+                  key={term}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1 px-1 text-[11px]"
+                  onClick={() => handleRenewContract(biz, term)}
+                  disabled={isBusy}
+                  title={term === 1 ? "Renew 1 month — only after the new payment proof is approved" : undefined}
+                >
+                  {renewingContractId === `${biz.id}:${term}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
+                  {term === 1 ? "Renew 1M" : term === 6 ? t("admin.contract.renew6") : t("admin.contract.renew12")}
+                </Button>
+              );
+            })}
           </div>
         )}
         <div className="text-[11px] text-muted-foreground">
-          {t("admin.contract.current")} {biz.contract_term_months ? t("dashboard.contract.months", { months: biz.contract_term_months }) : t("admin.common.unassigned")}
+          {t("admin.contract.current")} {biz.contract_term_months ? (biz.contract_term_months === 1 ? "1 month" : t("dashboard.contract.months", { months: biz.contract_term_months })) : t("admin.common.unassigned")}
         </div>
+        {biz.contract_term_months === 1 && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] leading-snug text-amber-900">
+            Paid upfront · no auto-renew. Next period needs new bank-transfer proof approved by Superadmin.
+          </div>
+        )}
       </div>
     </TableCell>
     <TableCell>
@@ -4224,6 +4237,11 @@ export default function AdminDashboard() {
     </TableCell>
     <TableCell className="font-bold text-primary whitespace-nowrap">
       {t("admin.merchants.totalPerMonth", { amount: totalSubscription.toFixed(2) })}
+      {biz.contract_term_months && (
+        <div className="mt-1 text-[11px] font-medium text-muted-foreground">
+          {biz.contract_term_months === 1 ? "Due upfront per month" : `Term total (${biz.contract_term_months} mo)`}: AWG {(totalSubscription * Number(biz.contract_term_months)).toFixed(2)}
+        </div>
+      )}
     </TableCell>
     <TableCell className="text-right flex items-center justify-end gap-2">
       {biz.status === "pending" ? (
