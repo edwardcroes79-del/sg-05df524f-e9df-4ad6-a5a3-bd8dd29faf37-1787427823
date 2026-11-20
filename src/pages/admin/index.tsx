@@ -98,7 +98,7 @@ type ManualReminderHistory = {
   sentAt: string;
   displayedAt: string | null;
   dismissedAt: string | null;
-  deliveryStatus: "Dismissed" | "Displayed" | "Sent";
+  deliveryStatus: "Archived" | "Dismissed" | "Displayed" | "Sent";
   sentBy: string;
   invoiceNumber: string | null;
   outstandingAmount: number | null;
@@ -107,6 +107,8 @@ type ManualReminderHistory = {
   billingPeriod: string | null;
   paymentDueDate: string | null;
   referenceNote: string | null;
+  archivedAt: string | null;
+  archivedBy: string | null;
 };
 
 type SetupRequestRecord = {
@@ -611,6 +613,8 @@ export default function AdminDashboard() {
   const [manualReminderMessage, setManualReminderMessage] = useState(defaultManualReminderMessage);
   const [sendingManualReminder, setSendingManualReminder] = useState(false);
   const [previewManualReminderOpen, setPreviewManualReminderOpen] = useState(false);
+  const [manualReminderToArchive, setManualReminderToArchive] = useState<ManualReminderHistory | null>(null);
+  const [archivingManualReminderId, setArchivingManualReminderId] = useState<string | null>(null);
   const [manualReminderAmountDue, setManualReminderAmountDue] = useState("");
   const [manualReminderBillingPeriod, setManualReminderBillingPeriod] = useState("");
   const [manualReminderDueDate, setManualReminderDueDate] = useState("");
@@ -3730,6 +3734,33 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleArchiveManualReminder = async () => {
+    if (!manualReminderToArchive) return;
+
+    try {
+      setArchivingManualReminderId(manualReminderToArchive.id);
+      const { error } = await (supabase as any).rpc("archive_manual_payment_reminder", {
+        p_reminder_id: manualReminderToArchive.id,
+      });
+      if (error) throw error;
+
+      toast({
+        title: "Reminder removed",
+        description: `${manualReminderToArchive.businessName} will no longer see this manual reminder in the dashboard.`,
+      });
+      setManualReminderToArchive(null);
+      await fetchOverdueReminders();
+    } catch (err: any) {
+      toast({
+        title: "Reminder deletion failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setArchivingManualReminderId(null);
+    }
+  };
+
   if (loading || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -4626,7 +4657,9 @@ export default function AdminDashboard() {
                             <TableHead>Payment details</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Dismissed</TableHead>
+                            <TableHead>Archived</TableHead>
                             <TableHead>Sent by</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -4648,14 +4681,42 @@ export default function AdminDashboard() {
                                   {reminder.amountDue === null && !reminder.billingPeriod && !reminder.paymentDueDate && !reminder.referenceNote && <span>-</span>}
                                 </div>
                               </TableCell>
-                              <TableCell><Badge variant={reminder.deliveryStatus === "Dismissed" ? "default" : reminder.deliveryStatus === "Displayed" ? "secondary" : "outline"}>{reminder.deliveryStatus}</Badge></TableCell>
+                              <TableCell>
+                                <Badge variant={reminder.deliveryStatus === "Archived" ? "secondary" : reminder.deliveryStatus === "Dismissed" ? "default" : reminder.deliveryStatus === "Displayed" ? "secondary" : "outline"}>
+                                  {reminder.deliveryStatus}
+                                </Badge>
+                              </TableCell>
                               <TableCell>{reminder.dismissedAt ? new Date(reminder.dismissedAt).toLocaleString(locale) : "-"}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {reminder.archivedAt ? (
+                                  <div className="space-y-1">
+                                    <div>{new Date(reminder.archivedAt).toLocaleString(locale)}</div>
+                                    <div>{reminder.archivedBy || "Superadmin"}</div>
+                                  </div>
+                                ) : (
+                                  "-"
+                                )}
+                              </TableCell>
                               <TableCell>{reminder.sentBy}</TableCell>
+                              <TableCell className="text-right">
+                                {reminder.archivedAt ? (
+                                  <Badge variant="outline">Archived</Badge>
+                                ) : (
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => setManualReminderToArchive(reminder)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </Button>
+                                )}
+                              </TableCell>
                             </TableRow>
                           ))}
                           {manualReminderHistory.length === 0 && (
                             <TableRow>
-                              <TableCell colSpan={9} className="py-6 text-center text-muted-foreground">No manual reminders have been sent yet.</TableCell>
+                              <TableCell colSpan={11} className="py-6 text-center text-muted-foreground">No manual reminders have been sent yet.</TableCell>
                             </TableRow>
                           )}
                         </TableBody>
@@ -6599,6 +6660,44 @@ export default function AdminDashboard() {
             <Button type="button" onClick={handleSendManualReminder} disabled={!selectedManualReminderBusiness?.eligible || sendingManualReminder}>
               {sendingManualReminder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
               Send reminder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!manualReminderToArchive}
+        onOpenChange={(open) => {
+          if (!open && !archivingManualReminderId) {
+            setManualReminderToArchive(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="h-5 w-5" /> Delete manual payment reminder
+            </DialogTitle>
+            <DialogDescription>
+              This removes the reminder from {manualReminderToArchive?.businessName}&apos;s dashboard but keeps the archived record in Superadmin history.
+            </DialogDescription>
+          </DialogHeader>
+          {manualReminderToArchive && (
+            <div className="space-y-3 rounded-xl border bg-muted/20 p-4 text-sm">
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business</span><span className="font-semibold text-right">{manualReminderToArchive.businessName}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Recipient</span><span className="text-right">{manualReminderToArchive.recipientAdministrator}</span></div>
+              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Sent</span><span className="text-right">{new Date(manualReminderToArchive.sentAt).toLocaleString(locale)}</span></div>
+              <div className="space-y-1">
+                <span className="text-muted-foreground">Reminder message</span>
+                <p className="rounded-md border bg-background p-3 whitespace-pre-line">{manualReminderToArchive.message}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setManualReminderToArchive(null)} disabled={Boolean(archivingManualReminderId)}>Cancel</Button>
+            <Button type="button" variant="destructive" onClick={handleArchiveManualReminder} disabled={Boolean(archivingManualReminderId)}>
+              {archivingManualReminderId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Confirm delete
             </Button>
           </DialogFooter>
         </DialogContent>

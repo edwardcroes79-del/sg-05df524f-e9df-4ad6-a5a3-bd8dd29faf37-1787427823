@@ -1334,6 +1334,8 @@ export type Database = {
       }
       manual_payment_reminders: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           business_id: string
           dismissed_at: string | null
           displayed_at: string | null
@@ -1346,6 +1348,8 @@ export type Database = {
           subscription_payment_id: string | null
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           business_id: string
           dismissed_at?: string | null
           displayed_at?: string | null
@@ -1358,6 +1362,8 @@ export type Database = {
           subscription_payment_id?: string | null
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           business_id?: string
           dismissed_at?: string | null
           displayed_at?: string | null
@@ -2521,6 +2527,29 @@ export type Database = {
       approve_setup_request: {
         Args: { p_expected_draft_updated_at: string; p_request_id: string }
         Returns: Json
+      }
+      archive_manual_payment_reminder: {
+        Args: { p_reminder_id: string }
+        Returns: {
+          archived_at: string | null
+          archived_by: string | null
+          business_id: string
+          dismissed_at: string | null
+          displayed_at: string | null
+          id: string
+          message: string
+          metadata: Json
+          recipient_user_id: string | null
+          sent_at: string
+          sent_by: string
+          subscription_payment_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "manual_payment_reminders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       business_has_active_quick_stamp_qr: {
         Args: { p_business_id: string }

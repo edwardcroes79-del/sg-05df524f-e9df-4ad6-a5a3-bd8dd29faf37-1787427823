@@ -38,7 +38,7 @@ export type ManualReminderHistoryRecord = {
   sentAt: string;
   displayedAt: string | null;
   dismissedAt: string | null;
-  deliveryStatus: "Dismissed" | "Displayed" | "Sent";
+  deliveryStatus: "Archived" | "Dismissed" | "Displayed" | "Sent";
   sentBy: string;
   invoiceNumber: string | null;
   outstandingAmount: number | null;
@@ -47,6 +47,8 @@ export type ManualReminderHistoryRecord = {
   billingPeriod: string | null;
   paymentDueDate: string | null;
   referenceNote: string | null;
+  archivedAt: string | null;
+  archivedBy: string | null;
 };
 
 export type ManualPaymentReminderDetails = {
@@ -148,6 +150,8 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
         sent_at,
         displayed_at,
         dismissed_at,
+        archived_at,
+        archived_by,
         metadata,
         businesses ( business_name )
       `)
@@ -197,6 +201,7 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
   const history: ManualReminderHistoryRecord[] = (historyResult.data || []).map((reminder: any) => {
     const business = Array.isArray(reminder.businesses) ? reminder.businesses[0] : reminder.businesses;
     const sender = reminder.sent_by ? profileById.get(String(reminder.sent_by)) : null;
+    const archivedByProfile = reminder.archived_by ? profileById.get(String(reminder.archived_by)) : null;
     const metadata = metadataObject(reminder.metadata);
 
     return {
@@ -208,7 +213,7 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
       sentAt: reminder.sent_at,
       displayedAt: reminder.displayed_at,
       dismissedAt: reminder.dismissed_at,
-      deliveryStatus: reminder.dismissed_at ? "Dismissed" : reminder.displayed_at ? "Displayed" : "Sent",
+      deliveryStatus: reminder.archived_at ? "Archived" : reminder.dismissed_at ? "Dismissed" : reminder.displayed_at ? "Displayed" : "Sent",
       sentBy: sender?.full_name || sender?.email || "Superadmin",
       invoiceNumber: typeof metadata.invoice_number === "string" ? metadata.invoice_number : null,
       outstandingAmount: typeof metadata.outstanding_amount === "number" ? metadata.outstanding_amount : null,
@@ -217,6 +222,8 @@ export async function getManualReminderAdminData(admin: SupabaseClient) {
       billingPeriod: typeof metadata.billing_period === "string" ? metadata.billing_period : null,
       paymentDueDate: typeof metadata.manual_due_date === "string" ? metadata.manual_due_date : null,
       referenceNote: typeof metadata.reference_note === "string" ? metadata.reference_note : null,
+      archivedAt: reminder.archived_at,
+      archivedBy: archivedByProfile?.full_name || archivedByProfile?.email || null,
     };
   });
 
@@ -308,9 +315,10 @@ export async function getPendingManualRemindersForBusinesses(admin: SupabaseClie
 
   const { data, error } = await admin
     .from("manual_payment_reminders")
-    .select("id, business_id, subscription_payment_id, message, sent_at, displayed_at, dismissed_at, metadata, businesses ( business_name )")
+    .select("id, business_id, subscription_payment_id, message, sent_at, displayed_at, dismissed_at, archived_at, metadata, businesses ( business_name )")
     .in("business_id", businessIds)
     .is("dismissed_at", null)
+    .is("archived_at", null)
     .or(`recipient_user_id.eq.${userId},recipient_user_id.is.null`)
     .order("sent_at", { ascending: true });
 
@@ -322,7 +330,9 @@ export async function getPendingManualRemindersForBusinesses(admin: SupabaseClie
     await admin
       .from("manual_payment_reminders")
       .update({ displayed_at: new Date().toISOString() })
-      .in("id", reminderIds);
+      .in("id", reminderIds)
+      .is("archived_at", null)
+      .is("displayed_at", null);
   }
 
   return (data || []).map((reminder: any) => {
@@ -350,13 +360,16 @@ export async function getPendingManualRemindersForBusinesses(admin: SupabaseClie
 export async function dismissManualReminder(admin: SupabaseClient, userId: string, businessIds: string[], reminderId: string) {
   const { data: reminder, error: readError } = await admin
     .from("manual_payment_reminders")
-    .select("id, business_id, recipient_user_id, displayed_at, dismissed_at")
+    .select("id, business_id, recipient_user_id, displayed_at, dismissed_at, archived_at")
     .eq("id", reminderId)
     .maybeSingle();
 
   if (readError) throw readError;
   if (!reminder || reminder.dismissed_at) {
     throw new Error("Manual reminder was not found or was already dismissed.");
+  }
+  if (reminder.archived_at) {
+    throw new Error("Manual reminder was removed by Royalty Stamp administration.");
   }
 
   if (!businessIds.includes(String(reminder.business_id))) {
