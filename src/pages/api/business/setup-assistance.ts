@@ -53,7 +53,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     if (req.method === "POST") {
-      await createSetupAssistanceRequest(admin, userId);
+      await createSetupAssistanceRequest(
+        admin,
+        userId,
+        typeof req.headers.origin === "string" ? req.headers.origin : undefined
+      );
       const result = await listBusinessSetupAssistanceRequests(admin, userId);
       return res.status(200).json({ success: true, ...result });
     }

@@ -15,7 +15,7 @@ Implement additive notifications for new Setup Assistance requests by reusing th
 - [x] Reuse or extend existing notification persistence for new setup assistance request events without duplicating records
 - [x] Show business name, requester email, submission date, unread count updates, and View Request action in Superadmin notification surfaces
 - [x] Surface the number of new setup assistance requests on the Superadmin dashboard using existing dashboard data patterns
-- [ ] Send setup assistance request emails through the existing email system and retain in-app notifications if email delivery fails
+- [x] Send setup assistance request emails through the existing email system and retain in-app notifications if email delivery fails
 ## Acceptance
 A newly submitted setup assistance request appears in Superadmin notifications immediately, persists after refresh/login, increments unread counts, and links to the request.
 The Superadmin dashboard shows the number of new setup assistance requests without breaking existing admin flows.

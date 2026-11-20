@@ -29,7 +29,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         return res.status(400).json({ error: "Status must be accepted or declined." });
       }
 
-      await reviewSetupAssistanceRequest(admin, requestId, reviewerUserId, status);
+      await reviewSetupAssistanceRequest(
+        admin,
+        requestId,
+        reviewerUserId,
+        status,
+        typeof req.headers.origin === "string" ? req.headers.origin : undefined
+      );
       const requests = await listAllSetupAssistanceRequests(admin);
       return res.status(200).json({ success: true, requests });
     }

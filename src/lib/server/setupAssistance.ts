@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { EDITABLE_SETUP_STATUSES, listActiveSetupSessions } from "@/lib/server/setupSessions";
+import {
+  notifyBusinessAdminOfSetupStatusChange,
+  notifySuperAdminOfSetupRequestSubmission,
+} from "@/lib/server/setupAssistanceNotifications";
 
 export type SetupAssistanceStatus = "pending" | "accepted" | "ready_for_review" | "changes_requested" | "declined" | "completed";
 
@@ -105,17 +109,30 @@ export async function listBusinessSetupAssistanceRequests(admin: SupabaseClient,
 
   if (error) throw error;
 
+  const userIds = Array.from(new Set((data || []).flatMap((request) => [
+    request.requested_by,
+    request.reviewed_by,
+    request.approved_by,
+    request.changes_requested_by,
+  ].filter(Boolean))));
+  const userDirectory = await loadUserDirectory(admin, userIds.map((id) => String(id)));
+
   const requests = (data || []).map((request) => ({
     id: request.id,
     businessId: request.business_id,
     status: request.status,
     requestedAt: request.requested_at,
-    reviewedBy: request.reviewed_by,
+    requestedBy: userDirectory.get(String(request.requested_by))?.label || "Unknown user",
+    reviewedBy: request.reviewed_by ? userDirectory.get(String(request.reviewed_by))?.label || "Unknown user" : null,
     reviewedAt: request.reviewed_at,
     readyForReviewAt: request.ready_for_review_at,
+    reviewRound: Number(request.review_round || 0),
     changeRequestFeedback: request.change_request_feedback,
     changesRequestedAt: request.changes_requested_at,
+    changesRequestedBy: request.changes_requested_by ? userDirectory.get(String(request.changes_requested_by))?.label || "Unknown user" : null,
     approvedAt: request.approved_at,
+    approvedBy: request.approved_by ? userDirectory.get(String(request.approved_by))?.label || "Unknown user" : null,
+    activatedProgramId: request.activated_program_id,
     createdAt: request.created_at,
     updatedAt: request.updated_at,
   }));
@@ -132,7 +149,7 @@ export async function listBusinessSetupAssistanceRequests(admin: SupabaseClient,
   };
 }
 
-export async function createSetupAssistanceRequest(admin: SupabaseClient, userId: string) {
+export async function createSetupAssistanceRequest(admin: SupabaseClient, userId: string, origin?: string) {
   const business = await resolveManagedBusiness(admin, userId);
 
   const { data: existingActiveRequest, error: existingActiveRequestError } = await admin
@@ -148,14 +165,15 @@ export async function createSetupAssistanceRequest(admin: SupabaseClient, userId
     throw new Error("This business already has an active setup assistance request.");
   }
 
+  const now = new Date().toISOString();
   const { data, error } = await admin
     .from("setup_assistance_requests")
     .insert({
       business_id: business.businessId,
       requested_by: userId,
       status: "pending",
-      requested_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      requested_at: now,
+      updated_at: now,
     })
     .select("*")
     .single();
@@ -165,6 +183,32 @@ export async function createSetupAssistanceRequest(admin: SupabaseClient, userId
       throw new Error("This business already has an active setup assistance request.");
     }
     throw error;
+  }
+
+  try {
+    const requesterDirectory = await loadUserDirectory(admin, [String(userId)]);
+    const requesterEmail = requesterDirectory.get(String(userId))?.email || null;
+
+    await notifySuperAdminOfSetupRequestSubmission(admin, {
+      businessId: business.businessId,
+      businessName: business.businessName,
+      requestId: String(data.id),
+      requesterEmail,
+      requestedAt: data.requested_at,
+      origin,
+    });
+
+    await notifyBusinessAdminOfSetupStatusChange(admin, {
+      businessId: business.businessId,
+      businessName: business.businessName,
+      requestId: String(data.id),
+      recipientEmail: requesterEmail,
+      status: "pending",
+      eventDate: data.requested_at,
+      origin,
+    });
+  } catch (notificationError) {
+    console.error("Setup assistance request notification failed:", notificationError);
   }
 
   return {
@@ -239,11 +283,12 @@ export async function reviewSetupAssistanceRequest(
   admin: SupabaseClient,
   requestId: string,
   reviewerUserId: string,
-  status: Extract<SetupAssistanceStatus, "accepted" | "declined" | "completed">
+  status: Extract<SetupAssistanceStatus, "accepted" | "declined" | "completed">,
+  origin?: string
 ) {
   const { data: existingRequest, error: existingRequestError } = await admin
     .from("setup_assistance_requests")
-    .select("id, status")
+    .select("id, status, business_id, requested_by, review_round, businesses ( business_name )")
     .eq("id", requestId)
     .maybeSingle();
 
@@ -265,4 +310,23 @@ export async function reviewSetupAssistanceRequest(
     .eq("id", requestId);
 
   if (error) throw error;
+
+  try {
+    const requesterDirectory = await loadUserDirectory(admin, [String(existingRequest.requested_by)]);
+    const recipientEmail = requesterDirectory.get(String(existingRequest.requested_by))?.email || null;
+    const business = Array.isArray(existingRequest.businesses) ? existingRequest.businesses[0] : existingRequest.businesses;
+
+    await notifyBusinessAdminOfSetupStatusChange(admin, {
+      businessId: String(existingRequest.business_id),
+      businessName: business?.business_name || "Unknown business",
+      requestId: String(existingRequest.id),
+      recipientEmail,
+      status,
+      eventDate: now,
+      reviewRound: Number(existingRequest.review_round || 0),
+      origin,
+    });
+  } catch (notificationError) {
+    console.error("Setup assistance status notification failed:", notificationError);
+  }
 }
