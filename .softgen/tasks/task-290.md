@@ -1,6 +1,6 @@
 ---
 title: Setup assistance status change notifications
-status: todo
+status: in_progress
 priority: urgent
 type: feature
 tags: [setup-assistance, notifications, workflow, realtime]
