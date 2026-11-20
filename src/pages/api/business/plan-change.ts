@@ -19,6 +19,19 @@ function isContractExpired(business: any) {
   return business.contract_status === "expired" || contractEnd <= today;
 }
 
+function resolvePlanChangeType(currentPlan: any, requestedPlan: any): "upgrade" | "downgrade" {
+  const currentPrice = Number(currentPlan?.price_awg || 0);
+  const requestedPrice = Number(requestedPlan?.price_awg || 0);
+
+  if (requestedPrice < currentPrice) return "downgrade";
+  if (requestedPrice > currentPrice) return "upgrade";
+
+  const currentOrder = Number(currentPlan?.display_order ?? 0);
+  const requestedOrder = Number(requestedPlan?.display_order ?? 0);
+
+  return requestedOrder < currentOrder ? "downgrade" : "upgrade";
+}
+
 async function getAuthenticatedUser(req: NextApiRequest) {
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     throw new Error("Supabase server configuration is incomplete");
@@ -116,12 +129,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (pendingError) throw pendingError;
     if ((pendingRequests || []).length > 0) {
-      return res.status(409).json({ error: "Downgrade request pending approval." });
+      const pendingChangeType = pendingRequests?.[0]?.metadata?.change_type === "upgrade" ? "Upgrade" : pendingRequests?.[0]?.metadata?.change_type === "downgrade" ? "Downgrade" : "Plan change";
+      return res.status(409).json({ error: `${pendingChangeType} request pending approval.` });
     }
 
     const { data: plans, error: plansError } = await admin
       .from("subscription_plans")
-      .select("id, name, price_awg, max_loyalty_programs, max_customers, max_staff, status, is_active")
+      .select("id, name, price_awg, max_loyalty_programs, max_customers, max_staff, status, is_active, display_order")
       .in("id", [business.subscription_plan || "starter", requestedPlanId]);
 
     if (plansError) throw plansError;
@@ -139,7 +153,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const currentPrice = Number(currentPlan.price_awg || 0);
     const requestedPrice = Number(requestedPlan.price_awg || 0);
-    const changeType = requestedPrice < currentPrice ? "downgrade" : "upgrade";
+    const changeType = resolvePlanChangeType(currentPlan, requestedPlan);
 
     const [{ count: memberCount }, { count: staffCount }] = await Promise.all([
       admin

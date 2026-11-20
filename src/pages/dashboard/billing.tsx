@@ -25,6 +25,32 @@ type PaymentRow = {
   metadata?: Record<string, any> | null;
 };
 
+type PlanChangeType = "upgrade" | "downgrade";
+
+function resolvePlanChangeTypeFromPayment(payment: PaymentRow, currentPlan: any, plans: any[]): PlanChangeType {
+  const metadataChangeType = payment.metadata?.change_type;
+  if (metadataChangeType === "upgrade" || metadataChangeType === "downgrade") {
+    return metadataChangeType;
+  }
+
+  const currentPlanId = payment.metadata?.current_plan_id || currentPlan?.id;
+  const requestedPlanId = payment.metadata?.requested_plan_id || payment.plan_id;
+
+  const currentPlanRecord = plans.find((plan) => plan.id === currentPlanId) || currentPlan;
+  const requestedPlanRecord = plans.find((plan) => plan.id === requestedPlanId);
+
+  const currentPrice = Number(payment.metadata?.current_plan_price_awg ?? currentPlanRecord?.price_awg ?? currentPlan?.price_awg ?? 0);
+  const requestedPrice = Number(payment.metadata?.requested_plan_price_awg ?? requestedPlanRecord?.price_awg ?? payment.amount ?? 0);
+
+  if (requestedPrice < currentPrice) return "downgrade";
+  if (requestedPrice > currentPrice) return "upgrade";
+
+  const currentOrder = Number(currentPlanRecord?.display_order ?? 0);
+  const requestedOrder = Number(requestedPlanRecord?.display_order ?? 0);
+
+  return requestedOrder < currentOrder ? "downgrade" : "upgrade";
+}
+
 export default function BillingPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -156,6 +182,13 @@ export default function BillingPage() {
     }
   };
 
+  const pendingPlanChangePayment = pendingPayments.find((payment) =>
+    payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change"
+  );
+  const pendingPlanChangeType = pendingPlanChangePayment
+    ? resolvePlanChangeTypeFromPayment(pendingPlanChangePayment, currentPlan, plans)
+    : null;
+
   const handlePlanChange = async (plan: any) => {
     if (!plan || plan.id === business?.subscription_plan) return;
 
@@ -169,8 +202,10 @@ export default function BillingPage() {
       );
 
       if (existingPendingPlanChange) {
+        const existingPendingPlanChangeType = resolvePlanChangeTypeFromPayment(existingPendingPlanChange, currentPlan, plans);
+
         toast({
-          title: t("dashboard.billing.pendingPlanToastTitle"),
+          title: existingPendingPlanChangeType === "upgrade" ? "Upgrade request pending approval." : t("dashboard.billing.pendingPlanToastTitle"),
           description: t("dashboard.billing.pendingPlanToastDescription"),
         });
         return;
@@ -809,20 +844,19 @@ export default function BillingPage() {
         {/* Available Plans */}
         <div>
           <h2 className="text-xl font-heading font-semibold mb-4">{t("dashboard.billing.choosePlan")}</h2>
-          {pendingPayments.some((payment) => payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change") && (
+          {pendingPlanChangePayment && pendingPlanChangeType && (
             <Card className="mb-6 border-amber-300 bg-amber-50/70">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-amber-900">
                   <Clock className="h-5 w-5" />
-                  {t("dashboard.billing.downgradePendingTitle")}
+                  {pendingPlanChangeType === "upgrade" ? "Upgrade Request: Pending Super Admin Approval" : t("dashboard.billing.downgradePendingTitle")}
                 </CardTitle>
                 <CardDescription className="text-amber-800">
                   {t("dashboard.billing.downgradePendingDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {pendingPayments
-                  .filter((payment) => payment.status === "pending" && payment.metadata?.kind === "subscription_plan_change")
+                {[pendingPlanChangePayment]
                   .slice(0, 1)
                   .map((payment) => (
                     <div key={payment.id} className="grid gap-3 text-sm sm:grid-cols-3">

@@ -12,10 +12,10 @@ position: 293
 Correct the existing pending plan-change request label so Business Admins see Upgrade Request or Downgrade Request based on the relationship between the current active plan and the requested plan. Reuse the current approval workflow and plan metadata. Do not change pricing, entitlements, payment processing, or approval mechanics. Update both the main Business Admin dashboard and any related request detail surface that shows the pending request type.
 
 ## Checklist
-- [ ] Inspect the current plan-change request UI and any shared helpers that derive pending request labels
-- [ ] Classify plan changes dynamically using existing configured plan hierarchy or actual plan pricing
-- [ ] Update Business Admin dashboard pending request messaging to show Upgrade Request or Downgrade Request correctly
-- [ ] Update any related request detail view that shows the same request classification
+- [x] Inspect the current plan-change request UI and any shared helpers that derive pending request labels
+- [x] Classify plan changes dynamically using existing configured plan hierarchy or actual plan pricing
+- [x] Update Business Admin dashboard pending request messaging to show Upgrade Request or Downgrade Request correctly
+- [x] Update any related request detail view that shows the same request classification
 - [ ] Verify upgrade and downgrade scenarios without changing approval workflow or entitlements
 
 ## Acceptance
