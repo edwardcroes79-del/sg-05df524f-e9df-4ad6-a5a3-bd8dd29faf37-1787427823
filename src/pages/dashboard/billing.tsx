@@ -14,6 +14,7 @@ import { useI18n } from "@/contexts/I18nProvider";
 type PaymentRow = {
   id: string;
   business_id: string | null;
+  plan_id?: string | null;
   amount: number;
   currency: string | null;
   status: string | null;
