@@ -12,8 +12,8 @@ position: 285
 Superadmin "Send Manual Payment Reminder" reports success, but the selected Business Admin never sees the reminder in their dashboard. Trace the full path (business selection, recipient resolution, insert, dashboard fetch, popup, dismissal) and fix the actual failure point. Also investigate the earlier schema-cache relationship error between manual_payment_reminders and profiles using real foreign keys. Reuse the existing reminder table, existing dashboard popup in DashboardLayout and existing dismissal. Dismissal must not delete records; Superadmin keeps history. Business Admins only see their own business's reminders. Do not touch automatic overdue reminders, invoices, contracts, payment statuses, account holds or loyalty flows. Do not weaken RLS.
 
 ## Checklist
-- [ ] Inspect manual_payment_reminders columns, foreign keys, RLS policies and recent rows
-- [ ] Trace send path (Superadmin UI → API → server module) and recipient resolution
+- [x] Inspect manual_payment_reminders columns, foreign keys, RLS policies and recent rows
+- [x] Trace send path (Superadmin UI → API → server module) and recipient resolution
 - [ ] Trace dashboard fetch, popup display and dismissal in DashboardLayout
 - [ ] Identify the exact failure point with evidence
 - [ ] Fix recipient identification and delivery without creating a second reminder system
@@ -24,3 +24,8 @@ Superadmin "Send Manual Payment Reminder" reports success, but the selected Busi
 After Superadmin sends a reminder, the selected Business Admin sees it in their dashboard without refreshing the browser.
 Dismissing the reminder keeps the record, stops it from reopening, and Superadmin history still lists it.
 A Business Admin of another business cannot read the reminder.
+
+## Evidence
+- FKs: recipient_user_id and sent_by reference auth.users; there is no FK to profiles, so any `profiles(...)` embed from this table fails with a schema-cache relationship error. The server module avoids that embed.
+- Send path stores recipient_user_id = businesses.owner_id (verified on 8 rows, all recipient_is_owner = true).
+- All 6 reminders sent since 2026-11-14 18:38 have displayed_at = null; the server sets displayed_at on dashboard fetch, so the read path is not reaching them. Two earlier reminders (2026-11-14 17:46, 18:32) were displayed and dismissed normally.
