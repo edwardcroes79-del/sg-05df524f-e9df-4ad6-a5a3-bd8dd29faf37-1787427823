@@ -257,6 +257,14 @@ export async function markSetupReadyForReview(admin: SupabaseClient, ctx: SetupS
     throw new SetupAccessError("Save the setup draft before marking it ready for review.", 400);
   }
 
+  const { data: businessRecord, error: businessError } = await admin
+    .from("businesses")
+    .select("business_name")
+    .eq("id", ctx.businessId)
+    .maybeSingle();
+
+  if (businessError) throw businessError;
+
   const now = new Date().toISOString();
   const { data: currentRequest, error: currentRequestError } = await admin
     .from("setup_assistance_requests")
@@ -311,7 +319,7 @@ export async function markSetupReadyForReview(admin: SupabaseClient, ctx: SetupS
 
     await notifyBusinessAdminOfSetupStatusChange(admin, {
       businessId: ctx.businessId,
-      businessName: business.name,
+      businessName: businessRecord?.business_name || "Business",
       requestId: ctx.requestId,
       recipientEmail,
       status: "ready_for_review",
