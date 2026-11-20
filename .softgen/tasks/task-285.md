@@ -14,10 +14,10 @@ Superadmin "Send Manual Payment Reminder" reports success, but the selected Busi
 ## Checklist
 - [x] Inspect manual_payment_reminders columns, foreign keys, RLS policies and recent rows
 - [x] Trace send path (Superadmin UI → API → server module) and recipient resolution
-- [ ] Trace dashboard fetch, popup display and dismissal in DashboardLayout
-- [ ] Identify the exact failure point with evidence
-- [ ] Fix recipient identification and delivery without creating a second reminder system
-- [ ] Make new reminders appear without a manual browser refresh, without duplicate popups
+- [x] Trace dashboard fetch, popup display and dismissal in DashboardLayout
+- [x] Identify the exact failure point with evidence
+- [x] Fix recipient identification and delivery without creating a second reminder system
+- [x] Make new reminders appear without a manual browser refresh, without duplicate popups
 - [ ] Verify end-to-end with real records: send, stored row, recipient fetch, dismissal persistence, Superadmin history, cross-business isolation
 
 ## Acceptance
