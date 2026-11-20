@@ -594,6 +594,11 @@ export default function AdminDashboard() {
   const [reviewingPayment, setReviewingPayment] = useState<any | null>(null);
   const [adminNotes, setAdminNotes] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [restorationRenewalDate, setRestorationRenewalDate] = useState("");
+  const [holdTarget, setHoldTarget] = useState<any | null>(null);
+  const [holdReason, setHoldReason] = useState("");
+  const [holdNote, setHoldNote] = useState("");
+  const [placingHold, setPlacingHold] = useState(false);
   const [overdueReminderSummary, setOverdueReminderSummary] = useState<OverdueReminderSummary | null>(null);
   const [overdueReminderInvoices, setOverdueReminderInvoices] = useState<OverdueReminderInvoice[]>([]);
   const [loadingOverdueReminders, setLoadingOverdueReminders] = useState(false);
@@ -1480,9 +1485,12 @@ export default function AdminDashboard() {
         };
       }),
     ...payments
-      .filter((payment) => payment.metadata?.kind === "subscription_plan_change")
+      .filter((payment) => payment.metadata?.kind === "subscription_plan_change" || payment.metadata?.kind === "account_restoration")
       .map((payment) => {
-        const changeType = payment.metadata?.change_type === "downgrade" ? t("admin.notifications.downgradeRequest") : t("admin.notifications.upgradeRequest");
+        const isRestoration = payment.metadata?.kind === "account_restoration";
+        const changeType = isRestoration
+          ? "Account restoration request"
+          : payment.metadata?.change_type === "downgrade" ? t("admin.notifications.downgradeRequest") : t("admin.notifications.upgradeRequest");
         const resolvedStatus = payment.status === "approved" ? "approved" : payment.status === "rejected" ? "rejected" : "pending";
 
         return {
@@ -1491,10 +1499,12 @@ export default function AdminDashboard() {
           sourceId: String(payment.id),
           type: changeType,
           businessName: payment.businesses?.business_name || payment.metadata?.business_name || t("admin.common.unknownBusiness"),
-          description: t("admin.notifications.planChangeRequested", {
-            currentPlan: payment.metadata?.current_plan_name || t("admin.common.currentPlan"),
-            requestedPlan: payment.metadata?.requested_plan_name || payment.plan_id,
-          }),
+          description: isRestoration
+            ? `submitted payment proof (AWG ${Number(payment.amount || 0).toFixed(2)}) to restore an account on hold.`
+            : t("admin.notifications.planChangeRequested", {
+                currentPlan: payment.metadata?.current_plan_name || t("admin.common.currentPlan"),
+                requestedPlan: payment.metadata?.requested_plan_name || payment.plan_id,
+              }),
           createdAt: payment.created_at,
           status: resolvedStatus as SuperAdminNotification["status"],
           destination: "payments" as const,
@@ -1575,6 +1585,7 @@ export default function AdminDashboard() {
 
   const handleToggleBusinessStatus = async (bizId: string, currentStatus: string) => {
     const nextStatus = currentStatus === "active" ? "suspended" : "active";
+    if (currentStatus === "on_hold" && !window.confirm("Lift this account hold without a payment approval? The hold will be recorded as lifted by Superadmin.")) return;
     try {
       const { error } = await supabase
         .from("businesses")
@@ -1595,6 +1606,35 @@ export default function AdminDashboard() {
         description: err.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handlePlaceAccountOnHold = async () => {
+    if (!holdTarget) return;
+    const reason = holdReason.trim();
+    if (reason.length < 3) {
+      toast({ title: "Reason required", description: "Enter a reason for placing this account on hold.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setPlacingHold(true);
+      const { error } = await (supabase as any).rpc("place_account_on_hold", {
+        p_business_id: holdTarget.id,
+        p_reason: reason,
+        p_internal_note: holdNote.trim() || null,
+      });
+      if (error) throw error;
+
+      toast({ title: "Account placed on hold", description: `${holdTarget.business_name} is now On Hold. Business data is preserved.` });
+      setHoldTarget(null);
+      setHoldReason("");
+      setHoldNote("");
+      await fetchAdminData();
+    } catch (err: any) {
+      toast({ title: "Hold failed", description: err.message, variant: "destructive" });
+    } finally {
+      setPlacingHold(false);
     }
   };
 
@@ -2553,6 +2593,25 @@ export default function AdminDashboard() {
 
       const reviewedAt = new Date().toISOString();
       const paymentMetadata = asMetadataObject(payment.metadata);
+
+      if (payment.metadata?.kind === "account_restoration") {
+        const { error: restoreError } = await (supabase as any).rpc("approve_account_restoration", {
+          p_payment_id: payment.id,
+          p_admin_notes: adminNotes,
+          p_new_renewal_date: restorationRenewalDate || null,
+        });
+        if (restoreError) throw restoreError;
+
+        toast({
+          title: "Account restored",
+          description: `${payment.businesses?.business_name || "The business"} is Active again${restorationRenewalDate ? ` with renewal date ${restorationRenewalDate}` : ""}.`,
+        });
+        setReviewingPayment(null);
+        setAdminNotes("");
+        setRestorationRenewalDate("");
+        await fetchAdminData();
+        return;
+      }
 
       if (isPlanChangeRequest) {
         const { error: reviewError } = await (supabase as any).rpc("review_subscription_plan_change", {
@@ -3903,7 +3962,7 @@ export default function AdminDashboard() {
       <Badge 
         variant={biz.status === "active" ? "default" : biz.status === "pending" ? "secondary" : "destructive"}
       >
-        {biz.status.toUpperCase()}
+        {biz.status === "on_hold" ? "ON HOLD" : biz.status.toUpperCase()}
       </Badge>
       <div className="mt-2 flex flex-col gap-1">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -4103,19 +4162,17 @@ export default function AdminDashboard() {
           }}
         >
           {biz.status === "active" ? <Ban className="h-3.5 w-3.5 text-amber-500" /> : <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />}
-          {biz.status === "active" ? t("admin.merchants.suspend") : t("admin.merchants.activate")}
+          {biz.status === "active" ? t("admin.merchants.suspend") : biz.status === "on_hold" ? "Lift Hold" : t("admin.merchants.activate")}
         </Button>
       )}
-      {biz.status !== "pending" && approvalEmailStatus !== "sent" && (
+      {biz.status !== "pending" && biz.status !== "on_hold" && (
         <Button
           variant="outline"
           size="sm"
           className="gap-1 text-xs"
-          onClick={() => handleRetryEmail(biz.id)}
-          disabled={retryingEmail === biz.id}
+          onClick={() => { setHoldTarget(biz); setHoldReason(""); setHoldNote(""); }}
         >
-          {retryingEmail === biz.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-          {t("admin.merchants.resendApprovalEmail")}
+          <AlertTriangle className="h-3.5 w-3.5 text-destructive" /> Place Account On Hold
         </Button>
       )}
       <Button
@@ -4178,6 +4235,14 @@ export default function AdminDashboard() {
                       placeholder="Add approval or rejection notes"
                     />
                   </div>
+                  {reviewingPayment.metadata?.kind === "account_restoration" && (
+                    <div className="space-y-2 rounded-lg border bg-background p-3">
+                      <p className="text-sm font-semibold text-foreground">Account restoration</p>
+                      <p className="text-xs text-muted-foreground">Approving returns the business to Active and closes its hold. Contract dates are not changed. Set a renewal date only if this payment covers a new period.</p>
+                      <Label htmlFor="restoration-renewal-date">New renewal date (optional)</Label>
+                      <Input id="restoration-renewal-date" type="date" value={restorationRenewalDate} onChange={(event) => setRestorationRenewalDate(event.target.value)} />
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {reviewingPayment.payment_proof_url && (
                       <Button type="button" variant="outline" onClick={() => handleOpenAdminPaymentProof(reviewingPayment)}>
@@ -6589,6 +6654,50 @@ export default function AdminDashboard() {
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Business Delete Confirmation Dialog */}
+      <Dialog open={!!holdTarget} onOpenChange={(open) => { if (!open && !placingHold) setHoldTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Place Account On Hold
+            </DialogTitle>
+            <DialogDescription>
+              {holdTarget?.business_name} will be placed On Hold. Admins can still log in, view billing and submit payment proof. Customers, cards, stamps and history are preserved. No invoice is created.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="hold-reason">Reason (shown to the business)</Label>
+              <textarea
+                id="hold-reason"
+                className="min-h-20 w-full rounded-md border border-input bg-background p-3 text-sm text-foreground"
+                value={holdReason}
+                onChange={(event) => setHoldReason(event.target.value)}
+                maxLength={500}
+                placeholder="Outstanding payment for October 2026"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hold-note">Internal note (optional, Superadmin only)</Label>
+              <textarea
+                id="hold-note"
+                className="min-h-20 w-full rounded-md border border-input bg-background p-3 text-sm text-foreground"
+                value={holdNote}
+                onChange={(event) => setHoldNote(event.target.value)}
+                maxLength={2000}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setHoldTarget(null)} disabled={placingHold}>Cancel</Button>
+            <Button type="button" variant="destructive" onClick={handlePlaceAccountOnHold} disabled={placingHold || holdReason.trim().length < 3}>
+              {placingHold ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AlertTriangle className="mr-2 h-4 w-4" />}
+              Confirm hold
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -2510,6 +2510,14 @@ export type Database = {
     }
     Functions: {
       apply_automatic_account_holds: { Args: never; Returns: number }
+      approve_account_restoration: {
+        Args: {
+          p_admin_notes?: string
+          p_new_renewal_date?: string
+          p_payment_id: string
+        }
+        Returns: Json
+      }
       approve_setup_request: {
         Args: { p_expected_draft_updated_at: string; p_request_id: string }
         Returns: Json
