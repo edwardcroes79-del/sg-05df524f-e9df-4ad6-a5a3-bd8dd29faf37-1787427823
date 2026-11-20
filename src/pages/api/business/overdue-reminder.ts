@@ -34,26 +34,43 @@ async function requireAuthenticatedUser(req: NextApiRequest) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<ApiResponse>) {
+  res.setHeader("Cache-Control", "no-store, max-age=0");
+
   try {
     const user = await requireAuthenticatedUser(req);
     const admin = createServiceClient();
     const businessIds = await getBusinessAdminBusinessIds(admin, user.id);
 
     if (businessIds.length === 0) {
-      return res.status(200).json({ success: true, summary: null, invoices: [] });
+      return res.status(200).json({ success: true, summary: null, invoices: [], manualReminders: [] });
     }
 
-    const data = await getOverdueReminderData(admin, businessIds);
-    const visibleInvoices = data.invoices.filter((invoice) => invoice.reminderEnabled && !invoice.dismissedToday);
-
     if (req.method === "GET") {
-      const manualReminders = await getPendingManualRemindersForBusinesses(admin, user.id, businessIds);
+      const [overdueResult, manualResult] = await Promise.allSettled([
+        getOverdueReminderData(admin, businessIds),
+        getPendingManualRemindersForBusinesses(admin, user.id, businessIds),
+      ]);
+
+      if (overdueResult.status === "rejected") {
+        console.error("Overdue reminder data failed:", overdueResult.reason);
+      }
+      if (manualResult.status === "rejected") {
+        console.error("Manual payment reminders failed:", manualResult.reason);
+      }
+      if (overdueResult.status === "rejected" && manualResult.status === "rejected") {
+        throw manualResult.reason;
+      }
+
+      const overdueData = overdueResult.status === "fulfilled" ? overdueResult.value : null;
+      const getVisibleInvoices = overdueData
+        ? overdueData.invoices.filter((invoice) => invoice.reminderEnabled && !invoice.dismissedToday)
+        : [];
 
       return res.status(200).json({
         success: true,
-        summary: { ...data.summary, totalOverdueInvoices: visibleInvoices.length },
-        invoices: visibleInvoices,
-        manualReminders,
+        summary: overdueData ? { ...overdueData.summary, totalOverdueInvoices: getVisibleInvoices.length } : null,
+        invoices: getVisibleInvoices,
+        manualReminders: manualResult.status === "fulfilled" ? manualResult.value : [],
       });
     }
 
@@ -68,6 +85,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (typeof businessId !== "string" || !businessIds.includes(businessId)) {
         return res.status(403).json({ error: "You are not authorized to dismiss reminders for this business." });
       }
+
+      const data = await getOverdueReminderData(admin, businessIds);
+      const visibleInvoices = data.invoices.filter((invoice) => invoice.reminderEnabled && !invoice.dismissedToday);
 
       const authorizedInvoiceIds = new Set(
         visibleInvoices

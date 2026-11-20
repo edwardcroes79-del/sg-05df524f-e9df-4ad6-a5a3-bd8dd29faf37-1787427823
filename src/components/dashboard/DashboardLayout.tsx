@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,6 +113,7 @@ type DashboardLayoutSnapshot = {
 };
 
 const DASHBOARD_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
+const REMINDER_POLL_INTERVAL_MS = 60 * 1000;
 let dashboardLayoutSnapshot: DashboardLayoutSnapshot | null = null;
 
 type BusinessOverdueReminderSnapshot = {
@@ -177,6 +178,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [manualPaymentReminders, setManualPaymentReminders] = useState<ManualPaymentReminder[]>([]);
   const [manualPaymentReminderOpen, setManualPaymentReminderOpen] = useState(false);
   const [dismissingManualReminderId, setDismissingManualReminderId] = useState<string | null>(null);
+  const dismissedManualReminderIdsRef = useRef<Set<string>>(new Set());
 
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [hasReadWhatsNew, setHasReadWhatsNew] = useState(false);
@@ -229,13 +231,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   const applyManualPaymentReminders = (reminders: ManualPaymentReminder[]) => {
-    setManualPaymentReminders(reminders);
-    setManualPaymentReminderOpen(reminders.length > 0);
+    const visibleReminders = reminders.filter((reminder) => !dismissedManualReminderIdsRef.current.has(reminder.id));
+    setManualPaymentReminders(visibleReminders);
+    setManualPaymentReminderOpen(visibleReminders.length > 0);
   };
 
-  const fetchBusinessOverdueReminder = async (businessId: string, userId: string, accessToken: string) => {
+  const fetchBusinessOverdueReminder = async (businessId: string, userId: string, accessToken: string, force = false) => {
     const cachedSnapshot = businessOverdueReminderSnapshot;
     const hasFreshSnapshot = Boolean(
+      !force &&
       cachedSnapshot &&
       cachedSnapshot.userId === userId &&
       cachedSnapshot.businessId === businessId &&
@@ -250,6 +254,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
     try {
       const response = await fetch("/api/business/overdue-reminder", {
+        cache: "no-store",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
@@ -281,8 +286,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       applyManualPaymentReminders(manualReminders);
     } catch (reminderError) {
       console.error("Business overdue reminder check failed:", reminderError);
-      applyOverdueReminderInvoices([]);
-      applyManualPaymentReminders([]);
+      if (!force) {
+        applyOverdueReminderInvoices([]);
+        applyManualPaymentReminders([]);
+      }
     }
   };
 
@@ -357,6 +364,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         throw new Error(result.error || "Could not dismiss manual payment reminder.");
       }
 
+      dismissedManualReminderIdsRef.current.add(reminderId);
       const nextReminders = manualPaymentReminders.filter((reminder) => reminder.id !== reminderId);
       businessOverdueReminderSnapshot = business?.id ? {
         userId: session.user.id,
@@ -382,11 +390,36 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!business?.id || !currentUserId) return;
 
-    void (async () => {
+    const businessId = business.id;
+    const userId = currentUserId;
+    let cancelled = false;
+
+    const checkReminders = async (force: boolean) => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await fetchBusinessOverdueReminder(business.id, currentUserId, session.access_token);
-    })();
+      if (!session || cancelled) return;
+      await fetchBusinessOverdueReminder(businessId, userId, session.access_token, force);
+    };
+
+    void checkReminders(false);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void checkReminders(true);
+    }, REMINDER_POLL_INTERVAL_MS);
+
+    const handleFocus = () => void checkReminders(true);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void checkReminders(true);
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [business?.id, currentUserId]);
 
   const checkUserAndBusiness = async () => {
