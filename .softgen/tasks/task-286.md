@@ -13,6 +13,11 @@ Add a central Superadmin-managed trial period setting to the existing subscripti
 
 The setting must be stored in the database and validated server-side. Only authorized SuperAdmins may update it. When trials are disabled, new businesses must not receive a free trial and must instead choose a paid subscription path. If a business already has an active paid subscription, it must never be replaced by a trial.
 
+Additional homepage requirement:
+- Update public homepage marketing text from 14-day free trial to 7-day free trial where visible.
+- CTA copy must stay consistent with the actual centrally configured Superadmin trial setting.
+- Do not hardcode a separate registration-system trial duration.
+
 Initial inspection findings (2026-11-20):
 - `businesses` already stores `trial_start`, `trial_end`, `subscription_plan`, `subscription_status`, and `status`.
 - `subscription_plans` already stores `is_trial` and `trial_days`, but the new requirement is for one central platform setting that applies only to new registrations.
@@ -28,6 +33,7 @@ Initial inspection findings (2026-11-20):
 - [ ] Update new business registration flow to use the configured trial days only for new registrations
 - [ ] Ensure disabled trials prevent new free-trial assignment without altering paid subscription handling
 - [ ] Add Superadmin UI for Trial Period Settings in existing subscription settings
+- [ ] Update public homepage trial promotion text to match the centrally configured trial duration
 - [ ] Verify enabled and disabled trial scenarios and confirm existing businesses remain unchanged
 
 ## Acceptance
