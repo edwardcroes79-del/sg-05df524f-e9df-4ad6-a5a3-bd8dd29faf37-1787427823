@@ -1,6 +1,6 @@
 ---
 title: Manual payment reminder dashboard delivery
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [billing, superadmin, notifications, dashboard]
@@ -29,3 +29,12 @@ A Business Admin of another business cannot read the reminder.
 - FKs: recipient_user_id and sent_by reference auth.users; there is no FK to profiles, so any `profiles(...)` embed from this table fails with a schema-cache relationship error. The server module avoids that embed.
 - Send path stores recipient_user_id = businesses.owner_id (verified on 8 rows, all recipient_is_owner = true).
 - All 6 reminders sent since 2026-11-14 18:38 have displayed_at = null; the server sets displayed_at on dashboard fetch, so the read path is not reaching them. Two earlier reminders (2026-11-14 17:46, 18:32) were displayed and dismissed normally.
+
+## Root cause and fix
+- Server path verified working for the recipient (business resolution, overdue check, manual query all OK).
+- Cause: DashboardLayout fetched reminders only once per business/user load and reused a 5-minute module cache; no re-check while the dashboard was open.
+- Fix: DashboardLayout re-checks every 60s while visible and on focus/visibility (bypassing cache); dismissed IDs tracked in a session ref so they never reopen. API sets Cache-Control no-store and fetches manual reminders independently of overdue invoices.
+
+## Verification log
+- Verified (server functions against live DB, test reminder 34588370 on Royalty Stamp Admin): owner fetch returns it with message, sent date and currency; another business owner cannot see it; another business owner's dismiss is rejected; after owner dismissal it is not returned again; row kept with displayed_at and dismissed_at set. TypeScript check clean.
+- Not verified: browser popup appearing without refresh (needs a real Superadmin → Business Admin session); full lint (sandbox OOM, pre-existing).
