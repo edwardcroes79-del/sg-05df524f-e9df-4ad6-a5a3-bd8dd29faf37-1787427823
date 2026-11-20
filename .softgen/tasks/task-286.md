@@ -18,6 +18,8 @@ Initial inspection findings (2026-11-20):
 - `subscription_plans` already stores `is_trial` and `trial_days`, but the new requirement is for one central platform setting that applies only to new registrations.
 - `website_settings` already exists with public read and SuperAdmin write access, making it the smallest central settings store for this feature.
 - `src/pages/api/auth/register-business.ts` only generates the business signup confirmation email; it does not assign any trial dates itself, so the actual trial assignment path must be elsewhere.
+- `src/pages/onboarding.tsx` creates new businesses with `status: "pending"` and `subscription_plan: "starter"` but does not set `trial_start`, `trial_end`, or `subscription_status`.
+- `src/pages/api/admin/approve-business.ts` approves pending businesses by setting `status: "active"` and approval audit fields only; it explicitly preserves existing plan, trial, and subscription fields and does not create a trial.
 
 ## Checklist
 - [ ] Inspect current trial registration flow, trial_end usage, subscription status logic, and Superadmin subscription settings UI
