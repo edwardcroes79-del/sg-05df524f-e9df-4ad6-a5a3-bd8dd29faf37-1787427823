@@ -15,6 +15,13 @@ On hold, the Business Admin can still log in, sees the On Hold message and exist
 
 Restoration goes through the existing Superadmin payment approval area: inspect receipt, approve or reject. Approval returns the account to Active and only changes subscription dates according to the approved payment period. Manual holds must not shift unrelated contract dates or create a new period unless the approval explicitly includes a renewal. Businesses cannot lift their own hold. Do not weaken RLS or rebuild existing subscription, payment, contract or approval systems.
 
+Inspection findings (2026-11-20): no Account On Hold exists yet. `on_hold` appears nowhere in src; `businesses.status` defaults to `active` with no check constraint; the only expiry logic is `refresh_expired_business_contracts` (updates contract_status active/expiring/expired), with no grace period or hold. Relevant dates on businesses: contract_end_date, renewal_date, trial_end. Payment proof + Superadmin review already exist in `subscription_payments`.
+
+User decisions:
+- Scope: build both manual and automatic hold now, sharing one hold record and restoration flow.
+- On Hold blocks: dashboard gated (owner/staff can log in; only Billing, Settings and the On Hold screen open; stamp engine code not modified) AND customers see a "temporarily unavailable" notice when joining or using the business's card.
+- Automatic hold date source: contract_end_date for contracted businesses, else renewal_date; hold after 3-day grace without an approved payment.
+
 ## Checklist
 - [ ] Inspect existing account status values, automatic expiry/grace enforcement, billing payment-proof flow, Superadmin payment approval, and business-side gating
 - [ ] Post a brief implementation plan grounded in the actual code and schema
