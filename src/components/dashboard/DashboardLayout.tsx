@@ -110,6 +110,7 @@ type DashboardLayoutSnapshot = {
   isTrial: boolean;
   isExpiredTrial: boolean;
   trialDaysLeft: number;
+  trialEndDate: string | null;
 };
 
 const DASHBOARD_SNAPSHOT_MAX_AGE_MS = 5 * 60 * 1000;
@@ -172,6 +173,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isExpiredTrial, setIsExpiredTrial] = useState(false);
   const [isTrial, setIsTrial] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState(0);
+  const [trialEndDate, setTrialEndDate] = useState<string | null>(null);
   const [overdueReminderInvoices, setOverdueReminderInvoices] = useState<BusinessOverdueReminderInvoice[]>([]);
   const [overdueReminderOpen, setOverdueReminderOpen] = useState(false);
   const [dismissingOverdueReminder, setDismissingOverdueReminder] = useState(false);
@@ -222,6 +224,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setIsTrial(snapshot.isTrial);
     setIsExpiredTrial(snapshot.isExpiredTrial);
     setTrialDaysLeft(snapshot.trialDaysLeft);
+    setTrialEndDate(snapshot.trialEndDate);
     setLoading(false);
   };
 
@@ -629,18 +632,24 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       let isTrialValue = false;
       let isExpiredTrialValue = false;
       let trialDaysLeftValue = 0;
+      let trialEndDateValue: string | null = null;
       const planData = planResult.data;
 
       if (planData?.is_trial && resolvedBusiness.trial_end) {
         isTrialValue = true;
         const now = new Date();
         const trialEnd = new Date(resolvedBusiness.trial_end);
+        trialEndDateValue = trialEnd.toLocaleDateString(undefined, {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
 
         if (now > trialEnd) {
           isExpiredTrialValue = true;
         } else {
-          const diffTime = Math.abs(trialEnd.getTime() - now.getTime());
-          trialDaysLeftValue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const diffTime = trialEnd.getTime() - now.getTime();
+          trialDaysLeftValue = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
         }
       }
 
@@ -662,6 +671,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         isTrial: isTrialValue,
         isExpiredTrial: isExpiredTrialValue,
         trialDaysLeft: trialDaysLeftValue,
+        trialEndDate: trialEndDateValue,
       };
 
       dashboardLayoutSnapshot = nextSnapshot;
@@ -1080,10 +1090,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </header>
 
           {isTrial && !isExpiredTrial && (
-            <div className="bg-indigo-600 px-4 py-2.5 flex items-center justify-between text-indigo-50 shadow-sm z-10">
-              <div className="flex items-center gap-2 text-sm font-medium">
+            <div className="bg-indigo-600 px-4 py-2.5 flex items-center justify-between gap-4 text-indigo-50 shadow-sm z-10">
+              <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
                 <Gift className="h-4 w-4" /> 
                 {t("dashboard.trial.endsSoon")} <span className="font-bold">{t("dashboard.trial.daysRemaining", { days: trialDaysLeft })}</span>
+                {trialEndDate && <span className="text-indigo-100">· {trialEndDate}</span>}
               </div>
               <Link href="/dashboard/billing">
                 <span className="text-xs font-bold uppercase tracking-wide bg-white/20 hover:bg-white/30 transition-colors px-3 py-1 rounded-full cursor-pointer">{t("dashboard.trial.upgradePlan")}</span>

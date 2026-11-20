@@ -138,6 +138,24 @@ export default function DashboardOverview() {
   // Trial overview states
   const [trialDetails, setTrialDetails] = useState<{ isTrial: boolean; daysLeft: number; endDate: string | null }>({ isTrial: false, daysLeft: 0, endDate: null });
 
+  const calculateTrialDetails = (trialEndValue: string | null) => {
+    if (!trialEndValue) return { isTrial: false, daysLeft: 0, endDate: null };
+
+    const endDate = new Date(trialEndValue);
+    const diffTime = endDate.getTime() - new Date().getTime();
+    const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    return {
+      isTrial: true,
+      daysLeft: days,
+      endDate: endDate.toLocaleDateString(locale, {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+    };
+  };
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
@@ -307,16 +325,7 @@ export default function DashboardOverview() {
           
           // Check trial details for the dashboard UI
           if (subscriptionPlan === "trial" || planData.is_trial) {
-            if (trialEnd) {
-              const endDate = new Date(trialEnd);
-              const diffTime = endDate.getTime() - new Date().getTime();
-              const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-              setTrialDetails({
-                isTrial: true,
-                daysLeft: days,
-                endDate: endDate.toLocaleDateString(locale)
-              });
-            }
+            setTrialDetails(calculateTrialDetails(trialEnd));
           }
         }
       } else {
@@ -327,15 +336,8 @@ export default function DashboardOverview() {
           .eq("id", subscriptionPlan || "starter")
           .maybeSingle();
 
-        if (planCheck?.is_trial && trialEnd) {
-          const endDate = new Date(trialEnd);
-          const diffTime = endDate.getTime() - new Date().getTime();
-          const days = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-          setTrialDetails({
-            isTrial: true,
-            daysLeft: days,
-            endDate: endDate.toLocaleDateString(locale)
-          });
+        if (planCheck?.is_trial) {
+          setTrialDetails(calculateTrialDetails(trialEnd));
         }
       }
       
