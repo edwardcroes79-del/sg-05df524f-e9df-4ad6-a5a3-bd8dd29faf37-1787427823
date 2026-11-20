@@ -36,6 +36,47 @@ import {
   type PublicSubscriptionPlan } from
 "@/lib/publicPlanDisplay";
 
+function normalizeHomepageTrialSettings(value: unknown) {
+  const fallback = { enabled: true, days: 7 };
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return fallback;
+  }
+
+  const settings = value as Record<string, unknown>;
+  const rawEnabled = settings.enabled ?? settings.trialsEnabled ?? settings.freeTrialsEnabled;
+  const rawDays = settings.customDays ?? settings.days ?? settings.trialDays ?? settings.durationDays;
+  const parsedDays = Number(rawDays);
+  const days = Number.isFinite(parsedDays) && parsedDays > 0 ? Math.round(parsedDays) : fallback.days;
+  const enabled = typeof rawEnabled === "boolean" ? rawEnabled : fallback.enabled;
+
+  if (!enabled || days <= 0) {
+    return { enabled: false, days: 0 };
+  }
+
+  return { enabled: true, days };
+}
+
+function getHomepageTrialPromotion(enabled: boolean, days: number) {
+  if (!enabled || days <= 0) {
+    return {
+      ctaHref: "#pricing",
+      navCtaText: "View Pricing",
+      heroCtaText: "View Plans",
+      finalCtaText: "View Pricing",
+      finalDescription: "Choose the paid plan that fits your business. Setup takes less than 5 minutes.",
+    };
+  }
+
+  return {
+    ctaHref: "/auth/register",
+    navCtaText: "Start Free Trial",
+    heroCtaText: `Start Your ${days}-Day Free Trial`,
+    finalCtaText: "Start Free Trial",
+    finalDescription: `Start your ${days}-day free trial today. No credit card required. Setup takes less than 5 minutes.`,
+  };
+}
+
 export default function Home() {
   const { pricing, faq, footer: defaultFooter } = homeConfig;
   const { t, language } = useI18n();
@@ -43,6 +84,7 @@ export default function Home() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [dbPlans, setDbPlans] = useState<PublicSubscriptionPlan[]>([]);
+  const [trialPromotion, setTrialPromotion] = useState(() => getHomepageTrialPromotion(true, 7));
 
   // Explicitly type the footer state to allow the optional database-driven copyrightText
   const [footer, setFooter] = useState<{
@@ -79,6 +121,23 @@ export default function Home() {
         }
       } catch (err) {
         console.error("Error loading dynamic footer:", err);
+      }
+    }
+
+    async function loadTrialPromotion() {
+      try {
+        const { data } = await supabase.
+        from("website_settings").
+        select("value").
+        eq("key", "trial_period_settings").
+        maybeSingle();
+
+        if (data?.value) {
+          const normalized = normalizeHomepageTrialSettings(data.value);
+          setTrialPromotion(getHomepageTrialPromotion(normalized.enabled, normalized.days));
+        }
+      } catch (err) {
+        console.error("Error loading homepage trial settings:", err);
       }
     }
 
@@ -123,6 +182,7 @@ export default function Home() {
 
     loadFooter();
     loadPlans();
+    loadTrialPromotion();
   }, [defaultFooter]);
 
   useEffect(() => {
@@ -189,9 +249,9 @@ export default function Home() {
             <Link href="/auth/login" className="hidden sm:block">
               <Button variant="ghost" className="font-semibold text-base px-6 h-12 rounded-full hover:bg-primary/5 hover:text-primary">Log in</Button>
             </Link>
-            <Link href="/auth/register">
+            <Link href={trialPromotion.ctaHref}>
               <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-[11px] sm:text-base px-2.5 sm:px-6 h-10 sm:h-12 rounded-full shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 whitespace-nowrap">
-                Start Free Trial
+                {trialPromotion.navCtaText}
               </Button>
             </Link>
             
@@ -220,8 +280,10 @@ export default function Home() {
                 <Link href="/auth/login" onClick={() => setIsMobileMenuOpen(false)} className="w-full">
                   <Button variant="outline" className="w-full h-14 text-lg font-bold rounded-full border-2">Log in</Button>
                 </Link>
-                <Link href="/auth/register" onClick={() => setIsMobileMenuOpen(false)} className="w-full">
-                  <Button className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg shadow-primary/25">Start Free Trial</Button>
+                <Link href={trialPromotion.ctaHref} onClick={() => setIsMobileMenuOpen(false)} className="w-full">
+                  <Button className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg shadow-primary/25">
+                    {trialPromotion.navCtaText}
+                  </Button>
                 </Link>
               </div>
             </nav>
@@ -250,9 +312,9 @@ export default function Home() {
                   Create and manage digital stamp cards in minutes. Reward repeat visits, capture insights, and keep your customers coming back without the hassle of paper cards.
                 </p>
                 <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start pt-4">
-                  <Link href="/auth/register" className="w-full sm:w-auto">
+                  <Link href={trialPromotion.ctaHref} className="w-full sm:w-auto">
                     <Button size="lg" className="w-full sm:w-auto h-16 px-10 text-lg font-bold bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-xl shadow-primary/30 transition-all hover:-translate-y-1">
-                      Start Your 14-Day Free Trial <ArrowRight className="ml-2 w-5 h-5" />
+                      {trialPromotion.heroCtaText} <ArrowRight className="ml-2 w-5 h-5" />
                     </Button>
                   </Link>
                   <Link href="#how-it-works" className="w-full sm:w-auto">
@@ -914,11 +976,11 @@ export default function Home() {
               Ready to turn visits into loyal customers?
             </h2>
             <p className="text-xl md:text-2xl text-primary-foreground/90 max-w-2xl mx-auto mb-12 font-medium">
-              Start your 14-day free trial today. No credit card required. Setup takes less than 5 minutes.
+              {trialPromotion.finalDescription}
             </p>
-            <Link href="/auth/register">
+            <Link href={trialPromotion.ctaHref}>
               <Button size="lg" className="h-16 px-12 text-xl font-extrabold bg-background text-primary hover:bg-background/90 rounded-full shadow-2xl transition-all hover:scale-105 border-none">
-                Start Free Trial
+                {trialPromotion.finalCtaText}
               </Button>
             </Link>
           </div>
