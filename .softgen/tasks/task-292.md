@@ -1,6 +1,6 @@
 ---
 title: One-month subscription term
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [billing, contracts, superadmin, subscriptions]
