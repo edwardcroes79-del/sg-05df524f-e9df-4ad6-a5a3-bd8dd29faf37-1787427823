@@ -6658,7 +6658,7 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Business Delete Confirmation Dialog */}
+      {/* Place Account On Hold Dialog */}
       <Dialog open={!!holdTarget} onOpenChange={(open) => { if (!open && !placingHold) setHoldTarget(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
