@@ -5,6 +5,8 @@ import {
   SetupReviewError,
   approveBusinessSetup,
   loadBusinessSetupReview,
+  notifyBusinessSetupCompleted,
+  notifySuperAdminOfBusinessSetupChanges,
   requestBusinessSetupChanges,
 } from "@/lib/server/setupReview";
 
@@ -51,6 +53,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           throw new SetupReviewError("Reload the setup review before approving.", 400);
         }
         const result = await approveBusinessSetup(userClient, requestId, draftUpdatedAt);
+        try {
+          await notifyBusinessSetupCompleted(
+            admin,
+            requestId,
+            typeof req.headers.origin === "string" ? req.headers.origin : undefined
+          );
+        } catch (notificationError) {
+          console.error("Setup approval notification failed:", notificationError);
+        }
         const review = await loadBusinessSetupReview(admin, userId);
         return res.status(200).json({ success: true, alreadyCompleted: result?.already_completed === true, ...review });
       }
@@ -58,6 +69,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (action === "request_changes") {
         const feedback = typeof req.body?.feedback === "string" ? req.body.feedback : "";
         await requestBusinessSetupChanges(userClient, requestId, feedback);
+        try {
+          await notifySuperAdminOfBusinessSetupChanges(
+            admin,
+            requestId,
+            typeof req.headers.origin === "string" ? req.headers.origin : undefined
+          );
+        } catch (notificationError) {
+          console.error("Setup change-request notification failed:", notificationError);
+        }
         const review = await loadBusinessSetupReview(admin, userId);
         return res.status(200).json({ success: true, ...review });
       }

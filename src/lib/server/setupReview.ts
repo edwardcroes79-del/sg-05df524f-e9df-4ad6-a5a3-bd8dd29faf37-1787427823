@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveManagedBusiness } from "@/lib/server/setupAssistance";
+import {
+  notifyBusinessAdminOfSetupStatusChange,
+  notifySuperAdminOfSetupStatusChange,
+} from "@/lib/server/setupAssistanceNotifications";
 
 const PROGRAM_COLUMNS = "id, name, stamp_target, reward_title, template_id";
 
@@ -15,6 +19,17 @@ const RPC_ERRORS: Array<{ code: string; status: number; message: string }> = [
   { code: "SETUP_STAMP_TARGET_CONFLICT", status: 422, message: "Some customers already have as many stamps as the new target. Activation was stopped to protect their progress. Please request changes." },
   { code: "SETUP_FEEDBACK_INVALID", status: 400, message: "Please describe the changes in 10 to 1000 characters." },
 ];
+
+type SetupNotificationContext = {
+  id: string;
+  businessId: string;
+  businessName: string;
+  requestedBy: string;
+  reviewRound: number;
+  changeRequestFeedback: string | null;
+  changesRequestedAt: string | null;
+  approvedAt: string | null;
+};
 
 export class SetupReviewError extends Error {
   status: number;
@@ -32,6 +47,44 @@ function mapRpcError(error: { message?: string } | null) {
   if (match) return new SetupReviewError(match.message, match.status);
   console.error("Setup review RPC failed:", error);
   return new SetupReviewError("Setup review action failed.", 500);
+}
+
+async function loadUserEmail(admin: SupabaseClient, userId: string) {
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profileError) throw profileError;
+  if (profile?.email) return profile.email;
+
+  const authResult = await admin.auth.admin.getUserById(userId);
+  return authResult.data.user?.email || null;
+}
+
+async function loadSetupNotificationContext(admin: SupabaseClient, requestId: string): Promise<SetupNotificationContext> {
+  const { data, error } = await admin
+    .from("setup_assistance_requests")
+    .select("id, business_id, requested_by, review_round, change_request_feedback, changes_requested_at, approved_at, businesses ( business_name )")
+    .eq("id", requestId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.id) throw new SetupReviewError("Setup request not found.", 404);
+
+  const business = Array.isArray(data.businesses) ? data.businesses[0] : data.businesses;
+
+  return {
+    id: String(data.id),
+    businessId: String(data.business_id),
+    businessName: business?.business_name || "Unknown business",
+    requestedBy: String(data.requested_by),
+    reviewRound: Number(data.review_round || 0),
+    changeRequestFeedback: data.change_request_feedback || null,
+    changesRequestedAt: data.changes_requested_at || null,
+    approvedAt: data.approved_at || null,
+  };
 }
 
 export async function loadBusinessSetupReview(admin: SupabaseClient, userId: string) {
@@ -129,4 +182,46 @@ export async function requestBusinessSetupChanges(userClient: SupabaseClient, re
   });
 
   if (error) throw mapRpcError(error);
+}
+
+export async function notifyBusinessSetupCompleted(admin: SupabaseClient, requestId: string, origin?: string) {
+  const context = await loadSetupNotificationContext(admin, requestId);
+  const recipientEmail = await loadUserEmail(admin, context.requestedBy);
+  const eventDate = context.approvedAt || new Date().toISOString();
+
+  await notifyBusinessAdminOfSetupStatusChange(admin, {
+    businessId: context.businessId,
+    businessName: context.businessName,
+    requestId: context.id,
+    recipientEmail,
+    status: "completed",
+    eventDate,
+    reviewRound: context.reviewRound,
+    origin,
+  });
+
+  await notifySuperAdminOfSetupStatusChange(admin, {
+    businessId: context.businessId,
+    businessName: context.businessName,
+    requestId: context.id,
+    status: "completed",
+    eventDate,
+    reviewRound: context.reviewRound,
+    origin,
+  });
+}
+
+export async function notifySuperAdminOfBusinessSetupChanges(admin: SupabaseClient, requestId: string, origin?: string) {
+  const context = await loadSetupNotificationContext(admin, requestId);
+
+  await notifySuperAdminOfSetupStatusChange(admin, {
+    businessId: context.businessId,
+    businessName: context.businessName,
+    requestId: context.id,
+    status: "changes_requested",
+    eventDate: context.changesRequestedAt || new Date().toISOString(),
+    feedback: context.changeRequestFeedback,
+    reviewRound: context.reviewRound,
+    origin,
+  });
 }

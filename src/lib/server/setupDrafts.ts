@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 import { FREE_TEMPLATE_IDS, TEMPLATE_PRESET_IDS } from "@/lib/cardTemplatePresets";
 import { EDITABLE_SETUP_STATUSES, SetupAccessError, revokeSetupSession, writeSetupAudit, type SetupSessionContext } from "@/lib/server/setupSessions";
+import { notifyBusinessAdminOfSetupStatusChange } from "@/lib/server/setupAssistanceNotifications";
 
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const ICON_NAME = /^[A-Za-z0-9]{1,40}$/;
@@ -259,7 +260,7 @@ export async function markSetupReadyForReview(admin: SupabaseClient, ctx: SetupS
   const now = new Date().toISOString();
   const { data: currentRequest, error: currentRequestError } = await admin
     .from("setup_assistance_requests")
-    .select("status, review_round")
+    .select("status, review_round, requested_by")
     .eq("id", ctx.requestId)
     .maybeSingle();
 
@@ -289,6 +290,37 @@ export async function markSetupReadyForReview(admin: SupabaseClient, ctx: SetupS
     review_round: reviewRound,
     marked_at: now,
   });
+
+  try {
+    let recipientEmail: string | null = null;
+
+    if (currentRequest.requested_by) {
+      const { data: requesterProfile } = await admin
+        .from("profiles")
+        .select("email")
+        .eq("id", currentRequest.requested_by)
+        .maybeSingle();
+
+      recipientEmail = requesterProfile?.email || null;
+
+      if (!recipientEmail) {
+        const authResult = await admin.auth.admin.getUserById(String(currentRequest.requested_by));
+        recipientEmail = authResult.data.user?.email || null;
+      }
+    }
+
+    await notifyBusinessAdminOfSetupStatusChange(admin, {
+      businessId: ctx.businessId,
+      businessName: business.name,
+      requestId: ctx.requestId,
+      recipientEmail,
+      status: "ready_for_review",
+      eventDate: now,
+      reviewRound,
+    });
+  } catch (notificationError) {
+    console.error("Setup ready-for-review notification failed:", notificationError);
+  }
 
   await revokeSetupSession(admin, superadminUserId, ctx.sessionId, "ready_for_review");
 }
