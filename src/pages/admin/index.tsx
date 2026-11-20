@@ -4112,7 +4112,7 @@ export default function AdminDashboard() {
         )}
       </div>
     </TableCell>
-    <TableCell>
+    <TableCell className="align-top">
       <div className="space-y-2 min-w-[150px]">
         <select
           className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-xs font-medium text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
@@ -4152,7 +4152,7 @@ export default function AdminDashboard() {
           {t("admin.contract.saveContract")}
         </Button>
         {biz.contract_end_date && (
-          <div className="grid grid-cols-3 gap-1">
+          <div className="flex flex-wrap items-center gap-2 pt-1">
             {CONTRACT_TERM_OPTIONS.map((term) => {
               const isBusy = renewingContractId?.startsWith(`${biz.id}:`) ?? false;
               return (
@@ -4161,13 +4161,13 @@ export default function AdminDashboard() {
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-8 gap-1 px-1 text-[11px]"
+                  className="h-8 min-w-[92px] flex-none justify-center gap-1.5 px-2 text-[11px] whitespace-nowrap"
                   onClick={() => handleRenewContract(biz, term)}
                   disabled={isBusy}
                   title={term === 1 ? "Renew 1 month — only after the new payment proof is approved" : undefined}
                 >
-                  {renewingContractId === `${biz.id}:${term}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Clock className="h-3 w-3" />}
-                  {term === 1 ? "Renew 1M" : term === 6 ? t("admin.contract.renew6") : t("admin.contract.renew12")}
+                  {renewingContractId === `${biz.id}:${term}` ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : <Clock className="h-3.5 w-3.5 shrink-0" />}
+                  <span>{term === 1 ? "Renew 1M" : term === 6 ? t("admin.contract.renew6") : t("admin.contract.renew12")}</span>
                 </Button>
               );
             })}
@@ -4183,7 +4183,7 @@ export default function AdminDashboard() {
         )}
       </div>
     </TableCell>
-    <TableCell>
+    <TableCell className="align-top">
       {biz.contract_start_date && biz.contract_end_date ? (
         <div className="space-y-1 text-xs">
           <div><span className="text-muted-foreground">{t("admin.contract.start")}</span> {new Date(`${biz.contract_start_date}T00:00:00`).toLocaleDateString(locale)}</div>
