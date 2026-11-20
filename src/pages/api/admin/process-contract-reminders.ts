@@ -15,6 +15,7 @@ interface BusinessContractRow {
   status: string | null;
   contract_end_date: string;
   contract_status: string | null;
+  contract_term_months: number | null;
 }
 
 const supabase = createClient(
@@ -59,8 +60,8 @@ function daysUntilDate(today: string, targetDate: string) {
   return Math.round((parseDateUtc(targetDate) - parseDateUtc(today)) / 86_400_000);
 }
 
-function getReminderType(daysUntil: number): ReminderType | null {
-  if (daysUntil === 30) return "30_days";
+function getReminderType(daysUntil: number, termMonths: number | null): ReminderType | null {
+  if (daysUntil === 30) return termMonths === 1 ? null : "30_days";
   if (daysUntil === 14) return "14_days";
   if (daysUntil === 7) return "7_days";
   if (daysUntil === 1) return "1_day";
@@ -298,7 +299,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const today = getArubaDateString();
     const { data: businesses, error } = await supabase
       .from("businesses")
-      .select("id, business_name, email, owner_id, status, contract_end_date, contract_status")
+      .select("id, business_name, email, owner_id, status, contract_end_date, contract_status, contract_term_months")
       .not("contract_end_date", "is", null)
       .in("contract_status", ["active", "expiring", "expired"]);
 
@@ -318,7 +319,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     for (const business of (businesses || []) as BusinessContractRow[]) {
       const daysUntil = daysUntilDate(today, business.contract_end_date);
-      const reminderType = getReminderType(daysUntil);
+      const reminderType = getReminderType(daysUntil, business.contract_term_months);
 
       if (!reminderType) continue;
 
