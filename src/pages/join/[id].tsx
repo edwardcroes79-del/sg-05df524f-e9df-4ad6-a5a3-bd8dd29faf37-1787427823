@@ -169,6 +169,7 @@ export default function JoinProgramSimplified() {
 
   // Extract the business object for easy access
   const business = Array.isArray(program.businesses) ? program.businesses[0] : program.businesses;
+  const isBusinessOnHold = business?.status === "on_hold";
 
   return (
     <div className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
@@ -210,6 +211,15 @@ export default function JoinProgramSimplified() {
         </div>
 
         <Card className="border-primary/20 bg-card">
+          {isBusinessOnHold ? (
+            <CardHeader className="text-center">
+              <CardTitle>Temporarily unavailable</CardTitle>
+              <CardDescription>
+                {business.business_name}&apos;s loyalty program is temporarily unavailable. Your existing stamps and rewards are safe. Please check back soon or ask the business for details.
+              </CardDescription>
+            </CardHeader>
+          ) : (
+          <>
           <CardHeader className="text-center">
             <CardTitle>Ready to get started?</CardTitle>
             <CardDescription>
@@ -243,6 +253,8 @@ export default function JoinProgramSimplified() {
               </p>
             )}
           </CardContent>
+          </>
+          )}
         </Card>
       </div>
     </div>
