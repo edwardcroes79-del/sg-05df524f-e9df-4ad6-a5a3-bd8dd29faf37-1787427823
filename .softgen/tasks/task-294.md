@@ -13,10 +13,10 @@ Add notification-management controls to the existing Super Admin notification pa
 
 ## Checklist
 - [x] Inspect the existing Super Admin notification panel UI, unread/read persistence, and any notification refresh/realtime logic
-- [ ] Add Clear All and Clear Read controls with confirmation dialog using the existing admin notification system
-- [ ] Add optional per-notification clear control if the existing panel structure supports it cleanly
-- [ ] Persist cleared notification state so cleared items stay hidden after refresh/login and do not reappear from recomputed notification lists
-- [ ] Keep authorization limited to Super Admins and avoid deleting underlying records
+- [x] Add Clear All and Clear Read controls with confirmation dialog using the existing admin notification system
+- [x] Add optional per-notification clear control if the existing panel structure supports it cleanly
+- [x] Persist cleared notification state so cleared items stay hidden after refresh/login and do not reappear from recomputed notification lists
+- [x] Keep authorization limited to Super Admins and avoid deleting underlying records
 - [ ] Verify Clear All, Clear Read, and individual clear behavior without affecting the underlying requests or business data
 
 ## Acceptance

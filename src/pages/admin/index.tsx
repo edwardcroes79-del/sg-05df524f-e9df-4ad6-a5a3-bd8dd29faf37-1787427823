@@ -387,7 +387,10 @@ export default function AdminDashboard() {
     expiredTrials: 0,
   });
   const [notificationReads, setNotificationReads] = useState<Record<string, string>>({});
+  const [notificationClears, setNotificationClears] = useState<Record<string, string>>({});
   const [notificationPanelOpen, setNotificationPanelOpen] = useState(false);
+  const [pendingNotificationClear, setPendingNotificationClear] = useState<{ mode: "all" | "read" | "single"; notification?: SuperAdminNotification } | null>(null);
+  const [clearingNotifications, setClearingNotifications] = useState(false);
   const [activeAdminTab, setActiveAdminTab] = useState("merchants");
 
   // Backups states
@@ -1263,7 +1266,7 @@ export default function AdminDashboard() {
           .order("created_at", { ascending: false }),
         (supabase as any)
           .from("super_admin_notification_reads")
-          .select("source_type, source_id, read_at"),
+          .select("source_type, source_id, read_at, cleared_at"),
         (supabase as any)
           .from("contract_reminders")
           .select(`
@@ -1348,7 +1351,14 @@ export default function AdminDashboard() {
         acc[notificationKey(row.source_type, row.source_id)] = row.read_at;
         return acc;
       }, {});
+      const clearsMap = (notificationReadsData || []).reduce((acc: Record<string, string>, row: any) => {
+        if (row.cleared_at) {
+          acc[notificationKey(row.source_type, row.source_id)] = row.cleared_at;
+        }
+        return acc;
+      }, {});
       setNotificationReads(readsMap);
+      setNotificationClears(clearsMap);
 
       setContractReminders(settledValue(contractRemindersResult, "contract reminders")?.data || []);
 
@@ -1576,15 +1586,19 @@ export default function AdminDashboard() {
     })),
   ].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
+  const visibleSuperAdminNotifications = superAdminNotifications.filter((notification) => !notificationClears[notification.id]);
+
   const isNotificationUnread = (notification: SuperAdminNotification) =>
     (notification.status === "pending" || notification.sourceType === "setup_request") && !notificationReads[notification.id];
 
-  const unreadNotificationCount = superAdminNotifications.filter(isNotificationUnread).length;
-  const unreadNewSetupRequestCount = superAdminNotifications.filter((notification) =>
+  const unreadNotificationCount = visibleSuperAdminNotifications.filter(isNotificationUnread).length;
+  const unreadNewSetupRequestCount = visibleSuperAdminNotifications.filter((notification) =>
     notification.sourceType === "setup_request" &&
     notification.sourceId.includes(":pending:") &&
     isNotificationUnread(notification)
   ).length;
+  const hasVisibleNotifications = visibleSuperAdminNotifications.length > 0;
+  const hasClearableReadNotifications = visibleSuperAdminNotifications.some((notification) => !isNotificationUnread(notification));
 
   const markNotificationsRead = async (notificationsToRead: SuperAdminNotification[]) => {
     if (notificationsToRead.length === 0) return;
@@ -1615,12 +1629,91 @@ export default function AdminDashboard() {
     }
   };
 
+  const clearNotifications = async (notificationsToClear: SuperAdminNotification[]) => {
+    if (notificationsToClear.length === 0) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const now = new Date().toISOString();
+    const rows = notificationsToClear.map((notification) => ({
+      admin_user_id: user.id,
+      source_type: notification.sourceType,
+      source_id: notification.sourceId,
+      read_at: notificationReads[notification.id] || now,
+      cleared_at: now,
+    }));
+
+    const { error } = await (supabase as any)
+      .from("super_admin_notification_reads")
+      .upsert(rows, { onConflict: "admin_user_id,source_type,source_id" });
+
+    if (!error) {
+      setNotificationReads((current) => {
+        const next = { ...current };
+        notificationsToClear.forEach((notification) => {
+          next[notification.id] = current[notification.id] || now;
+        });
+        return next;
+      });
+      setNotificationClears((current) => {
+        const next = { ...current };
+        notificationsToClear.forEach((notification) => {
+          next[notification.id] = now;
+        });
+        return next;
+      });
+    } else {
+      throw error;
+    }
+  };
+
+  const handleConfirmClearNotifications = async () => {
+    if (!pendingNotificationClear) return;
+
+    const notificationsToClear =
+      pendingNotificationClear.mode === "single" && pendingNotificationClear.notification
+        ? [pendingNotificationClear.notification]
+        : pendingNotificationClear.mode === "read"
+          ? visibleSuperAdminNotifications.filter((notification) => !isNotificationUnread(notification))
+          : visibleSuperAdminNotifications;
+
+    if (notificationsToClear.length === 0) {
+      setPendingNotificationClear(null);
+      return;
+    }
+
+    try {
+      setClearingNotifications(true);
+      await clearNotifications(notificationsToClear);
+
+      toast({
+        title: pendingNotificationClear.mode === "all"
+          ? "Notifications cleared"
+          : pendingNotificationClear.mode === "read"
+            ? "Read notifications cleared"
+            : "Notification cleared",
+        description: "The selected notifications were removed from your list.",
+      });
+
+      setPendingNotificationClear(null);
+    } catch (err: any) {
+      toast({
+        title: "Clear failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setClearingNotifications(false);
+    }
+  };
+
   const handleToggleNotificationPanel = async () => {
     const nextOpen = !notificationPanelOpen;
     setNotificationPanelOpen(nextOpen);
 
     if (nextOpen) {
-      await markNotificationsRead(superAdminNotifications.filter(isNotificationUnread));
+      await markNotificationsRead(visibleSuperAdminNotifications.filter(isNotificationUnread));
     }
   };
 
@@ -3861,20 +3954,44 @@ export default function AdminDashboard() {
 
                 {notificationPanelOpen && (
                   <div className="absolute right-0 top-12 z-50 w-[min(24rem,calc(100vw-2rem))] rounded-xl border bg-card p-3 shadow-2xl">
-                    <div className="flex items-center justify-between border-b pb-2">
+                    <div className="flex items-start justify-between gap-3 border-b pb-2">
                       <div>
                         <p className="font-heading font-semibold text-foreground">{t("admin.notifications.title")}</p>
                         <p className="text-xs text-muted-foreground">{t("admin.notifications.unreadPending", { count: unreadNotificationCount, plural: unreadNotificationCount === 1 ? "" : "s" })}</p>
                       </div>
-                      <Badge variant="secondary">{t("admin.notifications.count", { count: superAdminNotifications.length })}</Badge>
+                      <div className="flex items-center gap-2">
+                        {hasClearableReadNotifications && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => setPendingNotificationClear({ mode: "read" })}
+                          >
+                            Clear Read
+                          </Button>
+                        )}
+                        {hasVisibleNotifications && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => setPendingNotificationClear({ mode: "all" })}
+                          >
+                            Clear All
+                          </Button>
+                        )}
+                        <Badge variant="secondary">{t("admin.notifications.count", { count: visibleSuperAdminNotifications.length })}</Badge>
+                      </div>
                     </div>
                     <div className="mt-3 max-h-96 space-y-2 overflow-y-auto pr-1">
-                      {superAdminNotifications.length === 0 ? (
+                      {visibleSuperAdminNotifications.length === 0 ? (
                         <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                           {t("admin.notifications.empty")}
                         </div>
                       ) : (
-                        superAdminNotifications.slice(0, 12).map((notification) => {
+                        visibleSuperAdminNotifications.slice(0, 12).map((notification) => {
                           const isUnread = isNotificationUnread(notification);
                           const statusIcon = notification.status === "pending" ? Clock : notification.status === "approved" ? CheckCircle : XCircle;
                           const StatusIcon = statusIcon;
@@ -3903,14 +4020,26 @@ export default function AdminDashboard() {
                                 <Badge variant={notification.status === "pending" ? "secondary" : notification.status === "approved" ? "default" : "destructive"} className="text-[10px] uppercase">
                                   {notification.label || (notification.sourceType === "contract_reminder" ? t("admin.notifications.actionRequired") : notification.status === "pending" ? t("admin.notifications.pendingReview") : notification.status)}
                                 </Badge>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant={notification.status === "pending" ? "default" : "outline"}
-                                  onClick={() => handleReviewNotification(notification)}
-                                >
-                                  {notification.sourceType === "setup_request" ? "View Request" : t("admin.notifications.review")}
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-8 w-8"
+                                    onClick={() => setPendingNotificationClear({ mode: "single", notification })}
+                                    aria-label="Clear notification"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={notification.status === "pending" ? "default" : "outline"}
+                                    onClick={() => handleReviewNotification(notification)}
+                                  >
+                                    {notification.sourceType === "setup_request" ? "View Request" : t("admin.notifications.review")}
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           );
@@ -6732,6 +6861,33 @@ export default function AdminDashboard() {
             <Button type="button" onClick={handleSendManualReminder} disabled={!selectedManualReminderBusiness?.eligible || sendingManualReminder}>
               {sendingManualReminder ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Bell className="mr-2 h-4 w-4" />}
               Send reminder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!pendingNotificationClear}
+        onOpenChange={(open) => {
+          if (!open && !clearingNotifications) {
+            setPendingNotificationClear(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clear notifications</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to clear these notifications? This action will remove them from your notification list.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setPendingNotificationClear(null)} disabled={clearingNotifications}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleConfirmClearNotifications} disabled={clearingNotifications}>
+              {clearingNotifications ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {pendingNotificationClear?.mode === "read" ? "Clear Read" : pendingNotificationClear?.mode === "single" ? "Clear Notification" : "Clear All"}
             </Button>
           </DialogFooter>
         </DialogContent>
