@@ -12,7 +12,7 @@ position: 294
 Add notification-management controls to the existing Super Admin notification panel only. Reuse the current notification generation, unread tracking, and authorization flow. Clearing notifications must only remove them from the Super Admin notification list, not delete the underlying payment, setup assistance, business, audit, or plan-change records. Cleared notifications must remain cleared after refresh/login and must not reappear from realtime or refresh. Preserve Super Admin-only access.
 
 ## Checklist
-- [ ] Inspect the existing Super Admin notification panel UI, unread/read persistence, and any notification refresh/realtime logic
+- [x] Inspect the existing Super Admin notification panel UI, unread/read persistence, and any notification refresh/realtime logic
 - [ ] Add Clear All and Clear Read controls with confirmation dialog using the existing admin notification system
 - [ ] Add optional per-notification clear control if the existing panel structure supports it cleanly
 - [ ] Persist cleared notification state so cleared items stay hidden after refresh/login and do not reappear from recomputed notification lists
