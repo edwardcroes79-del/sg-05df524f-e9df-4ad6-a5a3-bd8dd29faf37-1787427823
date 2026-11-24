@@ -502,7 +502,7 @@ export default function SettingsPage() {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user?.email) {
-        router.push("/auth/login");
+        setPasswordError("Your session has expired. Please sign in again to change your password.");
         return;
       }
 
@@ -514,6 +514,13 @@ export default function SettingsPage() {
 
       if (!verification.valid) {
         setPasswordError(verification.error?.message || "The current password you entered is incorrect.");
+        return;
+      }
+
+      const restoredSession = await authService.getCurrentSession();
+
+      if (!restoredSession?.user?.id || restoredSession.user.id !== session.user.id) {
+        setPasswordError("Your session has expired. Please sign in again to change your password.");
         return;
       }
 

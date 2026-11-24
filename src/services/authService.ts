@@ -32,6 +32,31 @@ function createPasswordVerificationClient() {
   });
 }
 
+async function restoreActiveSession(session: Session | null): Promise<AuthError | null> {
+  if (!session?.access_token || !session.refresh_token) {
+    return { message: "Your session has expired. Please sign in again and retry." };
+  }
+
+  const {
+    data: { session: currentSession },
+  } = await supabase.auth.getSession();
+
+  if (currentSession?.user?.id === session.user.id) {
+    return null;
+  }
+
+  const { error } = await supabase.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  });
+
+  if (error) {
+    return { message: "Your session has expired. Please sign in again and retry." };
+  }
+
+  return null;
+}
+
 // Dynamic URL Helper
 export const getURL = () => {
   const productionUrl = "https://royaltystamp.com";
@@ -177,6 +202,17 @@ export const authService = {
     password: string,
     expectedUserId: string
   ): Promise<{ valid: boolean; error: AuthError | null }> {
+    const {
+      data: { session: activeSession },
+    } = await supabase.auth.getSession();
+
+    if (!activeSession?.user?.id || activeSession.user.id !== expectedUserId) {
+      return {
+        valid: false,
+        error: { message: "Your session has expired. Please sign in again and retry." },
+      };
+    }
+
     try {
       const verificationClient = createPasswordVerificationClient();
       const { data, error } = await verificationClient.auth.signInWithPassword({
@@ -185,6 +221,14 @@ export const authService = {
       });
 
       await verificationClient.auth.signOut();
+
+      const restoreError = await restoreActiveSession(activeSession);
+      if (restoreError) {
+        return {
+          valid: false,
+          error: restoreError,
+        };
+      }
 
       if (error || !data.user || data.user.id !== expectedUserId) {
         return {
@@ -195,6 +239,15 @@ export const authService = {
 
       return { valid: true, error: null };
     } catch (error) {
+      const restoreError = await restoreActiveSession(activeSession);
+
+      if (restoreError) {
+        return {
+          valid: false,
+          error: restoreError,
+        };
+      }
+
       return {
         valid: false,
         error: { message: "Unable to verify your current password right now." },
@@ -204,10 +257,27 @@ export const authService = {
 
   async updateCurrentUserPassword(password: string): Promise<{ error: AuthError | null }> {
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user?.id) {
+        return {
+          error: { message: "Your session has expired. Please sign in again and retry." },
+        };
+      }
+
       const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
-        return { error: { message: error.message } };
+        return {
+          error: {
+            message:
+              error.message === "Auth session missing!"
+                ? "Your session has expired. Please sign in again and retry."
+                : error.message,
+          },
+        };
       }
 
       return { error: null };
