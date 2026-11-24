@@ -14,6 +14,23 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const bucketName = "loyalty-assets";
 
+type ServiceClient = ReturnType<typeof createServiceClient>;
+type AuthenticatedActor = {
+  userId: string;
+  isSuperAdmin: boolean;
+};
+
+type ManagedBusiness = {
+  id: string;
+  owner_id: string | null;
+  business_name: string;
+  subscription_plan: string | null;
+  logo: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  access_role: "owner" | "admin" | "corporate_admin" | "super_admin";
+};
+
 export const config = {
   api: {
     bodyParser: {
@@ -30,7 +47,11 @@ function createServiceClient() {
   return createClient(supabaseUrl, serviceRoleKey);
 }
 
-async function getAuthenticatedUser(req: NextApiRequest) {
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+async function getAuthenticatedActor(req: NextApiRequest, admin: ServiceClient): Promise<AuthenticatedActor> {
   if (!supabaseUrl || !anonKey) {
     throw new Error("Supabase server configuration is incomplete");
   }
@@ -53,10 +74,23 @@ async function getAuthenticatedUser(req: NextApiRequest) {
     throw new Error("Not authenticated");
   }
 
-  return data.user;
+  const { data: profile, error: profileError } = await admin
+    .from("profiles")
+    .select("is_super_admin, role")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  return {
+    userId: data.user.id,
+    isSuperAdmin: Boolean(profile?.is_super_admin || profile?.role === "super_admin"),
+  };
 }
 
-async function hasCorporateBrandingEntitlement(admin: ReturnType<typeof createServiceClient>, business: { id: string; subscription_plan: string | null }) {
+async function hasCorporateBrandingEntitlement(admin: ServiceClient, business: { subscription_plan: string | null }) {
   if (!business.subscription_plan) {
     return false;
   }
@@ -67,7 +101,9 @@ async function hasCorporateBrandingEntitlement(admin: ReturnType<typeof createSe
     .eq("id", business.subscription_plan)
     .maybeSingle();
 
-  if (planError) throw planError;
+  if (planError) {
+    throw planError;
+  }
 
   if (!plan || plan.status !== "active" || plan.is_active !== true) {
     return false;
@@ -81,66 +117,87 @@ async function hasCorporateBrandingEntitlement(admin: ReturnType<typeof createSe
     .eq("value_type", "boolean")
     .maybeSingle();
 
-  if (entitlementError) throw entitlementError;
+  if (entitlementError) {
+    throw entitlementError;
+  }
+
   return entitlement?.boolean_value === true;
 }
 
-async function userCanManageCorporateBranding(admin: ReturnType<typeof createServiceClient>, business: { id: string; owner_id: string | null }, userId: string) {
-  if (business.owner_id === userId) {
-    return true;
+async function getBusinessAdminRole(admin: ServiceClient, businessId: string, userId: string) {
+  const { data, error } = await admin
+    .from("business_users")
+    .select("role")
+    .eq("business_id", businessId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    throw error;
   }
 
-  const { data, error } = await admin.rpc("is_corporate_admin_for_business", {
-    target_business_id: business.id,
-    target_user_id: userId,
-  });
+  if (data?.role === "owner" || data?.role === "admin" || data?.role === "corporate_admin") {
+    return data.role;
+  }
 
-  if (error) throw error;
-  return Boolean(data);
+  return null;
 }
 
-async function resolveCorporateBusiness(admin: ReturnType<typeof createServiceClient>, userId: string, requestedBusinessId?: string) {
+async function resolveCorporateBusiness(admin: ServiceClient, actor: AuthenticatedActor, requestedBusinessId?: string): Promise<ManagedBusiness> {
+  if (requestedBusinessId && !isUuid(requestedBusinessId)) {
+    throw new Error("Invalid business_id");
+  }
+
   let query = admin
     .from("businesses")
     .select("id, owner_id, business_name, subscription_plan, logo, primary_color, secondary_color");
 
   if (requestedBusinessId) {
     query = query.eq("id", requestedBusinessId);
+  } else if (actor.isSuperAdmin) {
+    throw new Error("Business ID is required for Super Admin access");
   } else {
-    query = query.eq("owner_id", userId);
+    query = query.eq("owner_id", actor.userId);
   }
 
   const { data: business, error } = await query.maybeSingle();
-  if (error) throw error;
+
+  if (error) {
+    throw error;
+  }
 
   if (!business) {
     throw new Error("Business access required");
   }
 
-  if (business.owner_id !== userId) {
-    const { data: membership, error: membershipError } = await admin
-      .from("business_users")
-      .select("id, role, status")
-      .eq("business_id", business.id)
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .maybeSingle();
-
-    if (membershipError) throw membershipError;
-    if (!membership) {
-      throw new Error("Forbidden: You do not have access to this business");
-    }
+  if (actor.isSuperAdmin) {
+    return {
+      ...business,
+      access_role: "super_admin",
+    };
   }
 
-  const canUseCorporateBranding = await hasCorporateBrandingEntitlement(admin, business);
-  if (!canUseCorporateBranding) {
-    throw new Error("Corporate Branding is not available for this business");
+  if (business.owner_id === actor.userId) {
+    return {
+      ...business,
+      access_role: "owner",
+    };
   }
 
-  return business;
+  const membershipRole = await getBusinessAdminRole(admin, business.id, actor.userId);
+
+  if (!membershipRole) {
+    throw new Error("Forbidden: You do not have access to this business");
+  }
+
+  return {
+    ...business,
+    access_role: membershipRole,
+  };
 }
 
-async function audit(admin: ReturnType<typeof createServiceClient>, userId: string, targetId: string, metadata: Record<string, unknown>) {
+async function audit(admin: ServiceClient, userId: string, targetId: string, metadata: Record<string, unknown>) {
   await admin.from("audit_logs").insert({
     admin_user_id: userId,
     action: "corporate_branding_updated",
@@ -158,24 +215,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const admin = createServiceClient();
-    const user = await getAuthenticatedUser(req);
+    const actor = await getAuthenticatedActor(req, admin);
     const payload = (req.method === "GET" ? req.query : req.body) as CorporateBrandingPayload;
     const { businessId, primaryColor, secondaryColor } = sanitizeBrandingPayload(payload);
-    const business = await resolveCorporateBusiness(admin, user.id, businessId);
+    const business = await resolveCorporateBusiness(admin, actor, businessId);
+    const canUseCorporateBranding = await hasCorporateBrandingEntitlement(admin, business);
 
     if (req.method === "GET") {
-      const canManageBranding = await userCanManageCorporateBranding(admin, business, user.id);
-
       return res.status(200).json({
         success: true,
-        can_manage: canManageBranding,
+        status: canUseCorporateBranding ? "available" : "unavailable",
+        can_manage: true,
         branding: toBrandingSettings(business),
       });
     }
 
-    const canManageBranding = await userCanManageCorporateBranding(admin, business, user.id);
-    if (!canManageBranding) {
-      return res.status(403).json({ error: "Only Corporate admins can update Corporate Branding" });
+    if (!canUseCorporateBranding) {
+      return res.status(403).json({ error: "Corporate Branding is not available for this business" });
     }
 
     const logoUpload = validateLogoUpload(payload);
@@ -199,7 +255,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           upsert: true,
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        throw uploadError;
+      }
 
       const { data: publicUrl } = admin.storage.from(bucketName).getPublicUrl(logoPath);
       logoUrl = publicUrl.publicUrl;
@@ -216,10 +274,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .select("id, logo, primary_color, secondary_color")
       .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      throw updateError;
+    }
 
-    await audit(admin, user.id, business.id, {
+    await audit(admin, actor.userId, business.id, {
       business_id: business.id,
+      access_role: business.access_role,
       logo_path: logoPath,
       logo_size: logoSize,
       has_logo_upload: Boolean(logoUpload),
@@ -230,18 +291,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({
       success: true,
+      status: "available",
       can_manage: true,
       branding: toBrandingSettings(updatedBusiness),
     });
   } catch (error: any) {
     const message = error.message || "Failed to manage Corporate Branding";
-    const status = message.includes("Not authenticated") || message.includes("authorization")
-      ? 401
-      : message.includes("Forbidden") || message.includes("access") || message.includes("Corporate")
-        ? 403
-        : message.includes("Logo") || message.includes("color")
-          ? 400
-          : 500;
+    const status = message === "Invalid business_id" || message.includes("Business ID is required")
+      ? 400
+      : message.includes("Not authenticated") || message.includes("authorization")
+        ? 401
+        : message.includes("Forbidden") || message.includes("access") || message.includes("Corporate")
+          ? 403
+          : message.includes("Logo") || message.includes("color")
+            ? 400
+            : 500;
 
     return res.status(status).json({ error: message });
   }

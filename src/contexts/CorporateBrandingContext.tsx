@@ -88,7 +88,9 @@ export function getDefaultCorporateBranding(businessId = ""): CorporateBrandingS
 }
 
 export function getCorporateBrandingStyle(branding: CorporateBrandingSettings | null) {
-  if (!branding) return undefined;
+  if (!branding) {
+    return undefined;
+  }
 
   return {
     "--primary": hexToHslTriple(branding.primary_color),
@@ -135,9 +137,11 @@ export async function fetchCorporateBranding(businessId: string, accessToken: st
   }
 
   const result = await response.json();
+  const status = result?.status === "unavailable" ? "unavailable" : "available";
+
   return {
-    status: "available",
-    branding: (result.branding as CorporateBrandingSettings) || getDefaultCorporateBranding(businessId),
-    can_manage: Boolean(result.can_manage),
+    status,
+    branding: (result?.branding as CorporateBrandingSettings) || getDefaultCorporateBranding(businessId),
+    can_manage: Boolean(result?.can_manage),
   };
 }

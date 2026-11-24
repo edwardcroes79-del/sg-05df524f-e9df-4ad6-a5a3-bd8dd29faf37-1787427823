@@ -12,11 +12,11 @@ position: 296
 Investigar y corregir el error 403 en `/api/business/corporate-branding` sin debilitar el aislamiento multi-tenant ni cambiar funcionalidades no relacionadas. Confirmar primero la causa exacta revisando el endpoint, validación de `business_id`, permisos de Business Admin y Super Admin, encabezados/autenticación del frontend y cualquier dependencia de Supabase/RLS. Luego aplicar el cambio mínimo necesario para que Business Admin pueda gestionar solo su propio negocio y Super Admin pueda acceder mediante su flujo autorizado.
 
 ## Checklist
-- [ ] Inspeccionar el endpoint `/api/business/corporate-branding` y su lógica de autorización
-- [ ] Revisar el flujo frontend que llama al endpoint y los encabezados/sesión que envía
-- [ ] Confirmar el modelo de roles y las consultas/tablas de Supabase involucradas
-- [ ] Identificar la causa exacta del 403 con evidencia de código y/o esquema
-- [ ] Aplicar la corrección mínima necesaria en backend y, si hace falta, en el caller frontend
+- [x] Inspeccionar el endpoint `/api/business/corporate-branding` y su lógica de autorización
+- [x] Revisar el flujo frontend que llama al endpoint y los encabezados/sesión que envía
+- [x] Confirmar el modelo de roles y las consultas/tablas de Supabase involucradas
+- [x] Identificar la causa exacta del 403 con evidencia de código y/o esquema
+- [x] Aplicar la corrección mínima necesaria en backend y, si hace falta, en el caller frontend
 - [ ] Validar los escenarios de acceso propio, acceso cruzado, Super Admin y no autenticado
 - [ ] Ejecutar verificación final sin tocar branding, auth o settings no relacionados
 
