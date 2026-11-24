@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { createClient } from "@supabase/supabase-js";
-import type { User, Session } from "@supabase/supabase-js";
+import type { Session } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 export interface AuthUser {
@@ -18,6 +18,16 @@ export interface AuthError {
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+const SESSION_EXPIRED_ERROR: AuthError = {
+  message: "Your session has expired. Please sign in again and retry.",
+  code: "session_expired",
+};
+
+const SESSION_MISMATCH_ERROR: AuthError = {
+  message: "The signed-in account does not match this request. Please sign in again and retry.",
+  code: "session_mismatch",
+};
+
 function createPasswordVerificationClient() {
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     throw new Error("Missing Supabase environment variables. Please check your .env.local file.");
@@ -28,36 +38,62 @@ function createPasswordVerificationClient() {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+      storageKey: "rs-password-verification",
     },
   });
 }
 
-async function restoreActiveSession(session: Session | null): Promise<AuthError | null> {
-  if (!session?.access_token || !session.refresh_token) {
-    return { message: "Your session has expired. Please sign in again and retry." };
-  }
-
-  const {
-    data: { session: currentSession },
-  } = await supabase.auth.getSession();
-
-  if (currentSession?.user?.id === session.user.id) {
-    return null;
-  }
-
-  const { error } = await supabase.auth.setSession({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token,
-  });
-
-  if (error) {
-    return { message: "Your session has expired. Please sign in again and retry." };
-  }
-
-  return null;
+function isSessionAuthError(error: { name?: string; code?: string; status?: number; message?: string } | null | undefined) {
+  if (!error) return false;
+  return (
+    error.name === "AuthSessionMissingError" ||
+    error.code === "session_not_found" ||
+    error.code === "session_expired" ||
+    error.code === "refresh_token_not_found" ||
+    error.code === "bad_jwt" ||
+    error.status === 401 ||
+    error.message === "Auth session missing!"
+  );
 }
 
-// Dynamic URL Helper
+async function getValidatedActiveSession(
+  expectedUserId?: string
+): Promise<{ session: Session | null; error: AuthError | null }> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError || !session?.user?.id) {
+    return { session: null, error: SESSION_EXPIRED_ERROR };
+  }
+
+  if (expectedUserId && session.user.id !== expectedUserId) {
+    return { session: null, error: SESSION_MISMATCH_ERROR };
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (!userError && userData.user?.id) {
+    if (expectedUserId && userData.user.id !== expectedUserId) {
+      return { session: null, error: SESSION_MISMATCH_ERROR };
+    }
+    return { session, error: null };
+  }
+
+  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+
+  if (refreshError || !refreshed.session?.user?.id) {
+    return { session: null, error: SESSION_EXPIRED_ERROR };
+  }
+
+  if (expectedUserId && refreshed.session.user.id !== expectedUserId) {
+    return { session: null, error: SESSION_MISMATCH_ERROR };
+  }
+
+  return { session: refreshed.session, error: null };
+}
+
 export const getURL = () => {
   const productionUrl = "https://royaltystamp.com";
   let url = productionUrl;
@@ -85,7 +121,6 @@ export const getURL = () => {
 }
 
 export const authService = {
-  // Get current user
   async getCurrentUser(): Promise<AuthUser | null> {
     const { data: { user } } = await supabase.auth.getUser();
     return user ? {
@@ -96,13 +131,11 @@ export const authService = {
     } : null;
   },
 
-  // Get current session
   async getCurrentSession(): Promise<Session | null> {
     const { data: { session } } = await supabase.auth.getSession();
     return session;
   },
 
-  // Sign up with email and password
   async signUp(email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -126,14 +159,13 @@ export const authService = {
 
       return { user: authUser, error: null };
     } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during sign up" } 
+      return {
+        user: null,
+        error: { message: "An unexpected error occurred during sign up" }
       };
     }
   },
 
-  // Sign in with email and password
   async signIn(email: string, password: string): Promise<{ user: AuthUser | null; error: AuthError | null }> {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -154,31 +186,29 @@ export const authService = {
 
       return { user: authUser, error: null };
     } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during sign in" } 
+      return {
+        user: null,
+        error: { message: "An unexpected error occurred during sign in" }
       };
     }
   },
 
-  // Sign out
   async signOut(): Promise<{ error: AuthError | null }> {
     try {
       const { error } = await supabase.auth.signOut();
-      
+
       if (error) {
         return { error: { message: error.message } };
       }
 
       return { error: null };
     } catch (error) {
-      return { 
-        error: { message: "An unexpected error occurred during sign out" } 
+      return {
+        error: { message: "An unexpected error occurred during sign out" }
       };
     }
   },
 
-  // Reset password
   async resetPassword(email: string): Promise<{ error: AuthError | null }> {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -191,8 +221,8 @@ export const authService = {
 
       return { error: null };
     } catch (error) {
-      return { 
-        error: { message: "An unexpected error occurred during password reset" } 
+      return {
+        error: { message: "An unexpected error occurred during password reset" }
       };
     }
   },
@@ -202,15 +232,10 @@ export const authService = {
     password: string,
     expectedUserId: string
   ): Promise<{ valid: boolean; error: AuthError | null }> {
-    const {
-      data: { session: activeSession },
-    } = await supabase.auth.getSession();
+    const active = await getValidatedActiveSession(expectedUserId);
 
-    if (!activeSession?.user?.id || activeSession.user.id !== expectedUserId) {
-      return {
-        valid: false,
-        error: { message: "Your session has expired. Please sign in again and retry." },
-      };
+    if (active.error) {
+      return { valid: false, error: active.error };
     }
 
     try {
@@ -220,17 +245,32 @@ export const authService = {
         password,
       });
 
-      await verificationClient.auth.signOut();
+      if (data.session) {
+        await verificationClient.auth.signOut({ scope: "local" }).catch(() => undefined);
+      }
 
-      const restoreError = await restoreActiveSession(activeSession);
-      if (restoreError) {
+      if (error) {
+        if (error.status === 429) {
+          return {
+            valid: false,
+            error: { message: "Too many attempts. Please wait a moment and try again." },
+          };
+        }
+
+        if (error.status === 400 || error.code === "invalid_credentials") {
+          return {
+            valid: false,
+            error: { message: "The current password you entered is incorrect." },
+          };
+        }
+
         return {
           valid: false,
-          error: restoreError,
+          error: { message: "Unable to verify your current password right now." },
         };
       }
 
-      if (error || !data.user || data.user.id !== expectedUserId) {
+      if (!data.user || data.user.id !== expectedUserId) {
         return {
           valid: false,
           error: { message: "The current password you entered is incorrect." },
@@ -239,15 +279,6 @@ export const authService = {
 
       return { valid: true, error: null };
     } catch (error) {
-      const restoreError = await restoreActiveSession(activeSession);
-
-      if (restoreError) {
-        return {
-          valid: false,
-          error: restoreError,
-        };
-      }
-
       return {
         valid: false,
         error: { message: "Unable to verify your current password right now." },
@@ -255,29 +286,48 @@ export const authService = {
     }
   },
 
-  async updateCurrentUserPassword(password: string): Promise<{ error: AuthError | null }> {
+  async updateCurrentUserPassword(
+    password: string,
+    expectedUserId?: string
+  ): Promise<{ error: AuthError | null }> {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const active = await getValidatedActiveSession(expectedUserId);
 
-      if (!session?.user?.id) {
-        return {
-          error: { message: "Your session has expired. Please sign in again and retry." },
-        };
+      if (active.error) {
+        return { error: active.error };
       }
 
-      const { error } = await supabase.auth.updateUser({ password });
+      let { error } = await supabase.auth.updateUser({ password });
+
+      if (error && isSessionAuthError(error)) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+
+        if (refreshError || !refreshed.session) {
+          return { error: SESSION_EXPIRED_ERROR };
+        }
+
+        ({ error } = await supabase.auth.updateUser({ password }));
+      }
 
       if (error) {
-        return {
-          error: {
-            message:
-              error.message === "Auth session missing!"
-                ? "Your session has expired. Please sign in again and retry."
-                : error.message,
-          },
-        };
+        if (isSessionAuthError(error)) {
+          return { error: SESSION_EXPIRED_ERROR };
+        }
+
+        if (error.code === "same_password") {
+          return { error: { message: "Your new password must be different from your current password.", code: error.code } };
+        }
+
+        if (error.code === "reauthentication_needed") {
+          return {
+            error: {
+              message: "For security, please sign out and sign in again, then change your password.",
+              code: error.code,
+            },
+          };
+        }
+
+        return { error: { message: error.message, code: error.code } };
       }
 
       return { error: null };
@@ -288,7 +338,6 @@ export const authService = {
     }
   },
 
-  // Confirm email (REQUIRED)
   async confirmEmail(token: string, type: 'signup' | 'recovery' | 'email_change' = 'signup'): Promise<{ user: AuthUser | null; error: AuthError | null }> {
     try {
       const { data, error } = await supabase.auth.verifyOtp({
@@ -309,14 +358,13 @@ export const authService = {
 
       return { user: authUser, error: null };
     } catch (error) {
-      return { 
-        user: null, 
-        error: { message: "An unexpected error occurred during email confirmation" } 
+      return {
+        user: null,
+        error: { message: "An unexpected error occurred during email confirmation" }
       };
     }
   },
 
-  // Listen to auth state changes
   onAuthStateChange(callback: (event: string, session: Session | null) => void) {
     return supabase.auth.onAuthStateChange(callback);
   }

@@ -517,14 +517,7 @@ export default function SettingsPage() {
         return;
       }
 
-      const restoredSession = await authService.getCurrentSession();
-
-      if (!restoredSession?.user?.id || restoredSession.user.id !== session.user.id) {
-        setPasswordError("Your session has expired. Please sign in again to change your password.");
-        return;
-      }
-
-      const { error } = await authService.updateCurrentUserPassword(newPassword);
+      const { error } = await authService.updateCurrentUserPassword(newPassword, session.user.id);
 
       if (error) {
         throw new Error(error.message);
