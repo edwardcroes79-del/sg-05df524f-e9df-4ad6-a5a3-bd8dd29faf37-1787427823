@@ -12,8 +12,8 @@ position: 295
 Add a secure Change Password section to the existing Business Admin Settings page only. Reuse the current Supabase Auth architecture and existing validation patterns where possible. Verify the current password through secure re-authentication, update the password through Supabase Auth, preserve the logged-in session where supported, and avoid any changes to super admin, staff, billing, registration, password recovery, or unrelated settings behavior.
 
 ## Checklist
-- [ ] Inspect the existing business admin settings page and current authentication service usage
-- [ ] Identify any existing password validation rules or reusable auth helpers in login, registration, and password update flows
+- [x] Inspect the existing business admin settings page and current authentication service usage
+- [x] Identify any existing password validation rules or reusable auth helpers in login, registration, and password update flows
 - [ ] Add a Change Password section to the business admin settings page with current password, new password, confirm new password, and show/hide toggles
 - [ ] Implement client-side validation for required fields, minimum password requirement, mismatch prevention, and identical-password rejection
 - [ ] Implement secure current-password verification using the existing Supabase Auth session and supported re-authentication flow
