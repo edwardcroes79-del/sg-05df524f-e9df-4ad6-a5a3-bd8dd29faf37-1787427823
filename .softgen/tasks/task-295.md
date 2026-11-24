@@ -1,6 +1,6 @@
 ---
 title: Business admin change password
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [settings, auth, supabase]
@@ -26,7 +26,7 @@ A follow-up bug was reported: submitting the form returns "Auth session missing!
 - [x] Identify the exact root cause of the missing auth session on password submit
 - [x] Fix session retrieval/validation using the existing auth client and architecture only
 - [x] Preserve current-password verification, success/error states, and existing auth flows
-- [ ] Re-run validation and confirm the missing/expired-session path shows a clear re-login message
+- [x] Re-run validation and confirm the missing/expired-session path shows a clear re-login message
 
 ## Acceptance
 Business Admins can change their own password from Settings by entering current password, a valid new password, and a matching confirmation.
