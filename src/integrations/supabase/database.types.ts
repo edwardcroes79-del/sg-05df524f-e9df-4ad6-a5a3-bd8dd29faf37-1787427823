@@ -2447,6 +2447,7 @@ export type Database = {
       super_admin_notification_reads: {
         Row: {
           admin_user_id: string
+          cleared_at: string | null
           created_at: string
           id: string
           read_at: string
@@ -2455,6 +2456,7 @@ export type Database = {
         }
         Insert: {
           admin_user_id: string
+          cleared_at?: string | null
           created_at?: string
           id?: string
           read_at?: string
@@ -2463,6 +2465,7 @@ export type Database = {
         }
         Update: {
           admin_user_id?: string
+          cleared_at?: string | null
           created_at?: string
           id?: string
           read_at?: string
