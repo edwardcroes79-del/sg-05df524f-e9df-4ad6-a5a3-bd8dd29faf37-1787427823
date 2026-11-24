@@ -3,6 +3,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
+import { authService } from "@/services/authService";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, ShieldCheck, ShieldAlert, Key } from "lucide-react";
+import { Loader2, Save, ShieldCheck, ShieldAlert, Key, Eye, EyeOff } from "lucide-react";
 import { useI18n } from "@/contexts/I18nProvider";
 import { fetchCorporateBranding } from "@/contexts/CorporateBrandingContext";
 import { CorporateBrandingSettingsPanel } from "@/components/dashboard/CorporateBrandingSettingsPanel";
@@ -70,6 +71,8 @@ type SetupReviewState = {
   approvedAt: string | null;
 } | null;
 
+const MIN_PASSWORD_LENGTH = 8;
+
 function getSetupAssistanceBadgeVariant(status: SetupAssistanceStatus) {
   if (status === "accepted" || status === "completed") return "default";
   if (status === "declined") return "destructive";
@@ -116,6 +119,20 @@ export default function SettingsPage() {
     cooldownMinutes: 10
   });
   const showCorporateBrandingEntry = corporateBrandingAvailable;
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmNewPassword: "",
+  });
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmNewPassword: false,
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
 
   // 2FA States
   const [mfaFactors, setMfaFactors] = useState<any[]>([]);
@@ -438,6 +455,90 @@ export default function SettingsPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordFieldChange = (field: "currentPassword" | "newPassword" | "confirmNewPassword", value: string) => {
+    setPasswordForm((prev) => ({ ...prev, [field]: value }));
+    setPasswordError(null);
+    setPasswordSuccess(null);
+  };
+
+  const togglePasswordVisibility = (field: "currentPassword" | "newPassword" | "confirmNewPassword") => {
+    setPasswordVisibility((prev) => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError(null);
+    setPasswordSuccess(null);
+
+    const currentPassword = passwordForm.currentPassword.trim();
+    const newPassword = passwordForm.newPassword.trim();
+    const confirmNewPassword = passwordForm.confirmNewPassword.trim();
+
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setPasswordError("Complete all password fields before submitting.");
+      return;
+    }
+
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      setPasswordError(`Your new password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setPasswordError("Your new password and confirmation do not match.");
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setPasswordError("Your new password must be different from your current password.");
+      return;
+    }
+
+    setPasswordSaving(true);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user?.email) {
+        router.push("/auth/login");
+        return;
+      }
+
+      const verification = await authService.verifyCurrentPassword(
+        session.user.email,
+        currentPassword,
+        session.user.id
+      );
+
+      if (!verification.valid) {
+        setPasswordError(verification.error?.message || "The current password you entered is incorrect.");
+        return;
+      }
+
+      const { error } = await authService.updateCurrentUserPassword(newPassword);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmNewPassword: "",
+      });
+      setPasswordSuccess("Your password has been changed successfully.");
+
+      toast({
+        title: "Password updated",
+        description: "Your Business Admin password was updated and your current session has been preserved.",
+      });
+    } catch (err: any) {
+      setPasswordError(err.message || "Unable to change your password right now.");
+    } finally {
+      setPasswordSaving(false);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -813,64 +914,120 @@ export default function SettingsPage() {
         <Card className="border-border shadow-sm">
           <CardHeader className="bg-muted/10 border-b">
             <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-              Anti-fraud protection
+              <Key className="w-5 h-5 text-primary" />
+              Change Password
             </CardTitle>
             <CardDescription>
-              Control repeat-stamp cooldown protection for this business. This core setting is available on every plan.
+              Update your Business Admin login password without changing any other account or security settings.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5 pt-6">
-            <div className="flex flex-col gap-4 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="font-semibold text-lg">Cooldown enforcement</h3>
-                <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-                  When enabled, the same member cannot receive another stamp in the same business and loyalty program until the cooldown expires.
-                </p>
-              </div>
-              <Switch
-                checked={antiFraudSettings.enabled}
-                disabled={antiFraudLoading || antiFraudSaving}
-                onCheckedChange={(checked) => {
-                  const nextSettings = { ...antiFraudSettings, enabled: checked };
-                  setAntiFraudSettings(nextSettings);
-                  saveAntiFraudSettings(nextSettings);
-                }}
-                aria-label="Toggle anti-fraud cooldown"
-              />
-            </div>
+          <CardContent className="pt-6">
+            <form onSubmit={handleChangePassword} className="space-y-5">
+              {passwordError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Password change failed</AlertTitle>
+                  <AlertDescription>{passwordError}</AlertDescription>
+                </Alert>
+              ) : null}
 
-            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-              <div className="space-y-2">
-                <Label htmlFor="antiFraudCooldown">Cooldown duration</Label>
-                <select
-                  id="antiFraudCooldown"
-                  value={antiFraudSettings.cooldownMinutes}
-                  disabled={antiFraudLoading || antiFraudSaving}
-                  onChange={(event) => {
-                    const nextSettings = { ...antiFraudSettings, cooldownMinutes: Number(event.target.value) };
-                    setAntiFraudSettings(nextSettings);
-                  }}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value={5}>5 minutes</option>
-                  <option value={10}>10 minutes</option>
-                  <option value={15}>15 minutes</option>
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  Missing or invalid saved durations default to 10 minutes.
-                </p>
+              {passwordSuccess ? (
+                <Alert className="border-emerald-200 bg-emerald-50 text-emerald-900">
+                  <AlertTitle>Password updated</AlertTitle>
+                  <AlertDescription>{passwordSuccess}</AlertDescription>
+                </Alert>
+              ) : null}
+
+              <div className="grid gap-5 md:grid-cols-2">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="currentPassword">
+                    Current Password <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="currentPassword"
+                      type={passwordVisibility.currentPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      value={passwordForm.currentPassword}
+                      onChange={(event) => handlePasswordFieldChange("currentPassword", event.target.value)}
+                      className="pr-12"
+                      disabled={passwordSaving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("currentPassword")}
+                      className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted-foreground transition hover:text-foreground"
+                      aria-label={passwordVisibility.currentPassword ? "Hide current password" : "Show current password"}
+                    >
+                      {passwordVisibility.currentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">
+                    New Password <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="newPassword"
+                      type={passwordVisibility.newPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={passwordForm.newPassword}
+                      onChange={(event) => handlePasswordFieldChange("newPassword", event.target.value)}
+                      className="pr-12"
+                      disabled={passwordSaving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("newPassword")}
+                      className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted-foreground transition hover:text-foreground"
+                      aria-label={passwordVisibility.newPassword ? "Hide new password" : "Show new password"}
+                    >
+                      {passwordVisibility.newPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirmNewPassword">
+                    Confirm New Password <span className="text-destructive">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmNewPassword"
+                      type={passwordVisibility.confirmNewPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      value={passwordForm.confirmNewPassword}
+                      onChange={(event) => handlePasswordFieldChange("confirmNewPassword", event.target.value)}
+                      className="pr-12"
+                      disabled={passwordSaving}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility("confirmNewPassword")}
+                      className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-muted-foreground transition hover:text-foreground"
+                      aria-label={passwordVisibility.confirmNewPassword ? "Hide password confirmation" : "Show password confirmation"}
+                    >
+                      {passwordVisibility.confirmNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={antiFraudLoading || antiFraudSaving}
-                onClick={() => saveAntiFraudSettings()}
-              >
-                {antiFraudSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save anti-fraud
-              </Button>
-            </div>
+
+              <p className="text-sm text-muted-foreground">
+                Password requirement: at least {MIN_PASSWORD_LENGTH} characters. Your new password must be different from the current one.
+              </p>
+
+              <div className="flex justify-end">
+                <Button type="submit" disabled={passwordSaving} className="min-w-[160px]">
+                  {passwordSaving ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Changing Password</>
+                  ) : (
+                    <><Key className="mr-2 h-4 w-4" /> Change Password</>
+                  )}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
 

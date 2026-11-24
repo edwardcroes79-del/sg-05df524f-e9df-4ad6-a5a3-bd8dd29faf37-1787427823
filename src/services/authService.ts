@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
+import { createClient } from "@supabase/supabase-js";
 import type { User, Session } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
 
 export interface AuthUser {
   id: string;
@@ -11,6 +13,23 @@ export interface AuthUser {
 export interface AuthError {
   message: string;
   code?: string;
+}
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+function createPasswordVerificationClient() {
+  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    throw new Error("Missing Supabase environment variables. Please check your .env.local file.");
+  }
+
+  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
 }
 
 // Dynamic URL Helper
@@ -149,6 +168,52 @@ export const authService = {
     } catch (error) {
       return { 
         error: { message: "An unexpected error occurred during password reset" } 
+      };
+    }
+  },
+
+  async verifyCurrentPassword(
+    email: string,
+    password: string,
+    expectedUserId: string
+  ): Promise<{ valid: boolean; error: AuthError | null }> {
+    try {
+      const verificationClient = createPasswordVerificationClient();
+      const { data, error } = await verificationClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      await verificationClient.auth.signOut();
+
+      if (error || !data.user || data.user.id !== expectedUserId) {
+        return {
+          valid: false,
+          error: { message: "The current password you entered is incorrect." },
+        };
+      }
+
+      return { valid: true, error: null };
+    } catch (error) {
+      return {
+        valid: false,
+        error: { message: "Unable to verify your current password right now." },
+      };
+    }
+  },
+
+  async updateCurrentUserPassword(password: string): Promise<{ error: AuthError | null }> {
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+
+      if (error) {
+        return { error: { message: error.message } };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return {
+        error: { message: "An unexpected error occurred during password update" },
       };
     }
   },
