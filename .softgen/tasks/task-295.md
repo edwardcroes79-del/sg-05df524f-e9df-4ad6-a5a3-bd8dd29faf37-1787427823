@@ -1,6 +1,6 @@
 ---
 title: Business admin change password
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [settings, auth, supabase]
@@ -19,7 +19,7 @@ Add a secure Change Password section to the existing Business Admin Settings pag
 - [x] Implement secure current-password verification using the existing Supabase Auth session and supported re-authentication flow
 - [x] Update the authenticated user's password through Supabase Auth without storing passwords in app tables, local storage, or logs
 - [x] Show loading, success, and clear error states; disable duplicate submits; clear fields on success
-- [ ] Validate that unrelated settings behavior remains unchanged and run project error checks
+- [x] Validate that unrelated settings behavior remains unchanged and run project error checks
 
 ## Acceptance
 Business Admins can change their own password from Settings by entering current password, a valid new password, and a matching confirmation.
