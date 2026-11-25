@@ -210,7 +210,9 @@ export default function JoinProgramSimplified() {
             <Button 
               size="lg" 
               className="w-full font-bold text-md h-14" 
-              onClick={handleJoin}
+              onClick={() => {
+                void handleJoin();
+              }}
               disabled={joining}
             >
               {joining ? (
