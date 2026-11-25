@@ -21,6 +21,29 @@ interface TurnstileVerifyResult {
 
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const TURNSTILE_TIMEOUT_MS = 5000;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getFriendlyRegistrationErrorMessage(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  if (
+    normalizedMessage.includes("already been registered") ||
+    normalizedMessage.includes("user already registered") ||
+    normalizedMessage.includes("email address is already registered")
+  ) {
+    return "An account with this email already exists. Please sign in or reset your password.";
+  }
+
+  if (normalizedMessage.includes("password")) {
+    return "Please choose a password with at least 6 characters.";
+  }
+
+  if (normalizedMessage.includes("email")) {
+    return "Please enter a valid email address.";
+  }
+
+  return "Registration could not be completed. Please try again.";
+}
 
 async function verifyTurnstileToken(token: unknown, remoteIp?: string): Promise<TurnstileVerifyResult> {
   const secret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
@@ -129,15 +152,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const normalizedEmail = String(email).trim().toLowerCase();
     const normalizedName = String(name).trim();
+    const normalizedPassword = String(password);
 
     if (!normalizedEmail || !normalizedName) {
       return res.status(400).json({ error: "A valid email and name are required" });
     }
 
-    const turnstileResult = await verifyTurnstileToken(turnstileToken, getRequestIp(req));
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    }
 
-    if (!turnstileResult.ok) {
-      return res.status(turnstileResult.status).json({ error: turnstileResult.error });
+    if (normalizedPassword.length < 6) {
+      return res.status(400).json({ error: "Please choose a password with at least 6 characters." });
+    }
+
+    if (typeof turnstileToken === "string" && turnstileToken.trim()) {
+      const turnstileResult = await verifyTurnstileToken(turnstileToken, getRequestIp(req));
+
+      if (!turnstileResult.ok) {
+        return res.status(turnstileResult.status).json({ error: turnstileResult.error });
+      }
     }
 
     const supabaseAdmin = createClient(
@@ -157,7 +191,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: "signup",
       email: normalizedEmail,
-      password: password,
+      password: normalizedPassword,
       options: {
         data: {
           full_name: normalizedName,
@@ -170,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (linkError) {
-      return res.status(400).json({ error: linkError.message });
+      return res.status(400).json({ error: getFriendlyRegistrationErrorMessage(linkError.message) });
     }
 
     const registeredUserId = linkData?.user?.id;
@@ -269,6 +303,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   } catch (error: any) {
     console.error("Server-Side Customer Registration Error:", error);
-    return res.status(500).json({ error: error.message || "Failed to process request" });
+    return res.status(500).json({ error: "Registration could not be completed. Please try again." });
   }
 }

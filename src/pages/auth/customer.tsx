@@ -9,11 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck, RefreshCw } from "lucide-react";
+import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
 import Script from "next/script";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type TurnstileStatus = "idle" | "loading" | "ready" | "verified" | "expired" | "error" | "missing-site-key";
 
@@ -64,6 +66,8 @@ export default function CustomerAuth() {
   const [name, setName] = useState("");
   const [activeTab, setActiveTab] = useState("signin");
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
 
   // Turnstile states
   const turnstileSiteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || "";
@@ -209,11 +213,11 @@ export default function CustomerAuth() {
       setFetchingContext(true);
       try {
         const decodedUrl = safeReturnUrl;
-        // Extracting slug and id from path: /join/[business_slug]/[program_id]
-        const match = decodedUrl.match(/\/join\/([^/]+)\/([^/]+)/);
-        if (match && match[1] && match[2]) {
-          const slug = match[1];
-          const programId = match[2];
+
+        const legacyJoinMatch = decodedUrl.match(/\/join\/([^/]+)\/([^/]+)/);
+        if (legacyJoinMatch && legacyJoinMatch[1] && legacyJoinMatch[2]) {
+          const slug = legacyJoinMatch[1];
+          const programId = legacyJoinMatch[2];
 
           const { data: businessData } = await supabase
             .from("businesses")
@@ -235,6 +239,32 @@ export default function CustomerAuth() {
               setProgramName(programData.name);
               setAccentColor(programData.primary_color || "");
             }
+          }
+        }
+
+        const simplifiedJoinMatch = decodedUrl.match(/\/join\/([^/?#]+)/);
+        if (simplifiedJoinMatch && simplifiedJoinMatch[1] && !legacyJoinMatch) {
+          const { data: programData } = await supabase
+            .from("loyalty_programs")
+            .select(`
+              id,
+              name,
+              primary_color,
+              businesses!inner (
+                business_name,
+                logo,
+                primary_color
+              )
+            `)
+            .eq("id", simplifiedJoinMatch[1])
+            .maybeSingle();
+
+          if (programData) {
+            const business = Array.isArray(programData.businesses) ? programData.businesses[0] : programData.businesses;
+            setBusinessName(business?.business_name || "");
+            setLogoUrl(business?.logo || "");
+            setProgramName(programData.name || "");
+            setAccentColor(programData.primary_color || business?.primary_color || "");
           }
         }
 
@@ -407,7 +437,11 @@ export default function CustomerAuth() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) {
+
+    const normalizedName = name.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedName) {
       toast({
         title: t("auth.customer.nameRequired"),
         description: t("auth.customer.nameRequiredDescription"),
@@ -416,10 +450,19 @@ export default function CustomerAuth() {
       return;
     }
 
-    if (!turnstileToken) {
+    if (!normalizedEmail || !EMAIL_PATTERN.test(normalizedEmail)) {
       toast({
-        title: t("auth.customer.securityCheckRequired"),
-        description: t("auth.customer.pleaseCompleteSecurityCheck"),
+        title: t("auth.customer.registrationFailed"),
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      toast({
+        title: t("auth.customer.registrationFailed"),
+        description: "Please choose a password with at least 6 characters.",
         variant: "destructive",
       });
       return;
@@ -434,10 +477,9 @@ export default function CustomerAuth() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
+          email: normalizedEmail,
           password,
-          name,
-          turnstileToken,
+          name: normalizedName,
           returnUrl: safeReturnUrl,
           origin: typeof window !== "undefined" ? window.location.origin : ""
         }),
@@ -453,31 +495,28 @@ export default function CustomerAuth() {
         });
         isSubmitting.current = false;
         setLoading(false);
-        resetTurnstileWidget();
       } else {
-        // Strict Success State - Lock the form and prevent duplicate emails
+        setEmail(normalizedEmail);
         setIsSuccess(true);
         setPassword("");
         setName("");
-        // Keep email state for the success message UI, but lock the form
-        
+        setLoading(false);
+        isSubmitting.current = false;
+
         toast({
           title: t("auth.customer.accountCreatedTitle"),
           description: t("auth.customer.verifyEmailDescription"),
         });
-        
-        // We do NOT reset loading/isSubmitting here, intentionally leaving the form locked
       }
-    } catch (err: any) {
+    } catch {
       toast({
         title: t("auth.customer.error"),
-        description: err.message,
+        description: "Registration could not be completed. Please check your connection and try again.",
         variant: "destructive",
       });
       isSubmitting.current = false;
       setLoading(false);
-      resetTurnstileWidget();
-    } 
+    }
   };
 
   const turnstileMessageKey =
@@ -574,6 +613,8 @@ export default function CustomerAuth() {
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             disabled={loading}
+                            autoComplete="email"
+                            inputMode="email"
                           />
                         </div>
                       </div>
@@ -592,14 +633,24 @@ export default function CustomerAuth() {
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input
                             id="signin-password"
-                            type="password"
-                            placeholder={t("auth.customer.signingIn")}
-                            className="pl-10"
+                            type={showSignInPassword ? "text" : "password"}
+                            placeholder={t("auth.customer.password")}
+                            className="pl-10 pr-10"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required
                             disabled={loading}
+                            autoComplete="current-password"
                           />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
+                            onClick={() => setShowSignInPassword((current) => !current)}
+                            aria-label={showSignInPassword ? "Hide password" : "Show password"}
+                            disabled={loading}
+                          >
+                            {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
                         </div>
                       </div>
 
@@ -640,6 +691,7 @@ export default function CustomerAuth() {
                             onChange={(e) => setName(e.target.value)}
                             required
                             disabled={loading || isSuccess}
+                            autoComplete="name"
                           />
                         </div>
                       </div>
@@ -657,6 +709,8 @@ export default function CustomerAuth() {
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             disabled={loading || isSuccess}
+                            autoComplete="email"
+                            inputMode="email"
                           />
                         </div>
                       </div>
@@ -675,47 +729,29 @@ export default function CustomerAuth() {
                               <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                               <Input
                                 id="signup-password"
-                                type="password"
+                                type={showSignUpPassword ? "text" : "password"}
                                 placeholder={t("auth.customer.passwordPlaceholder")}
-                                className="pl-10"
+                                className="pl-10 pr-10"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 minLength={6}
                                 disabled={loading}
+                                autoComplete="new-password"
                               />
+                              <button
+                                type="button"
+                                className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
+                                onClick={() => setShowSignUpPassword((current) => !current)}
+                                aria-label={showSignUpPassword ? "Hide password" : "Show password"}
+                                disabled={loading}
+                              >
+                                {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
                             </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label>{t("auth.customer.turnstileLabel")}</Label>
-                            <div className="rounded-md border bg-muted/20 p-3">
-                              <div className="flex min-h-[70px] items-center justify-center">
-                                {turnstileStatus === "loading" && (
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    {t("auth.customer.turnstileLoading")}
-                                  </div>
-                                )}
-                                <div ref={turnstileRef} className={turnstileStatus === "loading" ? "hidden" : ""}></div>
-                              </div>
-                              <div className="mt-2 flex items-center justify-between gap-3">
-                                <p className="text-xs text-muted-foreground">{t(turnstileMessageKey)}</p>
-                                {(turnstileStatus === "expired" || turnstileStatus === "error" || turnstileStatus === "missing-site-key") && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 shrink-0 gap-2 text-xs"
-                                    onClick={handleTurnstileRetry}
-                                    disabled={loading || turnstileStatus === "missing-site-key"}
-                                  >
-                                    <RefreshCw className="h-3 w-3" />
-                                    {t("auth.customer.turnstileRetry")}
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Please use at least 6 characters.
+                            </p>
                           </div>
                         </div>
                       )}
