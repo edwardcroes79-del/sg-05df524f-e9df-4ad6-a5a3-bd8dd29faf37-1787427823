@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { BUSINESS_PRESENCE_HEARTBEAT_INTERVAL_MS, sendBusinessPresenceHeartbeat, setBusinessPresenceOffline } from "@/services/businessPresenceService";
 import { 
   LayoutDashboard, 
   Gift, 
@@ -181,6 +182,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [manualPaymentReminderOpen, setManualPaymentReminderOpen] = useState(false);
   const [dismissingManualReminderId, setDismissingManualReminderId] = useState<string | null>(null);
   const dismissedManualReminderIdsRef = useRef<Set<string>>(new Set());
+  const presenceHeartbeatIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const presenceHeartbeatInFlightRef = useRef(false);
 
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
   const [hasReadWhatsNew, setHasReadWhatsNew] = useState(false);
@@ -205,6 +208,36 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const summary = await loadSecurityAlertsSummary(businessId, accessToken);
     setSecurityAlertsVisible(summary.visible);
     setSecurityUnreadCount(summary.unreadCount);
+  };
+
+  const stopPresenceHeartbeat = () => {
+    if (presenceHeartbeatIntervalRef.current) {
+      window.clearInterval(presenceHeartbeatIntervalRef.current);
+      presenceHeartbeatIntervalRef.current = null;
+    }
+  };
+
+  const runPresenceHeartbeat = async () => {
+    if (presenceHeartbeatInFlightRef.current || !business?.id || !currentUserId || isSuperAdmin) {
+      return;
+    }
+
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      return;
+    }
+
+    try {
+      presenceHeartbeatInFlightRef.current = true;
+      await sendBusinessPresenceHeartbeat();
+    } catch (presenceError) {
+      console.error("Business presence heartbeat failed:", presenceError);
+    } finally {
+      presenceHeartbeatInFlightRef.current = false;
+    }
   };
 
   const applySnapshot = (snapshot: DashboardLayoutSnapshot) => {
@@ -685,6 +718,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = async () => {
     dashboardLayoutSnapshot = null;
+    businessOverdueReminderSnapshot = null;
+    stopPresenceHeartbeat();
+
+    if (!isSuperAdmin) {
+      try {
+        await setBusinessPresenceOffline();
+      } catch (presenceError) {
+        console.error("Business presence sign-out update failed:", presenceError);
+      }
+    }
+
     await supabase.auth.signOut();
     router.push("/");
   };
@@ -718,6 +762,49 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     window.addEventListener("royalty-active-location-change", handleExternalLocationChange);
     return () => window.removeEventListener("royalty-active-location-change", handleExternalLocationChange);
   }, [business?.id, dashboardLocations]);
+
+  useEffect(() => {
+    if (!business?.id || !currentUserId || isSuperAdmin) {
+      stopPresenceHeartbeat();
+      return;
+    }
+
+    void runPresenceHeartbeat();
+    presenceHeartbeatIntervalRef.current = window.setInterval(() => {
+      void runPresenceHeartbeat();
+    }, BUSINESS_PRESENCE_HEARTBEAT_INTERVAL_MS);
+
+    const handleOnline = () => {
+      void runPresenceHeartbeat();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void runPresenceHeartbeat();
+      }
+    };
+
+    const authListener = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        stopPresenceHeartbeat();
+        return;
+      }
+
+      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        void runPresenceHeartbeat();
+      }
+    });
+
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      stopPresenceHeartbeat();
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      authListener.data.subscription.unsubscribe();
+    };
+  }, [business?.id, currentUserId, isSuperAdmin]);
 
   const activeLocationSwitcher = dashboardLocations.length > 0 ? (
     <label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
