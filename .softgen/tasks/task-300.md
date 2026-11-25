@@ -1,6 +1,6 @@
 ---
 title: Simplified customer registration
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [customer-registration, auth, qr-context]
@@ -23,7 +23,7 @@ Implemented scope:
 - [x] Preserve existing QR/business/program return context through registration
 - [x] Improve customer-facing validation and duplicate-email error handling without exposing internals
 - [x] Preserve customer profile creation and duplicate-prevention behavior in the existing API flow
-- [ ] Validate simplified registration with check_for_errors
+- [x] Validate simplified registration with check_for_errors
 
 ## Acceptance
 Customers can submit registration with only full name, email address, and password.
