@@ -182,7 +182,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [manualPaymentReminderOpen, setManualPaymentReminderOpen] = useState(false);
   const [dismissingManualReminderId, setDismissingManualReminderId] = useState<string | null>(null);
   const dismissedManualReminderIdsRef = useRef<Set<string>>(new Set());
-  const presenceHeartbeatIntervalRef = useRef<ReturnType<typeof window.setInterval> | null>(null);
+  const presenceHeartbeatIntervalRef = useRef<number | null>(null);
   const presenceHeartbeatInFlightRef = useRef(false);
 
   const [isWhatsNewOpen, setIsWhatsNewOpen] = useState(false);
