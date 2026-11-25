@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import Link from "next/link";
@@ -13,36 +13,8 @@ import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck, Eye, EyeOff } 
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
-import Script from "next/script";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-type TurnstileStatus = "idle" | "loading" | "ready" | "verified" | "expired" | "error" | "missing-site-key";
-
-interface TurnstileApi {
-  render: (
-    container: HTMLElement,
-    options: {
-      sitekey: string;
-      callback: (token: string) => void;
-      "expired-callback": () => void;
-      "error-callback": () => void;
-      "timeout-callback": () => void;
-      theme: "light";
-      size: "normal";
-      appearance: "always";
-      action: string;
-    }
-  ) => string | undefined;
-  remove: (widgetId: string) => void;
-  reset: (widgetId: string) => void;
-}
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileApi;
-  }
-}
 
 export default function CustomerAuth() {
   const router = useRouter();
@@ -53,14 +25,10 @@ export default function CustomerAuth() {
 
   const [loading, setLoading] = useState(false);
   const [fetchingContext, setFetchingContext] = useState(false);
-  
-  // Dynamic business context parsed from the QR returnUrl
   const [businessName, setBusinessName] = useState("");
   const [programName, setProgramName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [accentColor, setAccentColor] = useState("");
-
-  // Input states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -68,142 +36,9 @@ export default function CustomerAuth() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
-
-  // Turnstile states
-  const turnstileSiteKey = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY || "";
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const [turnstileScriptReady, setTurnstileScriptReady] = useState(false);
-  const [turnstileStatus, setTurnstileStatus] = useState<TurnstileStatus>("idle");
-  const turnstileRef = useRef<HTMLDivElement>(null);
-  const turnstileWidgetId = useRef("");
-
-  const resetTurnstileWidget = useCallback(() => {
-    setTurnstileToken("");
-
-    if (typeof window === "undefined" || !window.turnstile || !turnstileWidgetId.current) {
-      setTurnstileStatus(turnstileSiteKey ? "loading" : "missing-site-key");
-      return;
-    }
-
-    try {
-      window.turnstile.reset(turnstileWidgetId.current);
-      setTurnstileStatus("ready");
-    } catch {
-      turnstileWidgetId.current = "";
-      setTurnstileStatus("error");
-    }
-  }, [turnstileSiteKey]);
-
-  const removeTurnstileWidget = useCallback(() => {
-    setTurnstileToken("");
-
-    if (typeof window !== "undefined" && window.turnstile && turnstileWidgetId.current) {
-      try {
-        window.turnstile.remove(turnstileWidgetId.current);
-      } catch {
-      }
-    }
-
-    turnstileWidgetId.current = "";
-    setTurnstileStatus("idle");
-  }, []);
-
-  const renderTurnstile = useCallback(() => {
-    if (activeTab !== "signup" || isSuccess) {
-      return;
-    }
-
-    if (!turnstileSiteKey) {
-      setTurnstileStatus("missing-site-key");
-      return;
-    }
-
-    if (typeof window === "undefined" || !window.turnstile) {
-      setTurnstileStatus("loading");
-      return;
-    }
-
-    if (!turnstileRef.current) {
-      setTurnstileStatus("loading");
-      return;
-    }
-
-    if (turnstileWidgetId.current) {
-      return;
-    }
-
-    try {
-      setTurnstileToken("");
-      setTurnstileStatus("loading");
-
-      const widgetId = window.turnstile.render(turnstileRef.current, {
-        sitekey: turnstileSiteKey,
-        theme: "light",
-        size: "normal",
-        appearance: "always",
-        action: "customer_signup",
-        callback: (token: string) => {
-          setTurnstileToken(token);
-          setTurnstileStatus("verified");
-        },
-        "expired-callback": () => {
-          setTurnstileToken("");
-          setTurnstileStatus("expired");
-        },
-        "error-callback": () => {
-          setTurnstileToken("");
-          setTurnstileStatus("error");
-        },
-        "timeout-callback": () => {
-          setTurnstileToken("");
-          setTurnstileStatus("expired");
-        },
-      });
-
-      if (widgetId) {
-        turnstileWidgetId.current = widgetId;
-        setTurnstileStatus("ready");
-      } else {
-        setTurnstileStatus("error");
-      }
-    } catch {
-      setTurnstileToken("");
-      setTurnstileStatus("error");
-    }
-  }, [activeTab, isSuccess, turnstileSiteKey]);
-
-  const handleTurnstileRetry = () => {
-    if (turnstileWidgetId.current) {
-      resetTurnstileWidget();
-      return;
-    }
-
-    renderTurnstile();
-  };
-
-  useEffect(() => {
-    if (activeTab === "signup" && !isSuccess) {
-      const renderTimer = window.setTimeout(() => {
-        renderTurnstile();
-      }, 0);
-
-      return () => window.clearTimeout(renderTimer);
-    }
-
-    removeTurnstileWidget();
-  }, [activeTab, isSuccess, removeTurnstileWidget, renderTurnstile, turnstileScriptReady]);
-
-  useEffect(() => {
-    return () => {
-      removeTurnstileWidget();
-    };
-  }, [removeTurnstileWidget]);
-
-  // MFA States
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState("");
   const [mfaCode, setMfaCode] = useState("");
-
   const isSubmitting = useRef(false);
 
   useEffect(() => {
@@ -211,11 +46,14 @@ export default function CustomerAuth() {
 
     const fetchBusinessContext = async () => {
       setFetchingContext(true);
+
       try {
         const decodedUrl = safeReturnUrl;
-
         const legacyJoinMatch = decodedUrl.match(/\/join\/([^/]+)\/([^/]+)/);
-        if (legacyJoinMatch && legacyJoinMatch[1] && legacyJoinMatch[2]) {
+        const simplifiedJoinMatch = decodedUrl.match(/\/join\/([^/?#]+)/);
+        const quickStampMatch = decodedUrl.match(/\/quick-stamp\/([^/?#]+)/);
+
+        if (legacyJoinMatch?.[1] && legacyJoinMatch?.[2]) {
           const slug = legacyJoinMatch[1];
           const programId = legacyJoinMatch[2];
 
@@ -236,14 +74,15 @@ export default function CustomerAuth() {
               .single();
 
             if (programData) {
-              setProgramName(programData.name);
+              setProgramName(programData.name || "");
               setAccentColor(programData.primary_color || "");
             }
           }
+
+          return;
         }
 
-        const simplifiedJoinMatch = decodedUrl.match(/\/join\/([^/?#]+)/);
-        if (simplifiedJoinMatch && simplifiedJoinMatch[1] && !legacyJoinMatch) {
+        if (simplifiedJoinMatch?.[1]) {
           const { data: programData } = await supabase
             .from("loyalty_programs")
             .select(`
@@ -266,10 +105,11 @@ export default function CustomerAuth() {
             setProgramName(programData.name || "");
             setAccentColor(programData.primary_color || business?.primary_color || "");
           }
+
+          return;
         }
 
-        const quickStampMatch = decodedUrl.match(/\/quick-stamp\/([^/?#]+)/);
-        if (quickStampMatch && quickStampMatch[1]) {
+        if (quickStampMatch?.[1]) {
           const { data: quickStampContext } = await (supabase as any).rpc("get_quick_stamp_qr_context", {
             p_token: quickStampMatch[1],
           });
@@ -281,18 +121,72 @@ export default function CustomerAuth() {
             setAccentColor(quickStampContext.business_primary_color || "");
           }
         }
-      } catch (err) {
-        console.error("Error fetching auth business context:", err);
+      } catch (error) {
+        console.error("Error fetching auth business context:", error);
       } finally {
         setFetchingContext(false);
       }
     };
 
-    fetchBusinessContext();
+    void fetchBusinessContext();
   }, [safeReturnUrl]);
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const routeSignedInUser = async (userId: string | undefined) => {
+    if (!userId) {
+      if (safeReturnUrl) {
+        await router.push(safeReturnUrl);
+      } else {
+        await router.push("/customer");
+      }
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role, is_super_admin")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const { data: customerRecord } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (customerRecord || profile?.role === "customer") {
+      if (safeReturnUrl) {
+        await router.push(safeReturnUrl);
+      } else {
+        await router.push("/customer");
+      }
+      return;
+    }
+
+    if (profile?.is_super_admin || profile?.role === "super_admin") {
+      await router.push("/admin");
+      return;
+    }
+
+    const { data: businessUser } = await supabase
+      .from("business_users")
+      .select("business_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (businessUser?.business_id) {
+      await router.push("/dashboard");
+      return;
+    }
+
+    if (safeReturnUrl) {
+      await router.push(safeReturnUrl);
+    } else {
+      await router.push("/customer");
+    }
+  };
+
+  const handleSignIn = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
 
     try {
@@ -309,14 +203,13 @@ export default function CustomerAuth() {
         });
         setLoading(false);
         return;
-      } 
-      
-      // Check if MFA is required (AAL step up)
+      }
+
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal && aal.nextLevel === 'aal2' && aal.currentLevel === 'aal1') {
+      if (aal && aal.nextLevel === getMfaRouteRequirement() && aal.currentLevel === "aal1") {
         const { data: factors } = await supabase.auth.mfa.listFactors();
-        const totpFactor = factors?.totp.find((f: any) => f.status === 'verified');
-        
+        const totpFactor = factors?.totp.find((factor) => factor.status === "verified");
+
         if (totpFactor) {
           setMfaFactorId(totpFactor.id);
           setMfaRequired(true);
@@ -330,76 +223,19 @@ export default function CustomerAuth() {
         description: t("auth.customer.welcomeBackDescription"),
       });
 
-      // Role resolution check to prevent Staff from inadvertently accessing customer portal
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role, is_super_admin")
-        .eq("id", data.user?.id)
-        .maybeSingle();
-
-      const { data: customerRecord } = await supabase
-        .from("customers")
-        .select("id")
-        .eq("user_id", data.user?.id)
-        .maybeSingle();
-
-      // If user has a customer record, allow them through to customer routes
-      if (customerRecord) {
-        if (safeReturnUrl) {
-          router.push(safeReturnUrl);
-        } else {
-          router.push("/customer");
-        }
-        return;
-      }
-
-      // If they are explicitly marked as a customer via profile but missing customer row
-      // (CustomerLayout will handle dropping them back to login if they lack the customer row entirely)
-      if (profile?.role === "customer") {
-        if (safeReturnUrl) {
-          router.push(safeReturnUrl);
-        } else {
-          router.push("/customer");
-        }
-        return;
-      }
-
-      // If they are not a customer but are super admin
-      if (profile?.is_super_admin || profile?.role === "super_admin") {
-         router.push("/admin");
-         return;
-      }
-
-      // Otherwise, assume they are staff/owner and check business routing
-      const { data: businessUser } = await supabase
-        .from("business_users")
-        .select("business_id")
-        .eq("user_id", data.user?.id)
-        .maybeSingle();
-
-      if (businessUser?.business_id) {
-        router.push("/dashboard");
-      } else {
-        // Fallback if no roles apply or they have no customer account
-        if (safeReturnUrl) {
-          router.push(safeReturnUrl);
-        } else {
-           router.push("/customer");
-        }
-      }
-
-    } catch (err: any) {
+      await routeSignedInUser(data.user?.id);
+    } catch (error) {
       toast({
         title: t("auth.customer.error"),
-        description: err.message,
+        description: error instanceof Error ? error.message : t("auth.customer.createFailed"),
         variant: "destructive",
       });
       setLoading(false);
     }
   };
 
-  const handleVerifyMfa = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleVerifyMfa = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
 
     try {
@@ -409,7 +245,7 @@ export default function CustomerAuth() {
       const verify = await supabase.auth.mfa.verify({
         factorId: mfaFactorId,
         challengeId: challenge.data.id,
-        code: mfaCode
+        code: mfaCode,
       });
 
       if (verify.error) throw verify.error;
@@ -418,25 +254,24 @@ export default function CustomerAuth() {
         title: t("auth.mfa.successTitle"),
         description: t("auth.mfa.successDescription"),
       });
-      
-      if (safeReturnUrl) {
-        router.push(safeReturnUrl);
-      } else {
-        router.push("/customer");
-      }
 
-    } catch (err: any) {
+      if (safeReturnUrl) {
+        await router.push(safeReturnUrl);
+      } else {
+        await router.push("/customer");
+      }
+    } catch (error) {
       toast({
         title: t("auth.mfa.failedTitle"),
-        description: err.message || t("auth.mfa.failedDescription"),
+        description: error instanceof Error ? error.message : t("auth.mfa.failedDescription"),
         variant: "destructive",
       });
       setLoading(false);
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignUp = async (event: React.FormEvent) => {
+    event.preventDefault();
 
     const normalizedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
@@ -469,6 +304,7 @@ export default function CustomerAuth() {
     }
 
     if (isSubmitting.current) return;
+
     isSubmitting.current = true;
     setLoading(true);
 
@@ -481,7 +317,7 @@ export default function CustomerAuth() {
           password,
           name: normalizedName,
           returnUrl: safeReturnUrl,
-          origin: typeof window !== "undefined" ? window.location.origin : ""
+          origin: typeof window !== "undefined" ? window.location.origin : "",
         }),
       });
 
@@ -493,91 +329,71 @@ export default function CustomerAuth() {
           description: result.error || t("auth.customer.createFailed"),
           variant: "destructive",
         });
-        isSubmitting.current = false;
-        setLoading(false);
-      } else {
-        setEmail(normalizedEmail);
-        setIsSuccess(true);
-        setPassword("");
-        setName("");
-        setLoading(false);
-        isSubmitting.current = false;
-
-        toast({
-          title: t("auth.customer.accountCreatedTitle"),
-          description: t("auth.customer.verifyEmailDescription"),
-        });
+        return;
       }
+
+      setEmail(normalizedEmail);
+      setIsSuccess(true);
+      setPassword("");
+      setName("");
+
+      toast({
+        title: t("auth.customer.accountCreatedTitle"),
+        description: t("auth.customer.verifyEmailDescription"),
+      });
     } catch {
       toast({
         title: t("auth.customer.error"),
         description: "Registration could not be completed. Please check your connection and try again.",
         variant: "destructive",
       });
+    } finally {
       isSubmitting.current = false;
       setLoading(false);
     }
   };
 
-  const turnstileMessageKey =
-    turnstileStatus === "verified"
-      ? "auth.customer.turnstileVerified"
-      : turnstileStatus === "expired"
-        ? "auth.customer.turnstileExpired"
-        : turnstileStatus === "error"
-          ? "auth.customer.turnstileError"
-          : turnstileStatus === "missing-site-key"
-            ? "auth.customer.turnstileUnavailable"
-            : turnstileStatus === "loading"
-              ? "auth.customer.turnstileLoading"
-              : "auth.customer.turnstilePrompt";
-
   return (
     <>
       <Head>
-        <title>
-          {businessName ? t("auth.customer.seoJoinTitle", { businessName }) : t("auth.customer.seoDefaultTitle")}
-        </title>
+        <title>{businessName ? t("auth.customer.seoJoinTitle", { businessName }) : t("auth.customer.seoDefaultTitle")}</title>
       </Head>
       <main className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
-        <div className="w-full max-w-md space-y-6">
-          
-          {/* Back to original program button if available */}
+        <div className="relative w-full max-w-md space-y-6">
+          <div className="absolute right-0 top-0">
+            <LanguageSelector compact />
+          </div>
+
           {safeReturnUrl && (
             <Link
               href={safeReturnUrl}
-              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
               {t("auth.customer.backToProgram")}
             </Link>
           )}
 
-          {/* Business branding context */}
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-4 pt-8">
             {logoUrl ? (
               <img
                 src={logoUrl}
                 alt={businessName}
-                className="w-20 h-20 mx-auto rounded-2xl object-cover border-2 shadow-sm"
+                className="mx-auto h-20 w-20 rounded-2xl border-2 object-cover shadow-sm"
                 style={{ borderColor: accentColor || "hsl(var(--primary))" }}
               />
             ) : (
-              <div 
-                className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center text-white shadow-sm"
+              <div
+                className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl text-white shadow-sm"
                 style={{ backgroundColor: accentColor || "hsl(var(--primary))" }}
               >
-                <Gift className="w-8 h-8" />
+                <Gift className="h-8 w-8" />
               </div>
             )}
 
             <div>
-              <h1 className="text-2xl font-bold font-heading text-foreground">
-                {t("auth.customer.walletTitle")}
-              </h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {t("auth.customer.defaultPrompt")}
-              </p>
+              <h1 className="font-heading text-2xl font-bold text-foreground">{t("auth.customer.walletTitle")}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">{t("auth.customer.defaultPrompt")}</p>
               {(businessName || programName) && (
                 <p className="mt-2 text-xs font-medium text-muted-foreground">
                   {businessName ? t("auth.customer.businessRewardsTitle", { businessName }) : null}
@@ -592,12 +408,11 @@ export default function CustomerAuth() {
             <Card className="border shadow-sm">
               <CardContent className="p-6 pt-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid grid-cols-2 w-full mb-6">
+                  <TabsList className="mb-6 grid w-full grid-cols-2">
                     <TabsTrigger value="signin">{t("auth.customer.signInTab")}</TabsTrigger>
                     <TabsTrigger value="signup">{t("auth.customer.newAccountTab")}</TabsTrigger>
                   </TabsList>
 
-                  {/* Sign In Form */}
                   <TabsContent value="signin">
                     <form onSubmit={handleSignIn} className="space-y-4">
                       <div className="space-y-2">
@@ -610,7 +425,7 @@ export default function CustomerAuth() {
                             placeholder={t("auth.customer.emailPlaceholder")}
                             className="pl-10"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(event) => setEmail(event.target.value)}
                             required
                             disabled={loading}
                             autoComplete="email"
@@ -620,12 +435,9 @@ export default function CustomerAuth() {
                       </div>
 
                       <div className="space-y-2">
-                        <div className="flex justify-between items-center">
+                        <div className="flex items-center justify-between">
                           <Label htmlFor="signin-password">{t("auth.customer.password")}</Label>
-                          <Link 
-                            href="/auth/reset-password" 
-                            className="text-xs text-primary hover:underline"
-                          >
+                          <Link href="/auth/reset-password" className="text-xs text-primary hover:underline">
                             {t("auth.customer.forgotPassword")}
                           </Link>
                         </div>
@@ -637,7 +449,7 @@ export default function CustomerAuth() {
                             placeholder={t("auth.customer.password")}
                             className="pl-10 pr-10"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(event) => setPassword(event.target.value)}
                             required
                             disabled={loading}
                             autoComplete="current-password"
@@ -654,28 +466,18 @@ export default function CustomerAuth() {
                         </div>
                       </div>
 
-                      <Button 
-                        type="submit" 
-                        className="w-full h-11 text-base mt-2" 
+                      <Button
+                        type="submit"
+                        className="mt-2 h-11 w-full text-base"
                         disabled={loading || fetchingContext}
-                        style={{ 
-                          backgroundColor: accentColor || undefined, 
-                          color: accentColor ? "#fff" : undefined 
-                        }}
+                        style={{ backgroundColor: accentColor || undefined, color: accentColor ? "#fff" : undefined }}
                       >
-                        {loading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            {t("auth.customer.signInCta")}
-                          </>
-                        ) : (
-                          t("auth.customer.signInCta")
-                        )}
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {t("auth.customer.signInCta")}
                       </Button>
                     </form>
                   </TabsContent>
 
-                  {/* Create Customer Account Form */}
                   <TabsContent value="signup">
                     <form onSubmit={handleSignUp} className="space-y-4">
                       <div className="space-y-2">
@@ -688,7 +490,7 @@ export default function CustomerAuth() {
                             placeholder={t("auth.customer.namePlaceholder")}
                             className="pl-10"
                             value={name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(event) => setName(event.target.value)}
                             required
                             disabled={loading || isSuccess}
                             autoComplete="name"
@@ -706,7 +508,7 @@ export default function CustomerAuth() {
                             placeholder={t("auth.customer.emailPlaceholder")}
                             className="pl-10"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(event) => setEmail(event.target.value)}
                             required
                             disabled={loading || isSuccess}
                             autoComplete="email"
@@ -716,65 +518,53 @@ export default function CustomerAuth() {
                       </div>
 
                       {isSuccess ? (
-                        <div className="p-4 bg-green-50 text-green-700 border border-green-200 rounded-md text-sm text-center">
-                          <ShieldCheck className="w-6 h-6 mx-auto mb-2 text-green-600" />
+                        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-center text-sm text-green-700">
+                          <ShieldCheck className="mx-auto mb-2 h-6 w-6 text-green-600" />
                           <p className="font-semibold">{t("auth.customer.accountCreatedTitle")}</p>
                           <p className="mt-1">{t("auth.customer.successMessage", { email })}</p>
                         </div>
                       ) : (
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="signup-password">{t("auth.customer.createPassword")}</Label>
-                            <div className="relative">
-                              <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="signup-password"
-                                type={showSignUpPassword ? "text" : "password"}
-                                placeholder={t("auth.customer.passwordPlaceholder")}
-                                className="pl-10 pr-10"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                minLength={6}
-                                disabled={loading}
-                                autoComplete="new-password"
-                              />
-                              <button
-                                type="button"
-                                className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
-                                onClick={() => setShowSignUpPassword((current) => !current)}
-                                aria-label={showSignUpPassword ? "Hide password" : "Show password"}
-                                disabled={loading}
-                              >
-                                {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              </button>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              Please use at least 6 characters.
-                            </p>
+                        <div className="space-y-2">
+                          <Label htmlFor="signup-password">{t("auth.customer.createPassword")}</Label>
+                          <div className="relative">
+                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              id="signup-password"
+                              type={showSignUpPassword ? "text" : "password"}
+                              placeholder={t("auth.customer.passwordPlaceholder")}
+                              className="pl-10 pr-10"
+                              value={password}
+                              onChange={(event) => setPassword(event.target.value)}
+                              required
+                              minLength={6}
+                              disabled={loading}
+                              autoComplete="new-password"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-3 text-muted-foreground transition-colors hover:text-foreground"
+                              onClick={() => setShowSignUpPassword((current) => !current)}
+                              aria-label={showSignUpPassword ? "Hide password" : "Show password"}
+                              disabled={loading}
+                            >
+                              {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
                           </div>
+                          <p className="text-xs text-muted-foreground">Please use at least 6 characters.</p>
                         </div>
                       )}
 
-                      <Button 
-                        type="submit" 
-                        className="w-full h-11 text-base mt-2" 
+                      <Button
+                        type="submit"
+                        className="mt-2 h-11 w-full text-base"
                         disabled={loading || isSuccess || fetchingContext}
-                        style={{ 
-                          backgroundColor: isSuccess ? "#22c55e" : (accentColor || undefined), 
-                          color: (isSuccess || accentColor) ? "#fff" : undefined 
+                        style={{
+                          backgroundColor: isSuccess ? "#22c55e" : accentColor || undefined,
+                          color: isSuccess || accentColor ? "#fff" : undefined,
                         }}
                       >
-                        {isSuccess ? (
-                          t("auth.customer.checkEmail")
-                        ) : loading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            {t("auth.customer.creatingAccount")}
-                          </>
-                        ) : (
-                          t("auth.customer.createAndCollect")
-                        )}
+                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {isSuccess ? t("auth.customer.checkEmail") : t("auth.customer.createAndCollect")}
                       </Button>
                     </form>
                   </TabsContent>
@@ -787,49 +577,53 @@ export default function CustomerAuth() {
             </Card>
           ) : (
             <Card className="border shadow-sm">
-              <CardHeader className="text-center pb-2">
-                <div 
-                  className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-2 shadow-sm"
+              <CardHeader className="pb-2 text-center">
+                <div
+                  className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full shadow-sm"
                   style={{ backgroundColor: accentColor || "hsl(var(--primary))" }}
                 >
-                  <ShieldCheck className="w-6 h-6 text-white" />
+                  <ShieldCheck className="h-6 w-6 text-white" />
                 </div>
-                <CardTitle className="text-2xl font-heading text-foreground">{t("auth.customer.securityCheck")}</CardTitle>
+                <CardTitle className="font-heading text-2xl text-foreground">{t("auth.customer.securityCheck")}</CardTitle>
                 <CardDescription>{t("auth.customer.securityDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="p-6 pt-2">
                 <form onSubmit={handleVerifyMfa} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="customerMfaCode">{t("auth.customer.verificationCode")}</Label>
-                    <Input 
-                      id="customerMfaCode" 
-                      type="text" 
+                    <Input
+                      id="customerMfaCode"
+                      type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
                       maxLength={6}
-                      placeholder="000000" 
-                      className="text-center text-2xl tracking-[0.2em] font-mono py-6"
+                      placeholder="000000"
+                      className="py-6 text-center font-mono text-2xl tracking-[0.2em]"
                       value={mfaCode}
-                      onChange={(e) => setMfaCode(e.target.value)}
-                      required 
+                      onChange={(event) => setMfaCode(event.target.value)}
+                      required
                       disabled={loading}
                     />
                   </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 text-base mt-2" 
+                  <Button
+                    type="submit"
+                    className="mt-2 h-11 w-full text-base"
                     disabled={loading || mfaCode.length < 6}
-                    style={{ 
-                      backgroundColor: accentColor || undefined, 
-                      color: accentColor ? "#fff" : undefined 
-                    }}
+                    style={{ backgroundColor: accentColor || undefined, color: accentColor ? "#fff" : undefined }}
                   >
-                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : t("auth.customer.verifyIdentity")}
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {t("auth.customer.verifyIdentity")}
                   </Button>
-                  <Button type="button" variant="ghost" className="w-full h-11 text-base mt-1" onClick={() => {
-                    setMfaRequired(false);
-                    supabase.auth.signOut();
-                  }} disabled={loading}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="mt-1 h-11 w-full text-base"
+                    onClick={() => {
+                      setMfaRequired(false);
+                      void supabase.auth.signOut();
+                    }}
+                    disabled={loading}
+                  >
                     {t("auth.customer.cancel")}
                   </Button>
                 </form>
@@ -837,29 +631,13 @@ export default function CustomerAuth() {
             </Card>
           )}
 
-          {/* Option for merchants to switch */}
           <div className="text-center text-xs text-muted-foreground">
             {t("auth.customer.merchantPrompt")}{" "}
-            <Link href="/auth/login" className="text-primary hover:underline font-semibold">
+            <Link href="/auth/login" className="font-semibold text-primary hover:underline">
               {t("auth.customer.businessLogin")}
             </Link>
           </div>
-          <div className="absolute top-4 right-4">
-            <LanguageSelector compact />
-          </div>
         </div>
-        <Script 
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" 
-          strategy="afterInteractive"
-          onReady={() => {
-            setTurnstileScriptReady(true);
-            renderTurnstile();
-          }}
-          onError={() => {
-            setTurnstileScriptReady(false);
-            setTurnstileStatus("error");
-          }}
-        />
       </main>
     </>
   );
