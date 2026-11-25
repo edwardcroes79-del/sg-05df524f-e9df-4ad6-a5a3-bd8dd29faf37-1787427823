@@ -1,6 +1,6 @@
 ---
 title: Automatic customer login and loyalty card access
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [customer-registration, auth, qr-context, loyalty-card]
@@ -18,11 +18,12 @@ Constraints:
 - Preserve existing customer accounts and memberships.
 - Existing unverified customers must be handled safely without manual verification bypass.
 
-Implemented scope in progress:
+Implemented scope:
 - Customer signup now uses the supported client-side Supabase sign-up session flow instead of the confirmation-link-only path.
 - Customer profile creation/reuse and loyalty-card creation/reuse are centralized in a shared client service with duplicate-safe fallbacks.
 - QR join flow now auto-completes membership for authenticated customers and redirects directly to the specific loyalty card.
 - Customer card page now accepts a `cardId` query parameter to focus the intended card after signup or login.
+- Existing older unverified accounts are not bypassed; they continue to use the safe existing verification or password-recovery path.
 
 ## Checklist
 - [x] Inspect customer auth session creation, customer-row sync, and join/card routing constraints
@@ -31,7 +32,7 @@ Implemented scope in progress:
 - [x] Preserve QR context and auto-complete the correct loyalty program connection
 - [x] Redirect to the correct loyalty card immediately after signup or login
 - [x] Verify duplicate-account and duplicate-membership handling
-- [ ] Validate build/runtime behavior with check_for_errors
+- [x] Validate build/runtime behavior with check_for_errors
 
 ## Acceptance
 A new customer can register with name, email, and password and receive a legitimate authenticated session immediately.
