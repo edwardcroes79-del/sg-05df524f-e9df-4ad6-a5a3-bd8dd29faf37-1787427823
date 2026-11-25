@@ -206,7 +206,8 @@ export default function CustomerAuth() {
       }
 
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal && aal.nextLevel === getMfaRouteRequirement() && aal.currentLevel === "aal1") {
+      const requiredMfaLevel = await getMfaRouteRequirement();
+      if (aal && aal.nextLevel === requiredMfaLevel && aal.currentLevel === "aal1") {
         const { data: factors } = await supabase.auth.mfa.listFactors();
         const totpFactor = factors?.totp.find((factor) => factor.status === "verified");
 
