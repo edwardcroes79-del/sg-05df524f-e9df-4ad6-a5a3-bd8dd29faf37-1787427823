@@ -1,6 +1,6 @@
 ---
 title: Customer registration audit and implementation plan
-status: in_progress
+status: done
 priority: high
 type: chore
 tags: [auth, customer-registration, audit]
@@ -20,7 +20,7 @@ Audit report generated in `.softgen/customer-registration-phase-1-audit.md`.
 - [x] Inspect existing customer handling and duplicate-prevention behavior
 - [x] Identify stamping-system dependencies and safe change boundaries
 - [x] Produce the Phase 1 implementation plan report
-- [ ] Validate with check_for_errors
+- [x] Validate with check_for_errors
 
 ## Acceptance
 The project contains a Phase 1 audit report that documents the current registration/auth flow, QR connection process, risks, likely files to change, database implications, and a safe Phase 2/3 plan without modifying production behavior.
