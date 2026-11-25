@@ -69,6 +69,15 @@ type SetupReviewState = {
   activatedProgramId: string | null;
 } | null;
 
+const MANAGED_SETUP_ASSISTANCE_ROLES = ["owner", "admin", "corporate_admin"] as const;
+const EMPTY_SETUP_ASSISTANCE_STATE = {
+  businessId: "",
+  businessName: "",
+  latestRequest: null,
+  requests: [],
+  hasActiveRequest: false,
+};
+
 function formatContractDate(dateValue: string | null, fallback: string, locale: string) {
   if (!dateValue) return fallback;
 
@@ -171,6 +180,7 @@ export default function DashboardOverview() {
   });
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [contractInfo, setContractInfo] = useState<ContractInfo | null>(null);
+  const [canAccessSetupAssistance, setCanAccessSetupAssistance] = useState(false);
   const [setupAssistanceLoading, setSetupAssistanceLoading] = useState(true);
   const [setupAssistance, setSetupAssistance] = useState<{
     businessId: string;
@@ -178,13 +188,7 @@ export default function DashboardOverview() {
     latestRequest: SetupAssistanceRequest | null;
     requests: SetupAssistanceRequest[];
     hasActiveRequest: boolean;
-  }>({
-    businessId: "",
-    businessName: "",
-    latestRequest: null,
-    requests: [],
-    hasActiveRequest: false,
-  });
+  }>(EMPTY_SETUP_ASSISTANCE_STATE);
   const [setupReview, setSetupReview] = useState<SetupReviewState>(null);
 
   // Upgrade Success State
@@ -243,14 +247,19 @@ export default function DashboardOverview() {
           scheduleLiveRefresh();
         }
       )
-      .on(
+      );
+
+    if (canAccessSetupAssistance) {
+      channel.on(
         "postgres_changes",
         { event: "*", schema: "public", table: "setup_assistance_requests", filter: `business_id=eq.${businessId}` },
         () => {
           void loadSetupAssistance(undefined, true);
         }
-      )
-      .subscribe();
+      );
+    }
+
+    channel.subscribe();
 
     return () => {
       if (refreshTimeout) {
@@ -258,12 +267,18 @@ export default function DashboardOverview() {
       }
       supabase.removeChannel(channel);
     };
-  }, [businessId]);
+  }, [businessId, canAccessSetupAssistance]);
 
   const loadSetupAssistance = async (accessToken?: string, silent = false) => {
     try {
       if (!silent) {
         setSetupAssistanceLoading(true);
+      }
+
+      if (!canAccessSetupAssistance) {
+        setSetupAssistance(EMPTY_SETUP_ASSISTANCE_STATE);
+        setSetupReview(null);
+        return;
       }
 
       const sessionResult = await supabase.auth.getSession();
@@ -301,6 +316,8 @@ export default function DashboardOverview() {
       setSetupReview(reviewResponse.ok && reviewPayload.success ? reviewPayload.request || null : null);
     } catch (error) {
       console.error("Error loading setup assistance:", error);
+      setSetupAssistance(EMPTY_SETUP_ASSISTANCE_STATE);
+      setSetupReview(null);
     } finally {
       if (!silent) {
         setSetupAssistanceLoading(false);
@@ -368,6 +385,7 @@ export default function DashboardOverview() {
       let resolvedBusinessId: string | null = null;
       let subscriptionPlan = "starter";
       let trialEnd = null;
+      let nextCanAccessSetupAssistance = false;
 
       const { data: membership, error: membershipError } = await supabase
         .from("business_users")
@@ -377,8 +395,13 @@ export default function DashboardOverview() {
         .limit(1)
         .maybeSingle();
 
+      if (membershipError) {
+        throw membershipError;
+      }
+
       if (membership?.business_id) {
         resolvedBusinessId = membership.business_id;
+        nextCanAccessSetupAssistance = MANAGED_SETUP_ASSISTANCE_ROLES.includes(membership.role as (typeof MANAGED_SETUP_ASSISTANCE_ROLES)[number]);
         const { data: bData } = await supabase
           .from("businesses")
           .select("subscription_plan, trial_end, contract_status, contract_term_months, contract_start_date, contract_end_date, renewal_date")
@@ -405,6 +428,7 @@ export default function DashboardOverview() {
 
         if (ownedBusiness) {
           resolvedBusinessId = ownedBusiness.id;
+          nextCanAccessSetupAssistance = true;
           subscriptionPlan = ownedBusiness.subscription_plan;
           trialEnd = ownedBusiness.trial_end;
           setContractInfo({
@@ -419,6 +443,13 @@ export default function DashboardOverview() {
 
       if (!resolvedBusinessId) return;
       setBusinessId(resolvedBusinessId);
+      setCanAccessSetupAssistance(nextCanAccessSetupAssistance);
+
+      if (!nextCanAccessSetupAssistance) {
+        setSetupAssistance(EMPTY_SETUP_ASSISTANCE_STATE);
+        setSetupReview(null);
+        setSetupAssistanceLoading(false);
+      }
 
       // Detect Plan Upgrade Transition
       const cachedPlan = localStorage.getItem(`last_known_plan_id_${resolvedBusinessId}`);
@@ -456,7 +487,7 @@ export default function DashboardOverview() {
 
       await Promise.all([
         loadStatsAndActivity(resolvedBusinessId),
-        loadSetupAssistance(session.access_token),
+        nextCanAccessSetupAssistance ? loadSetupAssistance(session.access_token) : Promise.resolve(),
       ]);
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -526,7 +557,7 @@ export default function DashboardOverview() {
           </div>
         )}
 
-        {setupReview?.status === "ready_for_review" && (
+        {canAccessSetupAssistance && setupReview?.status === "ready_for_review" && (
           <Alert className="border-primary/30 bg-primary/5">
             <AlertTitle>{setupReview.reviewRound > 1 ? "Revised setup ready for review" : "Setup ready for review"}</AlertTitle>
             <AlertDescription className="space-y-3">
@@ -538,7 +569,7 @@ export default function DashboardOverview() {
           </Alert>
         )}
 
-        {setupReview?.status === "completed" && setupReview.approvedAt && (
+        {canAccessSetupAssistance && setupReview?.status === "completed" && setupReview.approvedAt && (
           <Alert className="border-emerald-200 bg-emerald-50">
             <AlertTitle>Setup activated</AlertTitle>
             <AlertDescription>
@@ -547,6 +578,7 @@ export default function DashboardOverview() {
           </Alert>
         )}
 
+        {canAccessSetupAssistance && (
         <Card className="overflow-hidden border-border/70 shadow-sm">
           <CardHeader className="border-b border-border/60 bg-muted/20">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -658,6 +690,7 @@ export default function DashboardOverview() {
             )}
           </CardContent>
         </Card>
+        )}
 
         <Card className="overflow-hidden border-border/70 shadow-sm">
           <CardHeader className="border-b border-border/60 bg-muted/20">
