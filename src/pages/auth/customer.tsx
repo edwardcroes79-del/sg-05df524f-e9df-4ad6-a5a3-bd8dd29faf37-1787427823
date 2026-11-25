@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
+import { TurnstileVerification } from "@/components/TurnstileVerification";
 import { useI18n } from "@/contexts/I18nProvider";
 import { ensureCustomerRecord } from "@/services/customerMembershipService";
 
@@ -77,10 +78,17 @@ export default function CustomerAuth() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [showSignInPassword, setShowSignInPassword] = useState(false);
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileResetSignal, setTurnstileResetSignal] = useState(0);
   const [mfaRequired, setMfaRequired] = useState(false);
   const [mfaFactorId, setMfaFactorId] = useState("");
   const [mfaCode, setMfaCode] = useState("");
   const isSubmitting = useRef(false);
+
+  const resetTurnstileVerification = () => {
+    setTurnstileToken("");
+    setTurnstileResetSignal((current) => current + 1);
+  };
 
   useEffect(() => {
     if (!safeReturnUrl) return;
@@ -381,6 +389,15 @@ export default function CustomerAuth() {
       return;
     }
 
+    if (!turnstileToken) {
+      toast({
+        title: t("auth.customer.registrationFailed"),
+        description: "Please complete the security verification before creating your account.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (isSubmitting.current) return;
 
     isSubmitting.current = true;
@@ -388,6 +405,32 @@ export default function CustomerAuth() {
     let authAccountCreated = false;
 
     try {
+      const verificationResponse = await fetch("/api/auth/register-customer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password,
+          name: normalizedName,
+          turnstileToken,
+        }),
+      });
+
+      const verificationPayload = await verificationResponse.json().catch(() => ({}));
+
+      if (!verificationResponse.ok) {
+        resetTurnstileVerification();
+        toast({
+          title: t("auth.customer.registrationFailed"),
+          description:
+            typeof verificationPayload?.error === "string"
+              ? verificationPayload.error
+              : "Security verification could not be completed. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
@@ -409,6 +452,7 @@ export default function CustomerAuth() {
           }
         }
 
+        resetTurnstileVerification();
         toast({
           title: t("auth.customer.registrationFailed"),
           description: getFriendlyCustomerAuthError(error.message),
@@ -450,6 +494,7 @@ export default function CustomerAuth() {
           return;
         }
 
+        resetTurnstileVerification();
         toast({
           title: t("auth.customer.registrationFailed"),
           description: "Your account was created, but we could not finish setting up your loyalty access. Please sign in to continue.",
@@ -458,6 +503,7 @@ export default function CustomerAuth() {
         return;
       }
 
+      resetTurnstileVerification();
       toast({
         title: t("auth.customer.error"),
         description: error instanceof Error ? getFriendlyCustomerAuthError(error.message) : "Registration could not be completed. Please check your connection and try again.",
@@ -670,10 +716,19 @@ export default function CustomerAuth() {
                         </div>
                       )}
 
+                      {!isSuccess && (
+                        <TurnstileVerification
+                          action="customer_register"
+                          disabled={loading || fetchingContext}
+                          resetSignal={turnstileResetSignal}
+                          onTokenChange={setTurnstileToken}
+                        />
+                      )}
+
                       <Button
                         type="submit"
                         className="mt-2 h-11 w-full text-base"
-                        disabled={loading || isSuccess || fetchingContext}
+                        disabled={loading || isSuccess || fetchingContext || !turnstileToken}
                         style={{
                           backgroundColor: isSuccess ? "#22c55e" : accentColor || undefined,
                           color: isSuccess || accentColor ? "#fff" : undefined,

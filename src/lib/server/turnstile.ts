@@ -18,6 +18,26 @@ export interface TurnstileVerifyResult {
 const TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 const TURNSTILE_TIMEOUT_MS = 5000;
 
+function getTurnstileErrorMessage(errorCodes: string[] | undefined) {
+  if (!errorCodes || errorCodes.length === 0) {
+    return "Security verification failed. Please try again.";
+  }
+
+  if (errorCodes.includes("missing-input-response")) {
+    return "Security verification is required. Please complete it and try again.";
+  }
+
+  if (errorCodes.includes("timeout-or-duplicate")) {
+    return "Security verification expired or was already used. Please verify again.";
+  }
+
+  if (errorCodes.includes("invalid-input-response") || errorCodes.includes("bad-request")) {
+    return "Security verification was invalid. Please try again.";
+  }
+
+  return "Security verification failed. Please try again.";
+}
+
 export async function verifyTurnstileToken(token: unknown, remoteIp?: string): Promise<TurnstileVerifyResult> {
   const secret = process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
 
@@ -73,7 +93,7 @@ export async function verifyTurnstileToken(token: unknown, remoteIp?: string): P
       return {
         ok: false,
         status: 400,
-        error: "Security verification failed. Please refresh and try again.",
+        error: getTurnstileErrorMessage(result["error-codes"]),
       };
     }
 
