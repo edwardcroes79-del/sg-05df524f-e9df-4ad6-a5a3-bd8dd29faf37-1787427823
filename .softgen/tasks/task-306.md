@@ -1,6 +1,6 @@
 ---
 title: Customer registration Turnstile restoration
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [security, customer-registration, turnstile]
@@ -25,7 +25,7 @@ Implemented scope:
 - [x] Verify the token server-side before creating the Supabase Auth account
 - [x] Reset the widget after failed verification or failed registration attempts
 - [x] Preserve automatic login, QR context, customer profile creation, and loyalty-card redirect behavior
-- [ ] Validate with check_for_errors
+- [x] Validate with check_for_errors
 
 ## Acceptance
 The customer registration page shows the Cloudflare Turnstile widget under the password field and above the submit button.
