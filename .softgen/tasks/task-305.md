@@ -1,6 +1,6 @@
 ---
 title: Customer registration partial-failure recovery
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [customer-registration, auth, supabase, recovery]
@@ -23,7 +23,7 @@ Confirmed root cause from the active code and schema:
 - [x] Fix partial-registration recovery so existing newly-created accounts can continue safely without creating duplicates
 - [x] Improve customer-facing error handling for duplicate-account and incomplete-registration scenarios
 - [x] Preserve QR-context-driven membership creation and redirect to the correct loyalty card
-- [ ] Validate with check_for_errors
+- [x] Validate with check_for_errors
 
 ## Acceptance
 A new customer can register successfully without getting stuck in a partial-account state.
