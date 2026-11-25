@@ -11,9 +11,19 @@ position: 301
 ## Notes
 Implement Phase 3 only if it can be done safely within the existing Supabase authentication architecture. Preserve QR context, existing customer memberships, and all stamping functionality. If customer-only email verification cannot be isolated safely from shared auth, stop and report the limitation before any global auth change.
 
+Current blocker confirmed from inspection:
+- Customer registration is still email-confirmation-first via `supabaseAdmin.auth.admin.generateLink({ type: "signup" ... })` in `src/pages/api/auth/register-customer.ts`.
+- Customer sessions are only established by explicit `supabase.auth.signInWithPassword(...)` in `src/pages/auth/customer.tsx`.
+- Business owners, staff, super admins, and customers share the same Supabase Auth system and shared recovery/routing behavior.
+- The actual global Supabase email confirmation setting has not been confirmed from available code or tools, so customer-only disabling cannot be implemented safely without approval.
+
+Phase 3 is paused pending either:
+- confirmation of the current global Supabase email confirmation setting, or
+- explicit approval to evaluate a global auth behavior change.
+
 ## Checklist
-- [ ] Inspect the current post-registration auth flow and Phase 1 findings
-- [ ] Confirm whether immediate customer login is possible without unsafe global auth changes
+- [x] Inspect the current post-registration auth flow and Phase 1 findings
+- [x] Confirm whether immediate customer login is possible without unsafe global auth changes
 - [ ] Preserve or improve QR-context-driven loyalty card routing
 - [ ] Implement safe automatic login only within approved auth constraints
 - [ ] Validate existing customer login and membership behavior
