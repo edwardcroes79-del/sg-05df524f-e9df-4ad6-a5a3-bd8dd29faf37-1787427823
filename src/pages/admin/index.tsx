@@ -111,6 +111,19 @@ type ManualReminderHistory = {
   archivedBy: string | null;
 };
 
+type BusinessPresenceRow = {
+  user_id: string;
+  business_id: string;
+  last_seen_at: string | null;
+  is_online: boolean | null;
+};
+
+type BusinessPresenceSummary = {
+  activeUserCount: number;
+  isOnline: boolean;
+  lastSeenAt: string | null;
+};
+
 type SetupRequestRecord = {
   id: string;
   businessId: string;
@@ -359,6 +372,47 @@ function getUnconfirmedAuthUserId(user: UnconfirmedAuthUser | null) {
   return user?.auth_user_id || user?.id || user?.user_id || "";
 }
 
+const PRESENCE_ONLINE_WINDOW_MS = 5 * 60 * 1000;
+const PRESENCE_STALE_REFRESH_INTERVAL_MS = 30 * 1000;
+
+function parsePresenceTimestamp(value: string | null | undefined) {
+  if (!value) return 0;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function buildBusinessPresenceSummary(rows: BusinessPresenceRow[], nowMs = Date.now()) {
+  return rows.reduce<Record<string, BusinessPresenceSummary>>((accumulator, row) => {
+    if (!row.business_id) return accumulator;
+
+    const existing = accumulator[row.business_id] || {
+      activeUserCount: 0,
+      isOnline: false,
+      lastSeenAt: null,
+    };
+
+    const lastSeenMs = parsePresenceTimestamp(row.last_seen_at);
+    const existingLastSeenMs = parsePresenceTimestamp(existing.lastSeenAt);
+
+    if (lastSeenMs > existingLastSeenMs) {
+      existing.lastSeenAt = row.last_seen_at;
+    }
+
+    if (row.is_online !== false && lastSeenMs > 0 && nowMs - lastSeenMs <= PRESENCE_ONLINE_WINDOW_MS) {
+      existing.activeUserCount += 1;
+      existing.isOnline = true;
+    }
+
+    accumulator[row.business_id] = existing;
+    return accumulator;
+  }, {});
+}
+
+function formatPresenceLastSeen(value: string | null, locale: string) {
+  if (!value) return "Never";
+  return new Date(value).toLocaleString(locale);
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const { toast } = useToast();
@@ -367,6 +421,8 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [businesses, setBusinesses] = useState<any[]>([]);
+  const [businessPresenceRows, setBusinessPresenceRows] = useState<BusinessPresenceRow[]>([]);
+  const [businessPresenceById, setBusinessPresenceById] = useState<Record<string, BusinessPresenceSummary>>({});
   const [plans, setPlans] = useState<any[]>([]);
   const [addons, setAddons] = useState<any[]>([]);
   const [businessAddonSubscriptions, setBusinessAddonSubscriptions] = useState<any[]>([]);
@@ -990,6 +1046,52 @@ export default function AdminDashboard() {
       setLoadingSetupRequests(false);
     }
   }, [t]);
+
+  const fetchBusinessPresence = useCallback(async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("business_user_presence")
+        .select("user_id, business_id, last_seen_at, is_online");
+
+      if (error) {
+        throw error;
+      }
+
+      const rows = Array.isArray(data) ? data as BusinessPresenceRow[] : [];
+      setBusinessPresenceRows(rows);
+      setBusinessPresenceById(buildBusinessPresenceSummary(rows));
+    } catch (presenceError) {
+      console.error("Error loading business presence:", presenceError);
+      setBusinessPresenceRows([]);
+      setBusinessPresenceById({});
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin !== true) return;
+
+    const channel = supabase
+      .channel("superadmin_business_presence")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "business_user_presence" },
+        () => {
+          void fetchBusinessPresence();
+        }
+      )
+      .subscribe();
+
+    const staleRefreshInterval = window.setInterval(() => {
+      setBusinessPresenceById(buildBusinessPresenceSummary(businessPresenceRows));
+    }, PRESENCE_STALE_REFRESH_INTERVAL_MS);
+
+    void fetchBusinessPresence();
+
+    return () => {
+      window.clearInterval(staleRefreshInterval);
+      supabase.removeChannel(channel);
+    };
+  }, [businessPresenceRows, fetchBusinessPresence, isAdmin]);
 
   useEffect(() => {
     if (isAdmin !== true) return;
@@ -4167,6 +4269,9 @@ export default function AdminDashboard() {
   const approvalEmailError = approvalEmailLog?.error_message || biz.approval_email_error;
   const contractDraft = contractDrafts[biz.id] || { term: "", startDate: "" };
   const effectiveContractStatus = getEffectiveContractStatus(biz.contract_status, biz.contract_end_date, biz.renewal_date);
+  const businessPresence = businessPresenceById[biz.id];
+  const isBusinessOnline = Boolean(businessPresence?.isOnline);
+  const businessLastSeen = formatPresenceLastSeen(businessPresence?.lastSeenAt || null, locale);
 
   const activeAddonSubs = businessAddonSubscriptions.filter(
     (sub) => sub.business_id === biz.id && sub.status === "active" && sub.payment_status === "approved"
@@ -4181,7 +4286,26 @@ export default function AdminDashboard() {
 
   return (
   <TableRow key={biz.id}>
-    <TableCell className="font-semibold">{biz.business_name}</TableCell>
+    <TableCell className="font-semibold">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${isBusinessOnline ? "bg-emerald-500" : "bg-destructive"}`} aria-hidden="true" />
+        <span>{biz.business_name}</span>
+      </div>
+      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+        <span className={`font-semibold ${isBusinessOnline ? "text-emerald-600" : "text-destructive"}`}>
+          {isBusinessOnline ? "Online" : "Offline"}
+        </span>
+        {isBusinessOnline ? (
+          <span className="text-muted-foreground">
+            {businessPresence?.activeUserCount === 1 ? "1 active user" : `${businessPresence?.activeUserCount || 0} active users`}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">
+            Last seen {businessLastSeen}
+          </span>
+        )}
+      </div>
+    </TableCell>
     <TableCell>{new Date(biz.created_at).toLocaleDateString()}</TableCell>
     <TableCell>
       <Badge 

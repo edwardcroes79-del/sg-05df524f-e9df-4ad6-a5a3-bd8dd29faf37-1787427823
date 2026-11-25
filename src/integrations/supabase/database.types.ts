@@ -738,6 +738,44 @@ export type Database = {
           },
         ]
       }
+      business_user_presence: {
+        Row: {
+          business_id: string
+          created_at: string
+          is_online: boolean
+          last_seen_at: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          is_online?: boolean
+          last_seen_at?: string
+          role: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          is_online?: boolean
+          last_seen_at?: string
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_user_presence_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_users: {
         Row: {
           allow_search_send_stamp: boolean
@@ -2856,6 +2894,24 @@ export type Database = {
               phone: string
             }[]
           }
+      set_business_user_presence_offline: {
+        Args: never
+        Returns: {
+          business_id: string
+          created_at: string
+          is_online: boolean
+          last_seen_at: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_user_presence"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       upsert_anti_fraud_security_alert_from_blocked_attempt: {
         Args: { p_attempt_id: string }
         Returns: undefined
@@ -2871,6 +2927,24 @@ export type Database = {
           cooldown_minutes: number
           enabled: boolean
         }[]
+      }
+      upsert_business_user_presence: {
+        Args: never
+        Returns: {
+          business_id: string
+          created_at: string
+          is_online: boolean
+          last_seen_at: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "business_user_presence"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       user_can_access_business_location: {
         Args: {
