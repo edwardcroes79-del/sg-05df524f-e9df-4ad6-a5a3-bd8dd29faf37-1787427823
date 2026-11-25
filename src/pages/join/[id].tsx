@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { LoyaltyCard } from "@/components/LoyaltyCard";
 import { Loader2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { ensureCustomerJoinForProgram } from "@/services/customerMembershipService";
 
 export default function JoinProgramSimplified() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function JoinProgramSimplified() {
   const [joining, setJoining] = useState(false);
   const [program, setProgram] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
+  const autoJoinAttemptedRef = useRef(false);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -73,64 +75,40 @@ export default function JoinProgramSimplified() {
     checkSessionAndFetch();
   }, [router.isReady, id]);
 
-  const handleJoin = async () => {
+  useEffect(() => {
+    const business = Array.isArray(program?.businesses) ? program.businesses[0] : program?.businesses;
+
+    if (!user || !program?.id || !business || loading || joining || business.status === "on_hold" || autoJoinAttemptedRef.current) {
+      return;
+    }
+
+    autoJoinAttemptedRef.current = true;
+    void handleJoin(true);
+  }, [joining, loading, program, user]);
+
+  const handleJoin = async (silent = false) => {
     if (!user) {
-      router.push(`/auth/customer?returnUrl=${encodeURIComponent(router.asPath)}`);
+      await router.push(`/auth/customer?returnUrl=${encodeURIComponent(router.asPath)}`);
       return;
     }
 
     setJoining(true);
     try {
-      // Find or create customer record gracefully
-      const { data: cData } = await supabase
-        .from("customers")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const joinResult = await ensureCustomerJoinForProgram({
+        user,
+        loyaltyProgramId: program.id,
+      });
 
-      let customerId = cData?.id;
-      if (!customerId) {
-        // Generate UUID on the client to avoid RLS returning clause visibility issues
-        customerId = crypto.randomUUID();
-        
-        const { error: cError } = await supabase
-          .from("customers")
-          .insert({
-            id: customerId,
-            user_id: user.id,
-            name: user.email?.split("@")[0] || "Customer",
-            email: user.email,
-          });
-          
-        if (cError) throw cError;
+      if (!silent) {
+        toast({
+          title: "Success!",
+          description: joinResult.createdCard ? "Your loyalty card is ready." : "Opening your loyalty card.",
+        });
       }
 
-      // Check if card exists
-      const { data: cardData } = await supabase
-        .from("customer_loyalty_cards")
-        .select("id")
-        .eq("customer_id", customerId)
-        .eq("loyalty_program_id", program.id)
-        .maybeSingle();
-
-      if (!cardData) {
-        // Create new card
-        const { error: cardError } = await supabase
-          .from("customer_loyalty_cards")
-          .insert({
-            customer_id: customerId,
-            business_id: program.business_id,
-            loyalty_program_id: program.id,
-            user_id: user.id,
-            total_stamps: program.stamp_target
-          });
-        
-        if (cardError) throw cardError;
-      }
-
-      toast({ title: "Success!", description: "You have joined the loyalty program." });
-      router.push("/customer");
+      await router.push(`/customer/cards?cardId=${encodeURIComponent(joinResult.cardId)}`);
     } catch (err: any) {
+      autoJoinAttemptedRef.current = false;
       toast({ title: "Error joining program", description: err.message, variant: "destructive" });
     } finally {
       setJoining(false);
@@ -238,7 +216,7 @@ export default function JoinProgramSimplified() {
               {joining ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Processing...
+                  Opening your card...
                 </>
               ) : user ? (
                 "Add to My Wallet"

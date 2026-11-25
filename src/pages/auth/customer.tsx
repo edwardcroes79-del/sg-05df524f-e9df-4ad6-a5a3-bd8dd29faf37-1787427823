@@ -13,8 +13,39 @@ import { Loader2, Gift, Lock, Mail, User, ArrowLeft, ShieldCheck, Eye, EyeOff } 
 import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authSecurity";
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { useI18n } from "@/contexts/I18nProvider";
+import { ensureCustomerRecord } from "@/services/customerMembershipService";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getFriendlyCustomerAuthError(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes("email not confirmed")) {
+    return "This account still needs email confirmation. Please use your original verification email or reset your password to regain access.";
+  }
+
+  if (normalizedMessage.includes("invalid login credentials")) {
+    return "Incorrect email or password. Please try again.";
+  }
+
+  if (
+    normalizedMessage.includes("already been registered") ||
+    normalizedMessage.includes("user already registered") ||
+    normalizedMessage.includes("email address is already registered")
+  ) {
+    return "An account with this email already exists. Please sign in or reset your password.";
+  }
+
+  if (normalizedMessage.includes("password")) {
+    return "Please choose a password with at least 6 characters.";
+  }
+
+  if (normalizedMessage.includes("email")) {
+    return "Please enter a valid email address.";
+  }
+
+  return message;
+}
 
 export default function CustomerAuth() {
   const router = useRouter();
@@ -198,7 +229,7 @@ export default function CustomerAuth() {
       if (error) {
         toast({
           title: t("auth.customer.signInFailed"),
-          description: error.message,
+          description: getFriendlyCustomerAuthError(error.message),
           variant: "destructive",
         });
         setLoading(false);
@@ -306,26 +337,41 @@ export default function CustomerAuth() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/register-customer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: normalizedEmail,
-          password,
-          name: normalizedName,
-          returnUrl: safeReturnUrl,
-          origin: typeof window !== "undefined" ? window.location.origin : "",
-        }),
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            full_name: normalizedName,
+            name: normalizedName,
+            registration_type: "customer",
+            role: "customer",
+          },
+        },
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
+      if (error) {
         toast({
           title: t("auth.customer.registrationFailed"),
-          description: result.error || t("auth.customer.createFailed"),
+          description: getFriendlyCustomerAuthError(error.message),
           variant: "destructive",
         });
+        return;
+      }
+
+      if (!data.user) {
+        throw new Error("Your account could not be created. Please try again.");
+      }
+
+      await ensureCustomerRecord(data.user, normalizedName);
+
+      if (data.session) {
+        toast({
+          title: t("auth.customer.accountCreatedTitle"),
+          description: "You are now signed in. Opening your loyalty card...",
+        });
+
+        await routeSignedInUser(data.user.id);
         return;
       }
 

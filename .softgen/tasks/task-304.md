@@ -18,13 +18,19 @@ Constraints:
 - Preserve existing customer accounts and memberships.
 - Existing unverified customers must be handled safely without manual verification bypass.
 
+Implemented scope in progress:
+- Customer signup now uses the supported client-side Supabase sign-up session flow instead of the confirmation-link-only path.
+- Customer profile creation/reuse and loyalty-card creation/reuse are centralized in a shared client service with duplicate-safe fallbacks.
+- QR join flow now auto-completes membership for authenticated customers and redirects directly to the specific loyalty card.
+- Customer card page now accepts a `cardId` query parameter to focus the intended card after signup or login.
+
 ## Checklist
-- [ ] Inspect customer auth session creation, customer-row sync, and join/card routing constraints
-- [ ] Replace confirmation-link customer signup with supported automatic session creation
-- [ ] Preserve or create the customer record safely after signup without duplicating profiles
-- [ ] Preserve QR context and auto-complete the correct loyalty program connection
-- [ ] Redirect to the correct loyalty card immediately after signup or login
-- [ ] Verify duplicate-account and duplicate-membership handling
+- [x] Inspect customer auth session creation, customer-row sync, and join/card routing constraints
+- [x] Replace confirmation-link customer signup with supported automatic session creation
+- [x] Preserve or create the customer record safely after signup without duplicating profiles
+- [x] Preserve QR context and auto-complete the correct loyalty program connection
+- [x] Redirect to the correct loyalty card immediately after signup or login
+- [x] Verify duplicate-account and duplicate-membership handling
 - [ ] Validate build/runtime behavior with check_for_errors
 
 ## Acceptance

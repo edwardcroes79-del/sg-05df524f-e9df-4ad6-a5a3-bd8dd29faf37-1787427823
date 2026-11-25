@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { CustomerLayout } from "@/components/customer/CustomerLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -115,15 +116,19 @@ const playStampSound = () => {
 };
 
 export default function MyCardsPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [cards, setCards] = useState<any[]>([]);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [unlockedReward, setUnlockedReward] = useState<any | null>(null);
   const [animatingCardId, setAnimatingCardId] = useState<string | null>(null);
+  const [highlightedCardId, setHighlightedCardId] = useState<string | null>(null);
   const { toast } = useToast();
   const { t } = useI18n();
+  const targetCardId = typeof router.query.cardId === "string" ? router.query.cardId : null;
   
   const cardsRef = useRef(cards);
+  const cardElementRefs = useRef<Record<string, HTMLDivElement | null>>({});
   useEffect(() => {
     cardsRef.current = cards;
   }, [cards]);
@@ -193,6 +198,35 @@ export default function MyCardsPage() {
       supabase.removeChannel(channel);
     };
   }, [customerId]);
+
+  useEffect(() => {
+    if (!targetCardId || cards.length === 0) {
+      return;
+    }
+
+    const matchingCard = cards.find((card) => card.id === targetCardId);
+    if (!matchingCard) {
+      return;
+    }
+
+    setHighlightedCardId(targetCardId);
+
+    const frameId = window.requestAnimationFrame(() => {
+      cardElementRefs.current[targetCardId]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+
+    const timeoutId = window.setTimeout(() => {
+      setHighlightedCardId((current) => (current === targetCardId ? null : current));
+    }, 3000);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [cards, targetCardId]);
 
   const fetchCards = async () => {
     try {
@@ -290,30 +324,37 @@ export default function MyCardsPage() {
               const rewardDescription = typeof prog.reward_description === "string" ? prog.reward_description.trim() : "";
 
               return (
-                <LoyaltyCard
+                <div
                   key={card.id}
-                  animateStamp={animatingCardId === card.id}
-                  programName={prog.name}
-                  programDescription={programDescription}
-                  businessName={card.businesses?.business_name}
-                  stampTarget={prog.stamp_target}
-                  currentStamps={card.current_stamps}
-                  stampIcon={prog.stamp_icon}
-                  rewardTitle={prog.reward_title}
-                  rewardDescription={rewardDescription}
-                  customization={{
-                    template_id: prog.template_id,
-                    bg_color: prog.bg_color,
-                    primary_color: prog.primary_color,
-                    secondary_color: prog.secondary_color,
-                    text_color: prog.text_color,
-                    stamp_icon: prog.stamp_icon,
-                    reward_icon: prog.reward_icon,
-                    card_logo_url: prog.card_logo_url,
-                    card_bg_image_url: prog.card_bg_image_url,
-                    card_banner_url: prog.card_banner_url
+                  ref={(element) => {
+                    cardElementRefs.current[card.id] = element;
                   }}
-                />
+                  className={highlightedCardId === card.id ? "rounded-[2rem] ring-2 ring-primary ring-offset-4 ring-offset-background transition-shadow" : ""}
+                >
+                  <LoyaltyCard
+                    animateStamp={animatingCardId === card.id}
+                    programName={prog.name}
+                    programDescription={programDescription}
+                    businessName={card.businesses?.business_name}
+                    stampTarget={prog.stamp_target}
+                    currentStamps={card.current_stamps}
+                    stampIcon={prog.stamp_icon}
+                    rewardTitle={prog.reward_title}
+                    rewardDescription={rewardDescription}
+                    customization={{
+                      template_id: prog.template_id,
+                      bg_color: prog.bg_color,
+                      primary_color: prog.primary_color,
+                      secondary_color: prog.secondary_color,
+                      text_color: prog.text_color,
+                      stamp_icon: prog.stamp_icon,
+                      reward_icon: prog.reward_icon,
+                      card_logo_url: prog.card_logo_url,
+                      card_bg_image_url: prog.card_bg_image_url,
+                      card_banner_url: prog.card_banner_url
+                    }}
+                  />
+                </div>
               );
             })}
           </div>
