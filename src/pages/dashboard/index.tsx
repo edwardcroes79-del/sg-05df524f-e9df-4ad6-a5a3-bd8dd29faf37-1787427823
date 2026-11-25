@@ -234,19 +234,18 @@ export default function DashboardOverview() {
 
     const channel = supabase.channel(`business_dashboard_${businessId}`)
       .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'stamp_transactions', filter: `business_id=eq.${businessId}` },
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "stamp_transactions", filter: `business_id=eq.${businessId}` },
         () => {
           scheduleLiveRefresh();
         }
       )
       .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'rewards', filter: `business_id=eq.${businessId}` },
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rewards", filter: `business_id=eq.${businessId}` },
         () => {
           scheduleLiveRefresh();
         }
-      )
       );
 
     if (canAccessSetupAssistance) {
