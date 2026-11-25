@@ -47,6 +47,16 @@ function getFriendlyCustomerAuthError(message: string) {
   return message;
 }
 
+function isDuplicateRegistrationError(message: string) {
+  const normalizedMessage = message.toLowerCase();
+
+  return (
+    normalizedMessage.includes("already been registered") ||
+    normalizedMessage.includes("user already registered") ||
+    normalizedMessage.includes("email address is already registered")
+  );
+}
+
 export default function CustomerAuth() {
   const router = useRouter();
   const { returnUrl } = router.query;
@@ -216,6 +226,46 @@ export default function CustomerAuth() {
     }
   };
 
+  const recoverExistingCustomerAccess = async (normalizedEmail: string, submittedPassword: string, normalizedName: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: normalizedEmail,
+      password: submittedPassword,
+    });
+
+    if (error) {
+      toast({
+        title: t("auth.customer.registrationFailed"),
+        description: getFriendlyCustomerAuthError(error.message),
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, is_super_admin")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      const canResumeCustomerSetup = !profile?.is_super_admin && (!profile?.role || profile.role === "customer");
+
+      if (canResumeCustomerSetup) {
+        await ensureCustomerRecord(data.user, normalizedName);
+      }
+
+      toast({
+        title: "Account recovered",
+        description: "Your account already existed. We signed you in and resumed your loyalty access.",
+      });
+
+      await routeSignedInUser(data.user.id);
+      return true;
+    }
+
+    return false;
+  };
+
   const handleSignIn = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -335,6 +385,7 @@ export default function CustomerAuth() {
 
     isSubmitting.current = true;
     setLoading(true);
+    let authAccountCreated = false;
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -351,6 +402,13 @@ export default function CustomerAuth() {
       });
 
       if (error) {
+        if (isDuplicateRegistrationError(error.message)) {
+          const recovered = await recoverExistingCustomerAccess(normalizedEmail, password, normalizedName);
+          if (recovered) {
+            return;
+          }
+        }
+
         toast({
           title: t("auth.customer.registrationFailed"),
           description: getFriendlyCustomerAuthError(error.message),
@@ -363,6 +421,7 @@ export default function CustomerAuth() {
         throw new Error("Your account could not be created. Please try again.");
       }
 
+      authAccountCreated = true;
       await ensureCustomerRecord(data.user, normalizedName);
 
       if (data.session) {
@@ -384,10 +443,24 @@ export default function CustomerAuth() {
         title: t("auth.customer.accountCreatedTitle"),
         description: t("auth.customer.verifyEmailDescription"),
       });
-    } catch {
+    } catch (error) {
+      if (authAccountCreated) {
+        const recovered = await recoverExistingCustomerAccess(normalizedEmail, password, normalizedName);
+        if (recovered) {
+          return;
+        }
+
+        toast({
+          title: t("auth.customer.registrationFailed"),
+          description: "Your account was created, but we could not finish setting up your loyalty access. Please sign in to continue.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: t("auth.customer.error"),
-        description: "Registration could not be completed. Please check your connection and try again.",
+        description: error instanceof Error ? getFriendlyCustomerAuthError(error.message) : "Registration could not be completed. Please check your connection and try again.",
         variant: "destructive",
       });
     } finally {

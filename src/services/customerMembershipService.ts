@@ -44,16 +44,53 @@ function deriveCustomerName(user: User, nameOverride?: string) {
   return candidateName;
 }
 
-export async function ensureCustomerRecord(user: User, nameOverride?: string): Promise<EnsureCustomerRecordResult> {
-  const { data: existingCustomer, error: existingCustomerError } = await supabase
+async function pause(milliseconds: number) {
+  await new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+async function fetchCustomerByUserId(userId: string, attempt = 0): Promise<CustomerRow | null> {
+  const { data, error } = await supabase
     .from("customers")
     .select("id")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .maybeSingle<CustomerRow>();
 
-  if (existingCustomerError) {
-    throw existingCustomerError;
+  if (!error) {
+    return data ?? null;
   }
+
+  if (attempt >= 2) {
+    throw error;
+  }
+
+  await pause(120 * (attempt + 1));
+  return fetchCustomerByUserId(userId, attempt + 1);
+}
+
+async function fetchCardByCustomerAndProgram(customerId: string, loyaltyProgramId: string, attempt = 0): Promise<LoyaltyCardRow | null> {
+  const { data, error } = await supabase
+    .from("customer_loyalty_cards")
+    .select("id")
+    .eq("customer_id", customerId)
+    .eq("loyalty_program_id", loyaltyProgramId)
+    .maybeSingle<LoyaltyCardRow>();
+
+  if (!error) {
+    return data ?? null;
+  }
+
+  if (attempt >= 2) {
+    throw error;
+  }
+
+  await pause(120 * (attempt + 1));
+  return fetchCardByCustomerAndProgram(customerId, loyaltyProgramId, attempt + 1);
+}
+
+export async function ensureCustomerRecord(user: User, nameOverride?: string): Promise<EnsureCustomerRecordResult> {
+  const existingCustomer = await fetchCustomerByUserId(user.id);
 
   if (existingCustomer?.id) {
     return {
@@ -64,40 +101,25 @@ export async function ensureCustomerRecord(user: User, nameOverride?: string): P
 
   const customerName = deriveCustomerName(user, nameOverride);
 
-  const { data: createdCustomer, error: createdCustomerError } = await supabase
+  const { error: createdCustomerError } = await supabase
     .from("customers")
     .insert({
       user_id: user.id,
       name: customerName,
       email: user.email || null,
-    })
-    .select("id")
-    .single<CustomerRow>();
+    });
+
+  if (createdCustomerError && !isDuplicateError(createdCustomerError)) {
+    throw createdCustomerError;
+  }
+
+  const createdCustomer = await fetchCustomerByUserId(user.id);
 
   if (createdCustomer?.id) {
     return {
       customerId: createdCustomer.id,
-      created: true,
+      created: !createdCustomerError,
     };
-  }
-
-  if (isDuplicateError(createdCustomerError || null)) {
-    const { data: duplicateCustomer, error: duplicateCustomerError } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle<CustomerRow>();
-
-    if (duplicateCustomerError) {
-      throw duplicateCustomerError;
-    }
-
-    if (duplicateCustomer?.id) {
-      return {
-        customerId: duplicateCustomer.id,
-        created: false,
-      };
-    }
   }
 
   throw createdCustomerError || new Error("Customer profile could not be created.");
@@ -125,16 +147,7 @@ export async function ensureCustomerJoinForProgram(params: {
     throw new Error("This loyalty program is no longer available.");
   }
 
-  const { data: existingCard, error: existingCardError } = await supabase
-    .from("customer_loyalty_cards")
-    .select("id")
-    .eq("customer_id", customer.customerId)
-    .eq("loyalty_program_id", program.id)
-    .maybeSingle<LoyaltyCardRow>();
-
-  if (existingCardError) {
-    throw existingCardError;
-  }
+  const existingCard = await fetchCardByCustomerAndProgram(customer.customerId, program.id);
 
   if (existingCard?.id) {
     return {
@@ -146,7 +159,7 @@ export async function ensureCustomerJoinForProgram(params: {
     };
   }
 
-  const { data: createdCard, error: createdCardError } = await supabase
+  const { error: createdCardError } = await supabase
     .from("customer_loyalty_cards")
     .insert({
       customer_id: customer.customerId,
@@ -154,9 +167,13 @@ export async function ensureCustomerJoinForProgram(params: {
       loyalty_program_id: program.id,
       user_id: params.user.id,
       total_stamps: program.stamp_target || 0,
-    })
-    .select("id")
-    .single<LoyaltyCardRow>();
+    });
+
+  if (createdCardError && !isDuplicateError(createdCardError)) {
+    throw createdCardError;
+  }
+
+  const createdCard = await fetchCardByCustomerAndProgram(customer.customerId, program.id);
 
   if (createdCard?.id) {
     return {
@@ -164,31 +181,8 @@ export async function ensureCustomerJoinForProgram(params: {
       cardId: createdCard.id,
       businessId: program.business_id,
       createdCustomer: customer.created,
-      createdCard: true,
+      createdCard: !createdCardError,
     };
-  }
-
-  if (isDuplicateError(createdCardError || null)) {
-    const { data: duplicateCard, error: duplicateCardError } = await supabase
-      .from("customer_loyalty_cards")
-      .select("id")
-      .eq("customer_id", customer.customerId)
-      .eq("loyalty_program_id", program.id)
-      .maybeSingle<LoyaltyCardRow>();
-
-    if (duplicateCardError) {
-      throw duplicateCardError;
-    }
-
-    if (duplicateCard?.id) {
-      return {
-        customerId: customer.customerId,
-        cardId: duplicateCard.id,
-        businessId: program.business_id,
-        createdCustomer: customer.created,
-        createdCard: false,
-      };
-    }
   }
 
   throw createdCardError || new Error("Your loyalty card could not be created.");
