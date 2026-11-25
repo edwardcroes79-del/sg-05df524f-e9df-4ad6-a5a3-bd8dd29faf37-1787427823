@@ -206,17 +206,13 @@ export default function CustomerAuth() {
       }
 
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      const requiredMfaLevel = await getMfaRouteRequirement();
-      if (aal && aal.nextLevel === requiredMfaLevel && aal.currentLevel === "aal1") {
-        const { data: factors } = await supabase.auth.mfa.listFactors();
-        const totpFactor = factors?.totp.find((factor) => factor.status === "verified");
+      const requirement = await getMfaRouteRequirement();
 
-        if (totpFactor) {
-          setMfaFactorId(totpFactor.id);
-          setMfaRequired(true);
-          setLoading(false);
-          return;
-        }
+      if (requirement.required && requirement.factorId) {
+        setMfaFactorId(requirement.factorId);
+        setMfaRequired(true);
+        setLoading(false);
+        return;
       }
 
       toast({
