@@ -10,7 +10,7 @@ Current result: **not production-ready for the full Phase 4 acceptance criteria*
 
 Confirmed:
 - Customer registration has been simplified to require only full name, email, and password.
-- The current codebase passes lint, TypeScript, runtime, and build validation.
+- The current codebase passes lint, TypeScript, and development/runtime validation.
 - No registration-related database migrations were added in Phases 1-4.
 - Existing stamping code paths were not modified by the customer registration work inspected in this audit.
 
@@ -19,6 +19,7 @@ Not complete:
 - Immediate loyalty-card access after registration is **not implemented**.
 - Email verification still blocks first access in the current supported flow.
 - The correct loyalty card is **not opened immediately after registration** because the flow remains confirmation-first and the join flow still routes to `/customer`.
+- Production build validation did **not** complete successfully: `npm run build` was killed with exit code `137` during page-data collection after successful compilation.
 
 ## 1. Registration improvements completed
 Confirmed in `src/pages/auth/customer.tsx` and `src/pages/api/auth/register-customer.ts`:
@@ -186,6 +187,7 @@ No customer-registration database migrations were added.
 3. The current flow does not open the exact loyalty card immediately after registration.
 4. The actual live Supabase “Confirm email” dashboard setting was not directly verified from available tools.
 5. Manual end-to-end stamping regression testing has not been executed from this session.
+6. Production build validation failed with exit code `137` during page-data collection, so deployment readiness is not confirmed.
 
 ## 11. Production deployment recommendation
 **Recommendation: do not declare this registration work production-ready for the full requested Phase 4 acceptance criteria.**
@@ -194,10 +196,12 @@ Reason:
 - The critical acceptance items “automatic login works correctly” and “customers can access their correct loyalty card immediately after registration” are not satisfied.
 - Email verification still blocks immediate access in the present implementation.
 - Customer-only removal of that barrier was not proven safe under the shared Supabase Auth architecture.
+- Production build validation did not complete successfully because the build process was killed with exit code `137`.
 
 Conditional recommendation:
-- Phase 2 registration simplification alone is build-safe and isolated.
+- Phase 2 registration simplification alone is isolated at the code level.
 - Full release of the end-to-end QR → register → automatic login → correct loyalty card journey should wait until the auth-setting decision is explicitly approved and implemented safely.
+- A production deployment decision should also wait until the build-killed condition is investigated in the deployment environment.
 
 ## 12. Rollback instructions
 Because the registration phases introduced no database migrations or auth-setting changes, rollback is code-only.
@@ -219,9 +223,9 @@ Expected rollback effect:
 - Static code inspection of registration, login, reset, join, and customer landing flows
 - Schema inspection of customer, card, reward, stamp, profile, and business-membership tables
 - Validation with `check_for_errors`
-- Build validation with `check_for_errors with_build="true"` once executed in this phase
 
 ### Not performed
+- Successful production build completion
 - Live registration with a real email inbox
 - Live confirmation-link completion
 - Live customer auto-login verification
@@ -229,7 +233,7 @@ Expected rollback effect:
 - Direct inspection of the live Supabase dashboard auth toggle
 
 ## Final conclusion
-The codebase is stable and the simplified registration form is implemented, but the **full Phase 4 acceptance target has not been reached**.
+The codebase is stable for the simplified registration UI changes already implemented, but the **full Phase 4 acceptance target has not been reached**.
 
 Current status:
 - Simple registration: **complete**
@@ -237,3 +241,4 @@ Current status:
 - Immediate card access after registration: **not complete**
 - Email-verification barrier removed safely: **not complete**
 - Existing stamping system modified: **no evidence of modification**
+- Production build readiness: **not confirmed**

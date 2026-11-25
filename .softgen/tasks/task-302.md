@@ -1,6 +1,6 @@
 ---
 title: Registration verification and production readiness audit
-status: in_progress
+status: done
 priority: urgent
 type: chore
 tags: [registration, auth, audit, regression]
@@ -17,12 +17,12 @@ Current evidence recorded:
 - Simplified registration is implemented in the customer auth UI and registration API.
 - Automatic login and immediate loyalty-card access are not implemented because the flow remains confirmation-first.
 - No registration-related database migrations or auth-setting changes were made.
-- Build/runtime validation is being recorded before final task closure.
+- Validation was run. Lint/TypeScript/development checks passed, but `check_for_errors with_build="true"` did not complete a production build because the process was killed with exit code 137 during page-data collection.
 
 ## Checklist
 - [x] Inspect current customer registration, login, QR context, and password recovery paths
 - [x] Verify current implementation against the requested Phase 4 acceptance criteria
-- [ ] Run code/build validation and record results
+- [x] Run code/build validation and record results
 - [x] Assess stamping-system regression risk from inspected changes without modifying protected components
 - [x] Produce a final Phase 4 verification report with deployment recommendation
 
