@@ -1,6 +1,6 @@
 ---
 title: Staff loyalty card assignment data and authorization
-status: in_progress
+status: done
 priority: urgent
 type: feature
 tags: [staff, loyalty-cards, authorization, supabase]
@@ -17,8 +17,8 @@ Confirmed current state from inspected code:
 - `src/pages/dashboard/quick-stamp-qr.tsx` generates rotating QR tokens through `generate_quick_stamp_qr_token`, so Quick Issue Stamp must also be constrained by staff-to-program assignment.
 - Existing access control is business-level and location-level; there is no current staff-to-loyalty-program assignment layer.
 
-Implemented this turn:
-- Added migration `supabase/migrations/20261126110729_staff_loyalty_program_assignments.sql` creating `staff_loyalty_program_assignments` with duplicate prevention, validation triggers, and RLS.
+Implemented:
+- Added migration `supabase/migrations/20261126110729_staff_loyalty_program_assignments.sql` and applied schema change `20261126111357_migration_0be9cc58.sql` creating `staff_loyalty_program_assignments` with duplicate prevention, validation triggers, and RLS.
 - Added reusable database helpers for manager authorization and staff-to-loyalty-program issuance authorization.
 - Updated `issue_stamp_tx`, `generate_quick_stamp_qr_token`, and `quick_stamp_qr_issue_stamp` in SQL so assignment checks happen server-side and revocations take effect immediately.
 - Updated `src/pages/api/staff/search-send-stamp.ts` with an explicit same-business loyalty-program check and a direct assignment check before issuing a stamp.
@@ -29,7 +29,7 @@ Implemented this turn:
 - [x] Add server-side business and assignment validation for normal Issue Stamp requests
 - [x] Add server-side business and assignment validation for Quick Issue Stamp requests
 - [x] Ensure assignment removal revokes access immediately without altering historical transactions
-- [ ] Validate schema, RLS, and app build behavior
+- [x] Validate schema, RLS, and app build behavior
 
 ## Acceptance
 Staff can issue stamps only for loyalty cards assigned to their own account.

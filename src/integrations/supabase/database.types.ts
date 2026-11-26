@@ -2203,6 +2203,51 @@ export type Database = {
           },
         ]
       }
+      staff_loyalty_program_assignments: {
+        Row: {
+          assigned_by: string | null
+          business_id: string
+          created_at: string
+          id: string
+          loyalty_program_id: string
+          staff_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          business_id: string
+          created_at?: string
+          id?: string
+          loyalty_program_id: string
+          staff_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          business_id?: string
+          created_at?: string
+          id?: string
+          loyalty_program_id?: string
+          staff_user_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_loyalty_program_assignments_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_loyalty_program_assignments_loyalty_program_id_fkey"
+            columns: ["loyalty_program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stamp_transactions: {
         Row: {
           business_id: string | null
@@ -2618,6 +2663,10 @@ export type Database = {
         Args: { p_business_id: string; p_user_id?: string }
         Returns: boolean
       }
+      can_manage_staff_loyalty_program_assignments: {
+        Args: { p_business_id: string; p_user_id: string }
+        Returns: boolean
+      }
       can_use_program_at_location: {
         Args: {
           target_business_id: string
@@ -2911,6 +2960,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      staff_can_issue_loyalty_program: {
+        Args: {
+          p_business_id: string
+          p_loyalty_program_id: string
+          p_staff_user_id: string
+        }
+        Returns: boolean
       }
       upsert_anti_fraud_security_alert_from_blocked_attempt: {
         Args: { p_attempt_id: string }

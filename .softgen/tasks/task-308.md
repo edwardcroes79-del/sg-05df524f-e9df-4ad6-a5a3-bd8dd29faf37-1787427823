@@ -1,6 +1,6 @@
 ---
 title: Staff management loyalty card assignment UI
-status: in_progress
+status: done
 priority: high
 type: feature
 tags: [staff, dashboard, loyalty-cards]
@@ -16,6 +16,7 @@ Implemented scope:
 - Embedded the new section into `src/pages/dashboard/staff.tsx`.
 - Added active loyalty-card loading, current-assignment badges, checkbox-based multi-select editing, and immediate save behavior.
 - Updated `src/pages/dashboard/quick-stamp-qr.tsx` so staff users only see assigned loyalty cards and get the required no-assignment message when none are assigned.
+- Updated `src/pages/dashboard/scan.tsx` so staff users only see assigned loyalty cards in normal Issue Stamp and get the required no-assignment message when none are assigned.
 
 ## Checklist
 - [x] Inspect the existing Staff Management page structure and available loyalty-card data sources
@@ -23,10 +24,10 @@ Implemented scope:
 - [x] Allow selecting one or multiple active loyalty cards per staff member
 - [x] Show current assignments for each staff member and allow editing/removal without rebuilding the page
 - [x] Restrict Quick Issue Stamp to assigned cards only for staff
-- [ ] Restrict normal Issue Stamp to assigned cards only for staff
-- [ ] Validate build/runtime behavior after all affected surfaces are updated
+- [x] Restrict normal Issue Stamp to assigned cards only for staff
+- [x] Validate build/runtime behavior after all affected surfaces are updated
 
 ## Acceptance
 Business admins can assign multiple loyalty cards to each staff member from Staff Management.
-Staff can only see assigned loyalty cards in Quick Issue Stamp.
+Staff can only see assigned loyalty cards in Quick Issue Stamp and normal Issue Stamp.
 Different staff members can share the same loyalty card.
