@@ -1,6 +1,6 @@
 ---
 title: Compact customer loyalty card view
-status: in_progress
+status: done
 priority: high
 type: bug
 tags: [customer, loyalty-card, mobile, ui]
@@ -28,10 +28,10 @@ Active investigation:
 - [x] Inspect the current customer loyalty card component and customer cards page
 - [x] Compare the customer card files against the pre-staff-assignment git version
 - [x] Inspect the parent customer layout and identify the framing regression
-- [ ] Compare the restored code directly against the provided screenshots
-- [ ] Restore the exact original customer-facing implementation from immediately before staff assignment
-- [ ] Preserve highlighted-card behavior and all customer/staff workflows
-- [ ] Validate build/runtime behavior after the restoration
+- [x] Compare the restored code directly against the provided screenshots
+- [x] Restore the exact original customer-facing implementation from immediately before staff assignment
+- [x] Preserve highlighted-card behavior and all customer/staff workflows
+- [x] Validate build/runtime behavior after the restoration
 
 ## Acceptance
 The customer loyalty card matches the original customer-facing design from before the Staff Loyalty Card Assignment feature work and aligns with the provided original screenshot.
