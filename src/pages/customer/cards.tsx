@@ -295,7 +295,7 @@ export default function MyCardsPage() {
         <title>{t("customer.cards.seoTitle")}</title>
       </Head>
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-heading font-bold text-foreground">{t("customer.cards.title")}</h1>
           <p className="text-muted-foreground mt-1">{t("customer.cards.description")}</p>
@@ -317,7 +317,7 @@ export default function MyCardsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-8 max-w-md mx-auto sm:max-w-none sm:grid-cols-2 lg:grid-cols-2">
+          <div className="grid gap-5 max-w-md mx-auto sm:max-w-none sm:grid-cols-2 lg:grid-cols-2">
             {cards.map((card) => {
               const prog = card.loyalty_programs || {};
               const programDescription = typeof prog.description === "string" ? prog.description.trim() : "";
@@ -329,7 +329,7 @@ export default function MyCardsPage() {
                   ref={(element) => {
                     cardElementRefs.current[card.id] = element;
                   }}
-                  className={highlightedCardId === card.id ? "rounded-[2rem] ring-2 ring-primary ring-offset-4 ring-offset-background transition-shadow" : ""}
+                  className={highlightedCardId === card.id ? "rounded-[2rem] ring-2 ring-primary ring-offset-2 sm:ring-offset-4 ring-offset-background transition-shadow" : ""}
                 >
                   <LoyaltyCard
                     animateStamp={animatingCardId === card.id}

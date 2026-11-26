@@ -163,7 +163,7 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
       )}
 
       {bannerUrl && (
-        <div className="w-full aspect-[21/9] sm:aspect-[2.5/1] overflow-hidden relative shrink-0">
+        <div className="w-full aspect-[3/1] sm:aspect-[21/9] overflow-hidden relative shrink-0">
           <Image 
             src={bannerUrl} 
             alt="Business Banner" 
@@ -190,17 +190,17 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
       `}</style>
 
       <CardContent className={cn(
-        "p-6 flex flex-col",
-        !bannerUrl && "min-h-[220px]", // Only enforce min-height if there's no banner pushing the card height
+        "p-4 sm:p-5 flex flex-col",
+        !bannerUrl && "min-h-[200px]", // Only enforce min-height if there's no banner pushing the card height
         theme.bg,
         overrideBg && "bg-transparent", // let inline style take precedence
         overrideText && "text-inherit"
       )}>
         {/* Header Block */}
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex justify-between items-start gap-3 mb-4">
           <div>
             {logoUrl ? (
-              <div className="relative h-14 w-48 sm:h-10 sm:w-40 mb-3 sm:mb-2">
+              <div className="relative h-10 w-36 sm:h-11 sm:w-40 mb-2">
                 <Image 
                   src={logoUrl} 
                   alt={businessName}
@@ -215,18 +215,18 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
                 {businessName}
               </p>
             )}
-            <h3 className="text-xl font-bold tracking-tight leading-tight">{programName}</h3>
+            <h3 className="text-lg sm:text-xl font-bold tracking-tight leading-tight">{programName}</h3>
           </div>
           
-          <div className="flex flex-col items-end shrink-0 ml-4">
-            <span className="text-xs font-mono font-bold mt-1.5 opacity-80">
+          <div className="flex flex-col items-end shrink-0">
+            <span className="text-[11px] sm:text-xs font-mono font-bold mt-1 opacity-80 text-right">
               {t("dashboard.customizer.card.stampsLabel", { current: currentStamps, target: stampTarget })}
             </span>
           </div>
         </div>
 
         {/* Stamps Progress Grid */}
-        <div className="grid grid-cols-5 gap-2.5 mb-6">
+        <div className="grid grid-cols-5 gap-2 mb-4">
           {stamps.map((index) => {
             const isStamped = index < currentStamps;
             const isNewlyStamped = animateStamp && index === currentStamps - 1;
@@ -255,9 +255,9 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
                   } as React.CSSProperties}
                 >
                   {isStamped ? (
-                    theme.layout === "gradient" && Icon ? <Icon className="w-5 h-5 fill-current" /> : <Check className="w-5 h-5" strokeWidth={3} />
+                    theme.layout === "gradient" && Icon ? <Icon className="w-4 h-4 sm:w-5 sm:h-5 fill-current" /> : <Check className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={3} />
                   ) : (
-                    Icon ? <Icon className="w-4 h-4 opacity-50" /> : null
+                    Icon ? <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-50" /> : null
                   )}
                 </div>
               </div>
@@ -266,7 +266,7 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
         </div>
 
         {/* Footer/Reward Section */}
-        <div className="border-t pt-4 flex items-center justify-between gap-4 border-current/10">
+        <div className="border-t pt-3 flex items-center justify-between gap-3 border-current/10">
           <div className="min-w-0">
             <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block">{t("dashboard.customizer.card.targetReward")}</span>
             <span className="text-sm font-extrabold truncate block">{rewardTitle || t("dashboard.customizer.card.unlockedReward")}</span>
@@ -274,27 +274,27 @@ export function LoyaltyCard(props: LoyaltyCardProps) {
           
           {RewardIcon && (
             <div
-              className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full bg-black/5"
+              className="shrink-0 flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-black/5"
               style={{ color: primaryColor, backgroundColor: secondaryColor ? `${secondaryColor}22` : undefined }}
             >
-              <RewardIcon className="w-5 h-5" />
+              <RewardIcon className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           )}
         </div>
 
         {/* Text Details Section */}
         {(visibleProgramDescription || visibleRewardDescription) && (
-          <div className="mt-4 pt-4 border-t border-current/10 space-y-3">
+          <div className="mt-3 pt-3 border-t border-current/10 space-y-2">
             {visibleProgramDescription && (
               <div>
                 <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">{t("dashboard.customizer.card.aboutProgram")}</span>
-                <p className="text-xs leading-relaxed opacity-90 break-words">{visibleProgramDescription}</p>
+                <p className="text-xs leading-snug opacity-90 break-words">{visibleProgramDescription}</p>
               </div>
             )}
             {visibleRewardDescription && (
               <div>
                 <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 block mb-0.5">{t("dashboard.customizer.card.rewardInstructions")}</span>
-                <p className="text-xs leading-relaxed opacity-90 break-words">{visibleRewardDescription}</p>
+                <p className="text-xs leading-snug opacity-90 break-words">{visibleRewardDescription}</p>
               </div>
             )}
           </div>
