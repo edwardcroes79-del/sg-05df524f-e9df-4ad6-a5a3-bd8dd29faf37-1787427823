@@ -1031,6 +1031,70 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        <Card className="border-border shadow-sm">
+          <CardHeader className="bg-muted/10 border-b">
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-primary" />
+              Anti-fraud protection
+            </CardTitle>
+            <CardDescription>
+              Control repeat-stamp cooldown protection for this business. This core setting is available on every plan.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-6">
+            <div className="flex flex-col gap-4 rounded-lg border p-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="font-semibold text-lg">Cooldown enforcement</h3>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+                  When enabled, the same member cannot receive another stamp in the same business and loyalty program until the cooldown expires.
+                </p>
+              </div>
+              <Switch
+                checked={antiFraudSettings.enabled}
+                disabled={antiFraudLoading || antiFraudSaving}
+                onCheckedChange={(checked) => {
+                  const nextSettings = { ...antiFraudSettings, enabled: checked };
+                  setAntiFraudSettings(nextSettings);
+                  saveAntiFraudSettings(nextSettings);
+                }}
+                aria-label="Toggle anti-fraud cooldown"
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div className="space-y-2">
+                <Label htmlFor="antiFraudCooldown">Cooldown duration</Label>
+                <select
+                  id="antiFraudCooldown"
+                  value={antiFraudSettings.cooldownMinutes}
+                  disabled={antiFraudLoading || antiFraudSaving}
+                  onChange={(event) => {
+                    const nextSettings = { ...antiFraudSettings, cooldownMinutes: Number(event.target.value) };
+                    setAntiFraudSettings(nextSettings);
+                  }}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value={5}>5 minutes</option>
+                  <option value={10}>10 minutes</option>
+                  <option value={15}>15 minutes</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Missing or invalid saved durations default to 10 minutes.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={antiFraudLoading || antiFraudSaving}
+                onClick={() => saveAntiFraudSettings()}
+              >
+                {antiFraudSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save anti-fraud
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Account Security Card (2FA) */}
         <Card className="border-border shadow-sm">
           <CardHeader className="bg-muted/10 border-b">
