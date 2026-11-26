@@ -1,6 +1,6 @@
 ---
 title: Anti-fraud protection restoration
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [security, anti-fraud, stamping, supabase]
@@ -31,10 +31,17 @@ Hardening applied: REVOKE EXECUTE on `issue_stamp_core_tx(uuid,uuid,uuid,uuid,te
 Pre-existing bypasses (pending decision after verification):
 - `issue_stamp_core_tx` is EXECUTE-granted to anon/authenticated with a caller-supplied `p_staff_user_id`.
 - Legacy `issue_stamp(uuid,uuid,uuid)` is EXECUTE-granted to anon/authenticated and skips all rate limits and cooldown; no app callers.
+(Both closed by the hardening above.)
 
 Test run 1 (single transaction, rolled back):
 - T1 unassigned normal: blocked. T2 unassigned quick gen: blocked. T3 assigned normal: stamp added. T4 rapid repeat: anti-fraud cooldown blocked. T10 normal after revocation: blocked. T11 outsider: blocked. T12 direct core/legacy EXECUTE: false; issue_stamp_tx EXECUTE: true.
-- Quick Stamp redemption tests skipped (fixture business lacked add-on); rerun with an add-on business.
+
+Test run 2 (Quick Stamp, add-on business, rolled back):
+- T5 token generation for assigned staff: success, 60s TTL. T6 first redeem: stamp added. T7 reuse: rejected. T8 expired token: rejected. T9 token redeemed after assignment revoked: rejected.
+
+Open risks:
+- Function rewrites and REVOKEs may not be captured in a repo migration file; a rebuild from repo migrations would drop the assignment checks and re-grant core EXECUTE via `20261015133500_anti_fraud_phase_1.sql`.
+- Change journal revert plan for `sbchg_96f8e5fc503f` is DROP ... CASCADE — never execute it.
 
 ## Checklist
 - [x] Capture live definitions of all stamping functions (pg_get_functiondef)
@@ -43,8 +50,8 @@ Test run 1 (single transaction, rolled back):
 - [x] Add staff assignment checks to issue_stamp_tx, generate_quick_stamp_qr_token, quick_stamp_qr_issue_stamp
 - [x] Diff rewritten function bodies against latest migration definitions
 - [x] Close direct-call bypasses on issue_stamp_core_tx and legacy issue_stamp
-- [ ] Run SQL-level tests: expired token, reused token, rapid repeat, unassigned card, unauthorized user, legitimate stamp
-- [ ] Run check_for_errors
+- [x] Run SQL-level tests: expired token, reused token, rapid repeat, unassigned card, unauthorized user, legitimate stamp
+- [x] Run check_for_errors
 
 ## Acceptance
 All anti-fraud checks remain active in the live database.
