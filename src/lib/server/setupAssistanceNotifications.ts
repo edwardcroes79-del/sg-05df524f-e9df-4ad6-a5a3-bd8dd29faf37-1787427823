@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isEmailPurposeAllowed } from "@/lib/server/emailAllowlist";
 import { getConfirmationEmailOrigin, sanitizeMailError } from "@/lib/server/confirmationEmail";
 import type { SetupAssistanceStatus } from "@/lib/server/setupAssistance";
 
@@ -253,6 +254,10 @@ export async function notifySuperAdminOfSetupRequestSubmission(
   admin: SupabaseClient,
   input: SuperAdminSetupRequestEmailInput
 ) {
+  if (!isEmailPurposeAllowed("setup_assistance_superadmin_request")) {
+    return { emailSent: false, skipped: true, reason: "Setup assistance emails are disabled." };
+  }
+
   const recipient = getSuperAdminRecipient();
   const { emailLogId, skipSend } = await prepareEmailLog(
     admin,
@@ -310,6 +315,10 @@ export async function notifySuperAdminOfSetupStatusChange(
   admin: SupabaseClient,
   input: SuperAdminSetupStatusEmailInput
 ) {
+  if (!isEmailPurposeAllowed("setup_assistance_superadmin_status")) {
+    return { emailSent: false, skipped: true, reason: "Setup assistance emails are disabled." };
+  }
+
   const recipient = getSuperAdminRecipient();
   const copy = getSuperAdminStatusCopy(input.status);
   const roundSuffix = input.status === "changes_requested" ? `_r${Math.max(1, Number(input.reviewRound || 1))}` : "";
@@ -375,6 +384,10 @@ export async function notifyBusinessAdminOfSetupStatusChange(
   admin: SupabaseClient,
   input: BusinessSetupStatusEmailInput
 ) {
+  if (!isEmailPurposeAllowed("setup_assistance_business_status")) {
+    return { emailSent: false, skipped: true, reason: "Setup assistance emails are disabled." };
+  }
+
   if (!input.recipientEmail) {
     return { emailSent: false, skipped: true, error: "Missing recipient email." };
   }

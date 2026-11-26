@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
+import { isEmailPurposeAllowed } from "@/lib/server/emailAllowlist";
 
 type ReminderType = "30_days" | "14_days" | "7_days" | "1_day" | "expiration";
 type RecipientType = "business_admin" | "super_admin";
@@ -211,6 +212,11 @@ async function sendTrackedReminder(
   recipientType: RecipientType,
   recipientEmail: string
 ) {
+  const purpose = recipientType === "super_admin" ? "contract_reminder_super_admin" : "contract_reminder_business_admin";
+  if (!isEmailPurposeAllowed(purpose)) {
+    return { skipped: true };
+  }
+
   const reminderId = await reserveReminder(business, reminderType, recipientType, recipientEmail);
   if (!reminderId) {
     return { skipped: true };

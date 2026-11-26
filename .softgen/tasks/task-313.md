@@ -18,19 +18,29 @@ SMTP audit evidence from code search:
 - `src/pages/api/customer/stamp-receipt.ts` sends customer stamp receipt emails via Nodemailer SMTP. This must be disabled.
 - `src/lib/server/setupAssistanceNotifications.ts` sends setup assistance request/status emails via Nodemailer SMTP. These must be disabled while preserving in-app notifications and database records.
 - `src/pages/api/admin/process-contract-reminders.ts` sends contract reminder emails via Nodemailer SMTP. These must be disabled while preserving reminder records and in-app visibility.
-- `src/pages/api/admin/notify-registration.ts` sends registration-related admin notification emails via Nodemailer SMTP. Scope still being verified against the user's allowlist and workflow requirements.
-- `src/lib/server/confirmationEmail.ts` is a shared SMTP helper used by confirmation/resend flows. Its callers include `src/pages/api/admin/resend-confirmation.ts` and setup flows. Caller-by-caller review is required before allowlisting.
-- `src/pages/api/auth/register-customer.ts` also uses custom SMTP confirmation delivery and must be reviewed against the new restriction because customer registration is not in the allowed list.
+- `src/pages/api/admin/notify-registration.ts` sends registration-related admin notification emails via Nodemailer SMTP. This belongs to the allowed business registration purpose and still needs final allowlist wiring.
+- `src/lib/server/confirmationEmail.ts` is a shared SMTP helper used by confirmation/resend flows. Its callers include `src/pages/api/admin/resend-confirmation.ts`. Business-account resend should remain allowed as part of business registration; non-business resend must be blocked.
+- `src/pages/api/auth/register-customer.ts` does not currently send SMTP itself and should remain outside the allowlist.
 
 Current classification:
-- Allowed: business registration, Super Admin business approval confirmation, password reset.
-- Pending review: admin registration notification, customer registration confirmation, confirmation resend.
+- Allowed: business registration confirmation, business registration admin notification, Super Admin business approval confirmation, password reset.
 - Blocked target category: customer stamp emails, setup assistance emails, contract/payment reminder emails, and all other non-allowed automatic SMTP sends.
+
+Implementation progress:
+- Added `src/lib/server/emailAllowlist.ts` as the central server-side purpose allowlist.
+- Disabled stamp receipt SMTP at the API boundary in `src/pages/api/customer/stamp-receipt.ts`.
+- Disabled setup assistance SMTP before any email-log/retry preparation in `src/lib/server/setupAssistanceNotifications.ts`.
+- Disabled contract reminder SMTP before reminder/email-log reservation in `src/pages/api/admin/process-contract-reminders.ts`.
+- Restricted `src/lib/server/confirmationEmail.ts` and `src/pages/api/admin/resend-confirmation.ts` so confirmation resend only works for business-registration accounts.
+
+Remaining work:
+- Wire the allowlist into the still-allowed SMTP senders (`register-business`, `notify-registration`, `approve-business`, `request-password-recovery`).
+- Re-open and audit any remaining reminder/payment/account-hold SMTP files discovered in the broader search before final verification.
 
 ## Checklist
 - [x] Inventory all email sending locations across API routes, server helpers, jobs, and background flows
 - [ ] Confirm which flows map to the three allowed purposes and which must be disabled
-- [ ] Implement a central allowlist or equivalent server-side safeguard for app-managed email sends
+- [x] Implement a central allowlist or equivalent server-side safeguard for app-managed email sends
 - [ ] Preserve existing SMTP configuration and approval/registration email content
 - [ ] Document all discovered triggers and final allowed list
 

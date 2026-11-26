@@ -134,12 +134,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const metadata = targetUser.user_metadata && typeof targetUser.user_metadata === "object" ? targetUser.user_metadata as Record<string, unknown> : {};
+    const audience = getAudience(metadata);
+
+    if (audience !== "business") {
+      await recordAudit(supabase, adminUserId, userId, "blocked", { recipient_domain: recipientDomain, reason: "smtp_purpose_not_allowed" });
+      return res.status(403).json({ error: "Confirmation resend is only available for business registration accounts." });
+    }
 
     try {
       await sendConfirmationEmail({
         email: targetUser.email,
         actionLink: linkData.properties.action_link,
-        audience: getAudience(metadata),
+        audience,
         displayName: getDisplayName(metadata),
       });
 

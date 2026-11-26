@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
+import { isEmailPurposeAllowed } from "@/lib/server/emailAllowlist";
 
 type ReceiptResponse = {
   sent: boolean;
@@ -57,6 +58,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
     return res.status(405).json({ sent: false, error: `Method ${req.method} Not Allowed` });
+  }
+
+  if (!isEmailPurposeAllowed("customer_stamp_receipt")) {
+    return res.status(200).json({ sent: false, skipped: true, reason: "Stamp receipt emails are disabled" });
   }
 
   try {

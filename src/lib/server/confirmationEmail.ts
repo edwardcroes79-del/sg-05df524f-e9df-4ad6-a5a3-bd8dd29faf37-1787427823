@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import nodemailer from "nodemailer";
+import { assertEmailPurposeAllowed } from "@/lib/server/emailAllowlist";
 
 export type ConfirmationEmailAudience = "business" | "customer" | "general";
 
@@ -81,6 +82,12 @@ export function sanitizeMailError(error: unknown) {
 }
 
 export async function sendConfirmationEmail({ email, actionLink, audience = "general", displayName }: SendConfirmationEmailInput) {
+  if (audience !== "business") {
+    throw new Error("Email purpose blocked: confirmation resend is only allowed for business registrations.");
+  }
+
+  assertEmailPurposeAllowed("business_registration_confirmation");
+
   const transporter = nodemailer.createTransport({
     host: process.env.MAIL_HOST || "smtp.titan.email",
     port: parseInt(process.env.MAIL_PORT || "465", 10),
