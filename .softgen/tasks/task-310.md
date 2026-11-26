@@ -15,17 +15,18 @@ Confirmed findings so far:
 - `src/components/LoyaltyCard.tsx` already contains the restored original card internals.
 - `src/pages/customer/cards.tsx` already contains the restored original card list spacing.
 - Git history confirms the compact card regression was reverted in the card files.
-- The remaining visual mismatch is likely caused by the parent customer page framing rather than the card component itself.
+- `src/components/customer/CustomerLayout.tsx` does not show a confirmed gutter-width regression in the main shell: the current and earlier git version both use `flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full`.
+- The remaining visual mismatch is therefore not yet proven to come from the main customer shell classes.
 
 Active investigation:
-- Inspect `src/components/customer/CustomerLayout.tsx` for changes affecting mobile gutters, max width, safe-area spacing, centering, overflow, and bottom-nav framing.
-- Compare the layout shell against the original screenshot framing.
-- Restore only the parent layout behavior causing the customer card to appear stretched, clipped, or misaligned.
+- Inspect `src/components/customer/PWAInstallPrompt.tsx`, which is now injected inside the customer layout and may affect mobile framing or viewport width at runtime.
+- Verify whether any child inserted by the layout introduces width expansion, clipping, or altered vertical framing.
+- Restore only the confirmed source of the customer page presentation regression.
 
 ## Checklist
 - [x] Inspect the current customer loyalty card component and customer cards page
 - [x] Compare the customer card files against the pre-staff-assignment git version
-- [ ] Inspect the parent customer layout and identify the framing regression
+- [x] Inspect the parent customer layout and identify the framing regression
 - [ ] Compare the restored code directly against the provided screenshots
 - [ ] Restore the exact original customer-facing implementation from immediately before staff assignment
 - [ ] Preserve highlighted-card behavior and all customer/staff workflows
