@@ -111,6 +111,7 @@ export default function QuickStampQrPage() {
   const [businessName, setBusinessName] = useState("Royalty Stamp");
   const [programs, setPrograms] = useState<LoyaltyProgramOption[]>([]);
   const [selectedProgramId, setSelectedProgramId] = useState("");
+  const [isRestrictedStaff, setIsRestrictedStaff] = useState(false);
   const [activeLocationId, setActiveLocationId] = useState("");
   const [accessibleLocationIds, setAccessibleLocationIds] = useState<string[]>([]);
   const [tokenData, setTokenData] = useState<QuickStampToken | null>(null);
@@ -205,6 +206,18 @@ export default function QuickStampQrPage() {
         return;
       }
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!mounted) return;
+
+      if (!session?.user) {
+        setErrorMessage(t("dashboard.quickStamp.workspaceNotFound"));
+        setLoading(false);
+        return;
+      }
+
       const { data: programRows, error: programError } = await supabase
         .from("loyalty_programs")
         .select("id, name, stamp_target, reward_title")
@@ -221,18 +234,66 @@ export default function QuickStampQrPage() {
       }
 
       const activePrograms = (programRows || []) as LoyaltyProgramOption[];
-      const firstProgram = activePrograms[0];
+      let visiblePrograms = activePrograms;
 
-      setBusinessId(resolvedBusiness.id);
-      setBusinessName(resolvedBusiness.business_name || "Royalty Stamp");
+      const { data: ownedBusiness } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("id", resolvedBusiness.id)
+        .eq("owner_id", session.user.id)
+        .maybeSingle();
 
-      const authorizedLocation = await resolveAuthorizedLocationId(resolvedBusiness.id);
       if (!mounted) return;
 
-      setActiveLocationId(authorizedLocation.locationId);
-      setAccessibleLocationIds(authorizedLocation.accessibleIds);
+      if (!ownedBusiness) {
+        const { data: membership } = await supabase
+          .from("business_users")
+          .select("role, status")
+          .eq("business_id", resolvedBusiness.id)
+          .eq("user_id", session.user.id)
+          .eq("status", "active")
+          .maybeSingle();
 
-      setPrograms(activePrograms);
+        if (!mounted) return;
+
+        if (membership?.role === "staff") {
+          setIsRestrictedStaff(true);
+
+          const { data: assignmentRows, error: assignmentError } = await supabase
+            .from("staff_loyalty_program_assignments")
+            .select("loyalty_program_id")
+            .eq("business_id", resolvedBusiness.id)
+            .eq("staff_user_id", session.user.id);
+
+          if (!mounted) return;
+
+          if (assignmentError) {
+            setErrorMessage("Loyalty card assignments could not be loaded.");
+            setLoading(false);
+            return;
+          }
+
+          const assignedProgramIds = new Set(
+            (assignmentRows || []).map((assignment: { loyalty_program_id: string }) => assignment.loyalty_program_id)
+          );
+
+          visiblePrograms = activePrograms.filter((program) => assignedProgramIds.has(program.id));
+        } else {
+          setIsRestrictedStaff(false);
+        }
+      } else {
+        setIsRestrictedStaff(false);
+      }
+
+      setPrograms(visiblePrograms);
+
+      if (visiblePrograms.length === 0 && !ownedBusiness) {
+        setErrorMessage("No loyalty cards have been assigned to your account. Please contact your Business Admin.");
+        setLoading(false);
+        return;
+      }
+
+      const firstProgram = visiblePrograms[0];
 
       if (!firstProgram) {
         setErrorMessage(t("dashboard.quickStamp.activateProgramError"));
@@ -343,6 +404,11 @@ export default function QuickStampQrPage() {
             <p className="mt-1 max-w-2xl text-muted-foreground">
               {t("dashboard.quickStamp.description")}
             </p>
+            {isRestrictedStaff ? (
+              <p className="mt-2 text-sm font-medium text-primary">
+                Only loyalty cards assigned to your staff account are available here.
+              </p>
+            ) : null}
           </div>
 
           <Button type="button" variant="outline" className="gap-2" onClick={handleManualRefresh} disabled={!businessId || !selectedProgramId || refreshing}>

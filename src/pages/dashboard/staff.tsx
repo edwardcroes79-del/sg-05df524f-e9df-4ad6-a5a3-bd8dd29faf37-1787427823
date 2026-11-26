@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Head from "next/head";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StaffLocationAssignments } from "@/components/dashboard/StaffLocationAssignments";
+import { StaffLoyaltyCardAssignments } from "@/components/dashboard/StaffLoyaltyCardAssignments";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -476,6 +477,10 @@ export default function StaffPage() {
             ))
           )}
         </div>
+
+        {business?.id ? (
+          <StaffLoyaltyCardAssignments businessId={business.id} staff={staff} />
+        ) : null}
 
         {isCorporate && business?.id ? (
           <StaffLocationAssignments businessId={business.id} staff={staff} />
