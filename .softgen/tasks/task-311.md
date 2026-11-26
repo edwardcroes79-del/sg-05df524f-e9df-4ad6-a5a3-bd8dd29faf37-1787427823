@@ -32,13 +32,17 @@ Pre-existing bypasses (pending decision after verification):
 - `issue_stamp_core_tx` is EXECUTE-granted to anon/authenticated with a caller-supplied `p_staff_user_id`.
 - Legacy `issue_stamp(uuid,uuid,uuid)` is EXECUTE-granted to anon/authenticated and skips all rate limits and cooldown; no app callers.
 
+Test run 1 (single transaction, rolled back):
+- T1 unassigned normal: blocked. T2 unassigned quick gen: blocked. T3 assigned normal: stamp added. T4 rapid repeat: anti-fraud cooldown blocked. T10 normal after revocation: blocked. T11 outsider: blocked. T12 direct core/legacy EXECUTE: false; issue_stamp_tx EXECUTE: true.
+- Quick Stamp redemption tests skipped (fixture business lacked add-on); rerun with an add-on business.
+
 ## Checklist
 - [x] Capture live definitions of all stamping functions (pg_get_functiondef)
 - [x] Compare against the last anti-fraud migration definitions and the staff-assignment migration
 - [x] Identify each removed protection with file/line evidence (none removed)
 - [x] Add staff assignment checks to issue_stamp_tx, generate_quick_stamp_qr_token, quick_stamp_qr_issue_stamp
-- [ ] Diff rewritten function bodies against latest migration definitions
-- [ ] Close direct-call bypasses on issue_stamp_core_tx and legacy issue_stamp
+- [x] Diff rewritten function bodies against latest migration definitions
+- [x] Close direct-call bypasses on issue_stamp_core_tx and legacy issue_stamp
 - [ ] Run SQL-level tests: expired token, reused token, rapid repeat, unassigned card, unauthorized user, legitimate stamp
 - [ ] Run check_for_errors
 
