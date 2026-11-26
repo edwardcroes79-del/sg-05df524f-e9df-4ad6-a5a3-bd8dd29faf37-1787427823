@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
 import path from "path";
+import { assertEmailPurposeAllowed } from "@/lib/server/emailAllowlist";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -58,6 +59,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch(e) {
       // Fallback to process.env in Vercel production
     }
+
+    assertEmailPurposeAllowed("business_registration_admin_notification");
 
     const transporter = nodemailer.createTransport({
       host: process.env.MAIL_HOST || "smtp.titan.email",

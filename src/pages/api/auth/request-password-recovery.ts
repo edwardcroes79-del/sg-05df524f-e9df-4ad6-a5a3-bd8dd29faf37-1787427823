@@ -5,6 +5,7 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 import { getRequestIp, verifyTurnstileToken } from "@/lib/server/turnstile";
+import { assertEmailPurposeAllowed } from "@/lib/server/emailAllowlist";
 
 const CANONICAL_RECOVERY_REDIRECT = "https://royaltystamp.com/auth/update-password";
 const ALLOWED_RECOVERY_REDIRECTS = new Set([
@@ -189,6 +190,8 @@ function createRecoveryEmailHtml(actionLink: string): string {
 }
 
 async function sendRecoveryEmail(email: string, actionLink: string): Promise<void> {
+  assertEmailPurposeAllowed("password_reset");
+
   const transporter = nodemailer.createTransport({
     host: process.env.MAIL_HOST || "smtp.titan.email",
     port: parseInt(process.env.MAIL_PORT || "465", 10),

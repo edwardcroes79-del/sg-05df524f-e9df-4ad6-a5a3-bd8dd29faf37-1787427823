@@ -11,38 +11,47 @@ position: 313
 ## Notes
 Audit all outgoing email triggers in Royalty Stamp and identify exactly which flows currently send through SMTP or any app-managed email path. Preserve only three allowed purposes: business registration, Super Admin business approval confirmation, and password reset. Do not break the existing business approval workflow or Supabase Auth password reset. Build a central safeguard so blocked email events cannot queue or retry.
 
-SMTP audit evidence from code search:
-- `src/pages/api/auth/register-business.ts` sends the business registration confirmation email via Nodemailer SMTP. This must remain allowed.
-- `src/pages/api/admin/approve-business.ts` sends the Super Admin business approval confirmation email via Nodemailer SMTP. This must remain allowed.
-- `src/pages/api/auth/request-password-recovery.ts` sends the password reset email via Nodemailer SMTP carrying the Supabase-generated recovery link. This must remain allowed.
-- `src/pages/api/customer/stamp-receipt.ts` sends customer stamp receipt emails via Nodemailer SMTP. This must be disabled.
-- `src/lib/server/setupAssistanceNotifications.ts` sends setup assistance request/status emails via Nodemailer SMTP. These must be disabled while preserving in-app notifications and database records.
-- `src/pages/api/admin/process-contract-reminders.ts` sends contract reminder emails via Nodemailer SMTP. These must be disabled while preserving reminder records and in-app visibility.
-- `src/pages/api/admin/notify-registration.ts` sends registration-related admin notification emails via Nodemailer SMTP. This belongs to the allowed business registration purpose and still needs final allowlist wiring.
-- `src/lib/server/confirmationEmail.ts` is a shared SMTP helper used by confirmation/resend flows. Its callers include `src/pages/api/admin/resend-confirmation.ts`. Business-account resend should remain allowed as part of business registration; non-business resend must be blocked.
-- Additional reminder/payment SMTP senders still require verification in currently unopened files, including overdue reminders and manual payment reminders.
+Final SMTP inventory from code search:
+- `src/pages/api/auth/register-business.ts` sends the business registration confirmation email via Nodemailer SMTP. Allowed.
+- `src/pages/api/admin/notify-registration.ts` sends the Super Admin registration-review notification email via Nodemailer SMTP as part of the business registration workflow. Allowed.
+- `src/lib/server/confirmationEmail.ts` sends confirmation resend emails. Restricted so only business-registration accounts can use it through `src/pages/api/admin/resend-confirmation.ts`. Allowed only for business registration accounts.
+- `src/pages/api/admin/approve-business.ts` sends the Super Admin business approval confirmation email via Nodemailer SMTP. Allowed.
+- `src/pages/api/auth/request-password-recovery.ts` sends the password reset email via Nodemailer SMTP using the Supabase-generated recovery link. Allowed.
+- `src/pages/api/customer/stamp-receipt.ts` sends customer stamp receipt emails via Nodemailer SMTP. Disabled.
+- `src/lib/server/setupAssistanceNotifications.ts` sends setup assistance request/status emails via Nodemailer SMTP. Disabled.
+- `src/pages/api/admin/process-contract-reminders.ts` sends contract reminder emails via Nodemailer SMTP. Disabled.
+- `src/lib/server/overdueReminders.ts` does not send SMTP email. No changes required.
+- `src/lib/server/manualPaymentReminders.ts` does not send SMTP email. No changes required.
 
-Current classification:
-- Allowed: business registration confirmation, business registration admin notification when required for registration workflow, Super Admin business approval confirmation, password reset.
-- Blocked target category: customer stamp emails, setup assistance emails, contract/payment reminder emails, and all other non-allowed automatic SMTP sends.
+Current allowed purposes:
+- `business_registration_confirmation`
+- `business_registration_admin_notification`
+- `business_approval_confirmation`
+- `password_reset`
+
+Current blocked category:
+- customer stamp emails
+- setup assistance emails
+- contract reminder emails
+- all other non-allowed automatic SMTP sends
 
 Implementation progress:
 - Added `src/lib/server/emailAllowlist.ts` as the central server-side purpose allowlist.
+- Wired the allowlist into allowed senders in `register-business`, `notify-registration`, `approve-business`, and `request-password-recovery`.
+- Restricted `src/lib/server/confirmationEmail.ts` and `src/pages/api/admin/resend-confirmation.ts` so confirmation resend only works for business-registration accounts.
 - Disabled stamp receipt SMTP at the API boundary in `src/pages/api/customer/stamp-receipt.ts`.
 - Disabled setup assistance SMTP before any email-log/retry preparation in `src/lib/server/setupAssistanceNotifications.ts`.
 - Disabled contract reminder SMTP before reminder/email-log reservation in `src/pages/api/admin/process-contract-reminders.ts`.
-- Restricted `src/lib/server/confirmationEmail.ts` and `src/pages/api/admin/resend-confirmation.ts` so confirmation resend only works for business-registration accounts.
 
-Concrete remaining work:
-- Confirm every remaining `sendMail`/transporter location in the codebase and classify it allowed vs blocked.
-- Wire the allowlist into the still-allowed SMTP senders (`register-business`, `notify-registration`, `approve-business`, `request-password-recovery`) so they remain explicitly permitted.
-- Disable any additional payment/account-hold/reminder SMTP flows found in `overdueReminders.ts`, `manualPaymentReminders.ts`, or other search results without touching database notifications.
+Remaining work:
+- Run validation and report final test outcomes for allowed vs blocked SMTP paths.
+- Capture the final modified-file list and user-facing results after checks pass.
 
 ## Checklist
 - [x] Inventory all email sending locations across API routes, server helpers, jobs, and background flows
-- [ ] Confirm which flows map to the three allowed purposes and which must be disabled
+- [x] Confirm which flows map to the three allowed purposes and which must be disabled
 - [x] Implement a central allowlist or equivalent server-side safeguard for app-managed email sends
-- [ ] Preserve existing SMTP configuration and approval/registration email content
+- [x] Preserve existing SMTP configuration and approval/registration email content
 - [ ] Document all discovered triggers and final allowed list
 
 ## Acceptance

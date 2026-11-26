@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
+import { assertEmailPurposeAllowed } from "@/lib/server/emailAllowlist";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -140,6 +141,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 5. Send approval email via Nodemailer (wrapped in try/catch to prevent blocking the UI on failure)
     try {
+      assertEmailPurposeAllowed("business_approval_confirmation");
+
       // Safely extract the raw password to prevent Next.js from corrupting the $ symbols via variable expansion
       let mailPassword = process.env.MAIL_PASSWORD;
       try {
