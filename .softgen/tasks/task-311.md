@@ -18,6 +18,11 @@ Real gap found: staff loyalty-card assignment was NOT enforced in the database s
 
 Verification concern: the change journal stored no prior bodies (revert plan is DROP ... CASCADE — do NOT use it). Rewritten bodies must be diffed against the latest migration definitions.
 
+Verification result:
+- `issue_stamp_tx` (3-arg and 4-arg) live bodies == `20261008191500_staff_stamp_location_attribution.sql` + one `staff_can_issue_loyalty_program` check. Verified.
+- `quick_stamp_qr_issue_stamp` live body == `20261008121800_corporate_analytics_location_filter.sql` + one assignment check (token lock, expiry/single-use, cooldown, consumption unchanged). Verified.
+- `generate_quick_stamp_qr_token` 2-arg unchanged (delegates to 3-arg). 3-arg pending comparison.
+
 Pre-existing bypasses (pending decision after verification):
 - `issue_stamp_core_tx` is EXECUTE-granted to anon/authenticated with a caller-supplied `p_staff_user_id`.
 - Legacy `issue_stamp(uuid,uuid,uuid)` is EXECUTE-granted to anon/authenticated and skips all rate limits and cooldown; no app callers.
