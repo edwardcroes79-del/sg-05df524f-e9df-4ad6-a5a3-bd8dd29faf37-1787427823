@@ -11,15 +11,21 @@ position: 310
 ## Notes
 Restore the exact original customer-facing loyalty card layout from immediately before the Staff Loyalty Card Assignment feature was introduced. Preserve all staff assignment functionality, database authorization, and stamping flows. Match the provided original screenshot as closely as possible by restoring the actual prior implementation rather than approximating with new spacing changes.
 
+Confirmed findings so far:
+- `src/components/LoyaltyCard.tsx` already contains the restored original card internals.
+- `src/pages/customer/cards.tsx` already contains the restored original card list spacing.
+- Git history confirms the compact card regression was reverted in the card files.
+- The remaining visual mismatch is likely caused by the parent customer page framing rather than the card component itself.
+
 Active investigation:
-- Compare the current customer-facing card against the two uploaded screenshots.
-- Recover the exact pre-staff-assignment implementation from git history for `src/components/LoyaltyCard.tsx` and `src/pages/customer/cards.tsx`.
-- Confirm whether the regression came from later customer-card tweaks or from any shared component changes introduced alongside staff assignment.
-- Restore only customer presentation while leaving staff assignment, Quick Issue Stamp, normal Issue Stamp, and server-side authorization intact.
+- Inspect `src/components/customer/CustomerLayout.tsx` for changes affecting mobile gutters, max width, safe-area spacing, centering, overflow, and bottom-nav framing.
+- Compare the layout shell against the original screenshot framing.
+- Restore only the parent layout behavior causing the customer card to appear stretched, clipped, or misaligned.
 
 ## Checklist
 - [x] Inspect the current customer loyalty card component and customer cards page
 - [x] Compare the customer card files against the pre-staff-assignment git version
+- [ ] Inspect the parent customer layout and identify the framing regression
 - [ ] Compare the restored code directly against the provided screenshots
 - [ ] Restore the exact original customer-facing implementation from immediately before staff assignment
 - [ ] Preserve highlighted-card behavior and all customer/staff workflows
