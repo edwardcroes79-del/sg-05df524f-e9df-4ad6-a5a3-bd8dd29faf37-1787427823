@@ -19,7 +19,10 @@ Confirmed findings so far:
 - The remaining visual mismatch is therefore not yet proven to come from the main customer shell classes.
 
 Active investigation:
-- Inspect `src/components/customer/PWAInstallPrompt.tsx`, which is now injected inside the customer layout and may affect mobile framing or viewport width at runtime.
+- Screenshot analysis: in IMAGE 2 the card box itself is wider than the viewport (5th stamp column, stamp counter, and description text clipped on the right) while text size is identical to IMAGE 1, so this is a container-width blowout, not zoom or spacing.
+- Hypothesis: the mobile card list in `src/pages/customer/cards.tsx` is a single implicit-column CSS grid (`grid gap-8 max-w-md mx-auto`, no mobile `grid-cols-*`). Implicit `auto` tracks size to the widest min-content of ANY card; the reward title uses `truncate` (white-space: nowrap) and descriptions use `break-words` (does not reduce min-content), so one card with a long title/token forces every card wider than the viewport.
+- Evidence being gathered: git diff of all customer-facing/shared styling files since `49b01c6`, and live card text lengths for customers holding the Arugas card.
+- Inspect `src/components/customer/PWAInstallPrompt.tsx` (done: no horizontal width expansion).
 - Verify whether any child inserted by the layout introduces width expansion, clipping, or altered vertical framing.
 - Restore only the confirmed source of the customer page presentation regression.
 
