@@ -19,12 +19,10 @@ Confirmed findings so far:
 - The remaining visual mismatch is therefore not yet proven to come from the main customer shell classes.
 
 Active investigation:
-- Screenshot analysis: in IMAGE 2 the card box itself is wider than the viewport (5th stamp column, stamp counter, and description text clipped on the right) while text size is identical to IMAGE 1, so this is a container-width blowout, not zoom or spacing.
-- Hypothesis: the mobile card list in `src/pages/customer/cards.tsx` is a single implicit-column CSS grid (`grid gap-8 max-w-md mx-auto`, no mobile `grid-cols-*`). Implicit `auto` tracks size to the widest min-content of ANY card; the reward title uses `truncate` (white-space: nowrap) and descriptions use `break-words` (does not reduce min-content), so one card with a long title/token forces every card wider than the viewport.
-- Evidence being gathered: git diff of all customer-facing/shared styling files since `49b01c6`, and live card text lengths for customers holding the Arugas card.
-- Inspect `src/components/customer/PWAInstallPrompt.tsx` (done: no horizontal width expansion).
-- Verify whether any child inserted by the layout introduces width expansion, clipping, or altered vertical framing.
-- Restore only the confirmed source of the customer page presentation regression.
+- RESOLVED. `git diff 8d015cb HEAD` (parent of first staff-assignment commit 04bc120) is empty for all customer-facing files, `ui/card.tsx`, globals.css, tailwind.config.ts, _app/_document — no code regression exists.
+- Root cause (data-triggered CSS blowout): the mobile card list in `src/pages/customer/cards.tsx` used an implicit `auto` grid column. The reward title uses `truncate` (nowrap), so its full length counts toward the column's min-content. The affected customer holds 14 cards including reward titles of 51 and 37 characters, which widened the shared column beyond the viewport and clipped every card (IMAGE 2).
+- IMAGE 1 matches the join page (`/join/[id]`: `max-w-md mx-auto`, no bottom nav, single card) where only one short-titled card renders.
+- Fix: added `grid-cols-1` (minmax(0,1fr)) to the mobile grid so the track never exceeds available width; long titles truncate with ellipsis as originally designed.
 
 ## Checklist
 - [x] Inspect the current customer loyalty card component and customer cards page

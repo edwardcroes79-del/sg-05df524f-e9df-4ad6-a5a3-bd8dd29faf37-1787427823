@@ -317,7 +317,7 @@ export default function MyCardsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-8 max-w-md mx-auto sm:max-w-none sm:grid-cols-2 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-8 max-w-md mx-auto sm:max-w-none sm:grid-cols-2 lg:grid-cols-2">
             {cards.map((card) => {
               const prog = card.loyalty_programs || {};
               const programDescription = typeof prog.description === "string" ? prog.description.trim() : "";
