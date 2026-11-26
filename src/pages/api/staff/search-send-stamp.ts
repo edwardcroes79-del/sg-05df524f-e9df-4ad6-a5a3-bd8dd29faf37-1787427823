@@ -60,6 +60,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "Your Royalty Stamp contract has expired. Please contact Royalty Stamp to renew." });
     }
 
+    const { data: loyaltyProgram, error: loyaltyProgramError } = await supabaseAdmin
+      .from("loyalty_programs")
+      .select("id, business_id, active")
+      .eq("id", loyaltyProgramId)
+      .eq("business_id", businessId)
+      .maybeSingle();
+
+    if (loyaltyProgramError) {
+      return res.status(500).json({ error: "Unable to verify loyalty card access" });
+    }
+
+    if (!loyaltyProgram) {
+      return res.status(404).json({ error: "Loyalty card not found for this business" });
+    }
+
+    if (loyaltyProgram.active !== true) {
+      return res.status(403).json({ error: "The selected loyalty card is inactive" });
+    }
+
     const isOwner = business.owner_id === user.id;
 
     if (!isOwner) {
@@ -78,6 +97,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (membership.allow_search_send_stamp !== true) {
         return res.status(403).json({ error: "Search & Send Stamp is not enabled for this staff account" });
+      }
+
+      const { data: assignment, error: assignmentError } = await supabaseAdmin
+        .from("staff_loyalty_program_assignments")
+        .select("id")
+        .eq("business_id", businessId)
+        .eq("staff_user_id", user.id)
+        .eq("loyalty_program_id", loyaltyProgramId)
+        .maybeSingle();
+
+      if (assignmentError) {
+        return res.status(500).json({ error: "Unable to verify loyalty card assignment" });
+      }
+
+      if (!assignment?.id) {
+        return res.status(403).json({ error: "This staff account is not assigned to the selected loyalty card" });
       }
     }
 

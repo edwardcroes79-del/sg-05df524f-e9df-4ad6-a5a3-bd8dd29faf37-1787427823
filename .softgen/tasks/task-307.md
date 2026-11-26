@@ -17,12 +17,18 @@ Confirmed current state from inspected code:
 - `src/pages/dashboard/quick-stamp-qr.tsx` generates rotating QR tokens through `generate_quick_stamp_qr_token`, so Quick Issue Stamp must also be constrained by staff-to-program assignment.
 - Existing access control is business-level and location-level; there is no current staff-to-loyalty-program assignment layer.
 
+Implemented this turn:
+- Added migration `supabase/migrations/20261126110729_staff_loyalty_program_assignments.sql` creating `staff_loyalty_program_assignments` with duplicate prevention, validation triggers, and RLS.
+- Added reusable database helpers for manager authorization and staff-to-loyalty-program issuance authorization.
+- Updated `issue_stamp_tx`, `generate_quick_stamp_qr_token`, and `quick_stamp_qr_issue_stamp` in SQL so assignment checks happen server-side and revocations take effect immediately.
+- Updated `src/pages/api/staff/search-send-stamp.ts` with an explicit same-business loyalty-program check and a direct assignment check before issuing a stamp.
+
 ## Checklist
 - [x] Inspect existing staff, loyalty program, and stamp-issuance schema and APIs
-- [ ] Add or adapt assignment persistence to support multiple cards per staff member and shared cards across staff
-- [ ] Add server-side business and assignment validation for normal Issue Stamp requests
-- [ ] Add server-side business and assignment validation for Quick Issue Stamp requests
-- [ ] Ensure assignment removal revokes access immediately without altering historical transactions
+- [x] Add or adapt assignment persistence to support multiple cards per staff member and shared cards across staff
+- [x] Add server-side business and assignment validation for normal Issue Stamp requests
+- [x] Add server-side business and assignment validation for Quick Issue Stamp requests
+- [x] Ensure assignment removal revokes access immediately without altering historical transactions
 - [ ] Validate schema, RLS, and app build behavior
 
 ## Acceptance
