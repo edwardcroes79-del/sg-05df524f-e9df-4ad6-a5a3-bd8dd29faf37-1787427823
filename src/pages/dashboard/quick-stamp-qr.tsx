@@ -302,6 +302,11 @@ export default function QuickStampQrPage() {
       }
 
       setSelectedProgramId(firstProgram.id);
+      const authorizedLocation = await resolveAuthorizedLocationId(resolvedBusiness.id);
+      if (!mounted) return;
+
+      setActiveLocationId(authorizedLocation.locationId);
+      setAccessibleLocationIds(authorizedLocation.accessibleIds);
       await refreshToken(resolvedBusiness.id, firstProgram.id, authorizedLocation.locationId);
     };
 

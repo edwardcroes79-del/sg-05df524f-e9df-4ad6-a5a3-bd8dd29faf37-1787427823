@@ -97,6 +97,8 @@ export default function ScanQR() {
   const [customers, setCustomers] = useState<RegisteredCustomer[]>([]);
   const [canSearchSendStamp, setCanSearchSendStamp] = useState(false);
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
+  const [isRestrictedStaff, setIsRestrictedStaff] = useState(false);
+  const [assignmentMessage, setAssignmentMessage] = useState("");
   const [activeLocationId, setActiveLocationId] = useState<string>("");
   const [accessibleLocationIds, setAccessibleLocationIds] = useState<string[]>([]);
   
@@ -315,6 +317,7 @@ export default function ScanQR() {
 
       let resolvedBusinessId: string | null = null;
       let resolvedCanSearchSendStamp = false;
+      let isStaffUser = false;
 
       const { data: ownedBusiness, error: ownedBusinessError } = await supabase
         .from("businesses")
@@ -343,10 +346,13 @@ export default function ScanQR() {
         if (membership?.business_id) {
           resolvedBusinessId = membership.business_id;
           resolvedCanSearchSendStamp = membership.allow_search_send_stamp === true;
+          isStaffUser = true;
         }
       }
 
       setCanSearchSendStamp(resolvedCanSearchSendStamp);
+      setIsRestrictedStaff(isStaffUser);
+      setAssignmentMessage("");
 
       if (resolvedBusinessId) {
         // Set the minimal business object needed for the rest of the file
@@ -365,11 +371,38 @@ export default function ScanQR() {
           .eq("active", true);
           
         if (progsError) throw progsError;
-          
-        if (progs && progs.length > 0) {
-          setPrograms(progs);
-          setSelectedProgramId(progs[0].id);
-          await searchRegisteredCustomers("", resolvedBusinessId, resolvedCanSearchSendStamp, progs[0].id);
+
+        const activePrograms = progs || [];
+        let visiblePrograms = activePrograms;
+
+        if (isStaffUser) {
+          const { data: assignmentRows, error: assignmentError } = await supabase
+            .from("staff_loyalty_program_assignments")
+            .select("loyalty_program_id")
+            .eq("business_id", resolvedBusinessId)
+            .eq("staff_user_id", session.user.id);
+
+          if (assignmentError) throw assignmentError;
+
+          const assignedProgramIds = new Set(
+            (assignmentRows || []).map((assignment: { loyalty_program_id: string }) => assignment.loyalty_program_id)
+          );
+
+          visiblePrograms = activePrograms.filter((program: { id: string }) => assignedProgramIds.has(program.id));
+
+          if (visiblePrograms.length === 0) {
+            setAssignmentMessage("No loyalty cards have been assigned to your account. Please contact your Business Admin.");
+          }
+        }
+
+        setPrograms(visiblePrograms);
+
+        if (visiblePrograms.length > 0) {
+          setSelectedProgramId(visiblePrograms[0].id);
+          await searchRegisteredCustomers("", resolvedBusinessId, resolvedCanSearchSendStamp, visiblePrograms[0].id);
+        } else {
+          setSelectedProgramId("");
+          setCustomers([]);
         }
       }
     } catch (err) {
@@ -950,14 +983,23 @@ export default function ScanQR() {
             <strong>{t("dashboard.scan.descriptionRedeemTitle")}</strong> {t("dashboard.scan.descriptionRedeem")}<br/>
             <span className="text-xs mt-1 block">{t("dashboard.scan.descriptionHelp")}</span>
           </p>
+          {isRestrictedStaff ? (
+            <p className="mt-2 text-sm font-medium text-primary">
+              Only loyalty cards assigned to your staff account are available here.
+            </p>
+          ) : null}
         </div>
 
         {programs.length === 0 ? (
           <Card>
             <CardContent className="pt-6">
               <div className="text-center p-6">
-                <p className="text-muted-foreground mb-4">{t("dashboard.scan.noProgramMessage")}</p>
-                <Button onClick={() => router.push("/dashboard/programs/new")}>{t("dashboard.scan.createProgram")}</Button>
+                <p className="text-muted-foreground mb-4">
+                  {isRestrictedStaff && assignmentMessage ? assignmentMessage : t("dashboard.scan.noProgramMessage")}
+                </p>
+                {!isRestrictedStaff ? (
+                  <Button onClick={() => router.push("/dashboard/programs/new")}>{t("dashboard.scan.createProgram")}</Button>
+                ) : null}
               </div>
             </CardContent>
           </Card>
