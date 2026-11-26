@@ -1,6 +1,6 @@
 ---
 title: Anti-fraud settings section restoration
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [security, anti-fraud, settings]
@@ -15,12 +15,14 @@ Root cause: commit `c422d5e` (feat(auth): implement secure password-change flow)
 
 Restoration: card JSX copied verbatim from commit `dc73b5b` and reinserted directly above the 2FA card (its original adjacency).
 
+Verification (rolled-back SQL test): load returned saved values (off/10); owner save round-trip on/15; outsider save rejected; cooldown 99 rejected. All 3 settings RPCs present; 4 settings rows preserved. check_for_errors passed.
+
 ## Checklist
 - [x] Find the original Anti-Fraud Protection UI and the commit that removed or hid it
 - [x] Confirm the API contract and DB settings table match the original UI
 - [x] Restore the original section in Settings under Account Security
-- [ ] Verify saved settings load and save, and backend enforcement still works
-- [ ] Run check_for_errors
+- [x] Verify saved settings load and save, and backend enforcement still works
+- [x] Run check_for_errors
 
 ## Acceptance
 Business Admins see the original Anti-Fraud Protection section in Settings with their saved configuration.
