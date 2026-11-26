@@ -101,10 +101,8 @@ export async function sendConfirmationEmail({ email, actionLink, audience = "gen
   const fromName = process.env.MAIL_FROM_NAME || "Royalty Stamp";
   const fromEmail = process.env.MAIL_FROM_ADDRESS || "mail@royaltystamp.com";
   const greeting = displayName?.trim() ? `Hi ${escapeHtml(displayName.trim())},` : "Hello,";
-  const heading = audience === "customer" ? "Verify Your Account" : "Confirm Your Account";
-  const intro = audience === "customer"
-    ? "Thank you for joining Royalty Stamp. Please confirm your email address to start collecting rewards."
-    : "Please confirm your email address to activate your Royalty Stamp account.";
+  const heading = "Confirm Your Account";
+  const intro = "Please confirm your email address to activate your Royalty Stamp account.";
 
   const htmlBody = `
     <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; color: #1e293b;">
