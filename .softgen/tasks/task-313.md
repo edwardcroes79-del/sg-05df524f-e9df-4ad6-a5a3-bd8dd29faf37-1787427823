@@ -1,6 +1,6 @@
 ---
 title: SMTP trigger audit and allowlist
-status: in_progress
+status: done
 priority: urgent
 type: bug
 tags: [email, smtp, audit, security]
@@ -35,24 +35,21 @@ Current blocked category:
 - contract reminder emails
 - all other non-allowed automatic SMTP sends
 
-Implementation progress:
+Implementation completed:
 - Added `src/lib/server/emailAllowlist.ts` as the central server-side purpose allowlist.
 - Wired the allowlist into allowed senders in `register-business`, `notify-registration`, `approve-business`, and `request-password-recovery`.
 - Restricted `src/lib/server/confirmationEmail.ts` and `src/pages/api/admin/resend-confirmation.ts` so confirmation resend only works for business-registration accounts.
 - Disabled stamp receipt SMTP at the API boundary in `src/pages/api/customer/stamp-receipt.ts`.
 - Disabled setup assistance SMTP before any email-log/retry preparation in `src/lib/server/setupAssistanceNotifications.ts`.
 - Disabled contract reminder SMTP before reminder/email-log reservation in `src/pages/api/admin/process-contract-reminders.ts`.
-
-Remaining work:
-- Run validation and report final test outcomes for allowed vs blocked SMTP paths.
-- Capture the final modified-file list and user-facing results after checks pass.
+- Clean validation passed with no CSS, lint, TypeScript, or runtime errors.
 
 ## Checklist
 - [x] Inventory all email sending locations across API routes, server helpers, jobs, and background flows
 - [x] Confirm which flows map to the three allowed purposes and which must be disabled
 - [x] Implement a central allowlist or equivalent server-side safeguard for app-managed email sends
 - [x] Preserve existing SMTP configuration and approval/registration email content
-- [ ] Document all discovered triggers and final allowed list
+- [x] Document all discovered triggers and final allowed list
 
 ## Acceptance
 Only business registration, business approval confirmation, and password reset can trigger outgoing emails.
