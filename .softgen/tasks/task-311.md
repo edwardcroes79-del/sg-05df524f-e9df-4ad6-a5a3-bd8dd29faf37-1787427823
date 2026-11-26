@@ -22,6 +22,11 @@ Verification result:
 - `issue_stamp_tx` (3-arg and 4-arg) live bodies == `20261008191500_staff_stamp_location_attribution.sql` + one `staff_can_issue_loyalty_program` check. Verified.
 - `quick_stamp_qr_issue_stamp` live body == `20261008121800_corporate_analytics_location_filter.sql` + one assignment check (token lock, expiry/single-use, cooldown, consumption unchanged). Verified.
 - `generate_quick_stamp_qr_token` 2-arg unchanged (delegates to 3-arg). 3-arg pending comparison.
+- `generate_quick_stamp_qr_token` 3-arg: no prior migration definition locatable; live body reviewed structurally — auth, program required, business access, location access, active business, add-on, program-at-location, token cleanup, 60s TTL all present, plus the assignment check.
+
+Caller analysis: only `issue_stamp_tx` (both) and `quick_stamp_qr_issue_stamp` call `issue_stamp_core_tx`; all are SECURITY DEFINER, so revoking direct EXECUTE is safe. No app code calls `issue_stamp_core_tx` or legacy `issue_stamp`.
+
+Hardening applied: REVOKE EXECUTE on `issue_stamp_core_tx(uuid,uuid,uuid,uuid,text,uuid)` and legacy `issue_stamp(uuid,uuid,uuid)` from PUBLIC, anon, authenticated (closes caller-supplied staff ID bypass and the no-rate-limit legacy path). Note: this intentionally deviates from the original GRANT in `20261015133500_anti_fraud_phase_1.sql`.
 
 Pre-existing bypasses (pending decision after verification):
 - `issue_stamp_core_tx` is EXECUTE-granted to anon/authenticated with a caller-supplied `p_staff_user_id`.
