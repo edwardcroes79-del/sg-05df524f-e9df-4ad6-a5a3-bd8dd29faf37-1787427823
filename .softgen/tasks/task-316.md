@@ -1,6 +1,6 @@
 ---
 title: Customer auth branding restoration
-status: in_progress
+status: done
 priority: high
 type: bug
 tags: [customer-auth, branding, qr-flow, ui]
@@ -24,13 +24,14 @@ Investigation finding:
 Implementation:
 - Removed business-color styling from the customer auth UI elements so the page falls back to Royalty Stamp theme colors.
 - Preserved business name, program name, business logo, QR return path handling, and registration/sign-in functionality.
+- Validation passed with no CSS, lint, TypeScript, or runtime errors.
 
 ## Checklist
 - [x] Inspect the customer sign-in and create-account pages used in QR flows
 - [x] Identify where business branding colors override Royalty Stamp branding
 - [x] Restore Royalty Stamp branding on those two pages only
 - [x] Preserve QR/business context and existing auth functionality
-- [ ] Validate the targeted change after implementation
+- [x] Validate the targeted change after implementation
 
 ## Acceptance
 The Customer Sign In page and Create New Account page always show Royalty Stamp branding, even when opened from businesses with custom primary colors.
