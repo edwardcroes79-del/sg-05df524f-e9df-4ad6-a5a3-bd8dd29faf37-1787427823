@@ -11,9 +11,19 @@ position: 320
 ## Notes
 Fix the Vercel deployment blocker in `src/pages/auth/customer.tsx`. The build log shows a TypeScript duplicate identifier error for `User` caused by conflicting imports. Ignore warnings unless a new blocking error appears.
 
+Confirmed root cause:
+- `src/pages/auth/customer.tsx` imports `User` from `lucide-react` for the form icon.
+- The same file also imports `User` as a type from `@supabase/supabase-js`.
+- TypeScript treats this as a duplicate identifier in the module scope, which blocks `next build` on Vercel.
+
+Resolution applied:
+- Alias the Supabase type import to `SupabaseUser`.
+- Update the `routeSignedInUser(...)` helper to use the aliased type.
+- No auth logic, routing behavior, or UI flow changed.
+
 ## Checklist
-- [ ] Open the customer auth page and confirm the duplicate `User` imports
-- [ ] Apply the smallest TypeScript-safe import fix
+- [x] Open the customer auth page and confirm the duplicate `User` imports
+- [x] Apply the smallest TypeScript-safe import fix
 - [ ] Validate with a full build-ready error check
 - [ ] Record the exact root cause and resolution
 

@@ -14,7 +14,7 @@ import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authS
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { TurnstileVerification } from "@/components/TurnstileVerification";
 import { useI18n } from "@/contexts/I18nProvider";
-import type { User } from "@supabase/supabase-js";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { ensureCustomerJoinForProgram, ensureCustomerRecord } from "@/services/customerMembershipService";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -195,7 +195,7 @@ export default function CustomerAuth() {
     void fetchBusinessContext();
   }, [safeReturnUrl]);
 
-  const routeSignedInUser = async (user: User | null | undefined) => {
+  const routeSignedInUser = async (user: SupabaseUser | null | undefined) => {
     const userId = user?.id;
 
     if (!userId) {
