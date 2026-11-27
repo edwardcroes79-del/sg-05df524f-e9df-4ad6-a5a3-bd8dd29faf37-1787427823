@@ -11,23 +11,23 @@ position: 317
 ## Notes
 Restore the previous Business Admin behavior for the View Page action in QR Codes & Posters. A Business Admin must be able to preview the correct public loyalty enrollment page for a program without being redirected into the customer dashboard, enrolled as a customer, or having their account role/profile changed.
 
-Investigation requirements:
-- Inspect the current View Page button and its route target in the QR Codes & Posters surface.
-- Compare current behavior against git history to identify the last working implementation before the regression.
-- Trace the target public route and any auth-based redirects that may send a logged-in Business Admin into the customer dashboard.
-- Make the smallest possible routing or role-handling fix.
-- Preserve existing customer enrollment through the public page and preserve all Business Admin dashboard access.
+Investigation findings:
+- `src/pages/dashboard/qr.tsx` still uses the public route `/join/${qr.loyalty_program_id}` for View Page, so the QR dashboard link itself is not the regression.
+- The regression is in `src/pages/join/[id].tsx`, where an authenticated-session enhancement auto-runs `handleJoin(true)` on page load for any signed-in user.
+- That auto-join path calls `ensureCustomerJoinForProgram(...)` and then routes to `/customer/cards?cardId=...`, which is why a logged-in Business Admin preview turns into the customer flow.
+- This behavior was introduced after the original public-preview route behavior and must be limited to real customer accounts only.
 
-Constraints:
-- Do not redesign the QR page.
-- Do not change QR generation, validation, loyalty programs, or unrelated auth.
-- Do not modify customer dashboards or role architecture beyond the direct regression fix.
+Restoration approach:
+- Keep View Page targeting the same public join route.
+- Restore public preview behavior by preventing auto-join for Business Admin, staff, and Super Admin sessions.
+- Preserve normal customer QR enrollment and card-opening behavior for actual customer accounts.
+- Keep all business/customer roles, sessions, and dashboards unchanged.
 
 ## Checklist
-- [ ] Inspect the current View Page handler and route target
+- [x] Inspect the current View Page handler and route target
 - [ ] Compare the relevant QR/public page files against the last working git version
-- [ ] Identify the exact redirect or role-handling regression
-- [ ] Restore the original Business Admin preview behavior with minimal changes
+- [x] Identify the exact redirect or role-handling regression
+- [x] Restore the original Business Admin preview behavior with minimal changes
 - [ ] Validate no customer profile or role/session mutation occurs from previewing
 - [ ] Run check_for_errors
 

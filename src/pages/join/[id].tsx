@@ -19,6 +19,7 @@ export default function JoinProgramSimplified() {
   const [joining, setJoining] = useState(false);
   const [program, setProgram] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
+  const [canJoinAsCustomer, setCanJoinAsCustomer] = useState(false);
   const autoJoinAttemptedRef = useRef(false);
 
   useEffect(() => {
@@ -34,6 +35,30 @@ export default function JoinProgramSimplified() {
         
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user || null);
+
+        if (session?.user) {
+          const [{ data: profile }, { data: businessMembership }] = await Promise.all([
+            supabase
+              .from("profiles")
+              .select("is_super_admin, role")
+              .eq("id", session.user.id)
+              .maybeSingle(),
+            supabase
+              .from("business_users")
+              .select("business_id")
+              .eq("user_id", session.user.id)
+              .eq("status", "active")
+              .maybeSingle(),
+          ]);
+
+          const isSuperAdmin = Boolean(profile?.is_super_admin || profile?.role === "super_admin");
+          const isBusinessUser = Boolean(businessMembership?.business_id);
+          const isCustomer = profile?.role === "customer";
+
+          setCanJoinAsCustomer(isCustomer && !isSuperAdmin && !isBusinessUser);
+        } else {
+          setCanJoinAsCustomer(false);
+        }
 
         // Single unified query: fetch the active program AND its associated active/trial business
         // Using * for loyalty_programs to prevent silent query crashes caused by missing UI columns (like stamp_icon)
@@ -78,17 +103,26 @@ export default function JoinProgramSimplified() {
   useEffect(() => {
     const business = Array.isArray(program?.businesses) ? program.businesses[0] : program?.businesses;
 
-    if (!user || !program?.id || !business || loading || joining || business.status === "on_hold" || autoJoinAttemptedRef.current) {
+    if (!user || !canJoinAsCustomer || !program?.id || !business || loading || joining || business.status === "on_hold" || autoJoinAttemptedRef.current) {
       return;
     }
 
     autoJoinAttemptedRef.current = true;
     void handleJoin(true);
-  }, [joining, loading, program, user]);
+  }, [canJoinAsCustomer, joining, loading, program, user]);
 
   const handleJoin = async (silent = false) => {
     if (!user) {
       await router.push(`/auth/customer?returnUrl=${encodeURIComponent(router.asPath)}`);
+      return;
+    }
+
+    if (!canJoinAsCustomer) {
+      toast({
+        title: "Preview only",
+        description: "Business Admin and staff accounts can preview this page, but only customer accounts can join loyalty programs.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -201,7 +235,7 @@ export default function JoinProgramSimplified() {
           <CardHeader className="text-center">
             <CardTitle>Ready to get started?</CardTitle>
             <CardDescription>
-              {user 
+              {user && canJoinAsCustomer
                 ? "You are logged in and ready to join this program." 
                 : "Create a free customer account or log in to add this card to your digital wallet."}
             </CardDescription>
@@ -220,14 +254,14 @@ export default function JoinProgramSimplified() {
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Opening your card...
                 </>
-              ) : user ? (
+              ) : user && canJoinAsCustomer ? (
                 "Add to My Wallet"
               ) : (
                 "Log In / Register to Join"
               )}
             </Button>
             
-            {!user && (
+            {(!user || !canJoinAsCustomer) && (
               <p className="text-xs text-center text-muted-foreground">
                 By joining, you agree to our Terms of Service and Privacy Policy. No app download required.
               </p>
