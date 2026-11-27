@@ -70,7 +70,7 @@ export default function CustomerAuth() {
   const [businessName, setBusinessName] = useState("");
   const [programName, setProgramName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
-  const [accentColor, setAccentColor] = useState("");
+  const [, setAccentColor] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -542,13 +542,10 @@ export default function CustomerAuth() {
                 src={logoUrl}
                 alt={businessName}
                 className="mx-auto h-20 w-20 rounded-2xl border-2 object-cover shadow-sm"
-                style={{ borderColor: accentColor || "hsl(var(--primary))" }}
+                style={{ borderColor: "hsl(var(--primary))" }}
               />
             ) : (
-              <div
-                className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl text-white shadow-sm"
-                style={{ backgroundColor: accentColor || "hsl(var(--primary))" }}
-              >
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
                 <Gift className="h-8 w-8" />
               </div>
             )}
@@ -632,7 +629,6 @@ export default function CustomerAuth() {
                         type="submit"
                         className="mt-2 h-11 w-full text-base"
                         disabled={loading || fetchingContext}
-                        style={{ backgroundColor: accentColor || undefined, color: accentColor ? "#fff" : undefined }}
                       >
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         {t("auth.customer.signInCta")}
@@ -729,10 +725,7 @@ export default function CustomerAuth() {
                         type="submit"
                         className="mt-2 h-11 w-full text-base"
                         disabled={loading || isSuccess || fetchingContext || !turnstileToken}
-                        style={{
-                          backgroundColor: isSuccess ? "#22c55e" : accentColor || undefined,
-                          color: isSuccess || accentColor ? "#fff" : undefined,
-                        }}
+                        style={isSuccess ? { backgroundColor: "#22c55e", color: "#fff" } : undefined}
                       >
                         {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         {isSuccess ? t("auth.customer.checkEmail") : t("auth.customer.createAndCollect")}
@@ -749,11 +742,8 @@ export default function CustomerAuth() {
           ) : (
             <Card className="border shadow-sm">
               <CardHeader className="pb-2 text-center">
-                <div
-                  className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full shadow-sm"
-                  style={{ backgroundColor: accentColor || "hsl(var(--primary))" }}
-                >
-                  <ShieldCheck className="h-6 w-6 text-white" />
+                <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 shadow-sm">
+                  <ShieldCheck className="h-6 w-6 text-primary" />
                 </div>
                 <CardTitle className="font-heading text-2xl text-foreground">{t("auth.customer.securityCheck")}</CardTitle>
                 <CardDescription>{t("auth.customer.securityDescription")}</CardDescription>
@@ -780,7 +770,6 @@ export default function CustomerAuth() {
                     type="submit"
                     className="mt-2 h-11 w-full text-base"
                     disabled={loading || mfaCode.length < 6}
-                    style={{ backgroundColor: accentColor || undefined, color: accentColor ? "#fff" : undefined }}
                   >
                     {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     {t("auth.customer.verifyIdentity")}
