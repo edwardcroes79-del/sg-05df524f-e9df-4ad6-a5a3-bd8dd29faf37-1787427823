@@ -14,7 +14,8 @@ import { getMfaRouteRequirement, normalizeInternalReturnPath } from "@/lib/authS
 import { LanguageSelector } from "@/components/LanguageSelector";
 import { TurnstileVerification } from "@/components/TurnstileVerification";
 import { useI18n } from "@/contexts/I18nProvider";
-import { ensureCustomerRecord } from "@/services/customerMembershipService";
+import type { User } from "@supabase/supabase-js";
+import { ensureCustomerJoinForProgram, ensureCustomerRecord } from "@/services/customerMembershipService";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -56,6 +57,20 @@ function isDuplicateRegistrationError(message: string) {
     normalizedMessage.includes("user already registered") ||
     normalizedMessage.includes("email address is already registered")
   );
+}
+
+function getJoinProgramIdFromReturnUrl(returnPath?: string | null) {
+  if (!returnPath) {
+    return null;
+  }
+
+  const legacyJoinMatch = returnPath.match(/^\/join\/[^/]+\/([^/?#]+)/);
+  if (legacyJoinMatch?.[1]) {
+    return legacyJoinMatch[1];
+  }
+
+  const simplifiedJoinMatch = returnPath.match(/^\/join\/([^/?#]+)/);
+  return simplifiedJoinMatch?.[1] ?? null;
 }
 
 export default function CustomerAuth() {
@@ -180,7 +195,9 @@ export default function CustomerAuth() {
     void fetchBusinessContext();
   }, [safeReturnUrl]);
 
-  const routeSignedInUser = async (userId: string | undefined) => {
+  const routeSignedInUser = async (user: User | null | undefined) => {
+    const userId = user?.id;
+
     if (!userId) {
       if (safeReturnUrl) {
         await router.push(safeReturnUrl);
@@ -203,6 +220,22 @@ export default function CustomerAuth() {
       .maybeSingle();
 
     if (customerRecord || profile?.role === "customer") {
+      const joinProgramId = getJoinProgramIdFromReturnUrl(safeReturnUrl);
+
+      if (joinProgramId && user) {
+        const joinResult = await ensureCustomerJoinForProgram({
+          user,
+          loyaltyProgramId: joinProgramId,
+          nameOverride:
+            String(user.user_metadata?.full_name || "").trim() ||
+            String(user.user_metadata?.name || "").trim() ||
+            undefined,
+        });
+
+        await router.push(`/customer/cards?cardId=${encodeURIComponent(joinResult.cardId)}`);
+        return;
+      }
+
       if (safeReturnUrl) {
         await router.push(safeReturnUrl);
       } else {
@@ -267,7 +300,7 @@ export default function CustomerAuth() {
         description: "Your account already existed. We signed you in and resumed your loyalty access.",
       });
 
-      await routeSignedInUser(data.user.id);
+      await routeSignedInUser(data.user);
       return true;
     }
 
@@ -309,7 +342,7 @@ export default function CustomerAuth() {
         description: t("auth.customer.welcomeBackDescription"),
       });
 
-      await routeSignedInUser(data.user?.id);
+      await routeSignedInUser(data.user);
     } catch (error) {
       toast({
         title: t("auth.customer.error"),
@@ -341,11 +374,8 @@ export default function CustomerAuth() {
         description: t("auth.mfa.successDescription"),
       });
 
-      if (safeReturnUrl) {
-        await router.push(safeReturnUrl);
-      } else {
-        await router.push("/customer");
-      }
+      const { data: currentUser } = await supabase.auth.getUser();
+      await routeSignedInUser(currentUser.user);
     } catch (error) {
       toast({
         title: t("auth.mfa.failedTitle"),
@@ -474,7 +504,7 @@ export default function CustomerAuth() {
           description: "You are now signed in. Opening your loyalty card...",
         });
 
-        await routeSignedInUser(data.user.id);
+        await routeSignedInUser(data.user);
         return;
       }
 
